@@ -87,10 +87,10 @@ enum PPOPreparedEvent: Equatable {
 
 @MainActor
 final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutputs {
-  init(feature injectedFeature: PledgedProjectsFeature? = nil) {
-    let feature = injectedFeature ?? AppModel.shared.pledgedProjectsFeature
-    self.feature = feature
-    feature.snapshots(route: self.route)
+  init(pledgedProjectsFeature injectedPledgedProjectsFeature: PledgedProjectsFeature? = nil) {
+    let pledgedProjectsFeature = injectedPledgedProjectsFeature ?? AppModel.shared.pledgedProjectsFeature
+    self.pledgedProjectsFeature = pledgedProjectsFeature
+    pledgedProjectsFeature.snapshots(route: self.route)
       .map(Self.present)
       .subscribe(self.snapshots)
       .store(in: &self.cancellables)
@@ -296,16 +296,16 @@ final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutp
   // MARK: - Inputs
 
   func viewDidAppear() {
-    self.feature.requestFirstPage(route: self.route)
+    self.pledgedProjectsFeature.requestFirstPage(route: self.route)
     self.viewDidAppearSubject.send()
   }
 
   func loadMore() async {
-    await self.feature.loadMore(route: self.route)
+    await self.pledgedProjectsFeature.loadMore(route: self.route)
   }
 
   func refresh() async {
-    await self.feature.refresh(route: self.route)
+    await self.pledgedProjectsFeature.refresh(route: self.route)
   }
 
   func handleCardEvent(_ cardAction: PPOCardEvent, from cardModel: PPOProjectCardModel) {
@@ -322,13 +322,13 @@ final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutp
 
   // MARK: - Private
 
-  private let feature: PledgedProjectsFeature
+  private let pledgedProjectsFeature: PledgedProjectsFeature
   private let route = UUID()
   private let snapshots = CurrentValueSubject<PPOViewModelResult, Never>(.unloaded)
   deinit {
-    let feature = self.feature
+    let pledgedProjectsFeature = self.pledgedProjectsFeature
     let route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    Task { @MainActor in pledgedProjectsFeature.release(route: route) }
   }
 
   private let viewDidAppearSubject = PassthroughSubject<Void, Never>()

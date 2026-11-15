@@ -21,7 +21,7 @@ class PPOViewModelTests: XCTestCase {
   override func setUp() async throws {
     try await super.setUp()
     MainActor.assumeIsolated {
-      self.viewModel = PPOViewModel(feature: self.feature)
+      self.viewModel = PPOViewModel(pledgedProjectsFeature: self.feature)
       self.cancellables = []
     }
   }
