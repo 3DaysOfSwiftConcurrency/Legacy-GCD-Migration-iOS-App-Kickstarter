@@ -35,6 +35,7 @@ public final class SessionFeature {
   private let makeProvider: () -> any SessionProvider
   private let readUser: () -> User?
   private let readUserEmail: () -> String?
+  private let readPPOSettings: () -> PPOUserSettings?
   private let writeUser: @MainActor (User) -> Void
   private let login: @MainActor (AccessTokenEnvelope) -> Void
   private let writeSetup: (GraphUserSetup) -> Void
@@ -45,6 +46,7 @@ public final class SessionFeature {
   private var requests: [Identity: Task<User, Error>] = [:]
   public var currentUser: User? { self.readUser() }
   public var currentUserEmail: String? { self.readUserEmail() }
+  public var currentUserPPOSettings: PPOUserSettings? { self.readPPOSettings() }
   public var generation: Int { self.revision }
   public var readGeneration: Int { self.readRevision }
 
@@ -52,6 +54,7 @@ public final class SessionFeature {
     makeProvider: @escaping () -> any SessionProvider,
     currentUser: @escaping () -> User? = { AppEnvironment.current.currentUser },
     currentUserEmail: @escaping () -> String? = { AppEnvironment.current.currentUserEmail },
+    currentUserPPOSettings: @escaping () -> PPOUserSettings? = { AppEnvironment.current.currentUserPPOSettings },
     updateUser: @escaping @MainActor (User) -> Void = { AppEnvironment.updateCurrentUser($0) },
     login: @escaping @MainActor (AccessTokenEnvelope) -> Void = { AppEnvironment.login($0) },
     updateSetup: @escaping (GraphUserSetup) -> Void = { setup in
@@ -68,6 +71,7 @@ public final class SessionFeature {
     self.makeProvider = makeProvider
     self.readUser = currentUser
     self.readUserEmail = currentUserEmail
+    self.readPPOSettings = currentUserPPOSettings
     self.writeUser = updateUser
     self.login = login
     self.writeSetup = updateSetup

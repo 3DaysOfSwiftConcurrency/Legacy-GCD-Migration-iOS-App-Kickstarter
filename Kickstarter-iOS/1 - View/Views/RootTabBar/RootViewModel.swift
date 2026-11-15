@@ -145,6 +145,7 @@ public protocol RootViewModelType {
 @MainActor
 public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootViewModelOutputs {
   private let profileFeature: ProfileFeature
+  private let appLifecycleFeature: AppLifecycleFeature
   private var sessionFeature: SessionFeature { self.profileFeature.sessionFeature }
   private var latestSelectedIndex: RootViewControllerIndex?
   private var lastUserSelectedIndex = 0
@@ -174,9 +175,10 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   private var badgePresentationTasks: [UUID: Task<Void, Never>] = [:]
   private var badgeIdentity: (userID: Int, generation: Int, token: UUID)?
 
-  public init(profileFeature: ProfileFeature? = nil) {
+  public init(profileFeature: ProfileFeature? = nil, appLifecycleFeature: AppLifecycleFeature? = nil) {
     let profileFeature = profileFeature ?? AppModel.shared.profileFeature
     self.profileFeature = profileFeature
+    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
   }
 
   private func refreshCurrentUser() {
@@ -269,7 +271,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
 
   private func updateBadge(_ value: Int?, index: RootViewControllerIndex) {
     self.lastBadgeInput = (value, index)
-    let hasPPOAction = AppEnvironment.current.currentUserPPOSettings?.hasAction ?? false
+    let hasPPOAction = self.sessionFeature.currentUserPPOSettings?.hasAction ?? false
     let displayed = activitiesBadgeValue(with: value, hasPPOAction: hasPPOAction)
     self.currentBadgeValue = displayed
     self.onSetBadgeValue?((displayed, index))
@@ -363,7 +365,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     let previousIndex = self.activityIndex
     self.observeFloatingFlag()
     if let index = previousIndex {
-      self.updateBadge(AppEnvironment.current.application.applicationIconBadgeNumber, index: index)
+      self.updateBadge(self.appLifecycleFeature.currentApplicationBadgeNumber, index: index)
     }
   }
 
@@ -439,7 +441,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     self.hasLoadedRootView = true
     self.selectIndex(0)
     if let index = previousIndex {
-      self.updateBadge(AppEnvironment.current.application.applicationIconBadgeNumber, index: index)
+      self.updateBadge(self.appLifecycleFeature.currentApplicationBadgeNumber, index: index)
     }
   }
 

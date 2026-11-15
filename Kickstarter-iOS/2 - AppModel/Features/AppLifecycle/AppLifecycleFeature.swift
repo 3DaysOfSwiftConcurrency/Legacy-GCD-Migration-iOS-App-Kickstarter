@@ -122,6 +122,7 @@ public final class AppLifecycleFeature {
   private let registerNotifications: () -> Void
   private let readNotificationStatus: () async -> UNAuthorizationStatus
   private let authorizeTracking: () async -> UInt
+  private let applicationBadgeNumber: () -> Int
   private let makeProvider: () -> any AppLifecycleProvider
   private let resolveRedirect: (URL) async throws -> URL?
   private var redirects: [UUID: (url: URL, request: Pending<URL?>)] = [:]
@@ -155,6 +156,7 @@ public final class AppLifecycleFeature {
         }
       }
     },
+    applicationBadgeNumber: @escaping () -> Int = { AppEnvironment.current.application.applicationIconBadgeNumber },
     resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -171,6 +173,7 @@ public final class AppLifecycleFeature {
     self.registerNotifications = registerNotifications
     self.readNotificationStatus = readNotificationStatus
     self.authorizeTracking = authorizeTracking
+    self.applicationBadgeNumber = applicationBadgeNumber
   }
   private var session: Session {
     Session(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
@@ -214,6 +217,7 @@ public final class AppLifecycleFeature {
   }
 
   public var isAuthenticated: Bool { AppEnvironment.current.apiService.isAuthenticated }
+  public var currentApplicationBadgeNumber: Int { self.applicationBadgeNumber() }
   public var serverEnvironment: EnvironmentType { AppEnvironment.current.apiService.serverConfig.environment }
   public func webURL(path: String) -> String { self.webBaseURL.absoluteString + path }
   public func helpType(for url: URL) -> HelpType? {
