@@ -229,7 +229,7 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
 
       guard !projectFAQs.isEmpty else {
         self.set(
-          values: [()],
+          values: [self.projectDetailsFeature.sessionFeature.currentUser != nil],
           cellClass: ProjectFAQsEmptyStateCell.self,
           inSection: Section.faqsEmpty.rawValue
         )
@@ -361,8 +361,8 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
       cell.configureWith(value: ())
     case let (cell as ProjectFAQsCell, value as (ProjectFAQ, Bool)):
       cell.configureWith(value: value)
-    case let (cell as ProjectFAQsEmptyStateCell, _):
-      cell.configureWith(value: ())
+    case let (cell as ProjectFAQsEmptyStateCell, value as Bool):
+      cell.configureWith(value: value)
     case let (cell as ProjectPamphletCreatorHeaderCell, value as Project):
       cell.configureWith(value: value)
     case let (cell as ProjectPamphletMainCell, value as ProjectPamphletMainCellData):

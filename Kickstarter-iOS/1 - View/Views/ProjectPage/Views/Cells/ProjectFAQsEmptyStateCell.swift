@@ -4,7 +4,6 @@ import Prelude
 import UIKit
 
 final class ProjectFAQsEmptyStateCell: UITableViewCell, ValueCell {
-  private let sessionFeature = AppModel.shared.sessionFeature
   // MARK: - Properties
 
   private lazy var titleTextLabel: UILabel = {
@@ -38,22 +37,19 @@ final class ProjectFAQsEmptyStateCell: UITableViewCell, ValueCell {
     _ = self.contentView
       |> \.layoutMargins .~ .init(all: Styles.projectPageLeftRightInset)
 
-    let titleTextLabelSecondaryText = self.sessionFeature.currentUser != nil ? Strings
-      .Ask_the_project_creator_directly() : Strings.Log_in_to_ask_the_project_creator_directly()
-
-    let titleTextLabelText = Strings
-      .Looks_like_there_arent_any_frequently_asked_questions() + " " + titleTextLabelSecondaryText
-
     _ = self.titleTextLabel
       |> \.font .~ UIFont.ksr_body()
       |> \.numberOfLines .~ 0
       |> \.textColor .~ LegacyColors.ksr_support_700.uiColor()
-      |> \.text .~ titleTextLabelText
   }
 
   // MARK: - Configuration
 
-  func configureWith(value _: Void) {}
+  func configureWith(value isLoggedIn: Bool) {
+    let secondary = isLoggedIn ? Strings.Ask_the_project_creator_directly()
+      : Strings.Log_in_to_ask_the_project_creator_directly()
+    self.titleTextLabel.text = Strings.Looks_like_there_arent_any_frequently_asked_questions() + " " + secondary
+  }
 
   private func configureViews() {
     _ = (self.titleTextLabel, self.contentView)
