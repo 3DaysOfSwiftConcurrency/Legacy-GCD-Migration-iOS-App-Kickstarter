@@ -8,17 +8,17 @@ public final class SettingsRecommendationsCellViewModel {
   public private(set) var recommendationsOn: Bool?
   public var onSaved: (() -> Void)?
   public var onError: ((String) -> Void)?
-  private let feature: SettingsFeature
+  private let settingsFeature: SettingsFeature
   private let sleep: (TimeInterval) async throws -> Void
   private var initialUser: User?
   private var currentUser: User?
   private var revision = 0
   private var tasks: [UUID: Task<Void, Never>] = [:]
 
-  public init(feature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  public init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.feature = feature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.sleep = sleep
   }
 
@@ -36,7 +36,7 @@ public final class SettingsRecommendationsCellViewModel {
     if let optedOut = current.optedOutOfRecommendations { self.recommendationsOn = !optedOut }
     self.revision += 1
     let revision = self.revision
-    let feature = self.feature
+    let settingsFeature = self.settingsFeature
     let sleep = self.sleep
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let id = UUID()
@@ -44,7 +44,7 @@ public final class SettingsRecommendationsCellViewModel {
       defer { self?.tasks[id] = nil }
       let result: Result<User, Error>
       do {
-        result = .success(try await feature.save([.init(.privacy(.recommendations), !on)], from: source))
+        result = .success(try await settingsFeature.save([.init(.privacy(.recommendations), !on)], from: source))
       } catch {
         result = .failure(error)
       }
