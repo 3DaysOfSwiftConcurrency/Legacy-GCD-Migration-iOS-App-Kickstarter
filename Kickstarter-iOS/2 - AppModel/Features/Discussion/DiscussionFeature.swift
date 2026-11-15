@@ -169,7 +169,7 @@ public final class DiscussionFeature {
     project: Project, commentableID: String, parentID: String?, user: User, body: String,
     receive: @escaping (Comment, String) -> Void
   ) -> Task<Void, Never> {
-    let userID = AppEnvironment.current.currentUser?.id
+    let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
     let submission = self.beginPost(
       project: project, commentableID: commentableID, parentID: parentID, user: user, body: body
@@ -204,7 +204,7 @@ public final class DiscussionFeature {
   ) -> Task<Comment, Error> {
     let key = PostIdentity(
       operationID: operationID, body: body, commentableID: commentableID,
-      parentID: parentID, userID: AppEnvironment.current.currentUser?.id, generation: self.sessionFeature.generation
+      parentID: parentID, userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation
     )
     // Cancelling a waiter must not cancel a mutation another caller still needs.
     return self.requestPost(key)
@@ -220,7 +220,7 @@ public final class DiscussionFeature {
   ) -> Task<Void, Never> {
     let key = PostIdentity(
       operationID: comment.id, body: comment.body, commentableID: commentableID,
-      parentID: parentID, userID: AppEnvironment.current.currentUser?.id,
+      parentID: parentID, userID: self.sessionFeature.currentUser?.id,
       generation: self.sessionFeature.generation
     )
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
@@ -293,7 +293,7 @@ public final class DiscussionFeature {
 
   @discardableResult
   public func requestBlockUser(id: String) -> Task<EmptyResponseEnvelope, Error> {
-    self.requestBlock(BlockIdentity(targetID: id, userID: AppEnvironment.current.currentUser?.id, generation: self.sessionFeature.generation))
+    self.requestBlock(BlockIdentity(targetID: id, userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation))
   }
 
   private func requestBlock(_ key: BlockIdentity) -> Task<EmptyResponseEnvelope, Error> {
@@ -381,7 +381,7 @@ public final class DiscussionFeature {
   /// this route, including a page request that was still in flight.
   @discardableResult
   public func requestFirstPage(route: UUID, source: Source, refresh: Bool = false) -> Task<Void, Never> {
-    let userID = AppEnvironment.current.currentUser?.id
+    let userID = self.sessionFeature.currentUser?.id
     let previous = self.pages[route]
     if !refresh, let previous, previous.source == source, previous.userID == userID,
        let request = previous.request { return request.task }
@@ -413,7 +413,7 @@ public final class DiscussionFeature {
   @discardableResult
   public func requestNextPage(route: UUID) -> Task<Void, Never>? {
     guard let page = self.pages[route],
-          page.userID == AppEnvironment.current.currentUser?.id else { return nil }
+          page.userID == self.sessionFeature.currentUser?.id else { return nil }
     if let request = page.request { return request.task }
     guard let source = page.nextSource else { return nil }
     return self.startPage(route: route, page: page, source: source, cursor: page.cursor)
@@ -423,6 +423,7 @@ public final class DiscussionFeature {
     route: UUID, page: PageRoute, source: Source, cursor: String?
   ) -> Task<Void, Never> {
     let provider = self.makeProvider()
+    let sessionFeature = self.sessionFeature
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let sleep = self.sleep
     let requestID = UUID()
@@ -438,7 +439,7 @@ public final class DiscussionFeature {
       }
       do {
         try Task.checkCancellation()
-        guard page.userID == AppEnvironment.current.currentUser?.id else { throw CancellationError() }
+        guard page.userID == sessionFeature.currentUser?.id else { throw CancellationError() }
         let comments: [Comment]
         let count: Int
         let nextSource: Source?
@@ -467,7 +468,7 @@ public final class DiscussionFeature {
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.pages[route]?.request?.id == requestID,
-              page.userID == AppEnvironment.current.currentUser?.id else { return }
+              page.userID == sessionFeature.currentUser?.id else { return }
         page.snapshot.comments = comments
         page.hasReceivedPage = true
         page.snapshot.totalCount = count
@@ -483,7 +484,7 @@ public final class DiscussionFeature {
       } catch {
         do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, let self, self.pages[route]?.request?.id == requestID,
-              page.userID == AppEnvironment.current.currentUser?.id else { return }
+              page.userID == sessionFeature.currentUser?.id else { return }
         let failure = (error as? ErrorEnvelope) ?? .couldNotParseJSON
         page.snapshot.error = failure
         self.emitPage(.error(route, failure))
@@ -512,20 +513,21 @@ public final class DiscussionFeature {
 
   @discardableResult
   public func requestUpdate(route: UUID, id: Int, project: Param) -> Task<Update?, Never> {
-    let identity = UpdateIdentity(project: project, id: id, userID: AppEnvironment.current.currentUser?.id)
+    let identity = UpdateIdentity(project: project, id: id, userID: self.sessionFeature.currentUser?.id)
     if let existing = self.updates[route], existing.identity == identity { return existing.task }
     self.updates[route]?.task.cancel()
     let provider = self.makeProvider()
+    let sessionFeature = self.sessionFeature
     let token = UUID()
     let task: Task<Update?, Never> = Task { [weak self] in
       defer { if self?.updates[route]?.id == token { self?.updates[route] = nil } }
       do {
         try Task.checkCancellation()
-        guard identity.userID == AppEnvironment.current.currentUser?.id else { return nil }
+        guard identity.userID == sessionFeature.currentUser?.id else { return nil }
         let update = try await provider.update(id: id, project: project)
         try Task.checkCancellation()
         guard let self, self.updates[route]?.id == token,
-              identity.userID == AppEnvironment.current.currentUser?.id else { return nil }
+              identity.userID == sessionFeature.currentUser?.id else { return nil }
         return update
       } catch {
         // Existing navigation silently demotes lookup errors.
@@ -543,22 +545,23 @@ public final class DiscussionFeature {
 
   @discardableResult
   public func requestProject(route: UUID, param: Param) -> Task<Project?, Never> {
-    let userID = AppEnvironment.current.currentUser?.id
+    let userID = self.sessionFeature.currentUser?.id
     if let existing = self.projects[route], existing.param == param, existing.userID == userID {
       return existing.task
     }
     self.projects[route]?.task.cancel()
     let provider = self.makeProvider()
+    let sessionFeature = self.sessionFeature
     let token = UUID()
     let task: Task<Project?, Never> = Task { [weak self] in
       defer { if self?.projects[route]?.id == token { self?.projects[route] = nil } }
       do {
         try Task.checkCancellation()
-        guard userID == AppEnvironment.current.currentUser?.id else { return nil }
+        guard userID == sessionFeature.currentUser?.id else { return nil }
         let project = try await provider.project(param: param)
         try Task.checkCancellation()
         guard let self, self.projects[route]?.id == token,
-              userID == AppEnvironment.current.currentUser?.id else { return nil }
+              userID == sessionFeature.currentUser?.id else { return nil }
         return project
       } catch {
         // Preserve the legacy context lookup's silent error delivery.
