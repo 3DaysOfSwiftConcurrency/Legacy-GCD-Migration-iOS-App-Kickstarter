@@ -28,8 +28,11 @@ public final class PledgeSummaryViewModel {
   private var plan: PledgePaymentPlansAndSelectionData?
   private var hasPlanConfiguration = false
   private var loaded = false
+  private let appLifecycleFeature: AppLifecycleFeature
 
-  public init() {}
+  public init(appLifecycleFeature: AppLifecycleFeature? = nil) {
+    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
+  }
 
   public func configure(with data: PledgeSummaryViewData) {
     self.data = data
@@ -54,8 +57,7 @@ public final class PledgeSummaryViewModel {
   }
 
   public func tapped(_ url: URL) {
-    let baseURL = AppEnvironment.current.apiService.serverConfig.webBaseUrl
-    guard let type = HelpType.allCases.first(where: { url.absoluteString == $0.url(withBaseUrl: baseURL)?.absoluteString }) else { return }
+    guard let type = self.appLifecycleFeature.helpType(for: url) else { return }
     self.onHelp?(type)
   }
 

@@ -12,13 +12,18 @@ final class CommentCellViewModel {
   }
 
   var onEvent: ((Event) -> Void)?
+  private let appLifecycleFeature: AppLifecycleFeature
   private var comment: Comment?
   private var lastProjectAccess: Bool?
+
+  init(appLifecycleFeature: AppLifecycleFeature? = nil) {
+    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
+  }
 
   func configureWith(comment: Comment, project: Project?) {
     self.comment = comment
     self.onEvent?(.authorImageURL(comment.author.isBlocked ? nil : URL(string: comment.author.imageUrl)))
-    self.onEvent?(.body(getCommentBody(comment)))
+    self.onEvent?(.body(getCommentBody(comment, communityGuidelinesURL: self.appLifecycleFeature.helpURL(.community))))
     self.onEvent?(.authorName(comment.author.isBlocked ? Strings.Blocked_user() : comment.author.name))
     self.publishStatus(comment.status)
     if let createdAt = comment.createdAt {
@@ -74,25 +79,24 @@ private func viewRepliesStackViewHidden(_ replyCount: Int?) -> Bool {
 }
 
 @MainActor
-private func getCommentBody(_ comment: Comment) -> String {
+private func getCommentBody(_ comment: Comment, communityGuidelinesURL: String?) -> String {
   switch true {
   case comment.author.isBlocked:
     return Strings.This_user_has_been_blocked()
   case comment.removedPerGuidelines:
-    return commentRemovedPerGuidelines()
+    return commentRemovedPerGuidelines(communityGuidelinesURL: communityGuidelinesURL)
   case comment.isDeleted:
-    return commentDeletedText()
+    return commentDeletedText(communityGuidelinesURL: communityGuidelinesURL)
   case comment.isFlagged:
-    return commentFlaggedText()
+    return commentFlaggedText(communityGuidelinesURL: communityGuidelinesURL)
   default:
     return comment.body
   }
 }
 
 @MainActor
-private func commentRemovedPerGuidelines() -> String {
-  guard let communityGuidelinesLink = HelpType.community
-    .url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?.absoluteString else {
+private func commentRemovedPerGuidelines(communityGuidelinesURL: String?) -> String {
+  guard let communityGuidelinesLink = communityGuidelinesURL else {
     return ""
   }
 
@@ -103,9 +107,8 @@ private func commentRemovedPerGuidelines() -> String {
 }
 
 @MainActor
-private func commentDeletedText() -> String {
-  guard let communityGuidelinesLink = HelpType.community
-    .url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?.absoluteString else {
+private func commentDeletedText(communityGuidelinesURL: String?) -> String {
+  guard let communityGuidelinesLink = communityGuidelinesURL else {
     return ""
   }
 
@@ -114,9 +117,8 @@ private func commentDeletedText() -> String {
 }
 
 @MainActor
-private func commentFlaggedText() -> String {
-  guard let communityGuidelinesLink = HelpType.community
-    .url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?.absoluteString else {
+private func commentFlaggedText(communityGuidelinesURL: String?) -> String {
+  guard let communityGuidelinesLink = communityGuidelinesURL else {
     return ""
   }
 
