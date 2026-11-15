@@ -5,6 +5,12 @@ import Prelude
 import UIKit
 
 internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
+  private let projectDetailsFeature: ProjectDetailsFeature
+
+  init(projectDetailsFeature: ProjectDetailsFeature = AppModel.shared.projectDetailsFeature) {
+    self.projectDetailsFeature = projectDetailsFeature
+    super.init()
+  }
   internal enum Section: Int {
     case overviewCreatorHeader
     case overview
@@ -116,7 +122,7 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
         inSection: Section.overviewSubpages.rawValue
       )
 
-      if AppEnvironment.current.currentUser != nil {
+      if self.projectDetailsFeature.sessionFeature.currentUser != nil {
         self.set(
           values: [project.flagging ?? false],
           cellClass: ReportProjectCell.self,
@@ -211,7 +217,7 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
       )
 
       // Only render this cell for logged in users
-      if AppEnvironment.current.currentUser != nil {
+      if self.projectDetailsFeature.sessionFeature.currentUser != nil {
         self.set(
           values: [()],
           cellClass: ProjectFAQsAskAQuestionCell.self,
