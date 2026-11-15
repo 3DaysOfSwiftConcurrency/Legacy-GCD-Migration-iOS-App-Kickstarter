@@ -60,6 +60,9 @@ public struct AsyncProjectDetailsProvider: ProjectDetailsProvider {
 /// it. Cancellation invalidates publication even if a provider completes late.
 @MainActor
 public final class ProjectDetailsFeature {
+  public func recordThirdPartyEvent(_ input: ThirdPartyEventInput) {
+    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
+  }
   public let discussionFeature: DiscussionFeature
   public let sessionFeature: SessionFeature
   private var attributionRoutes: [UUID: Task<Void, Error>] = [:]

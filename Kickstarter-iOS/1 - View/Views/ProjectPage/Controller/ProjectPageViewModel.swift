@@ -448,7 +448,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     var extInfo = Array(repeating: "", count: 16)
     extInfo[0] = "i2"
     extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
-    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(
+    self.projectDetailsFeature.recordThirdPartyEvent(
       input: .init(
         deviceId: externalID,
         eventName: ThirdPartyEventInputName.ProjectPageViewed.rawValue,

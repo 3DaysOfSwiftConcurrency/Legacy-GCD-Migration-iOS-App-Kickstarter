@@ -24,6 +24,9 @@ public struct AsyncRecommendationsProvider: RecommendationsProvider {
 /// own route; replacing or releasing a route makes its old responses obsolete.
 @MainActor
 public final class RecommendationsFeature {
+  public func recordThirdPartyEvent(_ input: ThirdPartyEventInput) {
+    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
+  }
   public enum PostBackingPrompt {
     case gamesNewsletter
     case rating

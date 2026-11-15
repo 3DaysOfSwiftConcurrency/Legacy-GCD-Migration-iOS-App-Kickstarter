@@ -35,6 +35,9 @@ public struct AsyncPaymentsProvider: PaymentsProvider {
 /// There is no automatic retry or claim of server-side idempotency.
 @MainActor
 public final class PaymentsFeature {
+  public func recordThirdPartyEvent(_ input: ThirdPartyEventInput) {
+    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
+  }
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any PaymentsProvider
   public init(sessionFeature: SessionFeature, makeProvider: @escaping () -> any PaymentsProvider) {

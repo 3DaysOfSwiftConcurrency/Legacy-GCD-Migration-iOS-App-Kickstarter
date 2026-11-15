@@ -41,6 +41,9 @@ public struct AsyncRewardsProvider: RewardsProvider {
 /// independent route; a changed country supersedes that route's previous read.
 @MainActor
 public final class RewardsFeature {
+  public func recordThirdPartyEvent(_ input: ThirdPartyEventInput) {
+    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
+  }
   public struct ShippingSnapshot {
     public fileprivate(set) var locations: [Location] = []
     public fileprivate(set) var selectedLocation: Location?
