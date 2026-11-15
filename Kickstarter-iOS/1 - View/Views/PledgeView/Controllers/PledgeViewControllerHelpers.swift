@@ -5,10 +5,10 @@ import UIKit
 
 @MainActor
 struct PledgeViewControllerHelpers {
-  static func attributedLearnMoreText() -> NSAttributedString? {
-    guard let trustLink = HelpType.trust.url(
-      withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl
-    )?.absoluteString else { return nil }
+  static func attributedLearnMoreText(
+    pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature
+  ) -> NSAttributedString? {
+    guard let trustLink = pledgeFeature.helpURL(.trust) else { return nil }
 
     let paragraphStyle = NSMutableParagraphStyle()
     paragraphStyle.lineSpacing = 2

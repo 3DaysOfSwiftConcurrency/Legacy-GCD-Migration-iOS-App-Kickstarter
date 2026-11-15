@@ -127,6 +127,9 @@ public final class PledgeFeature {
   public func helpType(for url: URL) -> HelpType? {
     HelpType.helpType(from: url, baseURL: self.webBaseURL())
   }
+  public func helpURL(_ type: HelpType) -> String? {
+    type.url(withBaseUrl: self.webBaseURL())?.absoluteString
+  }
 
   private struct Session: Hashable {
     let userID: Int?
