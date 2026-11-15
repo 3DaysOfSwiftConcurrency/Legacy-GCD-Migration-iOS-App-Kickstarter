@@ -6,6 +6,7 @@ import SwiftUI
 struct FilterRootView: View {
   @State var navigationState: [SearchFilterModalType]
   @ObservedObject var searchFilters: SearchFilters
+  let isLoggedIn: Bool
 
   var onFilter: ((SearchFilterEvent) -> Void)?
   var onSearchedForLocations: ((String) -> Void)?
@@ -19,7 +20,8 @@ struct FilterRootView: View {
 
   init(
     filterType: SearchFilterModalType,
-    searchFilters: SearchFilters
+    searchFilters: SearchFilters,
+    isLoggedIn: Bool
   ) {
     if filterType == .allFilters {
       // Show the root view
@@ -29,6 +31,7 @@ struct FilterRootView: View {
     }
 
     self.searchFilters = searchFilters
+    self.isLoggedIn = isLoggedIn
   }
 
   // MARK: - Subviews
@@ -119,7 +122,7 @@ struct FilterRootView: View {
   var showOnlySection: some View {
     // This is a modal and will be re-loaded when it's presented again.
     // So this doesn't need to be reactive.
-    let loggedIn = AppEnvironment.current.currentUser.isSome
+    let loggedIn = self.isLoggedIn
     VStack(alignment: .leading, spacing: Constants.sectionSpacing) {
       Text(Strings.Show_only())
         .font(InterFont.headingLG.swiftUIFont())

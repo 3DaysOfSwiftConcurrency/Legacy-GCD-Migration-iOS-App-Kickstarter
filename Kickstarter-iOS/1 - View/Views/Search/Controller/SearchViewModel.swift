@@ -78,6 +78,7 @@ public protocol SearchViewModelOutputs: AnyObject {
   /// An @ObservableObject model which SwiftUI can use to display the search filters modals and header.
   /// Owned and automatically updated by the `SearchFiltersUseCase`.
   var searchFilters: SearchFilters { get }
+  var isLoggedIn: Bool { get }
 }
 
 @MainActor
@@ -89,6 +90,7 @@ public protocol SearchViewModelType {
 @MainActor
 public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, SearchViewModelOutputs {
   private let searchFeature: SearchFeature
+  private let sessionFeature: SessionFeature
   private var searchObservation: MainActorObservation?
   private let completionAnalytics: SearchCompletionAnalytics
   // UIKit retains the shared Feature task rather than spawning wrapper Tasks.
@@ -97,10 +99,11 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
   internal private(set) var filterOptionsTask: Task<Void, Never>?
   internal private(set) var locationLookupTask: Task<Void, Never>?
 
-  public init(searchFeature: SearchFeature? = nil) {
+  public init(searchFeature: SearchFeature? = nil, sessionFeature: SessionFeature? = nil) {
     // Resolve the live default inside MainActor, not in a Swift 5 default argument.
     let searchFeature = searchFeature ?? AppModel.shared.searchFeature
     self.searchFeature = searchFeature
+    self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
     self.searchFiltersUseCase = SearchFiltersUseCase(searchFeature: searchFeature)
     self.completionAnalytics = SearchCompletionAnalytics()
     self.completionAnalytics.onCount = { [weak self] count in
@@ -142,6 +145,8 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
       self.receivedInitialConnectivity = true
     }
   }
+
+  public var isLoggedIn: Bool { self.sessionFeature.currentUser != nil }
 
 
   // These are presentation snapshots, not duplicate Feature domain state. Nil

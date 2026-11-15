@@ -202,7 +202,8 @@ internal final class SearchViewController: UITableViewController,
   fileprivate func showFilters(filterType: SearchFilterModalType) {
     var filterView = FilterRootView(
       filterType: filterType,
-      searchFilters: self.viewModel.outputs.searchFilters
+      searchFilters: self.viewModel.outputs.searchFilters,
+      isLoggedIn: self.viewModel.outputs.isLoggedIn
     )
     filterView.onFilter = { [weak self] filterEvent in
       self?.viewModel.inputs.selectedFilter(filterEvent)
