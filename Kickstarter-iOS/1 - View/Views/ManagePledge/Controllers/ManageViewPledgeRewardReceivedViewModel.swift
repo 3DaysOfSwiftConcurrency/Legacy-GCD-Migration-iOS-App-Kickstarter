@@ -75,7 +75,7 @@ public final class ManageViewPledgeRewardReceivedViewModel {
     AppEnvironment.current.ksrAnalytics.trackRewardReceivedToggled(
       toggleOn: isOn, project: data.project, context: .managePledgeScreen
     )
-    guard let user = AppEnvironment.current.currentUser else { return }
+    guard let user = self.feature.sessionFeature.currentUser else { return }
     let generation = self.feature.sessionFeature.generation
     let sessionUserID = self.feature.sessionFeature.currentUser?.id
     let task = self.feature.startReceived(projectID: data.project.id, userID: user.id, received: isOn)
