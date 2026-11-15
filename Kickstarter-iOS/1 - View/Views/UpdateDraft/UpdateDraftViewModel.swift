@@ -15,7 +15,7 @@ final class UpdateDraftViewModel {
     case showSaveFailure, title(String), titleTextFieldBecomeFirstResponder
   }
   var onEvent: ((Event) -> Void)?
-  private let feature: CreatorDraftsFeature
+  private let creatorDraftsFeature: CreatorDraftsFeature
   private let route = UUID()
   private var project: Project?
   private var didLoad = false
@@ -32,27 +32,27 @@ final class UpdateDraftViewModel {
   private var imageTasks: [UUID: Task<Void, Never>] = [:]
 
   init(creatorDraftsFeature: CreatorDraftsFeature? = nil) {
-    let feature = creatorDraftsFeature ?? AppModel.shared.creatorDraftsFeature
-    self.feature = feature
-    feature.observe(route: self.route) { [weak self] event in self?.receive(event) }
+    let creatorDraftsFeature = creatorDraftsFeature ?? AppModel.shared.creatorDraftsFeature
+    self.creatorDraftsFeature = creatorDraftsFeature
+    creatorDraftsFeature.observe(route: self.route) { [weak self] event in self?.receive(event) }
   }
   deinit {
     self.saveTask?.cancel()
     for task in self.imageTasks.values { task.cancel() }
-    let feature = self.feature
+    let creatorDraftsFeature = self.creatorDraftsFeature
     let route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    Task { @MainActor in creatorDraftsFeature.release(route: route) }
   }
   func configureWith(project: Project) {
     self.project = project
-    if self.didLoad { self.feature.requestLoad(project: project, route: self.route) }
+    if self.didLoad { self.creatorDraftsFeature.requestLoad(project: project, route: self.route) }
   }
   func viewDidLoad() {
     self.didLoad = true
     self.onEvent?(.isLoading(true))
     self.publishAttachmentHidden(true)
     self.publishPreviewEnabled(false)
-    if let project = self.project { self.feature.requestLoad(project: project, route: self.route) }
+    if let project = self.project { self.creatorDraftsFeature.requestLoad(project: project, route: self.route) }
   }
   private func receive(_ event: CreatorDraftsFeature.Event) {
     switch event {
@@ -113,12 +113,12 @@ final class UpdateDraftViewModel {
   func imagePicked(url: URL, fromSource _: AttachmentSource) {
     guard self.draft != nil else { return }
     let id = UUID()
-    let feature = self.feature
+    let creatorDraftsFeature = self.creatorDraftsFeature
     let route = self.route
     self.imageTasks[id] = Task { [weak self] in
       defer { self?.imageTasks[id] = nil }
       do {
-        let image = try await feature.add(file: url, route: route)
+        let image = try await creatorDraftsFeature.add(file: url, route: route)
         guard !Task.isCancelled else { return }
         self?.onEvent?(.attachmentAdded(.image(image)))
       } catch {
@@ -131,12 +131,12 @@ final class UpdateDraftViewModel {
     guard self.draft != nil else { return }
     guard case let .image(image) = attachment else { self.onEvent?(.showRemoveAttachmentFailure); return }
     let id = UUID()
-    let feature = self.feature
+    let creatorDraftsFeature = self.creatorDraftsFeature
     let route = self.route
     self.imageTasks[id] = Task { [weak self] in
       defer { self?.imageTasks[id] = nil }
       do {
-        let removed = try await feature.remove(imageID: image.id, route: route)
+        let removed = try await creatorDraftsFeature.remove(imageID: image.id, route: route)
         guard !Task.isCancelled else { return }
         self?.onEvent?(.attachmentRemoved(.image(removed)))
       } catch {
@@ -155,11 +155,13 @@ final class UpdateDraftViewModel {
     self.saveTask?.cancel()
     let revision = UUID()
     self.saveRevision = revision
-    let feature = self.feature
+    let creatorDraftsFeature = self.creatorDraftsFeature
     let route = self.route
     self.saveTask = Task { [weak self] in
       do {
-        let saved = try await feature.save(route: route, title: title, body: body, isPublic: !backersOnly)
+        let saved = try await creatorDraftsFeature.save(
+          route: route, title: title, body: body, isPublic: !backersOnly
+        )
         guard !Task.isCancelled, let self, self.saveRevision == revision else { return }
         if preview { self.onEvent?(.goToPreview(saved)) }
         else { self.onEvent?(.notifyPresenterViewControllerWantsDismissal) }
@@ -170,7 +172,7 @@ final class UpdateDraftViewModel {
     }
   }
   func waitForPending() async {
-    await self.feature.waitForOperations()
+    await self.creatorDraftsFeature.waitForOperations()
     await self.saveTask?.value
     for task in Array(self.imageTasks.values) { await task.value }
   }
