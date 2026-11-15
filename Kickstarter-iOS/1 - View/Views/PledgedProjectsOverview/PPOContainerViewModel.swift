@@ -27,6 +27,8 @@ protocol PPOContainerViewModelOutputs {
 
 @MainActor
 final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerViewModelOutputs {
+  var hasUnseenActivity: Bool { (self.feature.sessionFeature.currentUser?.unseenActivityCount ?? 0) > 0 }
+
   init(feature injectedFeature: PledgeFeature? = nil) {
     let feature = injectedFeature ?? AppModel.shared.pledgeFeature
     self.feature = feature

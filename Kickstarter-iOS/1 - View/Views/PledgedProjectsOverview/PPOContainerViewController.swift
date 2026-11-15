@@ -46,7 +46,7 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
     ])
 
     /// Select Activity Feed if the user has unseen activity.
-    if (AppEnvironment.current.currentUser?.unseenActivityCount ?? 0) > 0 {
+    if self.viewModel.hasUnseenActivity {
       self.selectPage(.activityFeed(.none))
     }
 
