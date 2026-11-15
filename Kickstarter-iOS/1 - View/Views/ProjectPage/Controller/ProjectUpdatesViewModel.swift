@@ -54,13 +54,14 @@ public final class ProjectUpdatesViewModel {
 
   public func decidePolicy(forNavigationAction action: WKNavigationActionData) -> WKNavigationActionPolicy {
     let request = action.request
-    let comments = isGoToCommentsRequest(request: request)
-    let update = isGoToUpdateRequest(request: request)
-    let updates = isUpdatesRequest(request: request)
-    if comments, let params = projectUpdateParams(fromRequest: request) {
+    let navigation = self.feature.navigationMatch(request)
+    let comments = isGoToCommentsRequest(navigation)
+    let update = isGoToUpdateRequest(navigation)
+    let updates = isUpdatesRequest(navigation)
+    if comments, let params = projectUpdateParams(from: navigation) {
       self.load(params, comments: true)
     }
-    if update, let params = projectUpdateParams(fromRequest: request) {
+    if update, let params = projectUpdateParams(from: navigation) {
       self.load(params, comments: false)
     }
     if action.navigationType == .linkActivated {
@@ -111,13 +112,13 @@ public final class ProjectUpdatesViewModel {
 
 // Returns project and update params for update and comments requests.
 @MainActor
-private func projectUpdateParams(fromRequest request: URLRequest) -> (projectParam: Param, updateId: Int)? {
-  guard let nav = Navigation.match(request) else { return nil }
-  switch nav {
-  case .project(_, .update(_, .comments), _, _):
-    return Navigation.Project.updateCommentsWithRequest(request)
-  case .project(_, .update(_, .root), _, _):
-    return Navigation.Project.updateWithRequest(request)
+private func projectUpdateParams(from navigation: Navigation?) -> (projectParam: Param, updateId: Int)? {
+  guard let navigation else { return nil }
+  switch navigation {
+  case let .project(project, .update(update, .comments), _, _):
+    return (project, update)
+  case let .project(project, .update(update, .root), _, _):
+    return (project, update)
   default:
     return nil
   }
@@ -132,14 +133,14 @@ private func isEmailLink(action: WKNavigationActionData) -> Bool {
 }
 
 @MainActor
-private func isGoToCommentsRequest(request: URLRequest) -> Bool {
-  if let nav = Navigation.match(request), case .project(_, .update(_, .comments), _, _) = nav { return true }
+private func isGoToCommentsRequest(_ navigation: Navigation?) -> Bool {
+  if case .project(_, .update(_, .comments), _, _)? = navigation { return true }
   return false
 }
 
 @MainActor
-private func isGoToUpdateRequest(request: URLRequest) -> Bool {
-  if let nav = Navigation.match(request), case .project(_, .update(_, .root), _, _) = nav { return true }
+private func isGoToUpdateRequest(_ navigation: Navigation?) -> Bool {
+  if case .project(_, .update(_, .root), _, _)? = navigation { return true }
   return false
 }
 
@@ -148,8 +149,8 @@ private func isPhoneLink(action: WKNavigationActionData) -> Bool {
 }
 
 @MainActor
-private func isUpdatesRequest(request: URLRequest) -> Bool {
-  if let nav = Navigation.match(request), case .project(_, .updates, _, _) = nav { return true }
+private func isUpdatesRequest(_ navigation: Navigation?) -> Bool {
+  if case .project(_, .updates, _, _)? = navigation { return true }
   return false
 }
 

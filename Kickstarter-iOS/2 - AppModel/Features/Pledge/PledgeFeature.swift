@@ -101,6 +101,7 @@ public final class PledgeFeature {
   private let prepareWebRequest: (URLRequest) -> URLRequest
   private let preparedWebRequest: (URLRequest) -> Bool
   private let webBaseURL: () -> URL
+  private let apiBaseURL: () -> URL
 
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any PledgeProvider,
@@ -110,19 +111,24 @@ public final class PledgeFeature {
     preparedWebRequest: @escaping (URLRequest) -> Bool = {
       AppEnvironment.current.apiService.isPrepared(request: $0)
     },
-    webBaseURL: @escaping () -> URL = { AppEnvironment.current.apiService.serverConfig.webBaseUrl }
+    webBaseURL: @escaping () -> URL = { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
+    apiBaseURL: @escaping () -> URL = { AppEnvironment.current.apiService.serverConfig.apiBaseUrl }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
     self.prepareWebRequest = prepareWebRequest
     self.preparedWebRequest = preparedWebRequest
     self.webBaseURL = webBaseURL
+    self.apiBaseURL = apiBaseURL
   }
 
   public func preparedWebRequest(from request: URLRequest) -> URLRequest { self.prepareWebRequest(request) }
   public func isPreparedWebRequest(_ request: URLRequest) -> Bool { self.preparedWebRequest(request) }
   public func isKickstarterWebRequest(_ request: URLRequest) -> Bool {
     request.url?.host() == self.webBaseURL().host()
+  }
+  public func navigationMatch(_ request: URLRequest) -> Navigation? {
+    request.url.flatMap { Navigation.match($0, apiBaseURL: self.apiBaseURL(), webBaseURL: self.webBaseURL()) }
   }
   public func helpType(for url: URL) -> HelpType? {
     HelpType.helpType(from: url, baseURL: self.webBaseURL())

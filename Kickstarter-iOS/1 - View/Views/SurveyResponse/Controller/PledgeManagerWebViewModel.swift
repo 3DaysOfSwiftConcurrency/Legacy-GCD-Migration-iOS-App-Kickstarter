@@ -58,7 +58,7 @@ final class PledgeManagerWebViewModel {
     self.onEvent?(.webViewLoadRequest(self.feature.preparedWebRequest(from: request)))
   }
   private func publishTitle(for request: URLRequest) {
-    guard isSupportedRequest(request: request), let url = request.url else { return }
+    guard isSupportedRequest(request: request, feature: self.feature), let url = request.url else { return }
     self.onEvent?(.title(url.lastPathComponent == "redeem" ? Strings.Pledge_manager() : nil))
   }
   func closeButtonTapped() {
@@ -88,12 +88,12 @@ final class PledgeManagerWebViewModel {
     if isUnpreparedSupportedRequest(request: request, feature: self.feature) {
       self.onEvent?(.webViewLoadRequest(self.feature.preparedWebRequest(from: request)))
     }
-    if let native = nativeNavigationRequestForURLRequest(request) { self.onEvent?(.goToNativeScreen(native)) }
+    if let native = nativeNavigationRequestForURLRequest(request, feature: self.feature) { self.onEvent?(.goToNativeScreen(native)) }
     if isStripeNavigationAction(action) { return .allow }
-    if isSupportedRequest(request: request) {
+    if isSupportedRequest(request: request, feature: self.feature) {
       return self.feature.isPreparedWebRequest(request) ? .allow : .cancel
     }
-    if nativeNavigationRequestForURLRequest(request) != nil { return .cancel }
+    if nativeNavigationRequestForURLRequest(request, feature: self.feature) != nil { return .cancel }
     if let error = errorForUnrecognizedUrl(request: request, feature: self.feature) { Crashlytics.crashlytics().record(error: error) }
     if self.feature.isKickstarterWebRequest(request) { return .cancel }
     return featureBypassPledgeManagerDecisionPolicyEnabled() ? .allow : .cancel
@@ -105,10 +105,10 @@ final class PledgeManagerWebViewModel {
 // doesn't have a corresponding native request will either be displayed in the
 // webview or be discarded.
 @MainActor
-private func nativeNavigationRequestForURLRequest(_ request: URLRequest)
+private func nativeNavigationRequestForURLRequest(_ request: URLRequest, feature: PledgeFeature)
   -> PledgeManagerNativeNatigationRequest?
 {
-  switch Navigation.match(request) {
+  switch feature.navigationMatch(request) {
   case (.project(let param, .root, let refInfo, _))?:
     return .goToProject(param: param, refTag: refInfo?.refTag)
   case (.project(let param, .pledge, _, _))?:
@@ -122,12 +122,12 @@ private func nativeNavigationRequestForURLRequest(_ request: URLRequest)
 @MainActor
 private func isUnpreparedSupportedRequest(request: URLRequest, feature: PledgeFeature) -> Bool {
   guard !feature.isPreparedWebRequest(request) else { return false }
-  return isSupportedRequest(request: request)
+  return isSupportedRequest(request: request, feature: feature)
 }
 
 @MainActor
-private func isSupportedRequest(request: URLRequest) -> Bool {
-  let navigation = Navigation.match(request)
+private func isSupportedRequest(request: URLRequest, feature: PledgeFeature) -> Bool {
+  let navigation = feature.navigationMatch(request)
   guard case (.project(_, .pledgeManagerWebview, _, _))? = navigation else { return false }
   return true
 }

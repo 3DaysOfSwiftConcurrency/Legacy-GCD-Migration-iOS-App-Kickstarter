@@ -55,6 +55,13 @@ public final class DiscussionFeature {
     return String(currentUser.id) != author.id && !author.isBlocked
   }
 
+  public func navigationMatch(_ request: URLRequest) -> Navigation? {
+    let config = AppEnvironment.current.apiService.serverConfig
+    return request.url.flatMap {
+      Navigation.match($0, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
+    }
+  }
+
   public enum Source: Equatable {
     case project(String)
     case update(String)
