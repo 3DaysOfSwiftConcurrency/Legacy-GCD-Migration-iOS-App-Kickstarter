@@ -43,7 +43,7 @@ final class PledgeManagerWebViewModel {
   }
   func viewDidLoad() {
     self.loaded = true
-    self.loggedIn = AppEnvironment.current.currentUser != nil
+    self.loggedIn = self.feature.sessionFeature.currentUser != nil
     if !self.loggedIn { self.onEvent?(.goToLoginSignup(.generic)) }
     self.loadInitialIfReady()
   }
