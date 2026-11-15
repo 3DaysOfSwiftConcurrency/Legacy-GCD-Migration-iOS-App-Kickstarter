@@ -18,7 +18,7 @@ public final class VideoViewModel {
   public var onSeekToBeginning: (() -> Void)?
   public var onVideoHidden: ((Bool) -> Void)?
 
-  private let feature: ProjectMediaFeature
+  private let projectMediaFeature: ProjectMediaFeature
   private let route = UUID()
   private var project: (any VideoViewConfiguration)?
   private var loaded = false
@@ -36,8 +36,8 @@ public final class VideoViewModel {
   private var startTask: Task<Void, Never>?
   private var completionTask: Task<Void, Never>?
 
-  public init(feature: ProjectMediaFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.projectMediaFeature
+  public init(projectMediaFeature: ProjectMediaFeature? = nil) {
+    self.projectMediaFeature = projectMediaFeature ?? AppModel.shared.projectMediaFeature
   }
 
   public func configureWith(project: any VideoViewConfiguration) {
@@ -117,7 +117,9 @@ public final class VideoViewModel {
   }
 
   private func report(project: any VideoViewConfiguration, completed: Bool) -> Task<Void, Never> {
-    let request = self.feature.requestReport(route: self.route, project: project, completed: completed)
+    let request = self.projectMediaFeature.requestReport(
+      route: self.route, project: project, completed: completed
+    )
     return Task { [weak self] in
       guard let value = await request.value, !Task.isCancelled, let self else { return }
       if completed { self.onReportCompletion?(value) } else { self.onReportStart?(value) }
@@ -153,8 +155,8 @@ public final class VideoViewModel {
   deinit {
     self.startTask?.cancel()
     self.completionTask?.cancel()
-    let feature = self.feature
+    let projectMediaFeature = self.projectMediaFeature
     let route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    Task { @MainActor in projectMediaFeature.release(route: route) }
   }
 }
