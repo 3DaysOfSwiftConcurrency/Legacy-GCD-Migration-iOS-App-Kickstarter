@@ -6,12 +6,12 @@ import SwiftUI
 public final class ReportProjectInfoViewModel: ObservableObject {
   @Published public var listItems: [ReportProjectInfoListItem] = []
   @Published public var isLoading = false
-  private let feature: ProjectReportingFeature
+  private let projectReportingFeature: ProjectReportingFeature
   private var loadTask: Task<Void, Never>?
   private var loadID: UUID?
 
-  public init(feature: ProjectReportingFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.projectReportingFeature
+  public init(projectReportingFeature: ProjectReportingFeature? = nil) {
+    self.projectReportingFeature = projectReportingFeature ?? AppModel.shared.projectReportingFeature
   }
 
   deinit { self.loadTask?.cancel() }
@@ -19,8 +19,8 @@ public final class ReportProjectInfoViewModel: ObservableObject {
   @discardableResult
   public func viewDidLoad() -> Task<Void, Never> {
     if let task = self.loadTask { return task }
-    let feature = self.feature
-    let context = feature.context
+    let projectReportingFeature = self.projectReportingFeature
+    let context = projectReportingFeature.context
     let id = UUID()
     self.loadID = id
     self.isLoading = true
@@ -32,8 +32,8 @@ public final class ReportProjectInfoViewModel: ObservableObject {
         }
       }
       do {
-        let items = try await feature.options(context: context)
-        try feature.requireCurrent(context)
+        let items = try await projectReportingFeature.options(context: context)
+        try projectReportingFeature.requireCurrent(context)
         guard self?.loadID == id else { return }
         self?.listItems = items
       } catch {

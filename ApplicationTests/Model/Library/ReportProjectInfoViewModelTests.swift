@@ -14,7 +14,7 @@ final class ReportProjectInfoViewModelTests: TestCase {
 
   override func setUp() async throws {
     try await super.setUp()
-    self.viewModel = ReportProjectInfoViewModel(feature: ProjectReportingFeature(
+    self.viewModel = ReportProjectInfoViewModel(projectReportingFeature: ProjectReportingFeature(
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       makeProvider: { AsyncProjectReportingProvider(service: AppEnvironment.current.apiService) }
     ))

@@ -31,14 +31,14 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
   public var projectID: String?
   public var projectFlaggingKind: GraphAPI.NonDeprecatedFlaggingKind?
 
-  private let feature: ProjectReportingFeature
+  private let projectReportingFeature: ProjectReportingFeature
   private var emailTask: Task<Void, Never>?
   private var submissionTask: Task<Void, Never>?
   private var emailID: UUID?
   private var submissionID: UUID?
 
-  public init(feature: ProjectReportingFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.projectReportingFeature
+  public init(projectReportingFeature: ProjectReportingFeature? = nil) {
+    self.projectReportingFeature = projectReportingFeature ?? AppModel.shared.projectReportingFeature
   }
 
   deinit {
@@ -49,19 +49,19 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
   @discardableResult
   public func viewDidLoad() -> Task<Void, Never> {
     if let task = self.emailTask { return task }
-    let feature = self.feature
-    let context = feature.context
+    let projectReportingFeature = self.projectReportingFeature
+    let context = projectReportingFeature.context
     let id = UUID()
     self.emailID = id
     let task = Task { [weak self] in
       defer { if self?.emailID == id { self?.emailTask = nil } }
       do {
-        let email = try await feature.email(context: context)
-        try feature.requireCurrent(context)
+        let email = try await projectReportingFeature.email(context: context)
+        try projectReportingFeature.requireCurrent(context)
         guard self?.emailID == id else { return }
         self?.retrievedEmail = email
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), feature.context == context,
+        guard !Task.isCancelled, !(error is CancellationError), projectReportingFeature.context == context,
               self?.emailID == id else { return }
         self?.retrievedEmail = ""
       }
@@ -78,11 +78,13 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
       self.showFailure()
       return nil
     }
-    let feature = self.feature
-    let context = feature.context
+    let projectReportingFeature = self.projectReportingFeature
+    let context = projectReportingFeature.context
     let command: Task<Void, Error>
     do {
-      command = try feature.submit(.init(projectID: projectID, kind: kind, details: self.detailsText), context: context)
+      command = try projectReportingFeature.submit(
+        .init(projectID: projectID, kind: kind, details: self.detailsText), context: context
+      )
     } catch {
       self.showFailure()
       return nil
@@ -101,7 +103,7 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
       }
       do {
         try await command.value
-        try feature.requireCurrent(context)
+        try projectReportingFeature.requireCurrent(context)
         guard self?.submissionID == id, self?.projectID == projectID,
               self?.projectFlaggingKind == kind else { return }
         self?.submitSuccess = true
@@ -109,7 +111,7 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
           type: .success, message: Strings.Your_message_has_been_sent()
         ))
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), feature.context == context,
+        guard !Task.isCancelled, !(error is CancellationError), projectReportingFeature.context == context,
               self?.submissionID == id, self?.projectID == projectID,
               self?.projectFlaggingKind == kind else { return }
         self?.showFailure()

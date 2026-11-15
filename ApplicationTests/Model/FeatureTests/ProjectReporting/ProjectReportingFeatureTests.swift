@@ -80,7 +80,7 @@ final class ProjectReportingFeatureTests: XCTestCase {
   }
 
   func testCancelledOptionsReadCannotPublishLateResponse() async throws {
-    let vm = ReportProjectInfoViewModel(feature: self.feature)
+    let vm = ReportProjectInfoViewModel(projectReportingFeature: self.feature)
     let task = vm.viewDidLoad()
     await self.provider.optionsGate.waitFor(1)
     vm.stop()
@@ -91,7 +91,7 @@ final class ProjectReportingFeatureTests: XCTestCase {
   }
 
   func testRepeatedAppearanceSharesOptionsRequestAndCanReloadAfterCompletion() async throws {
-    let vm = ReportProjectInfoViewModel(feature: self.feature)
+    let vm = ReportProjectInfoViewModel(projectReportingFeature: self.feature)
     let first = vm.viewDidLoad()
     let second = vm.viewDidLoad()
     await self.provider.optionsGate.waitFor(1)
@@ -121,7 +121,7 @@ final class ProjectReportingFeatureTests: XCTestCase {
   }
 
   func testEmailFromPreviousSessionIsSuppressed() async throws {
-    let vm = ReportProjectFormViewModel(feature: self.feature)
+    let vm = ReportProjectFormViewModel(projectReportingFeature: self.feature)
     let task = vm.viewDidLoad()
     await self.provider.emailGate.waitFor(1)
     self.session.sessionChanged()
@@ -177,7 +177,7 @@ final class ProjectReportingFeatureTests: XCTestCase {
   }
 
   private func form() -> ReportProjectFormViewModel {
-    let vm = ReportProjectFormViewModel(feature: self.feature)
+    let vm = ReportProjectFormViewModel(projectReportingFeature: self.feature)
     vm.projectID = "123"
     vm.projectFlaggingKind = .guidelinesViolation
     vm.detailsText = "Report"

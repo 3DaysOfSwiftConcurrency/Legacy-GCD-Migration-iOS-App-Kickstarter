@@ -26,7 +26,7 @@ final class ReportProjectFormViewModelTests: TestCase {
   }
 
   func testEmailText_AfterFetchingUsersEmail() async {
-    let vm = ReportProjectFormViewModel(feature: ProjectReportingFeature(
+    let vm = ReportProjectFormViewModel(projectReportingFeature: ProjectReportingFeature(
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       makeProvider: { AsyncProjectReportingProvider(service: AppEnvironment.current.apiService) }
     ))
@@ -56,7 +56,7 @@ final class ReportProjectFormViewModelTests: TestCase {
   }
 
   func test_submitIsDisabled_untilDetailTextIsNotEmpty() {
-    let vm = ReportProjectFormViewModel(feature: ProjectReportingFeature(
+    let vm = ReportProjectFormViewModel(projectReportingFeature: ProjectReportingFeature(
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       makeProvider: { AsyncProjectReportingProvider(service: AppEnvironment.current.apiService) }
     ))
