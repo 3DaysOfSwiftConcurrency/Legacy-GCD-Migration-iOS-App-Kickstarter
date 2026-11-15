@@ -27,7 +27,7 @@ public final class FindFriendsFacebookConnectCellViewModel {
   }
   public func configureWith(source: FriendsSource) {
     self.hideCloseButton = source == .findFriends
-    if let type = Self.connectionType(user: AppEnvironment.current.currentUser) {
+    if let type = Self.connectionType(user: self.settingsFeature.sessionFeature.currentUser) {
       self.title = type.titleText
       self.subtitle = type.subtitleText
       self.buttonTitle = type.buttonText
