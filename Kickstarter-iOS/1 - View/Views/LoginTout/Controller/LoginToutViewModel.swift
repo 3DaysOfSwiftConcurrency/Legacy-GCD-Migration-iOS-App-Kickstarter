@@ -8,6 +8,7 @@ public typealias SignInWithAppleData = (appId: String, firstName: String?, lastN
 @MainActor
 public final class LoginToutViewModel {
   private let authenticationFeature: AuthenticationFeature
+  public var signInWithAppleAppID: String { self.authenticationFeature.signInWithAppleAppID }
   private var lastLoading: Bool?
   private var didTrackAppearance = false
   private var notificationTask: Task<Void, Never>?

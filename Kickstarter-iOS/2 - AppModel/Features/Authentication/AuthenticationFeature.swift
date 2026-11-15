@@ -95,6 +95,7 @@ public final class AuthenticationFeature {
   private let session: SessionFeature
   private let makeProvider: () -> any AuthenticationProvider
   private let trackOAuthLogin: @MainActor () -> Void
+  private let appleAppID: @MainActor () -> String
   // The legacy screen allows resend and verification concurrently. A resend
   // must not supersede a submitted code; replacements are scoped per operation.
   private var current: [Operation: Attempt] = [:]
@@ -115,12 +116,16 @@ public final class AuthenticationFeature {
     makeProvider: @escaping () -> any AuthenticationProvider,
     trackOAuthLogin: @escaping @MainActor () -> Void = {
       AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
-    }
+    },
+    appleAppID: @escaping @MainActor () -> String = { AppEnvironment.current.apiService.appId }
   ) {
     self.session = sessionFeature
     self.makeProvider = makeProvider
     self.trackOAuthLogin = trackOAuthLogin
+    self.appleAppID = appleAppID
   }
+
+  public var signInWithAppleAppID: String { self.appleAppID() }
 
   public func authenticate(
     _ credentials: Credentials,

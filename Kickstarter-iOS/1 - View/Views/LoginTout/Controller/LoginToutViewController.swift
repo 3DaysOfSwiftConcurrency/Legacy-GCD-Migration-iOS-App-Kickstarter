@@ -484,7 +484,7 @@ extension LoginToutViewController: ASAuthorizationControllerDelegate {
     let token = String(data: authToken, encoding: .utf8)
 
     let data = (
-      appId: AppEnvironment.current.apiService.appId,
+      appId: self.viewModel.signInWithAppleAppID,
       firstName: fullName?.givenName,
       lastName: fullName?.familyName,
       token: token

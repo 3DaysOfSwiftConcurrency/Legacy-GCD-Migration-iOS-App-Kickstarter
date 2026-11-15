@@ -479,12 +479,12 @@ final class DesignSystemViewController: UIViewController {
 
 @MainActor
 private func attributedTermsText() -> NSAttributedString? {
-  let baseUrl = AppEnvironment.current.apiService.serverConfig.webBaseUrl
+  let baseURL = AppModel.shared.appLifecycleFeature.webBaseURL
 
   guard
-    let termsOfUseLink = HelpType.terms.url(withBaseUrl: baseUrl)?.absoluteString,
-    let privacyPolicyLink = HelpType.privacy.url(withBaseUrl: baseUrl)?.absoluteString,
-    let cookiePolicyLink = HelpType.cookie.url(withBaseUrl: baseUrl)?.absoluteString
+    let termsOfUseLink = HelpType.terms.url(withBaseUrl: baseURL)?.absoluteString,
+    let privacyPolicyLink = HelpType.privacy.url(withBaseUrl: baseURL)?.absoluteString,
+    let cookiePolicyLink = HelpType.cookie.url(withBaseUrl: baseURL)?.absoluteString
   else { return nil }
 
   let string = Strings.By_pledging_you_agree_to_Kickstarters_Terms_of_Use_Privacy_Policy_and_Cookie_Policy(

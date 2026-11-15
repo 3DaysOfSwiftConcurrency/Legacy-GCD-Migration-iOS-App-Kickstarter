@@ -73,7 +73,7 @@ final class DemoCTAContainerView: UIView {
     _ = self.ctaStackView
       |> ctaStackViewStyle
 
-    _ = termsTextViewStyle(self.termsTextView)
+    _ = termsTextViewStyle(self.termsTextView, baseURL: AppModel.shared.appLifecycleFeature.webBaseURL)
 
     _ = self.disclaimerStackView
       |> disclaimerStackViewStyle
@@ -167,10 +167,10 @@ private let layerStyle: LayerStyle = { layer in
 }
 
 @MainActor
-private func termsTextViewStyle(_ textView: UITextView) -> UITextView {
+private func termsTextViewStyle(_ textView: UITextView, baseURL: URL) -> UITextView {
   _ = textView
     |> adaptiveTappableLinksViewStyle
-    |> \.attributedText .~ attributedTermsText()
+    |> \.attributedText .~ attributedTermsText(baseURL: baseURL)
     |> \.accessibilityTraits .~ [.staticText]
     |> \.textAlignment .~ .center
 
@@ -178,13 +178,11 @@ private func termsTextViewStyle(_ textView: UITextView) -> UITextView {
 }
 
 @MainActor
-private func attributedTermsText() -> NSAttributedString? {
-  let baseUrl = AppEnvironment.current.apiService.serverConfig.webBaseUrl
-
+private func attributedTermsText(baseURL: URL) -> NSAttributedString? {
   guard
-    let termsOfUseLink = HelpType.terms.url(withBaseUrl: baseUrl)?.absoluteString,
-    let privacyPolicyLink = HelpType.privacy.url(withBaseUrl: baseUrl)?.absoluteString,
-    let cookiePolicyLink = HelpType.cookie.url(withBaseUrl: baseUrl)?.absoluteString
+    let termsOfUseLink = HelpType.terms.url(withBaseUrl: baseURL)?.absoluteString,
+    let privacyPolicyLink = HelpType.privacy.url(withBaseUrl: baseURL)?.absoluteString,
+    let cookiePolicyLink = HelpType.cookie.url(withBaseUrl: baseURL)?.absoluteString
   else { return nil }
 
   let string = Strings.By_pledging_you_agree_to_Kickstarters_Terms_of_Use_Privacy_Policy_and_Cookie_Policy(
