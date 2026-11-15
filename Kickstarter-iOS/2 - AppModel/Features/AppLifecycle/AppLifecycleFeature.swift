@@ -220,6 +220,10 @@ public final class AppLifecycleFeature {
 
   public var isAuthenticated: Bool { AppEnvironment.current.apiService.isAuthenticated }
   public var currentApplicationBadgeNumber: Int { self.applicationBadgeNumber() }
+  public var isDebugBuild: Bool {
+    guard let environment = AppEnvironment.current else { return false }
+    return environment.mainBundle.isAlpha || environment.mainBundle.isBeta || environment.mainBundle.isDebug
+  }
   public func canOpenExternalURL(_ url: URL) -> Bool { AppEnvironment.current.application.canOpenURL(url) }
   public func openExternalURL(_ url: URL) {
     AppEnvironment.current.application.open(url, options: [:], completionHandler: nil)

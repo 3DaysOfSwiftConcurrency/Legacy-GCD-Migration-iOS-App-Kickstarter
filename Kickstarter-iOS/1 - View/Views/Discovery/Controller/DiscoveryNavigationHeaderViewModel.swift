@@ -18,6 +18,7 @@ final class DiscoveryNavigationHeaderViewModel {
 
   var onEvent: ((Event) -> Void)?
   private let discoveryFeature: DiscoveryFeature
+  private let appLifecycleFeature: AppLifecycleFeature
   private let scheduleDismissal: @MainActor (@escaping @MainActor () -> Void) -> Task<Void, Never>?
   private var dismissalTask: Task<Void, Never>?
   private var dismissalGeneration = 0
@@ -35,6 +36,7 @@ final class DiscoveryNavigationHeaderViewModel {
 
   init(
     discoveryFeature: DiscoveryFeature? = nil,
+    appLifecycleFeature: AppLifecycleFeature? = nil,
     scheduleDismissal: @escaping @MainActor (@escaping @MainActor () -> Void) -> Task<Void, Never>? = { action in
       Task { @MainActor in
         do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
@@ -43,14 +45,14 @@ final class DiscoveryNavigationHeaderViewModel {
     }
   ) {
     self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
+    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.scheduleDismissal = scheduleDismissal
   }
 
   deinit { self.dismissalTask?.cancel() }
 
   func viewDidLoad() {
-    guard let environment = AppEnvironment.current else { return }
-    let hidden = !(environment.mainBundle.isAlpha || environment.mainBundle.isBeta || environment.mainBundle.isDebug)
+    let hidden = !self.appLifecycleFeature.isDebugBuild
     self.debugContainerHidden = hidden
     self.onEvent?(.debugContainerViewIsHidden(hidden))
     self.publishFavoriteHidden(true)
