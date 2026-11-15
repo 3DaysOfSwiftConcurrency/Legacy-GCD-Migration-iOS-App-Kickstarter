@@ -6,33 +6,33 @@ import Observation
 @MainActor @Observable
 internal final class RichTextExampleProjectsViewModel {
   typealias ProjectItem = DeveloperExamplesFeature.ProjectItem
-  private let feature: DeveloperExamplesFeature
+  private let developerExamplesFeature: DeveloperExamplesFeature
   private let route = UUID()
   @ObservationIgnored private var lookupTask: Task<Void, Never>?
   @ObservationIgnored private var submittedInput: String?
   @ObservationIgnored private var lookupID: UUID?
   private(set) var slugError = false
-  var projects: [ProjectItem] { self.feature.richTextSnapshot(route: self.route).projects }
-  var isLoading: Bool { self.feature.richTextSnapshot(route: self.route).isLoading }
-  var errorMessage: String? { self.feature.richTextSnapshot(route: self.route).errorMessage }
+  var projects: [ProjectItem] { self.developerExamplesFeature.richTextSnapshot(route: self.route).projects }
+  var isLoading: Bool { self.developerExamplesFeature.richTextSnapshot(route: self.route).isLoading }
+  var errorMessage: String? { self.developerExamplesFeature.richTextSnapshot(route: self.route).errorMessage }
 
-  init(feature: DeveloperExamplesFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.developerExamplesFeature
+  init(developerExamplesFeature: DeveloperExamplesFeature? = nil) {
+    self.developerExamplesFeature = developerExamplesFeature ?? AppModel.shared.developerExamplesFeature
   }
   deinit {
     self.lookupTask?.cancel()
-    let feature = self.feature, route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    let developerExamplesFeature = self.developerExamplesFeature, route = self.route
+    Task { @MainActor in developerExamplesFeature.release(route: route) }
   }
 
-  func loadProjects() async { await self.feature.loadRichTextProjects(route: self.route) }
+  func loadProjects() async { await self.developerExamplesFeature.loadRichTextProjects(route: self.route) }
 
   @discardableResult
   func submit(input: String, onSelect: @escaping (ProjectItem) -> Void) -> Task<Void, Never> {
     if self.submittedInput == input, let task = self.lookupTask { return task }
     self.clearLookup()
     let id = UUID()
-    let feature = self.feature
+    let developerExamplesFeature = self.developerExamplesFeature
     let route = self.route
     self.lookupID = id
     self.submittedInput = input
@@ -44,7 +44,7 @@ internal final class RichTextExampleProjectsViewModel {
         }
       }
       do {
-        let project = try await feature.loadProject(input: input, route: route)
+        let project = try await developerExamplesFeature.loadProject(input: input, route: route)
         try Task.checkCancellation()
         guard let self, self.lookupID == id else { return }
         if let project { onSelect(project) } else { self.slugError = true }
@@ -62,10 +62,10 @@ internal final class RichTextExampleProjectsViewModel {
     self.lookupID = nil
     self.submittedInput = nil
     self.slugError = false
-    self.feature.cancelLookup(route: self.route)
+    self.developerExamplesFeature.cancelLookup(route: self.route)
   }
   func suspend() {
     self.clearLookup()
-    self.feature.suspend(route: self.route)
+    self.developerExamplesFeature.suspend(route: self.route)
   }
 }

@@ -15,7 +15,7 @@ final class RichTextExampleProjectsViewModelTests: XCTestCase {
       NSError(
         domain: "Example", code: 1,
         userInfo: [NSLocalizedDescriptionKey: "Offline"]))
-    let vm = RichTextExampleProjectsViewModel(feature: provider.feature())
+    let vm = RichTextExampleProjectsViewModel(developerExamplesFeature: provider.feature())
     XCTAssertTrue(vm.isLoading)
     await vm.loadProjects()
     XCTAssertFalse(vm.isLoading)
@@ -30,7 +30,7 @@ final class RichTextExampleProjectsViewModelTests: XCTestCase {
   }
   func testInvalidAndMissingSlugsShowExistingErrorAndEditingClearsIt() async {
     let provider = ExamplesPresentationProvider()
-    let vm = RichTextExampleProjectsViewModel(feature: provider.feature())
+    let vm = RichTextExampleProjectsViewModel(developerExamplesFeature: provider.feature())
     await vm.submit(input: "", onSelect: { _ in XCTFail("Invalid slug selected") }).value
     XCTAssertTrue(vm.slugError)
     XCTAssertEqual(provider.lookupCount, 0)
@@ -45,7 +45,7 @@ final class RichTextExampleProjectsViewModelTests: XCTestCase {
     let provider = ExamplesPresentationProvider()
     let item = self.item
     provider.lookup = { item }
-    let vm = RichTextExampleProjectsViewModel(feature: provider.feature())
+    let vm = RichTextExampleProjectsViewModel(developerExamplesFeature: provider.feature())
     var selections: [String] = []
     let first = vm.submit(input: "owner/project", onSelect: { selections.append($0.id) })
     let second = vm.submit(input: "owner/project", onSelect: { selections.append($0.id) })
@@ -57,7 +57,7 @@ final class RichTextExampleProjectsViewModelTests: XCTestCase {
   }
   func testEditingAndClosingPreventLateNavigationOrError() async {
     let provider = ExamplesPresentationProvider()
-    let vm = RichTextExampleProjectsViewModel(feature: provider.feature())
+    let vm = RichTextExampleProjectsViewModel(developerExamplesFeature: provider.feature())
     for closing in [false, true] {
       let started = expectation(description: "Lookup suspended")
       var continuation: CheckedContinuation<DeveloperExamplesFeature.ProjectItem?, Never>?
