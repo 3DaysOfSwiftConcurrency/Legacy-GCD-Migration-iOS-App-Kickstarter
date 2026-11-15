@@ -48,7 +48,7 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
       sessionStarted,
       sessionEnded
     )
-    .map { _ in AppEnvironment.current.currentUser }
+    .map { _ in feature.sessionFeature.currentUser }
 
     self.viewWillAppearSubject
       .map { _ -> PPOStripeConfiguration in
