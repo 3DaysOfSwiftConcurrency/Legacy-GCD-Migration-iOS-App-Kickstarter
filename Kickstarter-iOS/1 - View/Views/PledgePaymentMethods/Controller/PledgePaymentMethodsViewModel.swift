@@ -214,7 +214,7 @@ final class PledgePaymentMethodsViewModel {
     guard self.loaded, let config = self.configuration else { return }
     AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
     guard let externalId = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else { return }
-    let userId = AppEnvironment.current.currentUser.map { "\($0.id)" } ?? ""
+    let userId = self.stripeIntentService.paymentsFeature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
     var extInfo = Array(repeating: "", count: 16)
     extInfo[0] = "i2"
     extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
