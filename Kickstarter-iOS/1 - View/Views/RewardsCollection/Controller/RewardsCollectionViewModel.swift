@@ -158,7 +158,7 @@ final class RewardsCollectionViewModel {
     extInfo[0] = "i2"
     extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
     self.rewardsFeature.recordThirdPartyEvent(
-      input: .init(
+      .init(
         deviceId: externalId, eventName: ThirdPartyEventInputName.RewardSelectionViewed.rawValue,
         projectId: "\(project.id)", pledgeAmount: nil, shipping: nil, transactionId: nil, userId: userId,
         appData: .init(advertiserTrackingEnabled: true, applicationTrackingEnabled: true, extinfo: extInfo),
