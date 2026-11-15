@@ -55,7 +55,7 @@ final class PledgeManagerWebViewModel {
     guard self.loaded, self.loggedIn, let initialURL, let url = URL(string: initialURL) else { return }
     let request = URLRequest(url: url)
     self.publishTitle(for: request)
-    self.onEvent?(.webViewLoadRequest(AppEnvironment.current.apiService.preparedRequest(forRequest: request)))
+    self.onEvent?(.webViewLoadRequest(self.feature.preparedWebRequest(from: request)))
   }
   private func publishTitle(for request: URLRequest) {
     guard isSupportedRequest(request: request), let url = request.url else { return }
@@ -85,17 +85,17 @@ final class PledgeManagerWebViewModel {
   func decidePolicyFor(navigationAction action: WKNavigationActionData) -> WKNavigationActionPolicy {
     let request = action.request
     self.publishTitle(for: request)
-    if isUnpreparedSupportedRequest(request: request) {
-      self.onEvent?(.webViewLoadRequest(AppEnvironment.current.apiService.preparedRequest(forRequest: request)))
+    if isUnpreparedSupportedRequest(request: request, feature: self.feature) {
+      self.onEvent?(.webViewLoadRequest(self.feature.preparedWebRequest(from: request)))
     }
     if let native = nativeNavigationRequestForURLRequest(request) { self.onEvent?(.goToNativeScreen(native)) }
     if isStripeNavigationAction(action) { return .allow }
     if isSupportedRequest(request: request) {
-      return AppEnvironment.current.apiService.isPrepared(request: request) ? .allow : .cancel
+      return self.feature.isPreparedWebRequest(request) ? .allow : .cancel
     }
     if nativeNavigationRequestForURLRequest(request) != nil { return .cancel }
-    if let error = errorForUnrecognizedUrl(request: request) { Crashlytics.crashlytics().record(error: error) }
-    if isKickstarterRequest(request) { return .cancel }
+    if let error = errorForUnrecognizedUrl(request: request, feature: self.feature) { Crashlytics.crashlytics().record(error: error) }
+    if self.feature.isKickstarterWebRequest(request) { return .cancel }
     return featureBypassPledgeManagerDecisionPolicyEnabled() ? .allow : .cancel
   }
 }
@@ -120,14 +120,8 @@ private func nativeNavigationRequestForURLRequest(_ request: URLRequest)
 }
 
 @MainActor
-private func isKickstarterRequest(_ request: URLRequest) -> Bool {
-  guard let host = request.url?.host() else { return false }
-  return host == AppEnvironment.current.apiService.serverConfig.webBaseUrl.host()
-}
-
-@MainActor
-private func isUnpreparedSupportedRequest(request: URLRequest) -> Bool {
-  guard !AppEnvironment.current.apiService.isPrepared(request: request) else { return false }
+private func isUnpreparedSupportedRequest(request: URLRequest, feature: PledgeFeature) -> Bool {
+  guard !feature.isPreparedWebRequest(request) else { return false }
   return isSupportedRequest(request: request)
 }
 
@@ -161,7 +155,7 @@ private func isStripeHost(_ host: String) -> Bool {
 }
 
 @MainActor
-private func errorForUnrecognizedUrl(request: URLRequest) -> NSError? {
+private func errorForUnrecognizedUrl(request: URLRequest, feature: PledgeFeature) -> NSError? {
   let errorDomain = "Kickstarter.PledgeManagerWebView"
   enum ErrorCode: Int {
     case unhandledKickstarterUrl = 1
@@ -174,7 +168,7 @@ private func errorForUnrecognizedUrl(request: URLRequest) -> NSError? {
     return nil
   }
 
-  if isKickstarterRequest(request) {
+  if feature.isKickstarterWebRequest(request) {
     return NSError(
       domain: errorDomain,
       code: ErrorCode.unhandledKickstarterUrl.rawValue,

@@ -98,10 +98,31 @@ public struct AsyncPledgeProvider: PledgeProvider {
 public final class PledgeFeature {
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any PledgeProvider
+  private let prepareWebRequest: (URLRequest) -> URLRequest
+  private let preparedWebRequest: (URLRequest) -> Bool
+  private let webBaseURL: () -> URL
 
-  public init(sessionFeature: SessionFeature, makeProvider: @escaping () -> any PledgeProvider) {
+  public init(
+    sessionFeature: SessionFeature, makeProvider: @escaping () -> any PledgeProvider,
+    prepareWebRequest: @escaping (URLRequest) -> URLRequest = {
+      AppEnvironment.current.apiService.preparedRequest(forRequest: $0)
+    },
+    preparedWebRequest: @escaping (URLRequest) -> Bool = {
+      AppEnvironment.current.apiService.isPrepared(request: $0)
+    },
+    webBaseURL: @escaping () -> URL = { AppEnvironment.current.apiService.serverConfig.webBaseUrl }
+  ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.prepareWebRequest = prepareWebRequest
+    self.preparedWebRequest = preparedWebRequest
+    self.webBaseURL = webBaseURL
+  }
+
+  public func preparedWebRequest(from request: URLRequest) -> URLRequest { self.prepareWebRequest(request) }
+  public func isPreparedWebRequest(_ request: URLRequest) -> Bool { self.preparedWebRequest(request) }
+  public func isKickstarterWebRequest(_ request: URLRequest) -> Bool {
+    request.url?.host() == self.webBaseURL().host()
   }
 
   private struct Session: Hashable {
