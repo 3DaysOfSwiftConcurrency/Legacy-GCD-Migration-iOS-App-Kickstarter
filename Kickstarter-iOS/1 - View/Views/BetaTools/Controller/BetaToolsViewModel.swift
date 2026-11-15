@@ -86,6 +86,7 @@ public final class BetaToolsViewModel {
   public init(appLifecycleFeature: AppLifecycleFeature? = nil) {
     self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
   }
+  public var currentUser: User? { self.appLifecycleFeature.sessionFeature.currentUser }
   public func viewDidLoad() {
     self.originalLanguage = AppEnvironment.current.language
     self.originalEnvironment = self.appLifecycleFeature.serverEnvironment
