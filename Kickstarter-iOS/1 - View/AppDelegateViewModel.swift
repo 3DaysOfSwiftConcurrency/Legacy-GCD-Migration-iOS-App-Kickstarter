@@ -301,7 +301,9 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
           navigation.modalPresentationStyle = .pageSheet
           self.onPresentViewController?(navigation)
         case let .project(project):
-          if let controller = ProjectDeepLink.viewController(project) { self.onPresentViewController?(controller) }
+          if let controller = ProjectDeepLink.viewController(
+            project, isLoggedIn: self.lifecycleFeature.sessionFeature.currentUser != nil
+          ) { self.onPresentViewController?(controller) }
         }
       } catch { /* Invalid, cancelled or failed links do not navigate. */ }
     }
@@ -414,7 +416,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private func beginUserRefresh() {
     self.userReadTask?.cancel()
     self.userRequest?.cancel()
-    guard self.lifecycleFeature.isAuthenticated || AppEnvironment.current.currentUser != nil else {
+    guard self.lifecycleFeature.isAuthenticated || self.lifecycleFeature.sessionFeature.currentUser != nil else {
       self.refreshShortcutItems(for: nil)
       return
     }
@@ -689,7 +691,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     if navigation == .tab(.login) { self.onGoToLoginWithIntent?(.generic) }
     if case let .project(_, subpage, _, _) = navigation,
        case .pledge(.manage) = subpage,
-       AppEnvironment.current.currentUser == nil {
+       self.lifecycleFeature.sessionFeature.currentUser == nil {
       self.onGoToLoginWithIntent?(.erroredPledge)
     }
     self.resolveDestination(navigation)
@@ -992,7 +994,9 @@ private func configRetainingDebugFeatureFlags(_ config: Config) -> Config {
 /// Pure UIKit composition from one fully resolved destination.
 @MainActor
 private enum ProjectDeepLink {
-  static func viewController(_ destination: AppLifecycleFeature.ProjectDestination) -> UINavigationController? {
+  static func viewController(
+    _ destination: AppLifecycleFeature.ProjectDestination, isLoggedIn: Bool
+  ) -> UINavigationController? {
     let project = destination.project
     let page = ProjectPageViewController.configuredWith(
       projectOrParam: .left(project), refInfo: destination.refInfo,
@@ -1023,7 +1027,8 @@ private enum ProjectDeepLink {
             inputAreaBecomeFirstResponder: false, replyId: replyID)]
       }
     case .pledge(.manage):
-      guard AppEnvironment.current.currentUser != nil, let backingID = project.personalization.backing?.id else { return nil }
+      guard isLoggedIn,
+            let backingID = project.personalization.backing?.id else { return nil }
       let controller = ManagePledgeViewController.instantiate()
       controller.configureWith(params: (.id(project.id), .id(backingID)))
       controllers.append(controller)
