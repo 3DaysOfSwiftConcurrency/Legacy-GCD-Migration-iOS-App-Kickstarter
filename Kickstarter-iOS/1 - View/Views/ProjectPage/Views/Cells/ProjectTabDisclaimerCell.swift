@@ -13,6 +13,7 @@ protocol ProjectTabDisclaimerCellDelegate: AnyObject {
 }
 
 final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
+  private let appLifecycleFeature = AppModel.shared.appLifecycleFeature
   // MARK: - Properties
 
   weak var delegate: ProjectTabDisclaimerCellDelegate?
@@ -99,7 +100,7 @@ final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
       And that way could just do: `Strings.To_learn_how_Kickstarter_encourages_sustainable_practices(environmental_resources_link: environmentLink)` after line 120.
      **/
 
-    let baseUrl = AppEnvironment.current.apiService.serverConfig.webBaseUrl
+    let baseUrl = self.appLifecycleFeature.webBaseURL
     switch type {
     case .aiDisclosure:
       let linkText = Strings.Learn_about_AI_policy_on_Kickstarter()

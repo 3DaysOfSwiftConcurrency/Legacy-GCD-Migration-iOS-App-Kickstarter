@@ -5,6 +5,7 @@ import Prelude_UIKit
 import WebKit
 
 class ExternalSourceViewElementCell: UITableViewCell, ValueCell {
+  private let appLifecycleFeature = AppModel.shared.appLifecycleFeature
   // MARK: Properties
 
   private lazy var webView: WKWebView = {
@@ -73,7 +74,7 @@ class ExternalSourceViewElementCell: UITableViewCell, ValueCell {
       if let blank = URL(string: "about:blank") { self.webView.load(URLRequest(url: blank)) }
       if let url = URL(string: htmlText + "?playsinline=1") {
         var request = URLRequest(url: url)
-        request.addValue(AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString,
+        request.addValue(self.appLifecycleFeature.webBaseURL.absoluteString,
                          forHTTPHeaderField: "Referer")
         self.webView.load(request)
       }
@@ -114,8 +115,8 @@ extension ExternalSourceViewElementCell: WKUIDelegate {
 
     if canOpenInNewWindow,
        let urlToLoad = navigationAction.request.url,
-       AppEnvironment.current.application.canOpenURL(urlToLoad) {
-      AppEnvironment.current.application.open(urlToLoad, options: [:], completionHandler: nil)
+       self.appLifecycleFeature.canOpenExternalURL(urlToLoad) {
+      self.appLifecycleFeature.openExternalURL(urlToLoad)
     }
 
     return nil

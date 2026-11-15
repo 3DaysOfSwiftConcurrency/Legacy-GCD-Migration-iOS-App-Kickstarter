@@ -218,6 +218,10 @@ public final class AppLifecycleFeature {
 
   public var isAuthenticated: Bool { AppEnvironment.current.apiService.isAuthenticated }
   public var currentApplicationBadgeNumber: Int { self.applicationBadgeNumber() }
+  public func canOpenExternalURL(_ url: URL) -> Bool { AppEnvironment.current.application.canOpenURL(url) }
+  public func openExternalURL(_ url: URL) {
+    AppEnvironment.current.application.open(url, options: [:], completionHandler: nil)
+  }
   public var serverEnvironment: EnvironmentType { AppEnvironment.current.apiService.serverConfig.environment }
   public func webURL(path: String) -> String { self.webBaseURL.absoluteString + path }
   public func helpType(for url: URL) -> HelpType? {

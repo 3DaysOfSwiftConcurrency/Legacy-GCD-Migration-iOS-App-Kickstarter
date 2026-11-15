@@ -10,6 +10,7 @@ protocol ProjectRisksDisclaimerCellDelegate: AnyObject {
 }
 
 final class ProjectRisksDisclaimerCell: UITableViewCell, ValueCell {
+  private let appLifecycleFeature = AppModel.shared.appLifecycleFeature
   // MARK: - Properties
 
   weak var delegate: ProjectRisksDisclaimerCellDelegate?
@@ -93,7 +94,7 @@ final class ProjectRisksDisclaimerCell: UITableViewCell, ValueCell {
 
   @objc private func descriptionLabelTapped() {
     guard let url = HelpType.trust
-      .url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl) else { return }
+      .url(withBaseUrl: self.appLifecycleFeature.webBaseURL) else { return }
     self.delegate?.projectRisksDisclaimerCell(self, didTapURL: url)
   }
 }
