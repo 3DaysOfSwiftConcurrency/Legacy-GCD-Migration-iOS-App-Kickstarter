@@ -66,6 +66,7 @@ public class SearchFilters: @MainActor ObservableObject {
   public fileprivate(set) var pills: [SearchFilterPill]
 
   public let objectWillChange = ObservableObjectPublisher()
+  private let isLoggedIn: @MainActor () -> Bool
 
   public var filterCount: Int {
     // Note that sort is a special case and is not included in
@@ -132,7 +133,8 @@ public class SearchFilters: @MainActor ObservableObject {
     location: LocationOptions,
     amountRaised: AmountRaisedOptions,
     goal: GoalOptions,
-    showOnly: ShowOnlyOptions
+    showOnly: ShowOnlyOptions,
+    isLoggedIn: @escaping @MainActor () -> Bool
   ) {
     self.sort = sort
     self.category = category
@@ -142,6 +144,7 @@ public class SearchFilters: @MainActor ObservableObject {
     self.amountRaised = amountRaised
     self.goal = goal
     self.showOnly = showOnly
+    self.isLoggedIn = isLoggedIn
 
     self.pills = []
     self.updatePills()
@@ -267,7 +270,7 @@ public class SearchFilters: @MainActor ObservableObject {
       )
     )
 
-    if AppEnvironment.current.currentUser.isSome {
+    if self.isLoggedIn() {
       pills.append(
         SearchFilterPill(
           isHighlighted: self.showOnly.recommended,
@@ -314,7 +317,7 @@ public class SearchFilters: @MainActor ObservableObject {
       )
     )
 
-    if AppEnvironment.current.currentUser.isSome {
+    if self.isLoggedIn() {
       pills.append(
         SearchFilterPill(
           isHighlighted: self.showOnly.savedProjects,

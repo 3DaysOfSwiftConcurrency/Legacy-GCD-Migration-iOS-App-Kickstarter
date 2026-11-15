@@ -34,7 +34,10 @@ public final class SearchFiltersUseCase: SearchFiltersUseCaseType, SearchFilters
   SearchFiltersUseCaseUIOutputs {
   /// Adapts Feature selection and lookup outputs for the existing filter UI.
   /// Initial selection publication remains an explicit Feature command.
-  public init(searchFeature: SearchFeature) {
+  public init(
+    searchFeature: SearchFeature,
+    isLoggedIn: @escaping @MainActor () -> Bool = { AppEnvironment.current.currentUser != nil }
+  ) {
     self.searchFeature = searchFeature
     let selection = searchFeature.filterSelection
 
@@ -69,7 +72,8 @@ public final class SearchFiltersUseCase: SearchFiltersUseCaseType, SearchFilters
         savedProjects: selection.savedProjectsValue,
         projectsWeLove: selection.projectsWeLoveValue,
         following: selection.followingValue
-      )
+      ),
+      isLoggedIn: isLoggedIn
     )
 
 
