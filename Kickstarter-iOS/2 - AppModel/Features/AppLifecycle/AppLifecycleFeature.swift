@@ -216,6 +216,8 @@ public final class AppLifecycleFeature {
     AppEnvironment.current.apiService.serverConfig.webBaseUrl
   }
 
+  public var apiBaseURL: URL { AppEnvironment.current.apiService.serverConfig.apiBaseUrl }
+
   public var isAuthenticated: Bool { AppEnvironment.current.apiService.isAuthenticated }
   public var currentApplicationBadgeNumber: Int { self.applicationBadgeNumber() }
   public func canOpenExternalURL(_ url: URL) -> Bool { AppEnvironment.current.application.canOpenURL(url) }
@@ -226,6 +228,12 @@ public final class AppLifecycleFeature {
   public func webURL(path: String) -> String { self.webBaseURL.absoluteString + path }
   public func helpType(for url: URL) -> HelpType? {
     HelpType.allCases.first { url.absoluteString == $0.url(withBaseUrl: self.webBaseURL)?.absoluteString }
+  }
+  public func navigationMatch(_ url: URL) -> Navigation? {
+    Navigation.match(url, apiBaseURL: self.apiBaseURL, webBaseURL: self.webBaseURL)
+  }
+  public func deepLinkMatch(_ url: URL) -> Navigation? {
+    Navigation.deepLinkMatch(url, apiBaseURL: self.apiBaseURL, webBaseURL: self.webBaseURL)
   }
   public func helpURL(_ type: HelpType) -> String? { type.url(withBaseUrl: self.webBaseURL)?.absoluteString }
 

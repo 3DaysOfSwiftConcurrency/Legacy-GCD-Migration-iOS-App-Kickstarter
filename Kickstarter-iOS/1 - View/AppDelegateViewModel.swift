@@ -509,7 +509,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func applicationContinueUserActivity(_ userActivity: NSUserActivity) -> Bool {
     if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
-      self.continueUserActivityReturnValue = userActivity.webpageURL.flatMap { Navigation.match($0) } != nil
+      self.continueUserActivityReturnValue = userActivity.webpageURL.flatMap { self.lifecycleFeature.navigationMatch($0) } != nil
     }
     if userActivity.activityType == NSUserActivityTypeBrowsingWeb, let url = userActivity.webpageURL {
       self.handleURL(url)
@@ -677,7 +677,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func urlFromBrazeNotification(_ url: URL?) {
     guard let url else { return }
-    if let navigation = Navigation.deepLinkMatch(url) { self.handleNavigation(navigation) }
+    if let navigation = self.lifecycleFeature.deepLinkMatch(url) { self.handleNavigation(navigation) }
     if shouldOpenUrlInBrowser(url) { self.onGoToMobileSafari?(url) }
   }
 
@@ -698,11 +698,12 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func handleURL(_ url: URL) {
-    if let navigation = Navigation.match(url) { self.handleNavigation(navigation) }
-    if Navigation.match(url) == .profile(.verifyEmail), let token = accessTokenFromUrl(url) {
+    let navigation = self.lifecycleFeature.navigationMatch(url)
+    if let navigation { self.handleNavigation(navigation) }
+    if navigation == .profile(.verifyEmail), let token = accessTokenFromUrl(url) {
       self.verifyEmail(token: token)
     }
-    if Navigation.match(url) == .emailClick { self.onFindRedirectUrl?(url) }
+    if navigation == .emailClick { self.onFindRedirectUrl?(url) }
     if shouldOpenUrlInBrowser(url) { self.onGoToMobileSafari?(url) }
   }
 
