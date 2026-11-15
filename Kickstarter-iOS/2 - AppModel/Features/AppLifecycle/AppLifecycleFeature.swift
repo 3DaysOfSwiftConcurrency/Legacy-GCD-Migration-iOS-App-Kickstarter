@@ -213,6 +213,10 @@ public final class AppLifecycleFeature {
     AppEnvironment.current.apiService.serverConfig.webBaseUrl
   }
 
+  public var isAuthenticated: Bool { AppEnvironment.current.apiService.isAuthenticated }
+  public var serverEnvironment: EnvironmentType { AppEnvironment.current.apiService.serverConfig.environment }
+  public func webURL(path: String) -> String { self.webBaseURL.absoluteString + path }
+
   public func preparedWebRequest(for url: URL) -> URLRequest {
     AppEnvironment.current.apiService.preparedRequest(forURL: url)
   }

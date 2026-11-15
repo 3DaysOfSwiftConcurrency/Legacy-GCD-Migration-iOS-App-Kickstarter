@@ -449,7 +449,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     extInfo[0] = "i2"
     extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
     self.projectDetailsFeature.recordThirdPartyEvent(
-      input: .init(
+      .init(
         deviceId: externalID,
         eventName: ThirdPartyEventInputName.ProjectPageViewed.rawValue,
         projectId: "\(project.id)", pledgeAmount: nil, shipping: nil, transactionId: nil,
@@ -583,7 +583,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     case .pledgeManager:
       guard let project = self.latestProject else { return }
       self.onGoToPledgeManager?(
-        AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString + project.redemptionPageUrl
+        self.projectDetailsFeature.redemptionURL(for: project)
       )
     case .fix, .viewBacking, .manage:
       guard let (project, backing) = self.latestBackedProject else { return }

@@ -33,9 +33,7 @@ public final class FacebookConfirmationViewModel {
   public func sendNewslettersToggled(_ newsletters: Bool) { self.sendNewsletters = newsletters }
   public func loginButtonPressed() { self.onLogin?() }
   public func tapped(_ url: URL) {
-    guard let helpType = HelpType.allCases.first(where: {
-      url.absoluteString == $0.url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?.absoluteString
-    }) else { return }
+    guard let helpType = self.authenticationFeature.helpType(for: url) else { return }
     self.onHelp?(helpType)
   }
   public func createAccountButtonPressed() {

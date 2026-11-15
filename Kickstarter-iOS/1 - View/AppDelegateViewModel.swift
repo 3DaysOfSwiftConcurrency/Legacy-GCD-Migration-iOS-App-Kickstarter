@@ -414,12 +414,12 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private func beginUserRefresh() {
     self.userReadTask?.cancel()
     self.userRequest?.cancel()
-    guard AppEnvironment.current.apiService.isAuthenticated || AppEnvironment.current.currentUser != nil else {
+    guard self.lifecycleFeature.isAuthenticated || AppEnvironment.current.currentUser != nil else {
       self.refreshShortcutItems(for: nil)
       return
     }
     let request = self.lifecycleFeature.settingsFeature.requestRefresh(
-      allowSessionRestore: AppEnvironment.current.apiService.isAuthenticated
+      allowSessionRestore: self.lifecycleFeature.isAuthenticated
     )
     self.userRequest = request
     self.userReadTask = Task { [weak self] in
@@ -864,7 +864,7 @@ private func navigation(fromPushEnvelope envelope: PushEnvelope) -> Navigation? 
 
   if let order = envelope.order {
     let path = order.pledgeManagerPath
-    let url = AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString + path
+    let url = AppModel.shared.appLifecycleFeature.webURL(path: path)
     return .project(.id(order.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
   }
 
@@ -878,7 +878,7 @@ private func navigation(fromPushEnvelope envelope: PushEnvelope) -> Navigation? 
 
   if let survey = envelope.survey {
     let path = survey.urls.web.survey
-    let url = AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString + path
+    let url = AppModel.shared.appLifecycleFeature.webURL(path: path)
     return .project(.id(survey.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
   }
 
