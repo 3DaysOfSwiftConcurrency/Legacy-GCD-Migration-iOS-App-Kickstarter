@@ -7,19 +7,19 @@ import Observation
 public final class ProjectNotificationsViewModel {
   public private(set) var projectNotifications: [ProjectNotification] = []
   var onNotifications: (([ProjectNotification]) -> Void)?
-  private let feature: SettingsFeature
+  private let settingsFeature: SettingsFeature
   @ObservationIgnored private var loadingTask: Task<Void, Never>?
 
-  public init(feature: SettingsFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.settingsFeature
+  public init(settingsFeature: SettingsFeature? = nil) {
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
   }
 
   public func viewDidLoad() {
     self.loadingTask?.cancel()
-    let feature = self.feature
+    let settingsFeature = self.settingsFeature
     self.loadingTask = Task { [weak self] in
       do {
-        let values = try await feature.projectNotifications()
+        let values = try await settingsFeature.projectNotifications()
         try Task.checkCancellation()
         self?.projectNotifications = values
         self?.onNotifications?(values)

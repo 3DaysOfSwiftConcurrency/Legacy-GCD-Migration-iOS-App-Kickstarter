@@ -15,7 +15,7 @@ internal final class ProjectNotificationsViewModelTests: TestCase {
     sessionFeature: self.session,
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = ProjectNotificationsViewModel(feature: self.feature)
+  private lazy var vm = ProjectNotificationsViewModel(settingsFeature: self.feature)
 
   internal override func setUp() async throws {
     try await super.setUp()
