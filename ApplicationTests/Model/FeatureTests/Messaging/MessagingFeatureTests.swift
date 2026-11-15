@@ -126,7 +126,7 @@ final class MessagingFeatureTests: TestCase {
   }
 
   func testClearedSearchRejectsTransportThatIgnoresCancellation() async throws {
-    let vm = MessagesSearchViewModel(feature: self.feature, sleep: { _ in })
+    let vm = MessagesSearchViewModel(messagingFeature: self.feature, sleep: { _ in })
     vm.configureWith(project: nil); vm.viewDidLoad()
     vm.searchTextChanged("old")
     await self.provider.searches.waitFor(1)
@@ -146,7 +146,7 @@ final class MessagingFeatureTests: TestCase {
   func testDisappearingBeforeDebounceDoesNotStartHiddenSearch() async throws {
     let debounce = AccountRequestGate<Void>()
     defer { debounce.releaseAll() }
-    let vm = MessagesSearchViewModel(feature: self.feature, sleep: { _ in try await debounce.request() })
+    let vm = MessagesSearchViewModel(messagingFeature: self.feature, sleep: { _ in try await debounce.request() })
     vm.configureWith(project: nil); vm.viewDidLoad()
     vm.searchTextChanged("hidden")
     await debounce.waitFor(1)
@@ -157,7 +157,7 @@ final class MessagingFeatureTests: TestCase {
   }
 
   func testNewQueryCancelsOldBeforeDebounceAndLateErrorCannotStopNewSearch() async throws {
-    let vm = MessagesSearchViewModel(feature: self.feature, sleep: { _ in })
+    let vm = MessagesSearchViewModel(messagingFeature: self.feature, sleep: { _ in })
     vm.configureWith(project: nil); vm.viewDidLoad()
     vm.searchTextChanged("first")
     await self.provider.searches.waitFor(1)
