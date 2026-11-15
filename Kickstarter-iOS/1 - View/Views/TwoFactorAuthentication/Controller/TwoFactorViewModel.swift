@@ -11,7 +11,7 @@ public final class TwoFactorViewModel {
   var onResendSuccess: (() -> Void)?
   var onError: ((String) -> Void)?
 
-  private let feature: AuthenticationFeature
+  private let authenticationFeature: AuthenticationFeature
   private var emailValue: String?
   private var password: String?
   private var token: String?
@@ -23,7 +23,7 @@ public final class TwoFactorViewModel {
   private var resendVersion = UUID()
 
   public init(authenticationFeature: AuthenticationFeature? = nil) {
-    self.feature = authenticationFeature ?? AppModel.shared.authenticationFeature
+    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
   }
   deinit { self.loginTask?.cancel(); self.resendTask?.cancel() }
 
@@ -45,11 +45,11 @@ public final class TwoFactorViewModel {
     guard let credentials = self.credentials else { return }
     if self.loginTask != nil { self.loginTask?.cancel(); self.onLoading?(false) }
     let version = UUID(); self.loginVersion = version
-    let feature = self.feature, code = self.code
+    let authenticationFeature = self.authenticationFeature, code = self.code
     self.onLoading?(true)
     self.loginTask = Task { [weak self] in
       do {
-        let result = try await feature.authenticate(credentials, code: code)
+        let result = try await authenticationFeature.authenticate(credentials, code: code)
         guard !Task.isCancelled, let self, self.loginVersion == version else { return }
         self.onLogin?(result)
       } catch {
@@ -65,10 +65,10 @@ public final class TwoFactorViewModel {
     guard let credentials = self.credentials else { return }
     if self.resendTask != nil { self.resendTask?.cancel(); self.onLoading?(false) }
     let version = UUID(); self.resendVersion = version
-    let feature = self.feature
+    let authenticationFeature = self.authenticationFeature
     self.onLoading?(true)
     self.resendTask = Task { [weak self] in
-      do { try await feature.resendCode(credentials) }
+      do { try await authenticationFeature.resendCode(credentials) }
       catch {
         guard !Task.isCancelled, let self, self.resendVersion == version else { return }
         if (error as? ErrorEnvelope)?.ksrCode == .TfaRequired { self.onResendSuccess?() }
