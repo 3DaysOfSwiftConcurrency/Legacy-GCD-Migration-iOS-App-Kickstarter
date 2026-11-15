@@ -9,7 +9,9 @@ extension ProjectDetailsFeature {
   }
 
   public func isCreatorMessage(request: URLRequest) -> Bool {
-    if let navigation = Navigation.match(request),
+    let config = AppEnvironment.current.apiService.serverConfig
+    if let url = request.url,
+       let navigation = Navigation.match(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl),
        case .project(_, .messageCreator, _, _) = navigation { return true }
     return false
   }
