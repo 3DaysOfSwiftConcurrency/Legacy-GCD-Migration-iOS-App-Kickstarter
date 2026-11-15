@@ -4,12 +4,20 @@ import SwiftUI
 
 struct ReportProjectLabelView: View {
   let flagged: Bool
+  private let prohibitedItemsURL: String
+  private let communityURL: String
+
+  init(flagged: Bool, appLifecycleFeature: AppLifecycleFeature = AppModel.shared.appLifecycleFeature) {
+    self.flagged = flagged
+    self.prohibitedItemsURL = appLifecycleFeature.helpURL(.prohibitedItems) ?? ""
+    self.communityURL = appLifecycleFeature.helpURL(.community) ?? ""
+  }
 
   @SwiftUI.Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
   var body: some View {
     if self.flagged {
-      AlreadyReportedView()
+      AlreadyReportedView(ourRulesURL: self.prohibitedItemsURL, communityGuidelinesURL: self.communityURL)
     } else {
       HStack {
         Text(Strings.Report_this_project_to())
@@ -28,6 +36,8 @@ struct ReportProjectLabelView: View {
   }
 
   private struct AlreadyReportedView: View {
+    let ourRulesURL: String
+    let communityGuidelinesURL: String
     var body: some View {
       HStack(alignment: .top, spacing: 10) {
         Image("info")
@@ -38,12 +48,8 @@ struct ReportProjectLabelView: View {
 
         Text(
           html: Strings.It_looks(
-            our_rules: HelpType.prohibitedItems
-              .url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?
-              .absoluteString ?? "",
-            community_guidelines: HelpType.community
-              .url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?
-              .absoluteString ?? ""
+            our_rules: self.ourRulesURL,
+            community_guidelines: self.communityGuidelinesURL
           ),
           with: [
             ReportProjectHyperLinkType.ourRules.stringLiteral(),
