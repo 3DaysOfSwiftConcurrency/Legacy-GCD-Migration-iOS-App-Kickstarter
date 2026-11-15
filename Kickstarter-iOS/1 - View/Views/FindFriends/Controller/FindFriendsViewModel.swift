@@ -52,7 +52,9 @@ public final class FindFriendsViewModel {
   }
 
   private func updateFacebookState() {
-    let show = FindFriendsFacebookConnectCellViewModel.showFacebookConnectionSection(for: AppEnvironment.current.currentUser)
+    let show = FindFriendsFacebookConnectCellViewModel.showFacebookConnectionSection(
+      for: self.feature.sessionFeature.currentUser
+    )
     self.showFacebookConnect = show
     self.onChange?()
     if !show { self.loadPage(); self.loadStatistics() }

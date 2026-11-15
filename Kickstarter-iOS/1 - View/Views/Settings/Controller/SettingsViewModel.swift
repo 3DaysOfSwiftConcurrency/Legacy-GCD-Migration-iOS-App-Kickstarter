@@ -56,7 +56,7 @@ public final class SettingsViewModel {
 
   public func shouldSelectRow(for cellType: SettingsCellType) -> Bool {
     guard cellType == .findFriends else { return true }
-    return AppEnvironment.current.currentUser?.social ?? true
+    return self.settings.sessionFeature.currentUser?.social ?? true
   }
 
   internal func waitForLoads() async {
