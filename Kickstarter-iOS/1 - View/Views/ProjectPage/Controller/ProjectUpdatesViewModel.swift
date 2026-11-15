@@ -12,7 +12,7 @@ public final class ProjectUpdatesViewModel {
   public var onMail: ((String) -> Void)?
   public var onNoEmail: ((UIAlertController) -> Void)?
   public var onLoadRequest: ((URLRequest) -> Void)?
-  private let feature: DiscussionFeature
+  private let discussionFeature: DiscussionFeature
   private let route = UUID()
   private let commentsRoute = UUID()
   private var project: Project?
@@ -25,8 +25,8 @@ public final class ProjectUpdatesViewModel {
   private(set) var loadingTask: Task<Void, Never>?
   private(set) var contextTask: Task<Void, Never>?
 
-  public init(feature: DiscussionFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.discussionFeature
+  public init(discussionFeature: DiscussionFeature? = nil) {
+    self.discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
   }
 
   public func configureWith(project: Project) {
@@ -42,7 +42,7 @@ public final class ProjectUpdatesViewModel {
 
   private func presentProject(_ project: Project) {
     if let url = URL(string: project.urls.web.updates ?? "") {
-      self.onLoadRequest?(self.feature.preparedWebRequest(from: URLRequest(url: url)))
+      self.onLoadRequest?(self.discussionFeature.preparedWebRequest(from: URLRequest(url: url)))
     }
     AppEnvironment.current.ksrAnalytics.trackProjectViewed(project, sectionContext: .updates)
   }
@@ -54,7 +54,7 @@ public final class ProjectUpdatesViewModel {
 
   public func decidePolicy(forNavigationAction action: WKNavigationActionData) -> WKNavigationActionPolicy {
     let request = action.request
-    let navigation = self.feature.navigationMatch(request)
+    let navigation = self.discussionFeature.navigationMatch(request)
     let comments = isGoToCommentsRequest(navigation)
     let update = isGoToUpdateRequest(navigation)
     let updates = isUpdatesRequest(navigation)
@@ -66,7 +66,7 @@ public final class ProjectUpdatesViewModel {
     }
     if action.navigationType == .linkActivated {
       if updates, let url = request.url {
-        self.onLoadRequest?(self.feature.preparedWebRequest(from: URLRequest(url: url)))
+        self.onLoadRequest?(self.discussionFeature.preparedWebRequest(from: URLRequest(url: url)))
       } else if !comments && !update && !updates {
         if isPhoneLink(action: action), self.hasPhoneCapability, let url = request.url {
           self.onPhone?(url)
@@ -82,7 +82,7 @@ public final class ProjectUpdatesViewModel {
 
   private func load(_ params: (projectParam: Param, updateId: Int), comments: Bool) {
     let route = comments ? self.commentsRoute : self.route
-    let request = self.feature.requestUpdate(route: route, id: params.updateId, project: params.projectParam)
+    let request = self.discussionFeature.requestUpdate(route: route, id: params.updateId, project: params.projectParam)
     if comments { self.commentsRevision += 1 } else { self.updateRevision += 1 }
     let revision = comments ? self.commentsRevision : self.updateRevision
     let task = Task { [weak self] in
@@ -101,10 +101,13 @@ public final class ProjectUpdatesViewModel {
   deinit {
     self.loadingTask?.cancel()
     self.contextTask?.cancel()
-    let feature = self.feature
+    let discussionFeature = self.discussionFeature
     let route = self.route
     let commentsRoute = self.commentsRoute
-    Task { @MainActor in feature.release(route: route); feature.release(route: commentsRoute) }
+    Task { @MainActor in
+      discussionFeature.release(route: route)
+      discussionFeature.release(route: commentsRoute)
+    }
   }
 
   func waitForLoads() async { await self.contextTask?.value; await self.loadingTask?.value }
