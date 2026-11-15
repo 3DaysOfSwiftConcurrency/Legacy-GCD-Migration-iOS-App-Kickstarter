@@ -313,7 +313,6 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   private var didRecordAttribution = false
   private var didInspectFirstCookie = false
   private var lastRelatedProjectID: String?
-  private var relatedProjectTask: Task<Void, Never>?
   internal private(set) var loadingTask: Task<Void, Never>?
 
   public init(projectDetailsFeature: ProjectDetailsFeature? = nil, projectMediaFeature: ProjectMediaFeature? = nil) {
@@ -417,9 +416,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     let projectID = "\(project.id)"
     if self.lastRelatedProjectID != projectID {
       self.lastRelatedProjectID = projectID
-      self.relatedProjectTask?.cancel()
-      self.relatedProjectTask = Task { @MainActor [weak self] in
-        guard !Task.isCancelled else { return }
+      DispatchQueue.main.async { [weak self] in
         self?.similarProjectsUseCase.projectIDLoaded(projectID: projectID)
       }
     }
@@ -478,7 +475,6 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
 
   deinit {
     self.loadingTask?.cancel()
-    self.relatedProjectTask?.cancel()
     self.imageWaiters.values.forEach { $0.task.cancel() }
     self.mediaWaiters.values.forEach { $0.task.cancel() }
 
