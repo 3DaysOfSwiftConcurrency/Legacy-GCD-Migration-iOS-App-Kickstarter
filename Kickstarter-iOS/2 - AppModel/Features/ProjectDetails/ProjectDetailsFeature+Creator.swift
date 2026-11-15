@@ -16,7 +16,7 @@ extension ProjectDetailsFeature {
     return false
   }
 
-  public var creatorMessageRequiresAuthentication: Bool { AppEnvironment.current.currentUser == nil }
+  public var creatorMessageRequiresAuthentication: Bool { self.sessionFeature.currentUser == nil }
 
   /// Authorization is evaluated for each interaction, not cached at page load.
   public func creatorMessageSubject(projectID: Int, projectName: String) -> MessageSubject? {
