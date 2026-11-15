@@ -126,6 +126,12 @@ public final class DiscoveryFeature {
     Self.initialParameters(for: self.currentUser())
   }
 
+  public var user: User? { self.currentUser() }
+
+  public var currentUserHasSocialConnections: Bool {
+    self.currentUser()?.social == .some(true)
+  }
+
   public func topFilters() -> [DiscoveryParams] {
     let user = self.currentUser()
     var filters = [

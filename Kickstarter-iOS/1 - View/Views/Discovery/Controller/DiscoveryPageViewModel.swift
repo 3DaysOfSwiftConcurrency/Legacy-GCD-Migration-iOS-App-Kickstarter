@@ -205,7 +205,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   private var hasReadyUser = false
 
   private func refreshCurrentUser() {
-    let user = AppEnvironment.current.currentUser
+    let user = self.discoveryFeature.user
     guard !self.hasCurrentUserValue || self.onboardingUser != user else { return }
     self.hasCurrentUserValue = true
     self.onboardingUser = user
@@ -277,7 +277,8 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
     guard let parameters = self.currentNavigationParameters,
           self.currentProjectsLoading == false,
           let projects = self.lastPaginatedProjects, projects.isEmpty,
-          let state = emptyState(forParams: parameters), self.lastEmptyState != state else { return }
+          let state = emptyState(forParams: parameters, discoveryFeature: self.discoveryFeature),
+          self.lastEmptyState != state else { return }
     self.lastEmptyState = state
     self.onShowEmptyState?(state)
   }
@@ -382,7 +383,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
     self.clearActivityOnDisappear = true
     self.hasAppeared = true
     if self.visible != true { self.visible = true; self.refreshIfInputsChanged() }
-    if let sort = self.currentSort, AppEnvironment.current.currentUser != nil {
+    if let sort = self.currentSort, self.discoveryFeature.user != nil {
       self.activityTask = self.discoveryFeature.requestActivitySample(sort: sort)
     }
     if self.hasReadyPersonalizationFilters { self.onShowPersonalization?(shouldShowPersonalization()) }
@@ -407,7 +408,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
       self.onHideEmptyState?()
       self.publishLoading(true, animated: false)
     }
-    if AppEnvironment.current.currentUser == nil { self.publishActivities([]) }
+    if self.discoveryFeature.user == nil { self.publishActivities([]) }
     self.onContentInset?(.zero)
     self.updateVideoFeedBanner()
   }
@@ -474,13 +475,13 @@ private func shouldShowPersonalization() -> Bool {
 }
 
 @MainActor
-private func emptyState(forParams params: DiscoveryParams) -> EmptyState? {
+private func emptyState(forParams params: DiscoveryParams, discoveryFeature: DiscoveryFeature) -> EmptyState? {
   if params.starred == .some(true) {
     return .starred
   } else if params.recommended == .some(true) {
     return .recommended
   } else if params.social == .some(true) {
-    return AppEnvironment.current.currentUser?.social == .some(true) ? .socialNoPledges : .socialDisabled
+    return discoveryFeature.currentUserHasSocialConnections ? .socialNoPledges : .socialDisabled
   }
 
   return nil
