@@ -41,7 +41,7 @@ public final class MessagesViewModel {
   private func receivedThread(_ envelope: MessageThreadEnvelope?) {
     guard let envelope else {
       if let backing = self.activeBacking, let project = self.latestProject {
-        let creator = !project.memberData.permissions.isEmpty && backing.backer?.id != AppEnvironment.current.currentUser?.id
+        let creator = !project.memberData.permissions.isEmpty && backing.backer?.id != self.feature.sessionFeature.currentUser?.id
         self.onEmptyState?(true, creator ? Strings.messages_empty_state_message_creator() : Strings.messages_empty_state_message_backer())
       }
       return
@@ -228,7 +228,7 @@ public final class MessagesViewModel {
     case let .left(thread): project = thread.project; self.activeBacking = nil; self.activeRoute = .right(thread)
     case let .right(value): project = value.project; self.activeBacking = value.backing; self.activeRoute = .left(value.backing)
     }
-    self.activeUser = AppEnvironment.current.currentUser
+    self.activeUser = self.feature.sessionFeature.currentUser
     self.latestProject = project
     self.onProject?(project)
     if let id = self.latestBlockedID { self.trackBlockedUser(id: id, project: project, confirmed: false) }
