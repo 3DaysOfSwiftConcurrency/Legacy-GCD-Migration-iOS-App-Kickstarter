@@ -72,10 +72,7 @@ internal final class DiscoveryPageViewController: UITableViewController,
     }
 
     self.subscribe(toNotification: .ksr_environmentChanged) { [weak self] _ in
-      self?.viewModel.inputs.currentEnvironmentChanged(
-        environment:
-        AppEnvironment.current.apiService.serverConfig.environment
-      )
+      self?.viewModel.inputs.currentEnvironmentChanged()
     }
 
     self.subscribeToSignal(StatsigLoadedNotification) { [weak self] in
