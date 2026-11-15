@@ -9,7 +9,7 @@ final class SettingsNewslettersViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = SettingsNewslettersViewModel(feature: self.feature)
+  private lazy var vm = SettingsNewslettersViewModel(settingsFeature: self.feature)
 
   func testCachedAndIdenticalRefreshedUsersAndDelegateUpdates() async {
     let user = User.template

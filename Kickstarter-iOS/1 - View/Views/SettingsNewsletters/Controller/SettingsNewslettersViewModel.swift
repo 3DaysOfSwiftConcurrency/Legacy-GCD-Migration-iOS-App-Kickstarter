@@ -6,20 +6,21 @@ import Observation
 @Observable
 public final class SettingsNewslettersViewModel {
   public var onUser: ((User) -> Void)?
-  private let feature: SettingsFeature
+  private let settingsFeature: SettingsFeature
   private var lastLoadedUser: User?
   private var reads: [UUID: Task<Void, Never>] = [:]
 
-  public init(feature: SettingsFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.settingsFeature
+  public init(settingsFeature: SettingsFeature? = nil) {
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
   }
 
   public func viewDidLoad() {
-    if let user = self.feature.sessionFeature.currentUser { self.displayLoaded(user) }
+    if let user = self.settingsFeature.sessionFeature.currentUser { self.displayLoaded(user) }
     let id = UUID()
-    self.reads[id] = Task { [weak self, feature] in
+    let settingsFeature = self.settingsFeature
+    self.reads[id] = Task { [weak self, settingsFeature] in
       defer { self?.reads[id] = nil }
-      guard let user = try? await feature.refresh(), !Task.isCancelled else { return }
+      guard let user = try? await settingsFeature.refresh(), !Task.isCancelled else { return }
       self?.displayLoaded(user)
     }
   }
