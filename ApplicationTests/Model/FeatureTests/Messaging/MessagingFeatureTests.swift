@@ -101,7 +101,7 @@ final class MessagingFeatureTests: TestCase {
   }
 
   func testMailboxPresentationPagesAndRejectsLateResultAfterSwitch() async throws {
-    let vm = MessageThreadsViewModel(feature: self.feature)
+    let vm = MessageThreadsViewModel(messagingFeature: self.feature)
     vm.configureWith(project: .template, refTag: nil)
     vm.viewDidLoad()
     await self.provider.pages.waitFor(1)

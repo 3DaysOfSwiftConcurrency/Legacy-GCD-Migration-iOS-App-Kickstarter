@@ -10,7 +10,7 @@ final class MessageThreadsViewModelTests: TestCase {
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) },
     sleep: { _ in }
   )
-  private lazy var vm = MessageThreadsViewModel(feature: self.feature)
+  private lazy var vm = MessageThreadsViewModel(messagingFeature: self.feature)
 
   func testLoadingRefreshingAndSwitchingMailbox() async {
     self.vm.configureWith(project: nil, refTag: nil)

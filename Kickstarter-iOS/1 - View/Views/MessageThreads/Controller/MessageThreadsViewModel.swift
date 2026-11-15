@@ -13,7 +13,7 @@ public final class MessageThreadsViewModel {
   public var onSearch: (() -> Void)?
   public var onMailboxChooser: (() -> Void)?
 
-  private let feature: MessagingFeature
+  private let messagingFeature: MessagingFeature
   private let route = UUID()
   private var project: Project?
   private var mailbox: Mailbox?
@@ -22,12 +22,12 @@ public final class MessageThreadsViewModel {
   private var hadRequested = false
   private var projectionTask: Task<Void, Never>?
 
-  public convenience init() { self.init(feature: AppModel.shared.messagingFeature) }
-  public init(feature: MessagingFeature) { self.feature = feature }
+  public convenience init() { self.init(messagingFeature: AppModel.shared.messagingFeature) }
+  public init(messagingFeature: MessagingFeature) { self.messagingFeature = messagingFeature }
 
   deinit {
-    let feature = self.feature, route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    let messagingFeature = self.messagingFeature, route = self.route
+    Task { @MainActor in messagingFeature.release(route: route) }
   }
 
   public func configureWith(project: Project?, refTag _: RefTag?) { self.project = project }
@@ -51,7 +51,7 @@ public final class MessageThreadsViewModel {
     defer { self.isNearBottom = nearBottom }
     guard nearBottom, !self.isNearBottom else { return }
     self.loadingFooterIsHidden = false
-    guard let task = self.feature.requestNextPage(route: self.route) else { return }
+    guard let task = self.messagingFeature.requestNextPage(route: self.route) else { return }
     self.projectResult(task)
   }
 
@@ -61,7 +61,9 @@ public final class MessageThreadsViewModel {
     guard let mailbox = self.mailbox else { return }
     if self.hadRequested { self.messageThreads = [] }
     self.hadRequested = true
-    let task = self.feature.requestMailbox(route: self.route, mailbox: mailbox, project: self.project, refresh: true)
+    let task = self.messagingFeature.requestMailbox(
+      route: self.route, mailbox: mailbox, project: self.project, refresh: true
+    )
     self.projectResult(task)
   }
 
@@ -72,7 +74,7 @@ public final class MessageThreadsViewModel {
     self.projectionTask = Task { [weak self] in
       await task.value
       guard let self, !Task.isCancelled, self.requestGeneration == generation else { return }
-      let snapshot = self.feature.snapshot(route: self.route)
+      let snapshot = self.messagingFeature.snapshot(route: self.route)
       if snapshot.error == nil {
         self.messageThreads = snapshot.threads
         self.emptyStateIsVisible = snapshot.threads.isEmpty
