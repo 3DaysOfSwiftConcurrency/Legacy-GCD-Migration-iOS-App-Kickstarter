@@ -1,4 +1,5 @@
 import Observation
+import KsApi
 
 @MainActor
 @Observable
@@ -8,8 +9,15 @@ public final class LoginSignupUseCase {
   var onSessionChanged: (() -> Void)?
   var onLoginState: ((Bool) -> Void)?
   private let intent: LoginIntent
+  private let currentUser: @MainActor () -> User?
 
-  init(withLoginIntent intent: LoginIntent) { self.intent = intent }
+  init(
+    withLoginIntent intent: LoginIntent,
+    currentUser: @escaping @MainActor () -> User? = { AppEnvironment.current.currentUser }
+  ) {
+    self.intent = intent
+    self.currentUser = currentUser
+  }
 
   public func initialDataAvailable() { self.publishLoginState() }
   public func goToLoginSignupTapped() { self.onLogin?(self.intent) }
@@ -19,7 +27,7 @@ public final class LoginSignupUseCase {
   }
 
   private func publishLoginState() {
-    self.isLoggedIn = AppEnvironment.current.currentUser != nil
+    self.isLoggedIn = self.currentUser() != nil
     self.onLoginState?(self.isLoggedIn)
   }
 }
