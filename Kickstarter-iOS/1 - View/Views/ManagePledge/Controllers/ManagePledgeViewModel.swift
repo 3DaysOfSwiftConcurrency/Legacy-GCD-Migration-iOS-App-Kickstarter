@@ -70,7 +70,7 @@ private final class ManagePledgeReadIdentity {
 @MainActor
 public final class ManagePledgeViewModel:
   ManagePledgeViewModelType, ManagePledgeViewModelInputs, ManagePledgeViewModelOutputs {
-  private let feature: PledgeFeature
+  private let pledgeFeature: PledgeFeature
   private let schedule: @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void
   private var projectHasLoaded = false
   private var configuredParams: ManagePledgeViewParamConfigData?
@@ -98,14 +98,14 @@ public final class ManagePledgeViewModel:
   deinit {
     self.backingReadTask?.cancel()
     self.projectReadTask?.cancel()
-    let feature = self.feature, projectRoute = self.projectRoute, backingRoute = self.backingRoute
+    let pledgeFeature = self.pledgeFeature, projectRoute = self.projectRoute, backingRoute = self.backingRoute
     Task { @MainActor in
-      feature.releaseRead(route: projectRoute)
-      feature.releaseRead(route: backingRoute)
+      pledgeFeature.releaseRead(route: projectRoute)
+      pledgeFeature.releaseRead(route: backingRoute)
     }
   }
   public init(
-    feature: PledgeFeature = AppModel.shared.pledgeFeature,
+    pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature,
     schedule: @escaping @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void = { delay, action in
       Task { @MainActor in
         if delay.isInfinite { return }
@@ -115,7 +115,7 @@ public final class ManagePledgeViewModel:
       }
     }
   ) {
-    self.feature = feature
+    self.pledgeFeature = pledgeFeature
     self.schedule = schedule
   }
 
@@ -189,20 +189,20 @@ public final class ManagePledgeViewModel:
 
   private func loadBacking(_ backingID: Int) {
     self.backingReadTask?.cancel()
-    let feature = self.feature
+    let pledgeFeature = self.pledgeFeature
     let route = self.backingRoute
-    let userID = feature.sessionFeature.currentUser?.id
-    let generation = feature.sessionFeature.generation
+    let userID = pledgeFeature.sessionFeature.currentUser?.id
+    let generation = pledgeFeature.sessionFeature.generation
     let id = UUID()
     self.backingReadIdentity.id = id
     self.backingReadTask = Task { [weak self] in
       do {
-        let backing = try await feature.backing(route: route, id: backingID)
+        let backing = try await pledgeFeature.backing(route: route, id: backingID)
         try Task.checkCancellation()
-        guard feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self?.scheduleReadResult { [weak self] in
           guard let self, self.backingReadIdentity.id == id,
-                feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.loadedBacking = backing
           self.presentCombined()
           self.presentBacking(backing)
@@ -211,10 +211,10 @@ public final class ManagePledgeViewModel:
       } catch is CancellationError {
         return
       } catch {
-        guard !Task.isCancelled, feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard !Task.isCancelled, pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self?.scheduleReadResult { [weak self] in
           guard let self, self.backingReadIdentity.id == id,
-                feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.handleLoadError()
           self.scheduleRefreshEnd()
         }
@@ -224,20 +224,20 @@ public final class ManagePledgeViewModel:
 
   private func loadProject(_ param: Param) {
     self.projectReadTask?.cancel()
-    let feature = self.feature
+    let pledgeFeature = self.pledgeFeature
     let route = self.projectRoute
-    let userID = feature.sessionFeature.currentUser?.id
-    let generation = feature.sessionFeature.generation
+    let userID = pledgeFeature.sessionFeature.currentUser?.id
+    let generation = pledgeFeature.sessionFeature.generation
     let id = UUID()
     self.projectReadIdentity.id = id
     self.projectReadTask = Task { [weak self] in
       do {
-        let project = try await feature.project(route: route, param: param)
+        let project = try await pledgeFeature.project(route: route, param: param)
         try Task.checkCancellation()
-        guard feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self?.scheduleReadResult { [weak self] in
           guard let self, self.projectReadIdentity.id == id,
-                feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.projectHasLoaded = true
           if !self.configuredBackingWasProvided, let backingID = project.personalization.backing?.id {
             self.currentBackingParam = .id(backingID)
@@ -249,10 +249,10 @@ public final class ManagePledgeViewModel:
       } catch is CancellationError {
         return
       } catch {
-        guard !Task.isCancelled, feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard !Task.isCancelled, pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self?.scheduleReadResult { [weak self] in
           guard let self, self.projectReadIdentity.id == id,
-                feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.onEndRefreshing?()
           self.handleLoadError()
         }

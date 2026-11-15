@@ -87,7 +87,7 @@ internal final class ManagePledgeViewModelTests: TestCase {
     try await super.setUp()
     MainActor.assumeIsolated {
 
-      self.vm = ManagePledgeViewModel(feature: self.pledgeFeature, schedule: { [clock] delay, action in
+      self.vm = ManagePledgeViewModel(pledgeFeature: self.pledgeFeature, schedule: { [clock] delay, action in
         clock.schedule(delay, action: action)
       })
 
