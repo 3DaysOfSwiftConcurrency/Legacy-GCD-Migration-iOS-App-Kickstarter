@@ -9,7 +9,7 @@ internal final class UpdateViewModel {
   var onSafari: ((URL) -> Void)?
   var onTitle: ((String) -> Void)?
   var onLoadRequest: ((URLRequest) -> Void)?
-  private let feature: DiscussionFeature
+  private let discussionFeature: DiscussionFeature
   private let route = UUID()
   private var project: Project?
   private var currentUpdate: Update?
@@ -19,8 +19,8 @@ internal final class UpdateViewModel {
   private var updateRevision = 0
   private var projectRevision = 0
 
-  internal init(feature: DiscussionFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.discussionFeature
+  internal init(discussionFeature: DiscussionFeature? = nil) {
+    self.discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
   }
 
   internal func configureWith(project: Project, update: Update) {
@@ -33,7 +33,7 @@ internal final class UpdateViewModel {
     self.loaded = true
     guard let update = self.currentUpdate else { return }
     if let url = URL(string: update.urls.web.update) {
-      self.onLoadRequest?(self.feature.preparedWebRequest(from: URLRequest(url: url)))
+      self.onLoadRequest?(self.discussionFeature.preparedWebRequest(from: URLRequest(url: url)))
     }
     self.displayTitle(update)
   }
@@ -45,7 +45,7 @@ internal final class UpdateViewModel {
   internal func decidePolicyFor(navigationAction action: WKNavigationActionData) -> WKNavigationActionPolicy {
     if action.navigationType == .linkActivated {
       if let (param, id) = Navigation.Project.updateWithRequest(action.request) {
-        let request = self.feature.preparedWebRequest(from: action.request)
+        let request = self.discussionFeature.preparedWebRequest(from: action.request)
         self.onLoadRequest?(request)
         self.loadUpdate(project: param, id: id)
       }
@@ -64,7 +64,7 @@ internal final class UpdateViewModel {
   }
 
   private func loadUpdate(project: Param, id: Int) {
-    let request = self.feature.requestUpdate(route: self.route, id: id, project: project)
+    let request = self.discussionFeature.requestUpdate(route: self.route, id: id, project: project)
     self.updateRevision += 1
     let revision = self.updateRevision
     self.updateTask = Task { [weak self] in
@@ -78,11 +78,11 @@ internal final class UpdateViewModel {
     self.projectRevision += 1
     let revision = self.projectRevision
     if param == .id(current.id) || param == .slug(current.slug) {
-      self.feature.cancelProject(route: self.route)
+      self.discussionFeature.cancelProject(route: self.route)
       self.deliverProject(current, refTag: refTag, action: action)
       return
     }
-    let request = self.feature.requestProject(route: self.route, param: param)
+    let request = self.discussionFeature.requestProject(route: self.route, param: param)
     self.projectTask = Task { [weak self] in
       guard let project = await request.value, !Task.isCancelled, let self, self.projectRevision == revision else { return }
       self.deliverProject(project, refTag: refTag, action: action)
@@ -100,9 +100,9 @@ internal final class UpdateViewModel {
   deinit {
     self.updateTask?.cancel()
     self.projectTask?.cancel()
-    let feature = self.feature
+    let discussionFeature = self.discussionFeature
     let route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    Task { @MainActor in discussionFeature.release(route: route) }
   }
 
   func waitForLoads() async { await self.updateTask?.value; await self.projectTask?.value }
