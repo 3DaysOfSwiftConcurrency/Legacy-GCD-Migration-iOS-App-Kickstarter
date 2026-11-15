@@ -21,7 +21,7 @@ final class CancelPledgeViewModelTests: TestCase {
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
     }
   )
-  private lazy var vm: CancelPledgeViewModel = CancelPledgeViewModel(feature: self.feature)
+  private lazy var vm: CancelPledgeViewModel = CancelPledgeViewModel(pledgeFeature: self.feature)
 
   private let cancellationDetailsAttributedTextString = Recording<String>()
   private let cancellationDetailsAttributedTextAttributedString = Recording<NSAttributedString>()

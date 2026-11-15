@@ -21,14 +21,14 @@ final class CancelPledgeViewModel {
   }
 
   var onEvent: ((Event) -> Void)?
-  private let feature: PledgeFeature
+  private let pledgeFeature: PledgeFeature
   private var data: CancelPledgeViewData?
   private var hasLoaded = false
   private var reason: String?
   private var task: Task<Void, Never>?
 
-  init(feature: PledgeFeature = AppModel.shared.pledgeFeature) {
-    self.feature = feature
+  init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature) {
+    self.pledgeFeature = pledgeFeature
   }
 
   func configure(with data: CancelPledgeViewData) {
@@ -54,10 +54,10 @@ final class CancelPledgeViewModel {
     self.onEvent?(.loading(true))
     self.onEvent?(.buttonEnabled(false))
     let input = CancelBackingInput(backingId: data.backingId, cancellationReason: self.reason)
-    let feature = self.feature
+    let pledgeFeature = self.pledgeFeature
     self.task = Task { [weak self] in
       do {
-        try await feature.cancelWithPresentationDelay(input)
+        try await pledgeFeature.cancelWithPresentationDelay(input)
         guard !Task.isCancelled, let self else { return }
         self.onEvent?(.success(Strings.Youve_canceled_your_pledge()))
         self.onEvent?(.loading(false))
