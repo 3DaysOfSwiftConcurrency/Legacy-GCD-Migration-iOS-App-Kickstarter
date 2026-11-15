@@ -13,7 +13,7 @@ final class PledgeManagerWebViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) })
   private lazy var vm: PledgeManagerWebViewModel = PledgeManagerWebViewModel(
-    feature: self.feature)
+    pledgeFeature: self.feature)
 
   fileprivate let dismissViewController = PledgeWebRecorder<Void>()
   fileprivate let goToNativeScreen = PledgeWebRecorder<PledgeManagerNativeNatigationRequest>()

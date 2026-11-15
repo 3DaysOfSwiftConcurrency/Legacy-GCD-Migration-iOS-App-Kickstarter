@@ -771,7 +771,7 @@ extension PledgeFeatureTests {
   }
 
   func testClosingWebScreenSuppressesLateUpdate() async throws {
-    let vm = PledgeManagerWebViewModel(feature: self.feature)
+    let vm = PledgeManagerWebViewModel(pledgeFeature: self.feature)
     var navigation = 0
     vm.onEvent = { event in
       if case .presentUpdateVC = event { navigation += 1 }
