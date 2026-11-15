@@ -100,7 +100,7 @@ final class ThanksViewModel {
     if AppEnvironment.current.countryCode == "DE" {
       self.onEvent?(.showGamesNewsletterOptInAlert(Strings.profile_settings_newsletter_games()))
     }
-    guard let user = AppEnvironment.current.currentUser else { return }
+    guard let user = self.feature.sessionFeature.currentUser else { return }
     self.newsletterTask?.cancel()
     let settings = self.feature.settingsFeature
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
@@ -128,7 +128,7 @@ final class ThanksViewModel {
     }
     AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
     guard let externalId = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else { return }
-    let userId = AppEnvironment.current.currentUser.map { "\($0.id)" } ?? ""
+    let userId = self.feature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
     var extInfo = Array(repeating: "", count: 16)
     extInfo[0] = "i2"
     extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
