@@ -25,13 +25,13 @@ public final class ManageViewPledgeRewardReceivedViewModel {
   public private(set) var rewardReceived = false
   public private(set) var rewardReceivedHidden = true
   @ObservationIgnored public var onChange: (@MainActor () -> Void)?
-  @ObservationIgnored private let feature: PledgeFeature
+  @ObservationIgnored private let pledgeFeature: PledgeFeature
   @ObservationIgnored private let delay: @MainActor () async throws -> Void
   @ObservationIgnored private var observation: Task<Void, Never>?
   private var data: ManageViewPledgeRewardReceivedViewData?
   private var loaded = false
 
-  public init(feature: PledgeFeature = AppModel.shared.pledgeFeature,
+  public init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature,
               delay: @escaping @MainActor () async throws -> Void = {
     let interval = AppEnvironment.current.apiDelayInterval
     switch interval {
@@ -43,7 +43,7 @@ public final class ManageViewPledgeRewardReceivedViewModel {
     @unknown default: break
     }
   }) {
-    self.feature = feature
+    self.pledgeFeature = pledgeFeature
     self.delay = delay
   }
 
@@ -75,10 +75,10 @@ public final class ManageViewPledgeRewardReceivedViewModel {
     AppEnvironment.current.ksrAnalytics.trackRewardReceivedToggled(
       toggleOn: isOn, project: data.project, context: .managePledgeScreen
     )
-    guard let user = self.feature.sessionFeature.currentUser else { return }
-    let generation = self.feature.sessionFeature.generation
-    let sessionUserID = self.feature.sessionFeature.currentUser?.id
-    let task = self.feature.startReceived(projectID: data.project.id, userID: user.id, received: isOn)
+    guard let user = self.pledgeFeature.sessionFeature.currentUser else { return }
+    let generation = self.pledgeFeature.sessionFeature.generation
+    let sessionUserID = self.pledgeFeature.sessionFeature.currentUser?.id
+    let task = self.pledgeFeature.startReceived(projectID: data.project.id, userID: user.id, received: isOn)
     self.observation?.cancel()
     self.observation = Task { [weak self] in
       do {
@@ -86,8 +86,8 @@ public final class ManageViewPledgeRewardReceivedViewModel {
         guard let self else { return }
         try await self.delay()
         try Task.checkCancellation()
-        guard self.feature.sessionFeature.generation == generation,
-              self.feature.sessionFeature.currentUser?.id == sessionUserID else { return }
+        guard self.pledgeFeature.sessionFeature.generation == generation,
+              self.pledgeFeature.sessionFeature.currentUser?.id == sessionUserID else { return }
         self.rewardReceived = backing.backerCompleted ?? false
         self.onChange?()
       } catch { }

@@ -22,7 +22,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
     }
   )
-  private lazy var vm = ManageViewPledgeRewardReceivedViewModel(feature: self.feature, delay: {})
+  private lazy var vm = ManageViewPledgeRewardReceivedViewModel(pledgeFeature: self.feature, delay: {})
 
   func testAttributedText() async {
     let backing = Backing.template
