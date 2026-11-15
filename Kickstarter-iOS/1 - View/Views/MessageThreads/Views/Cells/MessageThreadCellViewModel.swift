@@ -12,8 +12,8 @@ struct MessageThreadPresentation {
   let replyIndicatorHidden: Bool
   let unreadIndicatorHidden: Bool
 
-  init(thread: MessageThread) {
-    let sentByCurrentUser = thread.lastMessage.sender.id == AppEnvironment.current.currentUser?.id
+  init(thread: MessageThread, currentUserID: Int?) {
+    let sentByCurrentUser = thread.lastMessage.sender.id == currentUserID
     self.date = Format.date(secondsInUTC: thread.lastMessage.createdAt, dateStyle: .short, timeStyle: .none)
     self.dateAccessibilityLabel = Format.date(
       secondsInUTC: thread.lastMessage.createdAt, dateStyle: .long, timeStyle: .none
@@ -30,11 +30,18 @@ struct MessageThreadPresentation {
 
 @MainActor
 final class MessageThreadCellViewModel {
+  private let messagingFeature: MessagingFeature
   private var thread: MessageThread?
+
+  init(messagingFeature: MessagingFeature = AppModel.shared.messagingFeature) {
+    self.messagingFeature = messagingFeature
+  }
 
   func configureWith(messageThread: MessageThread) -> MessageThreadPresentation {
     self.thread = messageThread
-    return MessageThreadPresentation(thread: messageThread)
+    return MessageThreadPresentation(
+      thread: messageThread, currentUserID: self.messagingFeature.sessionFeature.currentUser?.id
+    )
   }
 
   func setSelected(_ selected: Bool) {
