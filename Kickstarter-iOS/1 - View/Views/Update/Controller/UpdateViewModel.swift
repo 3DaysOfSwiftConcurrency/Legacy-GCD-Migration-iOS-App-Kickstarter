@@ -33,7 +33,7 @@ internal final class UpdateViewModel {
     self.loaded = true
     guard let update = self.currentUpdate else { return }
     if let url = URL(string: update.urls.web.update) {
-      self.onLoadRequest?(AppEnvironment.current.apiService.preparedRequest(forURL: url))
+      self.onLoadRequest?(self.feature.preparedWebRequest(from: URLRequest(url: url)))
     }
     self.displayTitle(update)
   }
@@ -45,7 +45,7 @@ internal final class UpdateViewModel {
   internal func decidePolicyFor(navigationAction action: WKNavigationActionData) -> WKNavigationActionPolicy {
     if action.navigationType == .linkActivated {
       if let (param, id) = Navigation.Project.updateWithRequest(action.request) {
-        let request = AppEnvironment.current.apiService.preparedRequest(forRequest: action.request)
+        let request = self.feature.preparedWebRequest(from: action.request)
         self.onLoadRequest?(request)
         self.loadUpdate(project: param, id: id)
       }

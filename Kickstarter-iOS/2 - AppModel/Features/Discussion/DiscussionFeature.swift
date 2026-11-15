@@ -315,6 +315,7 @@ public final class DiscussionFeature {
   }
 
   private let sleep: (TimeInterval) async throws -> Void
+  private let prepareWebRequest: (URLRequest) -> URLRequest
   private var pages: [UUID: PageRoute] = [:]
   internal enum PageUpdate {
     case page(UUID, [Comment], Int)
@@ -334,13 +335,21 @@ public final class DiscussionFeature {
   public init(
     sessionFeature: SessionFeature,
     makeProvider: @escaping () -> any DiscussionProvider,
+    prepareWebRequest: @escaping (URLRequest) -> URLRequest = {
+      AppEnvironment.current.apiService.preparedRequest(forRequest: $0)
+    },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.prepareWebRequest = prepareWebRequest
     self.sleep = sleep
+  }
+
+  public func preparedWebRequest(from request: URLRequest) -> URLRequest {
+    self.prepareWebRequest(request)
   }
 
   public func snapshot(for route: UUID) -> PageSnapshot {

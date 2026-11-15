@@ -208,6 +208,23 @@ public final class AppLifecycleFeature {
     visitorCookies().forEach(AppEnvironment.current.cookieStorage.setCookie)
   }
 
+  /// Owns authenticated web-session request construction for UIKit web screens.
+  public var webBaseURL: URL {
+    AppEnvironment.current.apiService.serverConfig.webBaseUrl
+  }
+
+  public func preparedWebRequest(for url: URL) -> URLRequest {
+    AppEnvironment.current.apiService.preparedRequest(forURL: url)
+  }
+
+  public func preparedWebRequest(from request: URLRequest) -> URLRequest {
+    AppEnvironment.current.apiService.preparedRequest(forRequest: request)
+  }
+
+  public func isPreparedWebRequest(_ request: URLRequest) -> Bool {
+    AppEnvironment.current.apiService.isPrepared(request: request)
+  }
+
   public func setRemoteConfigOverride(_ feature: RemoteConfigFeature, enabled: Bool) {
     AppEnvironment.current.userDefaults.remoteConfigFeatureFlags[feature.rawValue] = enabled
   }

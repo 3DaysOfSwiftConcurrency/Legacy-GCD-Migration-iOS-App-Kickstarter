@@ -42,7 +42,7 @@ public final class ProjectUpdatesViewModel {
 
   private func presentProject(_ project: Project) {
     if let url = URL(string: project.urls.web.updates ?? "") {
-      self.onLoadRequest?(AppEnvironment.current.apiService.preparedRequest(forURL: url))
+      self.onLoadRequest?(self.feature.preparedWebRequest(from: URLRequest(url: url)))
     }
     AppEnvironment.current.ksrAnalytics.trackProjectViewed(project, sectionContext: .updates)
   }
@@ -65,7 +65,7 @@ public final class ProjectUpdatesViewModel {
     }
     if action.navigationType == .linkActivated {
       if updates, let url = request.url {
-        self.onLoadRequest?(AppEnvironment.current.apiService.preparedRequest(forURL: url))
+        self.onLoadRequest?(self.feature.preparedWebRequest(from: URLRequest(url: url)))
       } else if !comments && !update && !updates {
         if isPhoneLink(action: action), self.hasPhoneCapability, let url = request.url {
           self.onPhone?(url)
