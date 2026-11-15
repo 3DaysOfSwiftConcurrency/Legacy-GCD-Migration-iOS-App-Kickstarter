@@ -277,7 +277,7 @@ public final class CommentsViewModel: CommentsViewModelType,
 
   public func viewDidLoad() {
     self.loaded = true
-    self.postingUser = AppEnvironment.current.currentUser
+    self.postingUser = self.feature.sessionFeature.currentUser
     if let project = self.latestPostingProject { self.publishComposer(for: project) }
     self.applyConfiguration()
   }

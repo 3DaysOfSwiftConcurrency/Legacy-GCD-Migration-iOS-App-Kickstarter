@@ -47,7 +47,7 @@ final class CommentDialogViewModel {
     if self.enabled == nil { self.publishEnabled(false) }
     self.onEvent?(.loadingHidden(true))
     self.onEvent?(.keyboard(true))
-    self.currentUser = AppEnvironment.current.currentUser
+    self.currentUser = self.discussionFeature.sessionFeature.currentUser
     guard let data = self.data else { return }
     self.activeData = data
     self.onEvent?(.subtitle(data.project.name))
@@ -68,7 +68,7 @@ final class CommentDialogViewModel {
     self.postTask?.cancel()
     let feature = self.discussionFeature
     let sessionID = feature.sessionFeature.generation
-    let userID = AppEnvironment.current.currentUser?.id
+    let userID = feature.sessionFeature.currentUser?.id
     let commentableID = data.update.map { encodeToBase64("FreeformPost-\($0.id)") } ?? data.project.graphID
     let submission = feature.beginPost(
       project: data.project, commentableID: commentableID, parentID: nil, user: user, body: body

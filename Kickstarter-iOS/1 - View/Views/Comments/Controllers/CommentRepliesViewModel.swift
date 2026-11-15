@@ -224,7 +224,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
 
   public func viewDidLoad() {
     self.composerLoaded = true
-    self.composerUser = AppEnvironment.current.currentUser
+    self.composerUser = self.feature.sessionFeature.currentUser
     self.composerFirstResponder = false
     self.applyConfigurationIfLoaded()
   }
