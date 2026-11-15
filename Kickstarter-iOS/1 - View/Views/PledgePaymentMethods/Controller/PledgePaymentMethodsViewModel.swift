@@ -189,7 +189,7 @@ final class PledgePaymentMethodsViewModel {
         var configuration = PaymentSheet.Configuration()
         configuration.merchantDisplayName = Strings.general_accessibility_kickstarter()
         configuration.allowsDelayedPaymentMethods = true
-        configuration.defaultBillingDetails.email = AppEnvironment.current.currentUserEmail
+        configuration.defaultBillingDetails.email = service.paymentsFeature.sessionFeature.currentUserEmail
         self.onEvent?(.goToAddCardViaStripeScreen((envelope.clientSecret, configuration)))
       } catch {
         do { try await sleep(delay) } catch { return }

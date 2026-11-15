@@ -34,6 +34,7 @@ public final class SessionFeature {
 
   private let makeProvider: () -> any SessionProvider
   private let readUser: () -> User?
+  private let readUserEmail: () -> String?
   private let writeUser: @MainActor (User) -> Void
   private let login: @MainActor (AccessTokenEnvelope) -> Void
   private let writeSetup: (GraphUserSetup) -> Void
@@ -43,12 +44,14 @@ public final class SessionFeature {
   private var setupReadRevision = 0
   private var requests: [Identity: Task<User, Error>] = [:]
   public var currentUser: User? { self.readUser() }
+  public var currentUserEmail: String? { self.readUserEmail() }
   public var generation: Int { self.revision }
   public var readGeneration: Int { self.readRevision }
 
   public init(
     makeProvider: @escaping () -> any SessionProvider,
     currentUser: @escaping () -> User? = { AppEnvironment.current.currentUser },
+    currentUserEmail: @escaping () -> String? = { AppEnvironment.current.currentUserEmail },
     updateUser: @escaping @MainActor (User) -> Void = { AppEnvironment.updateCurrentUser($0) },
     login: @escaping @MainActor (AccessTokenEnvelope) -> Void = { AppEnvironment.login($0) },
     updateSetup: @escaping (GraphUserSetup) -> Void = { setup in
@@ -64,6 +67,7 @@ public final class SessionFeature {
   ) {
     self.makeProvider = makeProvider
     self.readUser = currentUser
+    self.readUserEmail = currentUserEmail
     self.writeUser = updateUser
     self.login = login
     self.writeSetup = updateSetup

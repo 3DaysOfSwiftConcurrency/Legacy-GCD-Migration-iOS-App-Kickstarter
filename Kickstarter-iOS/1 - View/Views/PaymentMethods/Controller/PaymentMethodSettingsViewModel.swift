@@ -121,7 +121,7 @@ final class PaymentMethodSettingsViewModel {
         var configuration = PaymentSheet.Configuration()
         configuration.merchantDisplayName = Strings.general_accessibility_kickstarter()
         configuration.allowsDelayedPaymentMethods = true
-        configuration.defaultBillingDetails.email = AppEnvironment.current.currentUserEmail
+        configuration.defaultBillingDetails.email = service.paymentsFeature.sessionFeature.currentUserEmail
         self.onEvent?(.goToPaymentSheet(PaymentSheetSetupData(clientSecret: envelope.clientSecret, configuration: configuration)))
         self.setEditing(false)
       } catch {
