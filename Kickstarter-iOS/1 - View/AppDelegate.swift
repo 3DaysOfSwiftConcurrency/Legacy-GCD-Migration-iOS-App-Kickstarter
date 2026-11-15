@@ -342,6 +342,10 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     self.window?.tintColor = LegacyColors.ksr_create_700.uiColor()
 
+    Task { @MainActor in
+      await AppModel.shared.applicationDidFinishLaunching()
+    }
+
     self.viewModel.inputs.applicationDidFinishLaunching(
       application: application,
       launchOptions: launchOptions

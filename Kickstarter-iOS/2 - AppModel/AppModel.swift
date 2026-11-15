@@ -3,6 +3,8 @@
 public final class AppModel {
   public static let shared = AppModel.live()
 
+  private var hasLaunched: Bool
+
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let appLifecycleFeature: AppLifecycleFeature
   public let creatorDraftsFeature: CreatorDraftsFeature
@@ -46,7 +48,8 @@ public final class AppModel {
     projectDetailsFeature: ProjectDetailsFeature,
     rewardsFeature: RewardsFeature,
     discussionFeature: DiscussionFeature,
-    projectMediaFeature: ProjectMediaFeature
+    projectMediaFeature: ProjectMediaFeature,
+    hasLaunched: Bool = false
   ) {
     self.developerExamplesFeature = developerExamplesFeature
     self.appLifecycleFeature = appLifecycleFeature
@@ -69,6 +72,14 @@ public final class AppModel {
     self.rewardsFeature = rewardsFeature
     self.discussionFeature = discussionFeature
     self.projectMediaFeature = projectMediaFeature
+    self.hasLaunched = hasLaunched
+  }
+
+  /// Starts shared launch work once without making UI construction wait for it.
+  public func applicationDidFinishLaunching() async {
+    guard !self.hasLaunched else { return }
+    self.hasLaunched = true
+    _ = try? await self.appLifecycleFeature.configuration()
   }
 
   public func sessionChanged() {
