@@ -12,7 +12,7 @@ internal final class MessageDialogViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm: MessageDialogViewModel = MessageDialogViewModel(feature: self.feature)
+  private lazy var vm: MessageDialogViewModel = MessageDialogViewModel(messagingFeature: self.feature)
 
   fileprivate let loadingViewIsHidden = Recorder<Bool>()
   fileprivate let postButtonEnabled = Recorder<Bool>()

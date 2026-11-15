@@ -234,7 +234,7 @@ final class MessagingFeatureTests: TestCase {
   }
 
   func testCancelDialogKeepsSendButSuppressesLateSuccess() async throws {
-    let vm = MessageDialogViewModel(feature: self.feature)
+    let vm = MessageDialogViewModel(messagingFeature: self.feature)
     var posted = 0
     vm.onPosted = { _ in posted += 1 }
     vm.configureWith(messageSubject: .project(id: 1, name: "Fixture"), context: .messages)
@@ -250,7 +250,7 @@ final class MessagingFeatureTests: TestCase {
   func testSessionChangeDuringPresentationDelaySuppressesSuccess() async throws {
     let delay = AccountRequestGate<Void>()
     defer { delay.releaseAll() }
-    let vm = MessageDialogViewModel(feature: self.feature, sleep: { _ in try await delay.request() })
+    let vm = MessageDialogViewModel(messagingFeature: self.feature, sleep: { _ in try await delay.request() })
     var delivered = 0
     vm.onPosted = { _ in delivered += 1 }
     vm.configureWith(messageSubject: .project(id: 1, name: "Fixture"), context: .messages)

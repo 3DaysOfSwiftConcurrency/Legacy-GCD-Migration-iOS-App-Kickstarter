@@ -12,7 +12,7 @@ public final class MessageDialogViewModel {
   var onRecipient: ((String) -> Void)?
   var onError: ((String) -> Void)?
 
-  private let feature: MessagingFeature
+  private let messagingFeature: MessagingFeature
   private let sleep: (TimeInterval) async throws -> Void
   private var subject: MessageSubject?
   private var body: String?
@@ -20,12 +20,12 @@ public final class MessageDialogViewModel {
   private var sendTask: Task<Void, Never>?
   private var sendVersion = UUID()
 
-  public convenience init() { self.init(feature: AppModel.shared.messagingFeature) }
-  public init(feature: MessagingFeature, sleep: @escaping (TimeInterval) async throws -> Void = { delay in
+  public convenience init() { self.init(messagingFeature: AppModel.shared.messagingFeature) }
+  public init(messagingFeature: MessagingFeature, sleep: @escaping (TimeInterval) async throws -> Void = { delay in
     if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
     else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
   }) {
-    self.feature = feature
+    self.messagingFeature = messagingFeature
     self.sleep = sleep
   }
 
@@ -68,12 +68,12 @@ public final class MessageDialogViewModel {
     self.sendTask?.cancel()
     let version = UUID()
     self.sendVersion = version
-    let session = self.feature.sessionFeature
+    let session = self.messagingFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     // Admit the write immediately; canceling presentation must not cancel a sent message.
-    let command = self.feature.requestSend(body: body, subject: subject)
+    let command = self.messagingFeature.requestSend(body: body, subject: subject)
     let sleep = self.sleep
     self.sendTask = Task { [weak self] in
       let result = await command.result
