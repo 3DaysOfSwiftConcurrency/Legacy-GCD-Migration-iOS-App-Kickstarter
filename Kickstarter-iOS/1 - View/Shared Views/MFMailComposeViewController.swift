@@ -15,7 +15,7 @@ internal extension MFMailComposeViewController {
 
     let app = Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? ""
     let os = UIDevice.current.systemVersion
-    let user = (AppEnvironment.current.currentUser?.id).flatMap(String.init) ?? "Logged out"
+    let user = (AppModel.shared.appLifecycleFeature.sessionFeature.currentUser?.id).flatMap(String.init) ?? "Logged out"
 
     let body = "\(Strings.support_email_body())\n\(user) | \(app) | \(os) | \(deviceModel())\n"
     mcvc.setMessageBody(body, isHTML: false)
