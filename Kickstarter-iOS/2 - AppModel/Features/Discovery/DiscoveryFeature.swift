@@ -199,10 +199,10 @@ public final class DiscoveryFeature {
     var parameters = parameters
     parameters.sort = sort
     if !force, let request = page.request, request.cursor == nil,
-       page.userID == AppEnvironment.current.currentUser?.id,
+       page.userID == self.currentUser()?.id,
        page.snapshot.parameters == parameters { return request.task }
     page.request?.task.cancel()
-    page.userID = AppEnvironment.current.currentUser?.id
+    page.userID = self.currentUser()?.id
     page.snapshot.parameters = parameters
     page.cursor = nil
     page.snapshot.hasMore = false
@@ -212,7 +212,7 @@ public final class DiscoveryFeature {
   @discardableResult
   internal func requestNextPage(sort: DiscoveryParams.Sort) -> Task<Void, Never>? {
     let page = self.page(for: sort)
-    guard page.userID == AppEnvironment.current.currentUser?.id else { return nil }
+    guard page.userID == self.currentUser()?.id else { return nil }
     if let request = page.request { return request.task }
     guard let parameters = page.snapshot.parameters, let cursor = page.cursor,
           page.snapshot.hasMore else { return nil }
@@ -223,7 +223,8 @@ public final class DiscoveryFeature {
     sort: DiscoveryParams.Sort, page: Page, parameters: DiscoveryParams, cursor: String?
   ) -> Task<Void, Never> {
     let id = UUID()
-    let requestedUserID = AppEnvironment.current.currentUser?.id
+    let currentUser = self.currentUser
+    let requestedUserID = currentUser()?.id
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     page.snapshot.isLoading = true
     page.snapshot.error = nil
@@ -237,7 +238,7 @@ public final class DiscoveryFeature {
       }
       do {
         try Task.checkCancellation()
-        guard AppEnvironment.current.currentUser?.id == requestedUserID else { return }
+        guard currentUser()?.id == requestedUserID else { return }
         let response: Result<DiscoveryEnvelope, Error>
         do { response = .success(try await provider.page(parameters: parameters, cursor: cursor)) }
         catch is CancellationError { return }
@@ -246,7 +247,7 @@ public final class DiscoveryFeature {
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, page.request?.id == id,
-              AppEnvironment.current.currentUser?.id == requestedUserID else { return }
+              currentUser()?.id == requestedUserID else { return }
         let envelope = try response.get()
         page.snapshot.projects = ((cursor == nil ? [] : page.snapshot.projects) + envelope.projects).distincts()
         page.cursor = envelope.urls.api.moreProjects
@@ -254,7 +255,7 @@ public final class DiscoveryFeature {
         self.emit(.projects(sort, page.snapshot.projects))
       } catch {
         guard page.request?.id == id, !Task.isCancelled, !(error is CancellationError),
-              AppEnvironment.current.currentUser?.id == requestedUserID else { return }
+              currentUser()?.id == requestedUserID else { return }
         page.snapshot.error = (error as? ErrorEnvelope) ?? .couldNotParseJSON
       }
     }
@@ -268,25 +269,26 @@ public final class DiscoveryFeature {
     let page = self.page(for: sort)
     page.activityRequest?.task.cancel()
     let id = UUID()
-    let requestedUserID = AppEnvironment.current.currentUser?.id
+    let currentUser = self.currentUser
+    let requestedUserID = currentUser()?.id
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     page.snapshot.activityError = nil
     let task = Task { @MainActor [weak self, provider, sleep] in
       defer { if page.activityRequest?.id == id { page.activityRequest = nil } }
       do {
         try Task.checkCancellation()
-        guard AppEnvironment.current.currentUser?.id == requestedUserID else { return }
+        guard currentUser()?.id == requestedUserID else { return }
         guard let envelope = try await provider.activitySample() else { return }
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, page.activityRequest?.id == id,
-              AppEnvironment.current.currentUser?.id == requestedUserID else { return }
+              currentUser()?.id == requestedUserID else { return }
         page.snapshot.activitySample = envelope.activities
         self.emit(.activities(sort, envelope.activities))
       } catch {
         // Legacy sample failures leave the existing sample unchanged.
         guard page.activityRequest?.id == id, !Task.isCancelled, !(error is CancellationError),
-              AppEnvironment.current.currentUser?.id == requestedUserID else { return }
+              currentUser()?.id == requestedUserID else { return }
         page.snapshot.activityError = (error as? ErrorEnvelope) ?? .couldNotParseJSON
       }
     }
