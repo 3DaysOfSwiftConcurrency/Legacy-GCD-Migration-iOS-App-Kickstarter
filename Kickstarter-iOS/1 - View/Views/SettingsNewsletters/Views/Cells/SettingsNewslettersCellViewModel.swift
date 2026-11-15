@@ -10,17 +10,17 @@ public final class SettingsNewsletterCellViewModel {
   public var onOptIn: ((String) -> Void)?
   public var onError: ((String) -> Void)?
   public var onUserUpdated: ((User) -> Void)?
-  private let feature: SettingsFeature
+  private let settingsFeature: SettingsFeature
   private let sleep: (TimeInterval) async throws -> Void
   private var user: User?
   private var newsletter: Newsletter?
   private var revision = 0
   private var saves: [UUID: Task<Void, Never>] = [:]
 
-  public init(feature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  public init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.feature = feature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.sleep = sleep
   }
 
@@ -51,13 +51,13 @@ public final class SettingsNewsletterCellViewModel {
     self.revision += 1
     let revision = self.revision
     let id = UUID()
-    let feature = self.feature
+    let settingsFeature = self.settingsFeature
     let sleep = self.sleep
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
-      do { result = .success(try await feature.save(changes, from: user)) }
+      do { result = .success(try await settingsFeature.save(changes, from: user)) }
       catch { result = .failure(error) }
       do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }
