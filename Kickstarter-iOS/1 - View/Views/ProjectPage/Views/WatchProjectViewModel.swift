@@ -65,7 +65,7 @@ final class WatchProjectViewModel {
       )
     }
     guard self.isReady else { return }
-    guard AppEnvironment.current.currentUser != nil else {
+    guard self.feature.sessionFeature.currentUser != nil else {
       self.pendingLoginSelection = selected
       self.onEvent?(.login)
       return
