@@ -25,6 +25,8 @@ public final class SettingsNotificationsViewModel {
     self.sleep = sleep
   }
 
+  public var currentUser: User? { self.feature.sessionFeature.currentUser }
+
   public func viewDidLoad() {
     if let user = self.feature.sessionFeature.currentUser { self.displayInitial(user) }
     let id = UUID()

@@ -125,7 +125,7 @@ extension SettingsNotificationsViewController: UITableViewDelegate {
   func tableView(_: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
     guard let sectionType = dataSource.sectionType(
       section: section,
-      user: AppEnvironment.current.currentUser
+      user: self.viewModel.currentUser
     ) else {
       return 0.0
     }
@@ -140,7 +140,7 @@ extension SettingsNotificationsViewController: UITableViewDelegate {
   func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
     guard let sectionType = dataSource.sectionType(
       section: section,
-      user: AppEnvironment.current.currentUser
+      user: self.viewModel.currentUser
     ) else {
       return nil
     }
