@@ -215,7 +215,10 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   PostCampaignCheckoutViewModelOutputs {
   let stripeIntentService: StripeIntentServiceType
 
-  public init(stripeIntentService: StripeIntentServiceType, feature: PledgeFeature = AppModel.shared.pledgeFeature) {
+  public init(
+    stripeIntentService: StripeIntentServiceType,
+    pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature
+  ) {
     self.stripeIntentService = stripeIntentService
 
     let ctaState = self.ctaState
@@ -268,23 +271,23 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       self.activeCheckoutData = data
       self.paymentIntentTask?.cancel()
       self.checkoutTask?.cancel()
-      let userID = feature.sessionFeature.currentUser?.id
-      let generation = feature.sessionFeature.generation
+      let userID = pledgeFeature.sessionFeature.currentUser?.id
+      let generation = pledgeFeature.sessionFeature.generation
       let id = UUID()
       self.checkoutIdentity.id = id
-      let request = feature.startOpenCheckout(input)
+      let request = pledgeFeature.startOpenCheckout(input)
       self.checkoutTask = Task { [weak self] in
         do {
           let checkout = try await request.value
           try await waitForPostCampaignPresentationDelay()
           guard !Task.isCancelled, let self, self.checkoutIdentity.id == id,
-                feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.deliverCheckout?(.success(checkout))
         } catch {
           guard !Task.isCancelled, !(error is CancellationError) else { return }
           do { try await waitForPostCampaignPresentationDelay() } catch { return }
           guard let self, self.checkoutIdentity.id == id,
-                feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.deliverCheckout?(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))
         }
       }
@@ -292,16 +295,16 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     self.startCompletion = { [weak self] input in
       guard let self else { return }
       self.completionTask?.cancel()
-      let userID = feature.sessionFeature.currentUser?.id
-      let generation = feature.sessionFeature.generation
+      let userID = pledgeFeature.sessionFeature.currentUser?.id
+      let generation = pledgeFeature.sessionFeature.generation
       let id = UUID()
       self.completionIdentity.id = id
-      let request = feature.startCompleteCheckout(input)
+      let request = pledgeFeature.startCompleteCheckout(input)
       self.completionTask = Task { [weak self] in
         do {
           try await request.value
           guard !Task.isCancelled, let self, self.completionIdentity.id == id,
-                feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.onProcessingHidden?(true)
           if let data = self.activeCheckoutData, let reward = data.rewards.first {
             self.onCheckoutComplete?((data.project, reward, nil, PostCampaignAmounts(data).total))
@@ -309,7 +312,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
           self.onProcessingHidden?(true)
         } catch {
           guard !Task.isCancelled, !(error is CancellationError), let self, self.completionIdentity.id == id,
-                feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.onProcessingHidden?(true)
           self.onCheckoutError?((error as? ErrorEnvelope) ?? .couldNotParseJSON)
         }
@@ -319,11 +322,11 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     cardState.onSubmit = { [weak self] checkoutID, card, secret in
       assert(card.stripePaymentMethodId.isSome && card.stripePaymentMethodId != "",
              "Payment method ID should not be missing in a late pledge context.")
-      self?.cardValidation.start(feature: feature, checkoutID: checkoutID,
+      self?.cardValidation.start(feature: pledgeFeature, checkoutID: checkoutID,
                                  sourceID: card.stripePaymentMethodId ?? "", secret: secret)
     }
     appleState.onValidate = { [weak self] checkoutID, paymentMethodID, secret in
-      self?.applePayValidation.start(feature: feature, checkoutID: checkoutID,
+      self?.applePayValidation.start(feature: pledgeFeature, checkoutID: checkoutID,
                                      sourceID: paymentMethodID, secret: secret)
     }
     self.deliverCheckout = { [weak self] result in
@@ -357,19 +360,19 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
           pledgeTotal: PostCampaignAmounts(data).total
         )
         let checkoutIdentity = self.checkoutIdentity.id
-        let userID = feature.sessionFeature.currentUser?.id
-        let generation = feature.sessionFeature.generation
+        let userID = pledgeFeature.sessionFeature.currentUser?.id
+        let generation = pledgeFeature.sessionFeature.generation
         self.paymentIntentTask = Task { [weak self] in
           do {
             let intent = try await request.value
             guard !Task.isCancelled, let self, self.checkoutIdentity.id == checkoutIdentity,
-                  feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                  pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
             cardState.setIntentSecret(intent.clientSecret)
             appleState.setIntentSecret(intent.clientSecret)
           } catch {
             guard !Task.isCancelled, !(error is CancellationError), let self,
                   self.checkoutIdentity.id == checkoutIdentity,
-                  feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                  pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
             self.onProcessingHidden?(true)
           }
         }

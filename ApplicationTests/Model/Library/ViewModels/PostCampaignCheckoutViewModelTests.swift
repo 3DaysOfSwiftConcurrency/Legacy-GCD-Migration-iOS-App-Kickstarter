@@ -29,7 +29,7 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
     })
   private lazy var vm = PostCampaignCheckoutViewModel(
-    stripeIntentService: MockStripeIntentService(), feature: self.pledgeFeature)
+    stripeIntentService: MockStripeIntentService(), pledgeFeature: self.pledgeFeature)
   private let mockStripeIntentService = MockStripeIntentService()
 
   private let checkoutResponse = CreateCheckoutEnvelope(
@@ -63,7 +63,7 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
     MainActor.assumeIsolated {
 
       self.vm = PostCampaignCheckoutViewModel(
-        stripeIntentService: self.mockStripeIntentService, feature: self.pledgeFeature)
+        stripeIntentService: self.mockStripeIntentService, pledgeFeature: self.pledgeFeature)
 
       self.vm.outputs.onApplePayAuthorization = { [weak self] in self?.goToApplePayPaymentAuthorization.record($0) }
       self.vm.outputs.onCheckoutComplete = { [weak self] in self?.checkoutComplete.record($0) }
