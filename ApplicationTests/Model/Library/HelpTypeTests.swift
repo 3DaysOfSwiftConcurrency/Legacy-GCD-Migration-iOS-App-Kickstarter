@@ -22,14 +22,14 @@ final class HelpTypeTests: XCTestCase {
     var url = AppEnvironment.current.apiService.serverConfig.webBaseUrl
     url.appendPathComponent("help/community")
 
-    XCTAssertEqual(HelpType.helpType(from: url), .community)
+    XCTAssertEqual(HelpType.helpType(from: url, baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl), .community)
   }
 
   func testHelpTypeFromUrl_Nil() {
     var url = AppEnvironment.current.apiService.serverConfig.webBaseUrl
     url.appendPathComponent("foobar")
 
-    XCTAssertNil(HelpType.helpType(from: url))
+    XCTAssertNil(HelpType.helpType(from: url, baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl))
   }
 
   func testTitle() {

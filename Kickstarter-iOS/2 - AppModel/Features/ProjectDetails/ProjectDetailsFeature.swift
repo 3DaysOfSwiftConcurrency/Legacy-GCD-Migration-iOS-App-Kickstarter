@@ -60,6 +60,9 @@ public struct AsyncProjectDetailsProvider: ProjectDetailsProvider {
 /// it. Cancellation invalidates publication even if a provider completes late.
 @MainActor
 public final class ProjectDetailsFeature {
+  public func helpType(for url: URL) -> HelpType? {
+    HelpType.helpType(from: url, baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl)
+  }
   public func recordThirdPartyEvent(_ input: KsApi.TriggerThirdPartyEventInput) {
     _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
   }

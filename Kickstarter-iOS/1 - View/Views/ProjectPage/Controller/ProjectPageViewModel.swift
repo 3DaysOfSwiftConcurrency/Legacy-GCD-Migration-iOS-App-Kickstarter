@@ -623,7 +623,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   }
 
   public func projectTabDisclaimerCellDidTapURL(_ url: URL) {
-    if let help = HelpType.helpType(from: url) { self.onShowHelp?(help) }
+    if let help = self.projectDetailsFeature.helpType(for: url) { self.onShowHelp?(help) }
   }
 
   public func projectNavigationSelectorViewDidSelect(index: Int) {
@@ -652,7 +652,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   }
 
   public func projectRisksDisclaimerCellDidTapURL(_ url: URL) {
-    if let help = HelpType.helpType(from: url) { self.onShowHelp?(help) }
+    if let help = self.projectDetailsFeature.helpType(for: url) { self.onShowHelp?(help) }
   }
 
   public func tappedComments() {

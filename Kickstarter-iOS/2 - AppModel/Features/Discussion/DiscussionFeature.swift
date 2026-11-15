@@ -46,6 +46,10 @@ public struct AsyncDiscussionProvider: DiscussionProvider {
 /// never an admitted write: server cancellation cannot roll back a comment.
 @MainActor
 public final class DiscussionFeature {
+  public func helpType(for url: URL) -> HelpType? {
+    HelpType.helpType(from: url, baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl)
+  }
+
   public enum Source: Equatable {
     case project(String)
     case update(String)

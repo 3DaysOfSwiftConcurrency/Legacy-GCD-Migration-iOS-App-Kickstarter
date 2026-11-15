@@ -124,6 +124,9 @@ public final class PledgeFeature {
   public func isKickstarterWebRequest(_ request: URLRequest) -> Bool {
     request.url?.host() == self.webBaseURL().host()
   }
+  public func helpType(for url: URL) -> HelpType? {
+    HelpType.helpType(from: url, baseURL: self.webBaseURL())
+  }
 
   private struct Session: Hashable {
     let userID: Int?

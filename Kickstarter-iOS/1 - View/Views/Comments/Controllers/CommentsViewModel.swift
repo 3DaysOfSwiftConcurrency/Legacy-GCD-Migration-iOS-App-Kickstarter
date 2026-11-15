@@ -227,7 +227,7 @@ public final class CommentsViewModel: CommentsViewModelType,
   }
 
   public func commentRemovedCellDidTapURL(_ url: URL) {
-    if let type = HelpType.helpType(from: url) { self.onShowHelp?(type) }
+    if let type = self.feature.helpType(for: url) { self.onShowHelp?(type) }
   }
 
   public func commentCellDidTapReply(comment: Comment) {

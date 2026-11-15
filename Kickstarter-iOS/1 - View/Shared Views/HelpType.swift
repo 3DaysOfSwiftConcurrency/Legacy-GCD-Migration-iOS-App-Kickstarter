@@ -15,16 +15,10 @@ public enum HelpType: SettingsCellTypeProtocol, CaseIterable, Equatable {
   case aiDisclosure
   case prohibitedItems
 
-  @MainActor
-  public static func helpType(from url: URL) -> HelpType? {
-    let helpType = HelpType.allCases.filter { helpType in
-      url.absoluteString == helpType.url(
-        withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl
-      )?.absoluteString
+  public static func helpType(from url: URL, baseURL: URL) -> HelpType? {
+    HelpType.allCases.first {
+      url.absoluteString == $0.url(withBaseUrl: baseURL)?.absoluteString
     }
-    .first
-
-    return helpType
   }
 
   public var accessibilityTraits: UIAccessibilityTraits {

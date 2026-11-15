@@ -3,6 +3,7 @@ import KsApi
 
 @MainActor
 public final class PledgeViewCTAContainerViewModel {
+  private let pledgeFeature: PledgeFeature
   public struct Display {
     let applePayButtonIsHidden: Bool
     let continueButtonIsHidden: Bool
@@ -17,7 +18,9 @@ public final class PledgeViewCTAContainerViewModel {
   public var onSubmit: (() -> Void)?
   public var onHelp: ((HelpType) -> Void)?
 
-  public init() {}
+  public init(pledgeFeature: PledgeFeature? = nil) {
+    self.pledgeFeature = pledgeFeature ?? AppModel.shared.pledgeFeature
+  }
 
   public func configureWith(value: PledgeViewCTAContainerViewData) -> Display {
     Display(
@@ -34,7 +37,7 @@ public final class PledgeViewCTAContainerViewModel {
   public func continueButtonTapped() { self.onContinue?() }
   public func submitButtonTapped() { self.onSubmit?() }
   public func tapped(_ url: URL) {
-    guard let helpType = HelpType.helpType(from: url) else { return }
+    guard let helpType = self.pledgeFeature.helpType(for: url) else { return }
     self.onHelp?(helpType)
   }
 }
