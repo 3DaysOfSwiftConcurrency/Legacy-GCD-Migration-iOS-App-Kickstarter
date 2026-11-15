@@ -44,7 +44,7 @@ public final class DiscoveryFiltersViewModel {
   func viewDidLoad() {
     if !self.loaded {
       self.loaded = true
-      self.initialTopFilters = topFilters(forUser: AppEnvironment.current.currentUser)
+      self.initialTopFilters = self.discoveryFeature.topFilters()
       self.prepareInitialRowIfReady()
       if let rows = self.currentTopRows { self.onTopRows?(rows, self.categoryId) }
     }
@@ -169,31 +169,6 @@ private func toggleExpansion(
             !rowToToggle.isExpanded
         )
     }
-}
-
-private func topFilters(forUser user: User?) -> [DiscoveryParams] {
-  var filters: [DiscoveryParams] = []
-
-  filters.append(.defaults |> DiscoveryParams.lens.includePOTD .~ true)
-  filters.append(.defaults |> DiscoveryParams.lens.staffPicks .~ true)
-
-  guard user != nil else {
-    return filters
-  }
-
-  filters.append(.defaults |> DiscoveryParams.lens.starred .~ true)
-
-  if user?.optedOutOfRecommendations != true {
-    filters.append(
-      .defaults
-        |> DiscoveryParams.lens.recommended .~ true
-        |> DiscoveryParams.lens.backed .~ false
-    )
-  }
-
-  filters.append(.defaults |> DiscoveryParams.lens.social .~ true)
-
-  return filters
 }
 
 @MainActor

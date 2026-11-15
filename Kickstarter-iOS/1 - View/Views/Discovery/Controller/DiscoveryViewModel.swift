@@ -58,7 +58,7 @@ final class DiscoveryViewModel {
   func viewWillAppear(animated _: Bool) {
     guard !self.didAppear || self.recommendationsChanged else { return }
     self.didAppear = true
-    let params = DiscoveryFeature.initialParameters(for: AppEnvironment.current.currentUser)
+    let params = self.discoveryFeature.initialParameters()
     guard self.initialParameters != params else { return }
     self.initialParameters = params
     self.selectParameters(params)

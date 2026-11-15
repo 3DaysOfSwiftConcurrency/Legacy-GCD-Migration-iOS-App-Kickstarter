@@ -50,6 +50,7 @@ public final class DiscoveryFeature {
   private var pages: [String: Page] = [:]
   private let provider: any DiscoveryProvider
   private let sleep: @MainActor (TimeInterval) async throws -> Void
+  private let currentUser: @MainActor () -> User?
   internal enum Update {
     case projects(DiscoveryParams.Sort, [Project])
     case loading(DiscoveryParams.Sort, Bool)
@@ -121,6 +122,29 @@ public final class DiscoveryFeature {
     return DiscoveryParams.recommendedDefaults
   }
 
+  public func initialParameters() -> DiscoveryParams {
+    Self.initialParameters(for: self.currentUser())
+  }
+
+  public func topFilters() -> [DiscoveryParams] {
+    let user = self.currentUser()
+    var filters = [
+      .defaults |> DiscoveryParams.lens.includePOTD .~ true,
+      .defaults |> DiscoveryParams.lens.staffPicks .~ true
+    ]
+    guard let user else { return filters }
+    filters.append(.defaults |> DiscoveryParams.lens.starred .~ true)
+    if user.optedOutOfRecommendations != true {
+      filters.append(
+        .defaults
+          |> DiscoveryParams.lens.recommended .~ true
+          |> DiscoveryParams.lens.backed .~ false
+      )
+    }
+    filters.append(.defaults |> DiscoveryParams.lens.social .~ true)
+    return filters
+  }
+
   /// Selection is domain state; screen readiness still decides when to publish it.
   public func selectFilter(_ parameters: DiscoveryParams) {
     self.selectedParameters = parameters
@@ -132,10 +156,12 @@ public final class DiscoveryFeature {
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
       try Task.checkCancellation()
-    }
+    },
+    currentUser: @escaping @MainActor () -> User? = { AppEnvironment.current.currentUser }
   ) {
     self.provider = provider
     self.sleep = sleep
+    self.currentUser = currentUser
   }
 
   public func snapshot(for sort: DiscoveryParams.Sort) -> PageSnapshot {
