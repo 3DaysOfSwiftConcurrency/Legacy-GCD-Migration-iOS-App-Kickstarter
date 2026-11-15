@@ -9,21 +9,21 @@ extension Project: Identifiable {}
 @MainActor @Observable
 internal final class PaginationExampleViewModel {
   typealias ProjectData = DeveloperExamplesFeature.ProjectData
-  private let feature: DeveloperExamplesFeature
+  private let developerExamplesFeature: DeveloperExamplesFeature
   private let route = UUID()
-  var projects: [ProjectData] { self.feature.pageSnapshot(route: self.route).projects }
-  var showProgressView: Bool { self.feature.pageSnapshot(route: self.route).showProgressView }
-  var statusText: String { self.feature.pageSnapshot(route: self.route).statusText }
+  var projects: [ProjectData] { self.developerExamplesFeature.pageSnapshot(route: self.route).projects }
+  var showProgressView: Bool { self.developerExamplesFeature.pageSnapshot(route: self.route).showProgressView }
+  var statusText: String { self.developerExamplesFeature.pageSnapshot(route: self.route).statusText }
 
-  init(feature: DeveloperExamplesFeature? = nil) {
-    self.feature = feature ?? AppModel.shared.developerExamplesFeature
+  init(developerExamplesFeature: DeveloperExamplesFeature? = nil) {
+    self.developerExamplesFeature = developerExamplesFeature ?? AppModel.shared.developerExamplesFeature
   }
   deinit {
-    let feature = self.feature, route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    let developerExamplesFeature = self.developerExamplesFeature, route = self.route
+    Task { @MainActor in developerExamplesFeature.release(route: route) }
   }
-  func load() async { await self.feature.loadFirstPage(route: self.route) }
-  func refresh() async { await self.feature.loadFirstPage(route: self.route, refreshing: true) }
-  func loadNextPage() async { await self.feature.loadNextPage(route: self.route) }
-  func suspend() { self.feature.suspend(route: self.route) }
+  func load() async { await self.developerExamplesFeature.loadFirstPage(route: self.route) }
+  func refresh() async { await self.developerExamplesFeature.loadFirstPage(route: self.route, refreshing: true) }
+  func loadNextPage() async { await self.developerExamplesFeature.loadNextPage(route: self.route) }
+  func suspend() { self.developerExamplesFeature.suspend(route: self.route) }
 }

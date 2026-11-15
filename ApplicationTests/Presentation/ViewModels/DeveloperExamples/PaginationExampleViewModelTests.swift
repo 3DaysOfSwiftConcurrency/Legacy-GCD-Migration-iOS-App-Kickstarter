@@ -9,7 +9,7 @@ import XCTest
 final class PaginationExampleViewModelTests: XCTestCase {
   func testLoadRefreshAndPaginationDisplayExistingMessages() async throws {
     let provider = ExamplesPresentationProvider()
-    let vm = PaginationExampleViewModel(feature: provider.feature())
+    let vm = PaginationExampleViewModel(developerExamplesFeature: provider.feature())
     await vm.load()
     XCTAssertEqual(vm.projects.map(\.id), [Project.template.id])
     XCTAssertEqual(vm.statusText, "Got 1 results; more are available")
@@ -24,7 +24,7 @@ final class PaginationExampleViewModelTests: XCTestCase {
   func testFailureAndRetryAreVisible() async {
     let provider = ExamplesPresentationProvider()
     provider.pageResult = .failure(ErrorEnvelope.graphError("Offline"))
-    let vm = PaginationExampleViewModel(feature: provider.feature())
+    let vm = PaginationExampleViewModel(developerExamplesFeature: provider.feature())
     await vm.load()
     XCTAssertEqual(vm.statusText, "Error: Offline")
     XCTAssertFalse(vm.showProgressView)
@@ -34,7 +34,7 @@ final class PaginationExampleViewModelTests: XCTestCase {
   }
   func testTerminalPageStopsSpinnerAndDoesNotStartAnotherRequest() async {
     let provider = ExamplesPresentationProvider()
-    let vm = PaginationExampleViewModel(feature: provider.feature())
+    let vm = PaginationExampleViewModel(developerExamplesFeature: provider.feature())
     await vm.load()
     provider.pageResult = .success(.template |> DiscoveryEnvelope.lens.projects .~ [])
     await vm.loadNextPage()
