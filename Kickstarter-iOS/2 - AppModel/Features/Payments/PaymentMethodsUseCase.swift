@@ -14,12 +14,15 @@ public final class PaymentMethodsUseCase {
   private var data: PledgeViewData?
   private var lastLogin: Bool?
   private var lastSelectedCard: PaymentSourceSelected?
+  private let currentUser: @MainActor () -> User?
 
-  public init() {}
+  public init(currentUser: @escaping @MainActor () -> User? = { AppEnvironment.current.currentUser }) {
+    self.currentUser = currentUser
+  }
 
   public func configure(_ data: PledgeViewData) {
     self.data = data
-    self.lastLogin = AppEnvironment.current.currentUser != nil
+    self.lastLogin = self.currentUser() != nil
     self.sendConfigurationIfAvailable()
     self.publishHidden()
     self.selectedPaymentSource = nil
@@ -48,7 +51,7 @@ public final class PaymentMethodsUseCase {
 
   private func sendConfigurationIfAvailable() {
     guard let data = self.data, !data.context.paymentMethodsViewHidden,
-          let reward = data.rewards.first, let user = AppEnvironment.current.currentUser else { return }
+          let reward = data.rewards.first, let user = self.currentUser() else { return }
     self.onConfiguration?((user, data.project, "", reward, data.context, data.refTag))
   }
 
