@@ -13,7 +13,7 @@ public final class PledgeOverTimeUseCase {
   var onLoading: ((Bool) -> Void)?
   var onConfig: ((PledgePaymentPlansAndSelectionData?) -> Void)?
   var onRequest: ((String, String) -> Void)?
-  private let feature: PledgeFeature
+  private let pledgeFeature: PledgeFeature
   private let route = UUID()
   private var project: Project?
   private var total: Double?
@@ -26,7 +26,9 @@ public final class PledgeOverTimeUseCase {
   private var planRevision = UUID()
   @ObservationIgnored private var planTask: Task<Void, Never>?
 
-  init(feature: PledgeFeature = AppModel.shared.pledgeFeature) { self.feature = feature }
+  init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature) {
+    self.pledgeFeature = pledgeFeature
+  }
 
   func updateProject(_ project: Project) {
     self.project = project
@@ -69,7 +71,7 @@ public final class PledgeOverTimeUseCase {
     self.planTask?.cancel()
     let revision = UUID()
     self.planRevision = revision
-    let command = self.feature.requestPaymentPlan(route: self.route, slug: project.slug, amount: amount)
+    let command = self.pledgeFeature.requestPaymentPlan(route: self.route, slug: project.slug, amount: amount)
     self.planTask = Task { [weak self] in
       do {
         let plan = try await command.value
@@ -117,8 +119,8 @@ public final class PledgeOverTimeUseCase {
   func waitForPlan() async { await self.planTask?.value }
   deinit {
     self.planTask?.cancel()
-    let feature = self.feature
+    let pledgeFeature = self.pledgeFeature
     let route = self.route
-    Task { @MainActor in feature.releaseRead(route: route) }
+    Task { @MainActor in pledgeFeature.releaseRead(route: route) }
   }
 }

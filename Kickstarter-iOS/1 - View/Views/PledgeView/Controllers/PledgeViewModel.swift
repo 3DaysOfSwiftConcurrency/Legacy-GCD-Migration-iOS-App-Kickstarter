@@ -146,7 +146,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
 
     // MARK: Pledge Over Time
 
-    self.pledgeOverTimeUseCase = PledgeOverTimeUseCase(feature: feature)
+    self.pledgeOverTimeUseCase = PledgeOverTimeUseCase(pledgeFeature: feature)
     let planUseCase = self.pledgeOverTimeUseCase
     planUseCase.onLoading = { formState.setPlanLoading($0) }
 

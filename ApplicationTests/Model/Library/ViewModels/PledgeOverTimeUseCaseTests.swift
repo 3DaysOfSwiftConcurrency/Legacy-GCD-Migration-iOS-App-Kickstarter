@@ -29,7 +29,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
     try await super.setUp()
 
     MainActor.assumeIsolated {
-      self.useCase = PledgeOverTimeUseCase(feature: self.feature)
+      self.useCase = PledgeOverTimeUseCase(pledgeFeature: self.feature)
       self.useCase!.onRequest = { [weak self] slug, amount in self?.buildPaymentPlanInputs.record((slug, amount)) }
       self.useCase!.onLoading = { [weak self] in self?.pledgeOverTimeIsLoading.record($0) }
       self.useCase!.onShow = { [weak self] in self?.showPledgeOverTimeUI.record($0) }
