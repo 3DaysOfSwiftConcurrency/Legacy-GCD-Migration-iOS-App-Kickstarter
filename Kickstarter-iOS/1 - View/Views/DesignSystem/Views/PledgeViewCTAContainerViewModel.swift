@@ -40,4 +40,11 @@ public final class PledgeViewCTAContainerViewModel {
     guard let helpType = self.pledgeFeature.helpType(for: url) else { return }
     self.onHelp?(helpType)
   }
+
+  func termsLinks() -> (terms: String, privacy: String, cookie: String)? {
+    guard let terms = self.pledgeFeature.helpURL(.terms),
+          let privacy = self.pledgeFeature.helpURL(.privacy),
+          let cookie = self.pledgeFeature.helpURL(.cookie) else { return nil }
+    return (terms, privacy, cookie)
+  }
 }

@@ -79,7 +79,7 @@ final class PledgeViewCTAContainerView: UIView {
     // Do this once, on `viewDidLoad`, instead of in `bindStyles`.
     // This fixes a crash when `bindStyles` is triggered by a background
     // trait update during app snapshotting.
-    self.termsTextView.attributedText = attributedTermsText()
+    self.termsTextView.attributedText = attributedTermsText(links: self.viewModel.termsLinks())
     self.pledgeImmediatelyLabel.attributedText = pledgeImmediatelyText()
   }
 
@@ -287,19 +287,15 @@ private func termsTextViewStyle(_ textView: UITextView) {
 }
 
 @MainActor
-private func attributedTermsText() -> NSAttributedString? {
-  let baseUrl = AppEnvironment.current.apiService.serverConfig.webBaseUrl
-
+private func attributedTermsText(links: (terms: String, privacy: String, cookie: String)?) -> NSAttributedString? {
   guard
-    let termsOfUseLink = HelpType.terms.url(withBaseUrl: baseUrl)?.absoluteString,
-    let privacyPolicyLink = HelpType.privacy.url(withBaseUrl: baseUrl)?.absoluteString,
-    let cookiePolicyLink = HelpType.cookie.url(withBaseUrl: baseUrl)?.absoluteString
+    let links
   else { return nil }
 
   let string = Strings.By_pledging_you_agree_to_Kickstarters_Terms_of_Use_Privacy_Policy_and_Cookie_Policy(
-    terms_of_use_link: termsOfUseLink,
-    privacy_policy_link: privacyPolicyLink,
-    cookie_policy_link: cookiePolicyLink
+    terms_of_use_link: links.terms,
+    privacy_policy_link: links.privacy,
+    cookie_policy_link: links.cookie
   )
 
   return checkoutAttributedLink(with: string)
