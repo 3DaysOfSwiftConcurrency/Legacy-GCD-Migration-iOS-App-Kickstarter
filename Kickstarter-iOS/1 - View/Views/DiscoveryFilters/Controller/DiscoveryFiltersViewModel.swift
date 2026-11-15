@@ -23,6 +23,9 @@ public final class DiscoveryFiltersViewModel {
   private var selectedRowId: Int?
   private var loaded = false
   private(set) var shouldAnimateSelectableCell = false
+  private var selectableCellAnimationTask: Task<Void, Never>?
+
+  deinit { self.selectableCellAnimationTask?.cancel() }
 
   public init(discoveryFeature: DiscoveryFeature? = nil) {
     self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
@@ -74,7 +77,9 @@ public final class DiscoveryFiltersViewModel {
       self.onCategoryRows?(toggleExpansion(row: expandableRow, in: rows), self.categoryId, self.selectedRowId)
     }
     self.shouldAnimateSelectableCell = true
-    Task { [weak self] in
+    self.selectableCellAnimationTask?.cancel()
+    self.selectableCellAnimationTask = Task { [weak self] in
+      defer { self?.selectableCellAnimationTask = nil }
       do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
       self?.shouldAnimateSelectableCell = false
     }
