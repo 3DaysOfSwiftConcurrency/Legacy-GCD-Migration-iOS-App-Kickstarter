@@ -38,6 +38,8 @@ public final class MessagesViewModel {
     self.discussion = discussion
   }
 
+  public var currentUser: User? { self.feature.sessionFeature.currentUser }
+
   private func receivedThread(_ envelope: MessageThreadEnvelope?) {
     guard let envelope else {
       if let backing = self.activeBacking, let project = self.latestProject {

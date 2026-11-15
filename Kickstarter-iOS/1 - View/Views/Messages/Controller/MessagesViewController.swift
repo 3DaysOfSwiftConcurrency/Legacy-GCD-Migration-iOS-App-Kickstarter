@@ -200,7 +200,7 @@ extension MessagesViewController: BackingCellDelegate {
 extension MessagesViewController: MessageCellDelegate {
   func messageCellDidTapHeader(_ cell: MessageCell, _ user: User) {
     guard
-      let currentUser = AppEnvironment.current.currentUser,
+      let currentUser = self.viewModel.currentUser,
       currentUser != user,
       !user.isBlocked
     else {
