@@ -15,7 +15,9 @@ internal final class MessagesViewModelTests: TestCase {
   private let discussion = DiscussionFeature(sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: {
     AsyncDiscussionProvider(service: AppEnvironment.current.apiService)
   })
-  private lazy var vm: MessagesViewModel = MessagesViewModel(feature: self.feature, discussion: self.discussion)
+  private lazy var vm: MessagesViewModel = MessagesViewModel(
+    messagingFeature: self.feature, discussionFeature: self.discussion
+  )
 
   private let backingAndProjectAndIsFromBacking = MessageRecorder<(Backing, Project, Bool)>()
   private let emptyStateIsVisible = MessageRecorder<Bool>()

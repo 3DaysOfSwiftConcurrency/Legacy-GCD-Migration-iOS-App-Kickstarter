@@ -16,8 +16,8 @@ public final class MessagesViewModel {
   private var activeUser: User?
   private var latestMessagesExist: Bool?
   private var latestBlocked: Bool?
-  private let feature: MessagingFeature
-  private let discussion: DiscussionFeature
+  private let messagingFeature: MessagingFeature
+  private let discussionFeature: DiscussionFeature
   private var blockTask: Task<Void, Never>?
   private var threadTask: Task<Void, Never>?
   private var threadVersion = UUID()
@@ -31,19 +31,23 @@ public final class MessagesViewModel {
   var onBlockSuccess: (() -> Void)?
   var onBlockError: (() -> Void)?
   public convenience init() {
-    self.init(feature: AppModel.shared.messagingFeature, discussion: AppModel.shared.discussionFeature)
+    self.init(
+      messagingFeature: AppModel.shared.messagingFeature,
+      discussionFeature: AppModel.shared.discussionFeature
+    )
   }
-  public init(feature: MessagingFeature, discussion: DiscussionFeature) {
-    self.feature = feature
-    self.discussion = discussion
+  public init(messagingFeature: MessagingFeature, discussionFeature: DiscussionFeature) {
+    self.messagingFeature = messagingFeature
+    self.discussionFeature = discussionFeature
   }
 
-  public var currentUser: User? { self.feature.sessionFeature.currentUser }
+  public var currentUser: User? { self.messagingFeature.sessionFeature.currentUser }
 
   private func receivedThread(_ envelope: MessageThreadEnvelope?) {
     guard let envelope else {
       if let backing = self.activeBacking, let project = self.latestProject {
-        let creator = !project.memberData.permissions.isEmpty && backing.backer?.id != self.feature.sessionFeature.currentUser?.id
+        let creator = !project.memberData.permissions.isEmpty
+          && backing.backer?.id != self.messagingFeature.sessionFeature.currentUser?.id
         self.onEmptyState?(true, creator ? Strings.messages_empty_state_message_creator() : Strings.messages_empty_state_message_backer())
       }
       return
@@ -71,8 +75,8 @@ public final class MessagesViewModel {
     self.threadTask?.cancel()
     let version = UUID()
     self.threadVersion = version
-    let feature = self.feature
-    let session = feature.sessionFeature
+    let messagingFeature = self.messagingFeature
+    let session = messagingFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
@@ -81,8 +85,8 @@ public final class MessagesViewModel {
       do {
         let result: MessageThreadEnvelope?
         switch route {
-        case let .left(backing): result = try await feature.thread(backing: backing)
-        case let .right(thread): result = try await feature.thread(id: thread.id)
+        case let .left(backing): result = try await messagingFeature.thread(backing: backing)
+        case let .right(thread): result = try await messagingFeature.thread(id: thread.id)
         }
         if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
         else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
@@ -109,15 +113,17 @@ public final class MessagesViewModel {
       self.receivedBacking(existing, project: project, isFromBacking: true)
       return
     }
-    let feature = self.feature
-    let session = feature.sessionFeature
+    let messagingFeature = self.messagingFeature
+    let session = messagingFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
     let user = project.personalization.isBacking == .some(true) ? currentUser : participant
     self.backingTask = Task { [weak self] in
       defer { if let self, self.backingVersion == version { self.backingTask = nil } }
       do {
-        let backing = try await feature.backing(id: envelope.messageThread.backing?.id, project: project, user: user)
+        let backing = try await messagingFeature.backing(
+          id: envelope.messageThread.backing?.id, project: project, user: user
+        )
         try Task.checkCancellation()
         guard let self, self.backingVersion == version,
               session.isCurrent(userID: userID, generation: generation) else { return }
@@ -133,10 +139,10 @@ public final class MessagesViewModel {
     self.markReadTask?.cancel()
     let version = UUID()
     self.markReadVersion = version
-    let session = self.feature.sessionFeature
+    let session = self.messagingFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let command = self.feature.requestMarkRead(thread)
+    let command = self.messagingFeature.requestMarkRead(thread)
     self.markReadTask = Task { [weak self] in
       guard case .success = await command.result, !Task.isCancelled,
             let self, self.markReadVersion == version,
@@ -171,10 +177,10 @@ public final class MessagesViewModel {
     self.blockTask?.cancel()
     let version = UUID()
     self.blockVersion = version
-    let session = self.feature.sessionFeature
+    let session = self.messagingFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let request = self.discussion.requestBlockUser(id: id)
+    let request = self.discussionFeature.requestBlockUser(id: id)
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.blockTask = Task { [weak self] in
       let outcome = await request.result
@@ -230,7 +236,7 @@ public final class MessagesViewModel {
     case let .left(thread): project = thread.project; self.activeBacking = nil; self.activeRoute = .right(thread)
     case let .right(value): project = value.project; self.activeBacking = value.backing; self.activeRoute = .left(value.backing)
     }
-    self.activeUser = self.feature.sessionFeature.currentUser
+    self.activeUser = self.messagingFeature.sessionFeature.currentUser
     self.latestProject = project
     self.onProject?(project)
     if let id = self.latestBlockedID { self.trackBlockedUser(id: id, project: project, confirmed: false) }
