@@ -180,13 +180,7 @@ final class CommentRepliesViewController: UITableViewController, MessageBannerVi
   }
 
   private func handleCommentCellHeaderTapped(in cell: UITableViewCell, _ author: Comment.Author) {
-    guard
-      let currentUser = AppEnvironment.current.currentUser,
-      String(currentUser.id) != author.id,
-      !author.isBlocked
-    else {
-      return
-    }
+    guard self.viewModel.inputs.canBlock(author: author) else { return }
 
     let actionSheet = UIAlertController
       .blockUserActionSheet(

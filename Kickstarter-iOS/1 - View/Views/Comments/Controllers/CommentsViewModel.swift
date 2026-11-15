@@ -4,6 +4,8 @@ import Prelude
 
 @MainActor
 public protocol CommentsViewModelInputs {
+  func canBlock(author: Comment.Author) -> Bool
+
   /// Call when block user is tapped
   func blockUser(id: String)
 
@@ -82,6 +84,10 @@ public protocol CommentsViewModelType {
 public final class CommentsViewModel: CommentsViewModelType,
   CommentsViewModelInputs,
   CommentsViewModelOutputs {
+  public func canBlock(author: Comment.Author) -> Bool {
+    self.feature.canBlock(author: author)
+  }
+
   // MARK: Initializers
 
   private let feature: DiscussionFeature

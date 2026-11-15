@@ -248,13 +248,7 @@ extension CommentsViewController {
 
 extension CommentsViewController: CommentCellDelegate {
   func commentCellDidTapHeader(_ cell: CommentCell, _ author: Comment.Author) {
-    guard
-      let currentUser = AppEnvironment.current.currentUser,
-      String(currentUser.id) != author.id,
-      !author.isBlocked
-    else {
-      return
-    }
+    guard self.viewModel.inputs.canBlock(author: author) else { return }
 
     let actionSheet = UIAlertController
       .blockUserActionSheet(

@@ -50,6 +50,11 @@ public final class DiscussionFeature {
     HelpType.helpType(from: url, baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl)
   }
 
+  public func canBlock(author: Comment.Author) -> Bool {
+    guard let currentUser = self.sessionFeature.currentUser else { return false }
+    return String(currentUser.id) != author.id && !author.isBlocked
+  }
+
   public enum Source: Equatable {
     case project(String)
     case update(String)

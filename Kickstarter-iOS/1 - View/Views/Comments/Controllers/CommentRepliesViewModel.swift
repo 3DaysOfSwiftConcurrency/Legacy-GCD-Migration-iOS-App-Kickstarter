@@ -4,6 +4,8 @@ import Prelude
 
 @MainActor
 public protocol CommentRepliesViewModelInputs {
+  func canBlock(author: Comment.Author) -> Bool
+
   /// Call when block user is tapped
   func blockUser(id: String)
 
@@ -87,6 +89,10 @@ public protocol CommentRepliesViewModelType {
 public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   CommentRepliesViewModelInputs,
   CommentRepliesViewModelOutputs {
+  public func canBlock(author: Comment.Author) -> Bool {
+    self.feature.canBlock(author: author)
+  }
+
   private let feature: DiscussionFeature
   private var latestRootComment: Comment?
   private var latestProject: Project?
