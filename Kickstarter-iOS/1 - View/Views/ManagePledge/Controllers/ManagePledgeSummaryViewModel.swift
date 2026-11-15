@@ -33,7 +33,11 @@ public struct ManagePledgeSummaryViewData: Equatable {
 
 @MainActor @Observable
 public final class ManagePledgeSummaryViewModel {
-  public init() {}
+  private let pledgeFeature: PledgeFeature
+
+  public init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature) {
+    self.pledgeFeature = pledgeFeature
+  }
   public private(set) var data: ManagePledgeSummaryViewData?
   public private(set) var backerNameLabelHidden: Bool?
   public private(set) var backerNameText: String?
@@ -60,7 +64,7 @@ public final class ManagePledgeSummaryViewModel {
     self.data = data
     self.configurePledgeStatusLabelViewWithProject = pledgeStatusLabelViewData(with: data)
     self.configurePledgeAmountSummaryViewWithData = pledgeAmountSummaryViewData(with: data)
-    if let user = AppEnvironment.current.currentUser {
+    if let user = self.pledgeFeature.sessionFeature.currentUser {
       let isBacker = data.backerId == user.id
       self.backerNameLabelHidden = !isBacker
       if isBacker {
