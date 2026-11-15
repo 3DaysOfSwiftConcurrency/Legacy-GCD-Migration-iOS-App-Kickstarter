@@ -180,7 +180,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   }
 
   private func refreshCurrentUser() {
-    let user = AppEnvironment.current.currentUser
+    let user = self.sessionFeature.currentUser
     let loggedIn = user != nil
     let loginChanged = self.latestLoginState != loggedIn
     self.latestCurrentUser = user
@@ -278,7 +278,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   private func clearBadgeIfActivitySelected() {
     guard let activityIndex = self.activityIndex, self.latestSelectedIndex == activityIndex,
           self.currentBadgeValue != nil else { return }
-    self.updateBadge(AppEnvironment.current.currentUser?.erroredBackingsCount, index: activityIndex)
+    self.updateBadge(self.sessionFeature.currentUser?.erroredBackingsCount, index: activityIndex)
     self.clearActivityBadge()
   }
 
@@ -370,7 +370,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   public func currentUserUpdated() {
     self.refreshCurrentUser()
     if self.latestSelectedIndex != nil, let index = self.activityIndex {
-      self.updateBadge(currentUserActivitiesAndErroredPledgeCount(), index: index)
+      self.updateBadge(currentUserActivitiesAndErroredPledgeCount(self.sessionFeature.currentUser), index: index)
     }
   }
 
@@ -461,8 +461,8 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
 }
 
 @MainActor
-private func currentUserActivitiesAndErroredPledgeCount() -> Int {
-  return (AppEnvironment.current.currentUser?.unseenActivityCount ?? 0)
+private func currentUserActivitiesAndErroredPledgeCount(_ user: User?) -> Int {
+  user?.unseenActivityCount ?? 0
 }
 
 private func generateViewControllers(
