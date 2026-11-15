@@ -678,7 +678,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public func urlFromBrazeNotification(_ url: URL?) {
     guard let url else { return }
     if let navigation = self.lifecycleFeature.deepLinkMatch(url) { self.handleNavigation(navigation) }
-    if shouldOpenUrlInBrowser(url) { self.onGoToMobileSafari?(url) }
+    if shouldOpenUrlInBrowser(url, hasDeepLinkMatch: self.lifecycleFeature.deepLinkMatch(url) != nil) { self.onGoToMobileSafari?(url) }
   }
 
   private func handleNavigation(_ navigation: Navigation) {
@@ -704,7 +704,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
       self.verifyEmail(token: token)
     }
     if navigation == .emailClick { self.onFindRedirectUrl?(url) }
-    if shouldOpenUrlInBrowser(url) { self.onGoToMobileSafari?(url) }
+    if shouldOpenUrlInBrowser(url, hasDeepLinkMatch: self.lifecycleFeature.deepLinkMatch(url) != nil) { self.onGoToMobileSafari?(url) }
   }
 
   private func updateNotification(name: String, enabled: Bool) {
@@ -800,9 +800,9 @@ private func deviceToken(fromData data: Data) -> String {
 }
 
 @MainActor
-private func shouldOpenUrlInBrowser(_ url: URL) -> Bool {
+private func shouldOpenUrlInBrowser(_ url: URL, hasDeepLinkMatch: Bool) -> Bool {
   // If url has a deeplink match, never attempt to open the url in the browser.
-  if Navigation.deepLinkMatch(url) != nil {
+  if hasDeepLinkMatch {
     return false
   }
   // Never attempt to open `ksr` urls in the browser; they'll redirect straight back to our app.
