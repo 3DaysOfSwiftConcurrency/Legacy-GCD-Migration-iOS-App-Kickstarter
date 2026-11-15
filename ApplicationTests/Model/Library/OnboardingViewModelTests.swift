@@ -38,7 +38,7 @@ final class OnboardingViewModelTest: TestCase {
       messagingFeature: MessagingFeature(sessionFeature: session, makeProvider: { AsyncMessagingProvider(service: MockService()) }),
       makeProvider: { AsyncAppLifecycleProvider(service: MockService()) },
       readNotificationStatus: { (try? await gate.request()) ?? .denied })
-    let model = OnboardingViewModel(lifecycleFeature: feature)
+    let model = OnboardingViewModel(appLifecycleFeature: feature)
     let advance = expectation(description: "Closed onboarding must not advance")
     advance.isInverted = true
     model.bind(items: { _ in }, advance: { advance.fulfill() })
@@ -60,7 +60,7 @@ final class OnboardingViewModelTest: TestCase {
       authorizeNotifications: { _ in true },
       registerNotifications: {},
       readNotificationStatus: { .denied })
-    let model = OnboardingViewModel(lifecycleFeature: feature)
+    let model = OnboardingViewModel(appLifecycleFeature: feature)
     defer { model.stopObserving() }
     model.bind(items: { _ in }, advance: { XCTFail("Old appearance advanced") })
     let advance = expectation(description: "Current appearance advances")
@@ -92,7 +92,7 @@ final class OnboardingViewModelTest: TestCase {
       registerNotifications: {},
       readNotificationStatus: { .authorized }
     )
-    let model = OnboardingViewModel(lifecycleFeature: feature)
+    let model = OnboardingViewModel(appLifecycleFeature: feature)
     let advance = expectation(description: "Already authorized does not advance")
     advance.isInverted = true
     model.bind(items: { _ in }, advance: { advance.fulfill() })

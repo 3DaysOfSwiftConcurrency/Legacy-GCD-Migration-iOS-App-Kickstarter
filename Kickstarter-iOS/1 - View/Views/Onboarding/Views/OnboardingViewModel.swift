@@ -40,7 +40,7 @@ public final class OnboardingViewModel {
   @MainActor private func completeTracking(advance: @escaping () -> Void) {
     guard self.completionTask == nil else { return }
     let version = self.completionVersion
-    let feature = self.lifecycleFeature ?? AppModel.shared.appLifecycleFeature
+    let feature = self.appLifecycleFeature
     self.completionTask = Task { [weak self] in
       let status = await feature.trackingAuthorization()
       guard !Task.isCancelled, let self, self.completionVersion == version else { return }
@@ -51,7 +51,7 @@ public final class OnboardingViewModel {
 
   // MARK: - Properties
 
-  private let lifecycleFeature: AppLifecycleFeature?
+  private let appLifecycleFeature: AppLifecycleFeature
   private let useCase: OnboardingUseCaseType
 
   // MARK: - Outputs
@@ -60,8 +60,11 @@ public final class OnboardingViewModel {
 
   // MARK: - Init
 
-  public init(with bundle: Bundle = .main, lifecycleFeature: AppLifecycleFeature? = nil) {
-    self.lifecycleFeature = lifecycleFeature
+  public init(
+    with bundle: Bundle = .main,
+    appLifecycleFeature: AppLifecycleFeature = AppModel.shared.appLifecycleFeature
+  ) {
+    self.appLifecycleFeature = appLifecycleFeature
     self.useCase = OnboardingUseCase(for: bundle)
 
     self.onboardingItems = self.useCase.uiOutputs.onboardingItems
@@ -76,7 +79,7 @@ public final class OnboardingViewModel {
 
   public func getNotifiedTapped() {
     guard self.completionTask == nil else { return }
-    let feature = self.lifecycleFeature ?? AppModel.shared.appLifecycleFeature
+    let feature = self.appLifecycleFeature
     let version = self.completionVersion
     self.completionTask = Task { [weak self] in
       let existing = await feature.notificationStatus()
@@ -136,7 +139,7 @@ public final class OnboardingViewModel {
   }
 
   public func onboardingFlowEnded() {
-    (self.lifecycleFeature ?? AppModel.shared.appLifecycleFeature).recordOnboardingCompletion()
+    self.appLifecycleFeature.recordOnboardingCompletion()
     AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(context: .onboardingClose)
   }
 
