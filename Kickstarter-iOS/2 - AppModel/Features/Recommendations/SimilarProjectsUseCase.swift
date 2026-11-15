@@ -32,12 +32,13 @@ public final class SimilarProjectsUseCase {
     self.revision = revision
     let feature = self.projectDetailsFeature
     let route = self.route
-    let userID = AppEnvironment.current.currentUser?.id
+    let sessionFeature = feature.sessionFeature
+    let userID = sessionFeature.currentUser?.id
     let command = feature.requestRelated(route: route, projectID: projectID)
     self.loadingTask = Task { [weak self] in
       await command.value
       guard !Task.isCancelled, let self, self.revision == revision,
-            userID == AppEnvironment.current.currentUser?.id else { return }
+            userID == sessionFeature.currentUser?.id else { return }
       let snapshot = feature.relatedSnapshot(for: route)
       let state: SimilarProjectsState
       if let error = snapshot.error { state = .error(error: error) }
