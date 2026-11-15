@@ -444,7 +444,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   private func recordThirdPartyProjectView(_ project: Project) {
     AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
     guard let externalID = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else { return }
-    let userID = AppEnvironment.current.currentUser.map { "\($0.id)" } ?? ""
+    let userID = self.projectDetailsFeature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
     var extInfo = Array(repeating: "", count: 16)
     extInfo[0] = "i2"
     extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
