@@ -51,6 +51,7 @@ internal final class DiscoveryNavigationHeaderViewModelTests: TestCase {
     try await super.setUp()
     self.vm = DiscoveryNavigationHeaderViewModel(scheduleDismissal: { [weak self] action in
       self?.pendingDismissals.append(action)
+      return nil
     })
     self.vm.onEvent = { [weak self] event in
       guard let self else { return }

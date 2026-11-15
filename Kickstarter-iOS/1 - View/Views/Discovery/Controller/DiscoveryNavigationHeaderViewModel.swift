@@ -18,7 +18,8 @@ final class DiscoveryNavigationHeaderViewModel {
 
   var onEvent: ((Event) -> Void)?
   private let discoveryFeature: DiscoveryFeature
-  private let scheduleDismissal: @MainActor (@escaping @MainActor () -> Void) -> Void
+  private let scheduleDismissal: @MainActor (@escaping @MainActor () -> Void) -> Task<Void, Never>?
+  private var dismissalTask: Task<Void, Never>?
   private var dismissalGeneration = 0
   private var currentParams: DiscoveryParams?
   private var configuredParams: DiscoveryParams?
@@ -34,10 +35,9 @@ final class DiscoveryNavigationHeaderViewModel {
 
   init(
     discoveryFeature: DiscoveryFeature? = nil,
-    scheduleDismissal: @escaping @MainActor (@escaping @MainActor () -> Void) -> Void = { action in
+    scheduleDismissal: @escaping @MainActor (@escaping @MainActor () -> Void) -> Task<Void, Never>? = { action in
       Task { @MainActor in
-        try? await Task.sleep(for: .milliseconds(400))
-        guard !Task.isCancelled else { return }
+        do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
         action()
       }
     }
@@ -45,6 +45,8 @@ final class DiscoveryNavigationHeaderViewModel {
     self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
     self.scheduleDismissal = scheduleDismissal
   }
+
+  deinit { self.dismissalTask?.cancel() }
 
   func viewDidLoad() {
     guard let environment = AppEnvironment.current else { return }
@@ -149,10 +151,12 @@ final class DiscoveryNavigationHeaderViewModel {
   }
 
   private func dismissAfterDelay() {
+    self.dismissalTask?.cancel()
     self.dismissalGeneration += 1
     let generation = self.dismissalGeneration
-    self.scheduleDismissal { [weak self] in
+    self.dismissalTask = self.scheduleDismissal { [weak self] in
       guard let self, self.dismissalGeneration == generation else { return }
+      self.dismissalTask = nil
       self.onEvent?(.dismissDiscoveryFilters)
     }
   }
