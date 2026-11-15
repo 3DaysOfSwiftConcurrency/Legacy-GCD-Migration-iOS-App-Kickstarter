@@ -29,6 +29,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
 
   private let dataSource = ProjectPageViewControllerDataSource()
   private let viewModel: ProjectPageViewModelType = ProjectPageViewModel()
+  private let projectDetailsFeature = AppModel.shared.projectDetailsFeature
 
   private var navigation: ProjectPageNavigation = ProjectPageNavigation()
 
@@ -1141,7 +1142,7 @@ extension ProjectPageViewController: ProjectPamphletMainCellDelegate {
     goToCreatorForProject project: any ProjectPamphletMainCellConfiguration
   ) {
     guard
-      let currentUser = AppEnvironment.current.currentUser,
+      let currentUser = self.projectDetailsFeature.sessionFeature.currentUser,
       currentUser.id != project.projectPamphletMainCellProperties.creatorId,
       !project.projectPamphletMainCellProperties.isCreatorBlocked
     else {
