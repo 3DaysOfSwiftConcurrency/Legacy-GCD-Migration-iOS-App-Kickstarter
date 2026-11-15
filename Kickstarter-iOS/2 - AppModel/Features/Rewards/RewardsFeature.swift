@@ -87,7 +87,7 @@ public final class RewardsFeature {
   ) -> Task<Void, Never> {
     let identity = ShippingIdentity(
       projectID: projectID, selectedLocationID: selectedLocationID,
-      hasShippableRewards: hasShippableRewards, userID: AppEnvironment.current.currentUser?.id
+      hasShippableRewards: hasShippableRewards, userID: self.sessionFeature.currentUser?.id
     )
     let entry = self.shippingRoutes[route] ?? ShippingRoute()
     self.shippingRoutes[route] = entry
@@ -95,6 +95,7 @@ public final class RewardsFeature {
     entry.request?.task.cancel()
     let requestID = UUID()
     let provider = self.makeProvider()
+    let sessionFeature = self.sessionFeature
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let sleep = self.sleep
     entry.snapshot.isLoading = true
@@ -109,14 +110,14 @@ public final class RewardsFeature {
       }
       do {
         try Task.checkCancellation()
-        guard identity.userID == AppEnvironment.current.currentUser?.id else {
+        guard identity.userID == sessionFeature.currentUser?.id else {
           throw CancellationError()
         }
         let locations =
           hasShippableRewards ? try await provider.shippingLocations(projectID: projectID) : []
         try await sleep(delay)
         try Task.checkCancellation()
-        guard identity.userID == AppEnvironment.current.currentUser?.id,
+        guard identity.userID == sessionFeature.currentUser?.id,
           let self, self.shippingRoutes[route]?.request?.id == requestID
         else { return }
         entry.snapshot.hasResult = true
@@ -129,7 +130,7 @@ public final class RewardsFeature {
       } catch {
         // Legacy materialization delayed errors as well as successful data.
         do { try await sleep(delay) } catch { return }
-        guard !Task.isCancelled, identity.userID == AppEnvironment.current.currentUser?.id,
+        guard !Task.isCancelled, identity.userID == sessionFeature.currentUser?.id,
           let self, self.shippingRoutes[route]?.request?.id == requestID
         else { return }
         let failure = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
@@ -221,7 +222,7 @@ public final class RewardsFeature {
   public func requestLoad(route: UUID, project: Project, location: Location?) -> Task<Void, Never> {
     let identity = Identity(
       projectID: project.id, country: location?.country, locationID: location?.id,
-      userID: AppEnvironment.current.currentUser?.id, moveNoReward: self.moveNoReward(),
+      userID: self.sessionFeature.currentUser?.id, moveNoReward: self.moveNoReward(),
       state: project.state, postCampaign: project.isInPostCampaignPledgingPhase,
       creatorID: project.creator.id, backedRewardID: project.personalization.backing?.rewardId
     )
@@ -231,6 +232,7 @@ public final class RewardsFeature {
     entry.request?.task.cancel()
     let requestID = UUID()
     let provider = self.makeProvider()
+    let sessionFeature = self.sessionFeature
     let inserter: any NoRewardInserter =
       identity.moveNoReward
       ? NoRewardAfterLastAvailableReward(shippingLocation: location, project: project)
@@ -242,14 +244,14 @@ public final class RewardsFeature {
     entry.snapshot.hasResult = false
     let task = Task { [weak self] in
       defer {
-        if let self, entry.request?.id == requestID {
+        if entry.request?.id == requestID {
           entry.request = nil
           entry.snapshot.isLoading = false
         }
       }
       do {
         try Task.checkCancellation()
-        guard identity.userID == AppEnvironment.current.currentUser?.id else {
+        guard identity.userID == sessionFeature.currentUser?.id else {
           throw CancellationError()
         }
         let rewards = try await provider.rewards(
@@ -259,7 +261,7 @@ public final class RewardsFeature {
         )
         try await sleep(delay)
         try Task.checkCancellation()
-        guard identity.userID == AppEnvironment.current.currentUser?.id,
+        guard identity.userID == sessionFeature.currentUser?.id,
           let self, self.routes[route]?.request?.id == requestID
         else { return }
         let visibleRewards = rewards.filter { isStartDateBeforeToday(for: $0) }
@@ -268,7 +270,7 @@ public final class RewardsFeature {
       } catch is CancellationError {
         // Superseded reads do not produce product errors or empty success.
       } catch {
-        guard !Task.isCancelled, identity.userID == AppEnvironment.current.currentUser?.id,
+        guard !Task.isCancelled, identity.userID == sessionFeature.currentUser?.id,
           let self, self.routes[route]?.request?.id == requestID
         else { return }
         entry.snapshot.error = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
