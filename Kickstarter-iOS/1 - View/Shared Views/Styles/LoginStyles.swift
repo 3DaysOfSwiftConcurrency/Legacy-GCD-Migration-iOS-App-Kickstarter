@@ -238,13 +238,11 @@ public func tfaCodeFieldAutoFillStyle(_ textField: UITextField) -> UITextField {
 public let twoFactorControllerStyle = UIViewController.lens.title %~ { _ in Strings.two_factor_title() }
 
 @MainActor
-public func applyDisclaimerTextViewStyle(_ textView: UITextView, useLargerText: Bool) {
+public func applyDisclaimerTextViewStyle(_ textView: UITextView, baseURL: URL, useLargerText: Bool) {
   _ = textView
     |> tappableLinksViewStyle
   textView.attributedText =
-    attributedDisclaimerText(
-      baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl, useLargerText: useLargerText
-    )
+    attributedDisclaimerText(baseURL: baseURL, useLargerText: useLargerText)
   textView.accessibilityTraits = [.staticText]
   textView.textAlignment = .center
 }

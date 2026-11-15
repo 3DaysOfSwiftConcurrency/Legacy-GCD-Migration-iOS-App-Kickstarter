@@ -68,7 +68,11 @@ internal final class FacebookConfirmationViewController: UIViewController,
     _ = self.newsletterSwitch |> newsletterSwitchStyle
 
     let isPad = self.traitCollection.userInterfaceIdiom == .pad
-    applyDisclaimerTextViewStyle(self.disclaimerTextView, useLargerText: isPad)
+    applyDisclaimerTextViewStyle(
+      self.disclaimerTextView,
+      baseURL: AppModel.shared.appLifecycleFeature.webBaseURL,
+      useLargerText: isPad
+    )
     applyLoginRootStackViewStyle(self.rootStackView, useLargerMargins: isPad)
   }
 
