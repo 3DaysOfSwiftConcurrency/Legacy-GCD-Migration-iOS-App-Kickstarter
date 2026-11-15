@@ -117,7 +117,7 @@ final class SettingsProjectNotificationsTests: TestCase {
   }
 
   func testReusedCellIgnoresPreviousProjectsSaveFailure() async throws {
-    let vm = ProjectNotificationCellViewModel(feature: self.feature)
+    let vm = ProjectNotificationCellViewModel(settingsFeature: self.feature)
     var errors: [String] = []
     var switches: [Bool] = []
     vm.onError = { errors.append($0) }
@@ -137,7 +137,7 @@ final class SettingsProjectNotificationsTests: TestCase {
   func testDelayedErrorCannotReachReplacementSession() async throws {
     let delay = AccountRequestGate<Void>()
     defer { delay.releaseAll() }
-    let vm = ProjectNotificationCellViewModel(feature: self.feature, sleep: { _ in try await delay.request() })
+    let vm = ProjectNotificationCellViewModel(settingsFeature: self.feature, sleep: { _ in try await delay.request() })
     var errors: [String] = []
     vm.onError = { errors.append($0) }
     vm.configureWith(notification: .template)
