@@ -11,6 +11,36 @@ import XCTest
 final class DiscoveryFeatureTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
+  func testFavoriteCategoryReadsBothStoresAndKeepsLegacyToggleBehavior() {
+    let localStore = MockKeyValueStore()
+    let cloudStore = MockKeyValueStore()
+    localStore.favoriteCategoryIds = [17]
+    AppEnvironment.pushEnvironment(ubiquitousStore: cloudStore, userDefaults: localStore)
+    defer { AppEnvironment.popEnvironment() }
+    let feature = DiscoveryFeature(provider: ControlledDiscoveryProvider())
+
+    XCTAssertTrue(feature.isFavoriteCategory(17))
+    feature.toggleFavoriteCategory(17)
+    XCTAssertEqual(localStore.favoriteCategoryIds, [])
+    XCTAssertEqual(cloudStore.favoriteCategoryIds, [17])
+    XCTAssertTrue(feature.isFavoriteCategory(17))
+    XCTAssertFalse(feature.isFavoriteCategory(18))
+  }
+
+  func testClaimingFavoriteCategoryTipRecordsBothPreferences() {
+    let localStore = MockKeyValueStore()
+    let cloudStore = MockKeyValueStore()
+    cloudStore.hasSeenFavoriteCategoryAlert = true
+    AppEnvironment.pushEnvironment(ubiquitousStore: cloudStore, userDefaults: localStore)
+    defer { AppEnvironment.popEnvironment() }
+    let feature = DiscoveryFeature(provider: ControlledDiscoveryProvider())
+
+    XCTAssertTrue(feature.claimFavoriteCategoryTip())
+    XCTAssertTrue(localStore.hasSeenFavoriteCategoryAlert)
+    XCTAssertTrue(cloudStore.hasSeenFavoriteCategoryAlert)
+    XCTAssertFalse(feature.claimFavoriteCategoryTip())
+  }
+
   func testFilterSelectionIsObservable() async {
     let feature = DiscoveryFeature(provider: ControlledDiscoveryProvider())
     let changed = expectation(description: "Filter selection changed")

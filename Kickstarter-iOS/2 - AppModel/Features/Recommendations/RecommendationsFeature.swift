@@ -24,6 +24,11 @@ public struct AsyncRecommendationsProvider: RecommendationsProvider {
 /// own route; replacing or releasing a route makes its old responses obsolete.
 @MainActor
 public final class RecommendationsFeature {
+  public enum PostBackingPrompt {
+    case gamesNewsletter
+    case rating
+  }
+
   public enum Request: Equatable {
     case curated([KsApi.Category])
     case afterBacking(Project)
@@ -71,6 +76,27 @@ public final class RecommendationsFeature {
     try Task.checkCancellation()
     guard self.session == session else { throw CancellationError() }
   }
+  public var shouldOfferPledgeNotifications: Bool {
+    PushNotificationDialog.canShowDialog(for: .pledge) &&
+      self.sessionFeature.currentUser?.stats.backedProjectsCount == 0
+  }
+
+  public func nextPostBackingPrompt(for project: Project) -> PostBackingPrompt? {
+    let store = AppEnvironment.current.userDefaults
+    if project.category?.rootId == KsApi.Category.gamesId,
+       self.sessionFeature.currentUser?.newsletters.games != true,
+       !store.hasSeenGamesNewsletterPrompt {
+      store.hasSeenGamesNewsletterPrompt = true
+      return .gamesNewsletter
+    }
+    if !store.hasSeenAppRating, AppEnvironment.current.config?.iTunesLink != nil,
+       !self.shouldOfferPledgeNotifications {
+      store.hasSeenAppRating = true
+      return .rating
+    }
+    return nil
+  }
+
   public func release(route: UUID) {
     self.pending.removeValue(forKey: route)?.task.cancel()
     self.latestSelections.removeValue(forKey: route)

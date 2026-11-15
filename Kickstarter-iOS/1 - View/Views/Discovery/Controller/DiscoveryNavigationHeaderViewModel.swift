@@ -17,6 +17,7 @@ final class DiscoveryNavigationHeaderViewModel {
   }
 
   var onEvent: ((Event) -> Void)?
+  private let discoveryFeature: DiscoveryFeature
   private let scheduleDismissal: @MainActor (@escaping @MainActor () -> Void) -> Void
   private var dismissalGeneration = 0
   private var currentParams: DiscoveryParams?
@@ -31,13 +32,17 @@ final class DiscoveryNavigationHeaderViewModel {
   private var debugContainerHidden: Bool?
   private var lastCategoryID: Int?
 
-  init(scheduleDismissal: @escaping @MainActor (@escaping @MainActor () -> Void) -> Void = { action in
-    Task { @MainActor in
-      try? await Task.sleep(for: .milliseconds(400))
-      guard !Task.isCancelled else { return }
-      action()
+  init(
+    discoveryFeature: DiscoveryFeature? = nil,
+    scheduleDismissal: @escaping @MainActor (@escaping @MainActor () -> Void) -> Void = { action in
+      Task { @MainActor in
+        try? await Task.sleep(for: .milliseconds(400))
+        guard !Task.isCancelled else { return }
+        action()
+      }
     }
-  }) {
+  ) {
+    self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
     self.scheduleDismissal = scheduleDismissal
   }
 
@@ -75,15 +80,12 @@ final class DiscoveryNavigationHeaderViewModel {
 
   func favoriteButtonTapped() {
     if let id = self.lastCategoryID {
-      toggleStoredFavoriteCategory(withId: id)
+      self.discoveryFeature.toggleFavoriteCategory(id)
       self.publishFavorite(id: id, animated: true)
     }
     guard let params = self.currentParams else { return }
-    guard let environment = AppEnvironment.current else { return }
-    guard !environment.ubiquitousStore.hasSeenFavoriteCategoryAlert || !environment.userDefaults.hasSeenFavoriteCategoryAlert else { return }
+    guard self.discoveryFeature.claimFavoriteCategoryTip() else { return }
     let title = stringsForTitle(params: params)
-    environment.ubiquitousStore.hasSeenFavoriteCategoryAlert = true
-    environment.userDefaults.hasSeenFavoriteCategoryAlert = true
     self.onEvent?(.showFavoriteOnboardingAlert(Strings.category_name_saved(category_name: title.subcategory ?? title.filter)))
   }
 
@@ -139,7 +141,7 @@ final class DiscoveryNavigationHeaderViewModel {
   }
 
   private func publishFavorite(id: Int, animated: Bool) {
-    let selected = isFavoriteCategoryStored(withId: id)
+    let selected = self.discoveryFeature.isFavoriteCategory(id)
     self.onEvent?(.updateFavoriteButton(selected, animated))
     self.onEvent?(.favoriteButtonAccessibilityLabel(selected
       ? Strings.discovery_favorite_categories_buttons_unfavorite_a11y_label()
@@ -206,25 +208,4 @@ private func accessibilityLabelForTitleButton(params: DiscoveryParams) -> String
 
 private func string(forCategoryId id: String) -> String {
   return RootCategory(categoryId: id).allProjectsString()
-}
-
-@MainActor
-private func isFavoriteCategoryStored(withId id: Int) -> Bool {
-  return AppEnvironment.current.ubiquitousStore.favoriteCategoryIds.firstIndex(of: id) != nil ||
-    AppEnvironment.current.userDefaults.favoriteCategoryIds.firstIndex(of: id) != nil
-}
-
-@MainActor
-private func toggleStoredFavoriteCategory(withId id: Int) {
-  if let index = AppEnvironment.current.ubiquitousStore.favoriteCategoryIds.firstIndex(of: id) {
-    AppEnvironment.current.ubiquitousStore.favoriteCategoryIds.remove(at: index)
-  } else {
-    AppEnvironment.current.ubiquitousStore.favoriteCategoryIds.append(id)
-  }
-
-  if let index = AppEnvironment.current.userDefaults.favoriteCategoryIds.firstIndex(of: id) {
-    AppEnvironment.current.userDefaults.favoriteCategoryIds.remove(at: index)
-  } else {
-    AppEnvironment.current.userDefaults.favoriteCategoryIds.append(id)
-  }
 }

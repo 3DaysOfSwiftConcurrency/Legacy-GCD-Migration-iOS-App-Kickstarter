@@ -66,6 +66,54 @@ public final class DiscoveryFeature {
   }
   public private(set) var selectedParameters: DiscoveryParams?
 
+  public func isFavoriteCategory(_ id: Int) -> Bool {
+    let environment = AppEnvironment.current
+    return environment?.ubiquitousStore.favoriteCategoryIds.contains(id) == true ||
+      environment?.userDefaults.favoriteCategoryIds.contains(id) == true
+  }
+
+  public func toggleFavoriteCategory(_ id: Int) {
+    guard let environment = AppEnvironment.current else { return }
+    // Preserve the legacy toggle independently in each store, even if they differ.
+    for store in [environment.ubiquitousStore, environment.userDefaults] {
+      var ids = store.favoriteCategoryIds
+      if let index = ids.firstIndex(of: id) {
+        ids.remove(at: index)
+      } else {
+        ids.append(id)
+      }
+      store.favoriteCategoryIds = ids
+    }
+  }
+
+  public func claimFavoriteCategoryTip() -> Bool {
+    guard let environment = AppEnvironment.current,
+          !environment.ubiquitousStore.hasSeenFavoriteCategoryAlert ||
+          !environment.userDefaults.hasSeenFavoriteCategoryAlert else { return false }
+    environment.ubiquitousStore.hasSeenFavoriteCategoryAlert = true
+    environment.userDefaults.hasSeenFavoriteCategoryAlert = true
+    return true
+  }
+
+  public func dismissPersonalizationCard() {
+    AppEnvironment.current.userDefaults.hasDismissedPersonalizationCard = true
+  }
+
+  public func cachedOnboardingCategories() -> [KsApi.Category] {
+    guard let data = AppEnvironment.current.userDefaults.onboardingCategories else { return [] }
+    return (try? JSONDecoder().decode([KsApi.Category].self, from: data)) ?? []
+  }
+
+  public func consumeUnseenActivitySample(_ activities: [Activity]) -> [Activity] {
+    let store = AppEnvironment.current.userDefaults
+    let lastSeenID = store.lastSeenActivitySampleId
+    let unseenActivities = activities.filter { $0.id != lastSeenID }
+    if let last = unseenActivities.last {
+      store.lastSeenActivitySampleId = last.id
+    }
+    return unseenActivities
+  }
+
   public static func initialParameters(for user: User?) -> DiscoveryParams {
     guard user?.optedOutOfRecommendations == false else {
       return DiscoveryParams.defaults |> DiscoveryParams.lens.includePOTD .~ true

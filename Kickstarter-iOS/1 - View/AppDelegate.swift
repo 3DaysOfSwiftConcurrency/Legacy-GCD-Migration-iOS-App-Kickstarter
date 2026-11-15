@@ -172,7 +172,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         if let onboardingView = self?.rootTabBarController?
           .presentedViewController as? UIHostingController<OnboardingView> {
           onboardingView.dismiss(animated: true)
-          AppEnvironment.current.userDefaults.set(true, forKey: AppKeys.hasSeenOnboarding.rawValue)
+          self?.viewModel.inputs.recordOnboardingCompletion()
         }
 
         let vc = LoginToutViewController.configuredWith(loginIntent: intent)
@@ -271,7 +271,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     self.viewModel.outputs.onSynchronizeUbiquitousStore = { [weak self] in
       DispatchQueue.main.async { [weak self] in
         guard self?.isPublicDemo == false else { return }
-        _ = AppEnvironment.current.ubiquitousStore.synchronize()
+        self?.viewModel.inputs.synchronizePreferences()
       }
     }
 

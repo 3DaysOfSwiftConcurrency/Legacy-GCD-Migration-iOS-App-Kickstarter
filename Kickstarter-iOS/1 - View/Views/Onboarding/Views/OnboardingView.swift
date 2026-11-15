@@ -135,7 +135,6 @@ public struct OnboardingView: View {
   private func handleClose() {
     self.viewModel.stopObserving()
     self.viewModel.onboardingFlowEnded()
-    self.hasSeenOnboarding()
     self.dismiss()
   }
 
@@ -146,9 +145,5 @@ public struct OnboardingView: View {
     self.currentIndex += 1
 
     self.viewModel.goToNextItemTapped(item: self.onboardingItems[self.currentIndex])
-  }
-
-  private func hasSeenOnboarding() {
-    AppEnvironment.current.userDefaults.set(true, forKey: AppKeys.hasSeenOnboarding.rawValue)
   }
 }

@@ -23,6 +23,9 @@ public protocol AppDelegateViewModelInputs {
     application: UIApplication?, launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   )
 
+  func recordOnboardingCompletion()
+  func synchronizePreferences()
+
   /// Call when the application will enter foreground.
   func applicationWillEnterForeground()
 
@@ -355,7 +358,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func triggerOnboardingIfEligible() {
     guard AppEnvironment.current.appTrackingTransparency.shouldRequestAuthorizationStatus(),
-          !AppEnvironment.current.userDefaults.hasSeenOnboarding else { return }
+          !self.lifecycleFeature.hasSeenOnboarding else { return }
     self.onTriggerOnboardingFlow?()
   }
 
@@ -370,12 +373,12 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
       do {
         try await delay()
         try Task.checkCancellation()
-        guard active, AppEnvironment.current.userDefaults.hasSeenOnboarding else { return }
+        guard active, let self, self.lifecycleFeature.hasSeenOnboarding else { return }
         let tracking = AppEnvironment.current.appTrackingTransparency
         if tracking.advertisingIdentifier == nil, tracking.shouldRequestAuthorizationStatus() {
           tracking.requestAndSetAuthorizationStatus(nil)
         }
-        self?.onRequestTrackingAuthorization?()
+        self.onRequestTrackingAuthorization?()
       } catch { /* Cancellation ends pending presentation. */ }
     }
   }
@@ -468,7 +471,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func refreshConfiguration() {
-    visitorCookies().forEach(AppEnvironment.current.cookieStorage.setCookie)
+    self.lifecycleFeature.installVisitorCookies()
     self.configurationTask?.cancel()
     let request = self.lifecycleFeature.requestConfiguration()
     self.configurationTask = Task { [weak self] in
@@ -534,6 +537,14 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.onConfigureSegmentWithBraze?(
       AppEnvironment.current.mainBundle.isRelease ? Secrets.Segment.production : Secrets.Segment.staging
     )
+  }
+
+  public func recordOnboardingCompletion() {
+    self.lifecycleFeature.recordOnboardingCompletion()
+  }
+
+  public func synchronizePreferences() {
+    self.lifecycleFeature.synchronizePreferences()
   }
 
   public func applicationWillEnterForeground() {
@@ -955,38 +966,6 @@ extension ShortcutItem {
       )
     }
   }
-}
-
-@MainActor
-private func visitorCookies() -> [HTTPCookie] {
-  let uuidString = (AppEnvironment.current.device.identifierForVendor ?? UUID()).uuidString
-
-  return [HTTPCookie?].init(
-    arrayLiteral:
-    HTTPCookie(
-      properties: [
-        .name: "vis",
-        .value: uuidString,
-        .domain: AppEnvironment.current.apiService.serverConfig.webBaseUrl.host as Any,
-        .path: "/",
-        .version: 0,
-        .expires: Date.distantFuture,
-        .secure: true
-      ]
-    ),
-    HTTPCookie(
-      properties: [
-        .name: "vis",
-        .value: uuidString,
-        .domain: AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host as Any,
-        .path: "/",
-        .version: 0,
-        .expires: Date.distantFuture,
-        .secure: true
-      ]
-    )
-  )
-  .compact()
 }
 
 private func accessTokenFromUrl(_ url: URL?) -> String? {

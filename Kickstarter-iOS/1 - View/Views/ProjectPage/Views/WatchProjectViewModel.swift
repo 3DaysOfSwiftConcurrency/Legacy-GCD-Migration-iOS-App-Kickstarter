@@ -88,15 +88,8 @@ final class WatchProjectViewModel {
     project.personalization.isStarred = !selected
     self.publishProject(project)
     self.onEvent?(selected ? .selection : .success)
-    if !project.endsIn48Hours(today: AppEnvironment.current.dateType.init().date),
-       !AppEnvironment.current.ubiquitousStore.hasSeenSaveProjectAlert || !AppEnvironment.current.userDefaults.hasSeenSaveProjectAlert {
-      AppEnvironment.current.ubiquitousStore.hasSeenSaveProjectAlert = true
-      AppEnvironment.current.userDefaults.hasSeenSaveProjectAlert = true
-      self.onEvent?(.savedAlert)
-    }
-    if shouldShowNotificationDialog() {
-      AppEnvironment.current.ubiquitousStore.hasSeenSaveProjectAlert = true
-      AppEnvironment.current.userDefaults.hasSeenSaveProjectAlert = true
+    if self.feature.claimSaveProjectTip(for: project) { self.onEvent?(.savedAlert) }
+    if self.feature.claimSaveNotificationPrompt() {
       self.onEvent?(.notification(Notification(name: .ksr_showNotificationsDialog, userInfo: [UserInfoKeys.context: PushNotificationDialog.Context.save])))
     }
     let feature = self.feature
@@ -136,10 +129,4 @@ final class WatchProjectViewModel {
       Task { @MainActor in feature.cancelPreparedWatch(intent) }
     }
   }
-}
-
-@MainActor
-private func shouldShowNotificationDialog() -> Bool {
-  return PushNotificationDialog.canShowDialog(for: .save) &&
-    AppEnvironment.current.currentUser?.stats.starredProjectsCount == 0
 }

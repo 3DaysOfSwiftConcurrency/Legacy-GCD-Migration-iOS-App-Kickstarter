@@ -65,6 +65,12 @@ public final class ProjectDetailsFeature {
   private var attributionRoutes: [UUID: Task<Void, Error>] = [:]
   private var attributionOperations: [UUID: Task<Void, Error>] = [:]
 
+  public func storeReferral(for project: Project, fallback: RefTag?) {
+    guard let tag = cookieRefTagFor(project: project) ?? fallback,
+          let cookie = cookieFrom(refTag: tag, project: project) else { return }
+    AppEnvironment.current.cookieStorage.setCookie(cookie)
+  }
+
   /// One admitted page-view event per route, including after failure. Repeated
   /// callbacks share its task; there is no automatic retry or global deduplication.
   /// Once sent, the event settles independently of the screen's lifetime.

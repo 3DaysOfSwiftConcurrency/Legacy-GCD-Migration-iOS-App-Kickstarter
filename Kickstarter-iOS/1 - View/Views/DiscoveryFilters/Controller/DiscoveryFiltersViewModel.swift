@@ -9,6 +9,7 @@ public final class DiscoveryFiltersViewModel {
   var onFavoriteRows: (([SelectableRow], Int?) -> Void)?
   var onTopRows: (([SelectableRow], Int?) -> Void)?
   var onSelectedRow: ((SelectableRow) -> Void)?
+  private let discoveryFeature: DiscoveryFeature
   private let categoriesUseCase = FetchCategoriesUseCase()
   private var configuredRow: SelectableRow?
   private var initialRow: SelectableRow?
@@ -23,7 +24,8 @@ public final class DiscoveryFiltersViewModel {
   private var loaded = false
   private(set) var shouldAnimateSelectableCell = false
 
-  public init() {
+  public init(discoveryFeature: DiscoveryFeature? = nil) {
+    self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
     self.categoriesUseCase.onCategories = { [weak self] in self?.receivedCategories($0) }
     self.categoriesUseCase.onLoading = { [weak self] in self?.onLoading?($0) }
   }
@@ -54,7 +56,7 @@ public final class DiscoveryFiltersViewModel {
   private func receivedCategories(_ categories: [KsApi.Category]) {
     self.latestCategories = categories
     guard let row = self.initialRow else { return }
-    if let favorites = favorites(selectedRow: row, categories: categories) {
+    if let favorites = favorites(selectedRow: row, categories: categories, discoveryFeature: self.discoveryFeature) {
       self.currentFavoriteRows = favorites
       self.onFavoriteRows?(favorites, self.categoryId)
     }
@@ -190,8 +192,9 @@ private func topFilters(forUser user: User?) -> [DiscoveryParams] {
 }
 
 @MainActor
-private func favorites(selectedRow: SelectableRow, categories: [KsApi.Category])
-  -> [SelectableRow]? {
+private func favorites(
+  selectedRow: SelectableRow, categories: [KsApi.Category], discoveryFeature: DiscoveryFeature
+) -> [SelectableRow]? {
   let subcategories = categories
     .filter { $0.isRoot }
     .flatMap { category in [category] + (category.subcategories?.nodes ?? []) }
@@ -201,8 +204,7 @@ private func favorites(selectedRow: SelectableRow, categories: [KsApi.Category])
       guard let id = subcategory.intID else {
         return nil
       }
-      if AppEnvironment.current.ubiquitousStore.favoriteCategoryIds.contains(id) ||
-        AppEnvironment.current.userDefaults.favoriteCategoryIds.contains(id) {
+      if discoveryFeature.isFavoriteCategory(id) {
         return SelectableRow(
           isSelected: subcategory == selectedRow.params.category,
           params: .defaults |> DiscoveryParams.lens.category .~ subcategory

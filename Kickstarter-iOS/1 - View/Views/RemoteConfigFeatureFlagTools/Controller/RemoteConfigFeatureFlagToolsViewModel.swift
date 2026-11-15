@@ -12,9 +12,14 @@ public final class RemoteConfigFeatureFlagToolsViewModel {
   public private(set) var remoteConfigFeatures: RemoteConfigFeatures = []
   public private(set) var statsigFeatures: StatsigFeatures = []
   private var reloadTask: Task<Void, Never>?
+  private let appLifecycleFeature: AppLifecycleFeature
   private let sleep: () async throws -> Void
 
-  public init(sleep: @escaping () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }) {
+  public init(
+    appLifecycleFeature: AppLifecycleFeature? = nil,
+    sleep: @escaping () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
+  ) {
+    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.sleep = sleep
   }
   public func viewDidLoad() { self.reload() }
@@ -30,38 +35,17 @@ public final class RemoteConfigFeatureFlagToolsViewModel {
   }
   public func setFeatureAtIndexEnabled(index: Int, isEnabled: Bool) {
     guard self.remoteConfigFeatures.indices.contains(index) else { return }
-    setValueInUserDefaults(for: self.remoteConfigFeatures[index].0, and: isEnabled)
+    self.appLifecycleFeature.setRemoteConfigOverride(self.remoteConfigFeatures[index].0, enabled: isEnabled)
     self.didUpdateUserDefaults()
   }
   public func setStatsigFeatureAtIndexEnabled(index: Int, isEnabled: Bool) {
     guard self.statsigFeatures.indices.contains(index) else { return }
-    setStatsigValueInUserDefaults(for: self.statsigFeatures[index].0, and: isEnabled)
+    self.appLifecycleFeature.setStatsigOverride(self.statsigFeatures[index].0, enabled: isEnabled)
     self.didUpdateUserDefaults()
   }
   private func reload() {
-    self.remoteConfigFeatures = RemoteConfigFeature.allCases.map { ($0, isFeatureEnabled($0)) }
+    self.remoteConfigFeatures = RemoteConfigFeature.allCases.map { ($0, featureEnabled(feature: $0)) }
     self.statsigFeatures = StatsigFeature.allCases.map { ($0, statsigFeatureEnabled(feature: $0)) }
   }
   internal func waitForReload() async { await self.reloadTask?.value }
-}
-
-// MARK: - Private Helpers (Remote Config)
-
-@MainActor
-private func isFeatureEnabled(_ feature: RemoteConfigFeature) -> Bool {
-  return featureEnabled(feature: feature)
-}
-
-@MainActor
-private func setValueInUserDefaults(for feature: RemoteConfigFeature, and value: Bool) {
-  AppEnvironment.current.userDefaults
-    .remoteConfigFeatureFlags[feature.rawValue] = value
-}
-
-// MARK: - Private Helpers (Statsig)
-
-@MainActor
-private func setStatsigValueInUserDefaults(for feature: StatsigFeature, and value: Bool) {
-  AppEnvironment.current.userDefaults
-    .statsigFeatureFlags[feature.rawValue] = value
 }

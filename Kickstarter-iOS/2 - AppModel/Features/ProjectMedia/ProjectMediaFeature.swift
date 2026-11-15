@@ -247,6 +247,27 @@ public final class ProjectMediaFeature {
     cache[id] = saved
     AppEnvironment.current.cache[KSCache.ksr_projectSaved] = cache
   }
+  public func claimSaveProjectTip(for project: Project) -> Bool {
+    guard let environment = AppEnvironment.current else { return false }
+    guard !project.endsIn48Hours(today: environment.dateType.init().date),
+          !environment.ubiquitousStore.hasSeenSaveProjectAlert ||
+          !environment.userDefaults.hasSeenSaveProjectAlert else { return false }
+    self.recordSaveProjectTip()
+    return true
+  }
+
+  public func claimSaveNotificationPrompt() -> Bool {
+    guard PushNotificationDialog.canShowDialog(for: .save),
+          self.sessionFeature.currentUser?.stats.starredProjectsCount == 0 else { return false }
+    self.recordSaveProjectTip()
+    return true
+  }
+
+  private func recordSaveProjectTip() {
+    AppEnvironment.current.ubiquitousStore.hasSeenSaveProjectAlert = true
+    AppEnvironment.current.userDefaults.hasSeenSaveProjectAlert = true
+  }
+
   public func prepareWatch(projectID: String, watched: Bool, previous: Bool) -> WatchIntent {
     self.prepareCache()
     let intent = WatchIntent(key: self.watchIdentity(projectID), token: UUID(), watched: watched, previous: previous)

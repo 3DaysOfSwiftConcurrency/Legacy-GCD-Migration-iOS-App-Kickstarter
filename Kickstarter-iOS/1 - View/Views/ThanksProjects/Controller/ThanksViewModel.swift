@@ -72,20 +72,14 @@ final class ThanksViewModel {
         ? Strings.You_have_successfully_pledged_to_project_post_campaign_html_short(pledge_total: total)
         : Strings.You_have_successfully_backed_project_html(project_name: project.name)
       self.onEvent?(.backedProjectText(text.simpleHtmlAttributedString(font: UIFont.ksr_subhead(), bold: UIFont.ksr_subhead().bolded) ?? NSAttributedString(string: "")))
-      let gamesAlert = project.category?.rootId == KsApi.Category.gamesId &&
-        !(AppEnvironment.current.currentUser?.newsletters.games ?? false) &&
-        !AppEnvironment.current.userDefaults.hasSeenGamesNewsletterPrompt
-      if gamesAlert {
-        AppEnvironment.current.userDefaults.hasSeenGamesNewsletterPrompt = true
-        self.onEvent?(.showGamesNewsletterAlert)
-      } else if !AppEnvironment.current.userDefaults.hasSeenAppRating &&
-                  AppEnvironment.current.config?.iTunesLink != nil && !shouldShowPledgeDialog() {
-        AppEnvironment.current.userDefaults.hasSeenAppRating = true
-        self.onEvent?(.showRatingAlert)
+      switch self.feature.nextPostBackingPrompt(for: project) {
+      case .gamesNewsletter: self.onEvent?(.showGamesNewsletterAlert)
+      case .rating: self.onEvent?(.showRatingAlert)
+      case nil: break
       }
       AppEnvironment.current.ksrAnalytics.trackThanksPageViewed(project: project, reward: data.reward, checkoutData: data.checkoutData)
     }
-    if shouldShowPledgeDialog() { self.onEvent?(.postContextualNotification) }
+    if self.feature.shouldOfferPledgeNotifications { self.onEvent?(.postContextualNotification) }
   }
   func closeButtonTapped() {
     self.recommendationRevision = UUID()
@@ -146,10 +140,4 @@ final class ThanksViewModel {
       clientMutationId: ""
     ))
   }
-}
-
-@MainActor
-private func shouldShowPledgeDialog() -> Bool {
-  return PushNotificationDialog.canShowDialog(for: .pledge) &&
-    AppEnvironment.current.currentUser?.stats.backedProjectsCount == 0
 }

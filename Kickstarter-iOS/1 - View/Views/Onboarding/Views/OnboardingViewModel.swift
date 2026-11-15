@@ -136,6 +136,7 @@ public final class OnboardingViewModel {
   }
 
   public func onboardingFlowEnded() {
+    (self.lifecycleFeature ?? AppModel.shared.appLifecycleFeature).recordOnboardingCompletion()
     AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(context: .onboardingClose)
   }
 

@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import AppTrackingTransparency
+import Experimentation
 import UserNotifications
 import KsApi
 import Prelude
@@ -197,6 +198,30 @@ public final class AppLifecycleFeature {
     let value = await task.value
     if self.notificationRequest?.id == id { self.notificationRequest = nil }
     return value
+  }
+
+  public func synchronizePreferences() {
+    _ = AppEnvironment.current.ubiquitousStore.synchronize()
+  }
+
+  public func installVisitorCookies() {
+    visitorCookies().forEach(AppEnvironment.current.cookieStorage.setCookie)
+  }
+
+  public func setRemoteConfigOverride(_ feature: RemoteConfigFeature, enabled: Bool) {
+    AppEnvironment.current.userDefaults.remoteConfigFeatureFlags[feature.rawValue] = enabled
+  }
+
+  public func setStatsigOverride(_ feature: StatsigFeature, enabled: Bool) {
+    AppEnvironment.current.userDefaults.statsigFeatureFlags[feature.rawValue] = enabled
+  }
+
+  public var hasSeenOnboarding: Bool {
+    AppEnvironment.current.userDefaults.hasSeenOnboarding
+  }
+
+  public func recordOnboardingCompletion() {
+    AppEnvironment.current.userDefaults.hasSeenOnboarding = true
   }
 
   public func notificationStatus() async -> UNAuthorizationStatus {
@@ -481,4 +506,36 @@ public final class AppLifecycleFeature {
       return value
     }
   }
+}
+
+@MainActor
+private func visitorCookies() -> [HTTPCookie] {
+  let uuidString = (AppEnvironment.current.device.identifierForVendor ?? UUID()).uuidString
+
+  return [HTTPCookie?].init(
+    arrayLiteral:
+    HTTPCookie(
+      properties: [
+        .name: "vis",
+        .value: uuidString,
+        .domain: AppEnvironment.current.apiService.serverConfig.webBaseUrl.host as Any,
+        .path: "/",
+        .version: 0,
+        .expires: Date.distantFuture,
+        .secure: true
+      ]
+    ),
+    HTTPCookie(
+      properties: [
+        .name: "vis",
+        .value: uuidString,
+        .domain: AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host as Any,
+        .path: "/",
+        .version: 0,
+        .expires: Date.distantFuture,
+        .secure: true
+      ]
+    )
+  )
+  .compact()
 }

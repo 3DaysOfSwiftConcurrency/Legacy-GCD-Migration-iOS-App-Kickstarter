@@ -411,10 +411,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     self.recordAttributionIfReady()
     if !self.didInspectFirstCookie {
       self.didInspectFirstCookie = true
-      if let tag = cookieRefTagFor(project: project) ?? refTag,
-         let cookie = cookieFrom(refTag: tag, project: project) {
-        AppEnvironment.current.cookieStorage.setCookie(cookie)
-      }
+      self.projectDetailsFeature.storeReferral(for: project, fallback: refTag)
     }
     let projectID = "\(project.id)"
     if self.lastRelatedProjectID != projectID {

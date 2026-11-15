@@ -179,12 +179,11 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   }
 
   public func personalizationCellTapped() {
-    guard let categories = cachedCategories() else { return }
-    self.onGoToCuratedProjects?(categories)
+    self.onGoToCuratedProjects?(self.discoveryFeature.cachedOnboardingCategories())
   }
 
   public func personalizationCellDismissTapped() {
-    AppEnvironment.current.userDefaults.hasDismissedPersonalizationCard = true
+    self.discoveryFeature.dismissPersonalizationCard()
     self.onDismissPersonalizationCell?()
   }
 
@@ -324,9 +323,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   private func receiveActivities(_ activities: [Activity], sort: DiscoveryParams.Sort) {
     guard self.currentSort == sort, self.lastRawActivities != activities else { return }
     self.lastRawActivities = activities
-    let unseen = activities.filter { hasNotSeen(activity: $0) }
-    saveSeen(activities: unseen)
-    self.publishActivities(unseen)
+    self.publishActivities(self.discoveryFeature.consumeUnseenActivitySample(activities))
   }
   private var currentNavigationParameters: DiscoveryParams?
   private var currentNavigationProjects: [Project]?
@@ -472,31 +469,8 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   public var outputs: DiscoveryPageViewModelOutputs { return self }
 }
 
-@MainActor
-private func hasNotSeen(activity: Activity) -> Bool {
-  return activity.id != AppEnvironment.current.userDefaults.lastSeenActivitySampleId
-}
-
-@MainActor
-private func saveSeen(activities: [Activity]) {
-  activities.forEach { activity in
-    AppEnvironment.current.userDefaults.lastSeenActivitySampleId = activity.id
-  }
-}
-
 private func shouldShowPersonalization() -> Bool {
   return false
-}
-
-@MainActor
-private func cachedCategories() -> [KsApi.Category]? {
-  guard let data = AppEnvironment.current.userDefaults.onboardingCategories,
-        let categories = try? JSONDecoder().decode([KsApi.Category].self, from: data)
-  else {
-    return []
-  }
-
-  return categories
 }
 
 @MainActor
