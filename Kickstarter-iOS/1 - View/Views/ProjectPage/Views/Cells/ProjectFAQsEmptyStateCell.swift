@@ -4,6 +4,7 @@ import Prelude
 import UIKit
 
 final class ProjectFAQsEmptyStateCell: UITableViewCell, ValueCell {
+  private let sessionFeature = AppModel.shared.sessionFeature
   // MARK: - Properties
 
   private lazy var titleTextLabel: UILabel = {
@@ -37,7 +38,7 @@ final class ProjectFAQsEmptyStateCell: UITableViewCell, ValueCell {
     _ = self.contentView
       |> \.layoutMargins .~ .init(all: Styles.projectPageLeftRightInset)
 
-    let titleTextLabelSecondaryText = AppEnvironment.current.currentUser != nil ? Strings
+    let titleTextLabelSecondaryText = self.sessionFeature.currentUser != nil ? Strings
       .Ask_the_project_creator_directly() : Strings.Log_in_to_ask_the_project_creator_directly()
 
     let titleTextLabelText = Strings
