@@ -10,7 +10,7 @@ public final class SettingsPrivacyViewModel {
   public var onError: ((String) -> Void)?
   public var onResetFollowing: (() -> Void)?
   public var onFocusFollowing: (() -> Void)?
-  private let feature: SettingsFeature
+  private let settingsFeature: SettingsFeature
   private let sleep: (TimeInterval) async throws -> Void
   private var initialUser: User?
   private var currentUser: User?
@@ -19,18 +19,19 @@ public final class SettingsPrivacyViewModel {
   private var saves: [UUID: Task<Void, Never>] = [:]
   private var revision = 0
 
-  public init(feature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  public init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.feature = feature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.sleep = sleep
   }
 
   public func viewDidLoad() {
-    if let user = self.feature.sessionFeature.currentUser { self.display(user) }
+    if let user = self.settingsFeature.sessionFeature.currentUser { self.display(user) }
     self.loadTask?.cancel()
-    self.loadTask = Task { [weak self, feature] in
-      guard let user = try? await feature.refresh(), !Task.isCancelled else { return }
+    let settingsFeature = self.settingsFeature
+    self.loadTask = Task { [weak self, settingsFeature] in
+      guard let user = try? await settingsFeature.refresh(), !Task.isCancelled else { return }
       self?.display(user)
     }
   }
@@ -77,13 +78,13 @@ public final class SettingsPrivacyViewModel {
     self.revision += 1
     let revision = self.revision
     let id = UUID()
-    let feature = self.feature
+    let settingsFeature = self.settingsFeature
     let sleep = self.sleep
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
-      do { result = .success(try await feature.save(changes, from: source)) }
+      do { result = .success(try await settingsFeature.save(changes, from: source)) }
       catch { result = .failure(error) }
       do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }
