@@ -85,12 +85,12 @@ public final class CommentsViewModel: CommentsViewModelType,
   CommentsViewModelInputs,
   CommentsViewModelOutputs {
   public func canBlock(author: Comment.Author) -> Bool {
-    self.feature.canBlock(author: author)
+    self.discussionFeature.canBlock(author: author)
   }
 
   // MARK: Initializers
 
-  private let feature: DiscussionFeature
+  private let discussionFeature: DiscussionFeature
   private var pageObservation: MainActorObservation?
   private let route = UUID()
   private(set) var loadingTask: Task<Void, Never>?
@@ -118,17 +118,16 @@ public final class CommentsViewModel: CommentsViewModelType,
   private var lastViewedReplyComment: Comment?
   private var lastReplyComment: Comment?
 
-  public init(feature: DiscussionFeature? = nil) {
-    let feature = feature ?? AppModel.shared.discussionFeature
-    self.feature = feature
-    let route = self.route
+  public init(discussionFeature: DiscussionFeature? = nil) {
+    let discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
+    self.discussionFeature = discussionFeature
     self.blockAnalytics.onInitiate = { project, blockedUserId in
       AppEnvironment.current.ksrAnalytics.trackBlockedUser(
         project, page: .project, sectionContext: .comments,
         typeContext: .initiate, targetUserId: "\(blockedUserId)"
       )
     }
-    self.pageObservation = feature.observePages { [weak self] update in
+    self.pageObservation = discussionFeature.observePages { [weak self] update in
       guard let self else { return }
       switch update {
       case let .page(route, comments, _):
@@ -177,7 +176,7 @@ public final class CommentsViewModel: CommentsViewModelType,
   private let blockAnalytics = BlockUserAnalyticsContext()
   public func blockUser(id: String) {
     self.blockAnalytics.receive(userID: "\(id)")
-    self.blockPresentation.start(feature: self.feature, id: id) { [weak self] result in
+    self.blockPresentation.start(feature: self.discussionFeature, id: id) { [weak self] result in
       guard let self else { return }
       switch result {
       case .success:
@@ -207,7 +206,7 @@ public final class CommentsViewModel: CommentsViewModelType,
   public func didSelectComment(_ comment: Comment) {
     guard comment.status == .failed, self.retryTasks[comment.id] == nil,
           let commentableID = self.latestCommentableID else { return }
-    let task = self.feature.beginRetry(comment: comment, commentableID: commentableID, parentID: nil) { [weak self] replacement, id in
+    let task = self.discussionFeature.beginRetry(comment: comment, commentableID: commentableID, parentID: nil) { [weak self] replacement, id in
       self?.applyComment(replacement, replacing: id)
     }
     self.retryTasks[comment.id] = task
@@ -222,7 +221,9 @@ public final class CommentsViewModel: CommentsViewModelType,
     guard let project = self.latestPostingProject, let commentableID = self.latestCommentableID,
           let user = self.postingUser else { return }
     let id = UUID()
-    let task = self.feature.beginPresentedPost(project: project, commentableID: commentableID, parentID: nil, user: user, body: text) { [weak self] comment, replacementID in
+    let task = self.discussionFeature.beginPresentedPost(
+      project: project, commentableID: commentableID, parentID: nil, user: user, body: text
+    ) { [weak self] comment, replacementID in
       self?.applyComment(comment, replacing: replacementID)
     }
     self.postTasks[id] = task
@@ -233,7 +234,7 @@ public final class CommentsViewModel: CommentsViewModelType,
   }
 
   public func commentRemovedCellDidTapURL(_ url: URL) {
-    if let type = self.feature.helpType(for: url) { self.onShowHelp?(type) }
+    if let type = self.discussionFeature.helpType(for: url) { self.onShowHelp?(type) }
   }
 
   public func commentCellDidTapReply(comment: Comment) {
@@ -273,17 +274,17 @@ public final class CommentsViewModel: CommentsViewModelType,
     }
     guard let source = self.currentSource else { return }
     self.hasRequestedPage = false
-    let feature = self.feature
+    let discussionFeature = self.discussionFeature
     let route = self.route
     self.loadingTask = Task {
       await Task.yield()
-      await feature.requestFirstPage(route: route, source: source, refresh: true).value
+      await discussionFeature.requestFirstPage(route: route, source: source, refresh: true).value
     }
   }
 
   public func viewDidLoad() {
     self.loaded = true
-    self.postingUser = self.feature.sessionFeature.currentUser
+    self.postingUser = self.discussionFeature.sessionFeature.currentUser
     if let project = self.latestPostingProject { self.publishComposer(for: project) }
     self.applyConfiguration()
   }
@@ -295,12 +296,12 @@ public final class CommentsViewModel: CommentsViewModelType,
     if let project = configuration.project {
       self.currentSource = .project(project.slug)
       self.latestCommentableID = project.graphID
-      self.feature.cancelProject(route: self.route)
+      self.discussionFeature.cancelProject(route: self.route)
       self.receiveProject(project)
     } else if let update = configuration.update {
       self.currentSource = .update(String(update.id))
       self.latestCommentableID = encodeToBase64("FreeformPost-\(update.id)")
-      let request = self.feature.requestProject(route: self.route, param: .id(update.projectId))
+      let request = self.discussionFeature.requestProject(route: self.route, param: .id(update.projectId))
       self.contextTask = Task { [weak self] in
         guard let project = await request.value, !Task.isCancelled,
               let self, self.contextRevision == revision else { return }
@@ -324,12 +325,12 @@ public final class CommentsViewModel: CommentsViewModelType,
   private func requestFirstPage() {
     guard let source = self.currentSource else { return }
     self.hasRequestedPage = false
-    self.loadingTask = self.feature.requestFirstPage(route: self.route, source: source, refresh: true)
+    self.loadingTask = self.discussionFeature.requestFirstPage(route: self.route, source: source, refresh: true)
   }
 
   private func requestNextPage() {
     self.hasRequestedPage = true
-    self.loadingTask = self.feature.requestNextPage(route: self.route)
+    self.loadingTask = self.discussionFeature.requestNextPage(route: self.route)
   }
 
   private func publishFooter(_ state: CommentTableViewFooterViewState) {
@@ -374,17 +375,17 @@ public final class CommentsViewModel: CommentsViewModelType,
     self.retryTasks.values.forEach { $0.cancel() }
     self.postTasks.values.forEach { $0.cancel() }
 
-    let feature = self.feature
+    let discussionFeature = self.discussionFeature
     let route = self.route
     Task { @MainActor in
-      feature.release(route: route)
+      discussionFeature.release(route: route)
     }
   }
 
   func waitForLoads() async {
     await self.contextTask?.value
     await self.loadingTask?.value
-    await self.feature.waitForMutations()
+    await self.discussionFeature.waitForMutations()
     for task in self.retryTasks.values { await task.value }
     for task in self.postTasks.values { await task.value }
     await self.blockPresentation.wait()
