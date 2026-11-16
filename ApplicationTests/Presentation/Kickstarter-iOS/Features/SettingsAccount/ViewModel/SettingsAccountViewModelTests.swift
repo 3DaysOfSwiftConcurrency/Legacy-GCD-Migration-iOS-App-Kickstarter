@@ -10,7 +10,7 @@ final class SettingsAccountViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = SettingsAccountViewModel(feature: self.feature, sleep: { _ in })
+  private lazy var vm = SettingsAccountViewModel(settingsFeature: self.feature, sleep: { _ in })
 
   func testAccountFieldsAndSelection() async {
     let service = MockService(fetchGraphUserResult: .success(UserEnvelope(me: GraphUser.template)))

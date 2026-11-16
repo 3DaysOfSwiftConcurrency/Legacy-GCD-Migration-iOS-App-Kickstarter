@@ -18,16 +18,16 @@ public final class SettingsAccountViewModel {
   public private(set) var createPasswordFooter: (Bool, String?)?
   public var onFetchError: (() -> Void)?
   public var onSelect: ((SettingsAccountCellType, Currency) -> Void)?
-  private let feature: SettingsFeature
+  private let settingsFeature: SettingsFeature
   private let sleep: (TimeInterval) async throws -> Void
   private var task: Task<Void, Never>?
   private var revision = 0
   private var appeared = false
 
-  public init(feature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  public init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.feature = feature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.sleep = sleep
   }
   public func viewDidLoad() { self.load() }
@@ -43,9 +43,10 @@ public final class SettingsAccountViewModel {
     self.task?.cancel()
     self.revision += 1
     let revision = self.revision
-    self.task = Task { [weak self, feature, sleep] in
+    let settingsFeature = self.settingsFeature
+    self.task = Task { [weak self, settingsFeature, sleep] in
       do {
-        let user = try await feature.accountFields(sleep: sleep)
+        let user = try await settingsFeature.accountFields(sleep: sleep)
         try Task.checkCancellation()
         guard let self, self.revision == revision else { return }
         let apple = user.isAppleConnected == .some(true)
