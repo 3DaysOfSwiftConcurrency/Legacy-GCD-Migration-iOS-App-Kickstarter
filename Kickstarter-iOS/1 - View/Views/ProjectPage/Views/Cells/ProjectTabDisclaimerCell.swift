@@ -13,7 +13,6 @@ protocol ProjectTabDisclaimerCellDelegate: AnyObject {
 }
 
 final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
-  private let appLifecycleFeature = AppModel.shared.appLifecycleFeature
   // MARK: - Properties
 
   weak var delegate: ProjectTabDisclaimerCellDelegate?
@@ -68,8 +67,8 @@ final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
 
   // MARK: - Configuration
 
-  func configureWith(value: ProjectDisclaimerType) {
-    self.descriptionTextView.attributedText = self.attributedText(from: value)
+  func configureWith(value: ProjectDisclaimerType, webBaseURL: URL) {
+    self.descriptionTextView.attributedText = self.attributedText(from: value, webBaseURL: webBaseURL)
   }
 
   private func configureViews() {
@@ -81,7 +80,7 @@ final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
       |> ksr_addArrangedSubviewsToStackView()
   }
 
-  private func attributedText(from type: ProjectDisclaimerType) -> NSAttributedString {
+  private func attributedText(from type: ProjectDisclaimerType, webBaseURL: URL) -> NSAttributedString {
     let regularFontAttribute: String.Attributes = [
       .font: UIFont.ksr_subhead(),
       .foregroundColor: LegacyColors.ksr_support_700.uiColor()
@@ -100,13 +99,12 @@ final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
       And that way could just do: `Strings.To_learn_how_Kickstarter_encourages_sustainable_practices(environmental_resources_link: environmentLink)` after line 120.
      **/
 
-    let baseUrl = self.appLifecycleFeature.webBaseURL
     switch type {
     case .aiDisclosure:
       let linkText = Strings.Learn_about_AI_policy_on_Kickstarter()
 
       let backup = NSAttributedString(string: linkText, attributes: regularFontAttribute)
-      guard let link = HelpType.aiDisclosure.url(withBaseUrl: baseUrl)?.absoluteString else {
+      guard let link = HelpType.aiDisclosure.url(withBaseUrl: webBaseURL)?.absoluteString else {
         return backup
       }
 
@@ -119,7 +117,7 @@ final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
       )
 
       guard let environmentLink = HelpType.environment
-        .url(withBaseUrl: baseUrl)?.absoluteString else { return learnMoreString }
+        .url(withBaseUrl: webBaseURL)?.absoluteString else { return learnMoreString }
 
       let environmentString = Strings
         .Visit_our_Environmental_Resources_Center_Alternative(environment_link: environmentLink)

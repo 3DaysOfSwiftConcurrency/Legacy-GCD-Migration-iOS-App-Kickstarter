@@ -8,7 +8,7 @@ final class ProjectTabDisclaimerCellTests: XCTestCase {
     let cell = ProjectTabDisclaimerCell(style: .default, reuseIdentifier: nil)
     let delegate = DisclaimerDelegate()
     cell.delegate = delegate
-    cell.configureWith(value: .aiDisclosure)
+    cell.configureWith(value: .aiDisclosure, webBaseURL: URL(string: "https://www.kickstarter.com")!)
     let url = URL(string: "https://example.com")!
     XCTAssertFalse(cell.textView(UITextView(), shouldInteractWith: url, in: NSRange(location: 0, length: 0),
                                  interaction: .invokeDefaultAction))

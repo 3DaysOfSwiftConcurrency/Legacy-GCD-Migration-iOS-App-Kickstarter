@@ -357,7 +357,7 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
     case let (cell as ProjectTabCheckmarkListCell, value as ProjectTabFundingOptions):
       cell.configureWith(value: value)
     case let (cell as ProjectTabDisclaimerCell, value as ProjectDisclaimerType):
-      cell.configureWith(value: value)
+      cell.configureWith(value: value, webBaseURL: self.projectDetailsFeature.webBaseURL)
     case let (cell as ProjectHeaderCell, value as String):
       cell.configureWith(value: value)
     case let (cell as ProjectFAQsAskAQuestionCell, _):
@@ -375,7 +375,7 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
     case let (cell as ProjectRisksCell, value as String):
       cell.configureWith(value: value)
     case let (cell as ProjectRisksDisclaimerCell, _):
-      cell.configureWith(value: ())
+      cell.configureWith(value: (), webBaseURL: self.projectDetailsFeature.webBaseURL)
     case let (cell as TextViewElementCell, value as TextViewElement):
       cell.configureWith(value: value)
     case let (cell as ImageViewElementCell, value as (ImageViewElement, UIImage?)):
