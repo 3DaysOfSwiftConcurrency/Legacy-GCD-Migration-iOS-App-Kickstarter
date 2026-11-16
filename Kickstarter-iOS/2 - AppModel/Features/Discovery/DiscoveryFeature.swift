@@ -55,6 +55,7 @@ public final class DiscoveryFeature {
   }
 
   private var pages: [String: Page] = [:]
+  private var recommendationRequest: (id: UUID, userID: Int, task: Task<Bool, Error>)?
   private let provider: any DiscoveryProvider
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private let currentUser: @MainActor () -> User?
@@ -134,6 +135,32 @@ public final class DiscoveryFeature {
   }
 
   public var user: User? { self.currentUser() }
+
+  /// Availability is Discovery state even when the result is rendered as an app shortcut.
+  public func hasRecommendations(for user: User?) async throws -> Bool {
+    guard let user else { return false }
+    if let request = self.recommendationRequest, request.userID == user.id {
+      return try await request.task.value
+    }
+    self.recommendationRequest?.task.cancel()
+    let id = UUID()
+    let provider = self.provider
+    let task = Task { @MainActor in
+      defer {
+        if self.recommendationRequest?.id == id { self.recommendationRequest = nil }
+      }
+      do {
+        let parameters = DiscoveryParams.defaults
+          |> DiscoveryParams.lens.recommended .~ true
+          |> DiscoveryParams.lens.state .~ .live
+          |> DiscoveryParams.lens.perPage .~ 1
+        return try await provider.page(parameters: parameters, cursor: nil).stats.count > 0
+      } catch is CancellationError { throw CancellationError() }
+      catch { return false }
+    }
+    self.recommendationRequest = (id, user.id, task)
+    return try await task.value
+  }
 
   public var currentUserHasSocialConnections: Bool {
     self.currentUser()?.social == .some(true)

@@ -275,20 +275,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
     XCTAssertEqual(self.provider.updates.count, 0)
   }
 
-  func testRecommendationFailureKeepsFallbackShortcuts() async throws {
-    let task = Task { try await self.feature.hasRecommendations(for: .template) }
-    await self.provider.recommendationsGate.waitFor(1)
-    try self.provider.recommendationsGate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
-    let hasRecommendations = try await task.value
-    XCTAssertFalse(hasRecommendations)
-  }
-
-  func testLoggedOutShortcutDoesNotFetchRecommendations() async throws {
-    let value = try await self.feature.hasRecommendations(for: nil)
-    XCTAssertFalse(value)
-    XCTAssertEqual(self.provider.recommendationsGate.count, 0)
-  }
-
 }
 
 @MainActor

@@ -209,6 +209,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var notificationTasks: [UUID: Task<Void, Never>] = [:]
   private var verificationTask: Task<Void, Never>?
   private let lifecycleFeature: AppLifecycleFeature
+  private let discoveryFeature: DiscoveryFeature
   private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
   private let requestDevicePushRegistration: @MainActor (String) -> Task<String, Error>
   private let sessionFeature: SessionFeature
@@ -246,6 +247,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public init(
     lifecycleFeature: AppLifecycleFeature? = nil,
+    discoveryFeature: DiscoveryFeature? = nil,
     requestApplicationConfiguration: (@MainActor () -> Task<Config, Error>)? = nil,
     requestDevicePushRegistration: (@MainActor (String) -> Task<String, Error>)? = nil,
     sessionFeature: SessionFeature? = nil,
@@ -260,6 +262,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelay = trackingDelay
     let lifecycleFeature = lifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.lifecycleFeature = lifecycleFeature
+    self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
     self.requestApplicationConfiguration = requestApplicationConfiguration
       ?? { AppModel.shared.requestApplicationConfiguration() }
     self.requestDevicePushRegistration = requestDevicePushRegistration
@@ -462,7 +465,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func refreshShortcutItems(for user: User?) {
     self.shortcutTask?.cancel()
-    let feature = self.lifecycleFeature
+    let feature = self.discoveryFeature
     self.shortcutTask = Task { [weak self] in
       do {
         let recommendations = try await feature.hasRecommendations(for: user)

@@ -5,7 +5,6 @@ import Prelude
 
 @MainActor
 public protocol AppLifecycleProvider {
-  func recommendations() async throws -> Int
   func categories() async throws -> RootCategoriesEnvelope
   func survey(id: Int) async throws -> SurveyResponse
   func project(param: Param) async throws -> Project
@@ -17,14 +16,6 @@ public protocol AppLifecycleProvider {
 public struct AsyncAppLifecycleProvider: AppLifecycleProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func recommendations() async throws -> Int {
-    let params =
-      DiscoveryParams.defaults
-      |> DiscoveryParams.lens.recommended .~ true
-      |> DiscoveryParams.lens.state .~ .live
-      |> DiscoveryParams.lens.perPage .~ 1
-    return try await self.service.discoveryPage(params: params).stats.count
-  }
   public func categories() async throws -> RootCategoriesEnvelope {
     try await self.service.fetchSearchCategories()
   }
@@ -78,9 +69,7 @@ public final class AppLifecycleFeature {
   private var redirectVersions: [UUID: UUID] = [:]
   private var redirectTasks: [UUID: Task<URL?, Error>] = [:]
   private let sleep: (TimeInterval) async throws -> Void
-  private var recommendations: (userID: Int?, request: Pending<Bool>)?
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
-  private var recommendationTasks: [UUID: Task<Bool, Error>] = [:]
   private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
 
   public init(
@@ -107,43 +96,6 @@ public final class AppLifecycleFeature {
 
   public func synchronizePreferences() {
     _ = AppEnvironment.current.ubiquitousStore.synchronize()
-  }
-
-  public func hasRecommendations(for user: User?) async throws -> Bool {
-    try Task.checkCancellation()
-    let session = self.session
-    if let pending = self.recommendations, pending.userID == user?.id,
-      pending.request.session == session
-    {
-      let value = try await pending.request.task.value
-      try self.requireCurrent(session)
-      return value
-    }
-    self.recommendations?.request.task.cancel()
-    let id = UUID()
-    let provider = self.makeProvider()
-    let task = Task { [self] in
-      defer {
-        self.recommendationTasks[id] = nil
-        if self.recommendations?.request.id == id { self.recommendations = nil }
-      }
-      try self.requireCurrent(session)
-      guard user != nil else { return false }
-      do {
-        let count = try await provider.recommendations()
-        try self.requireCurrent(session)
-        return count > 0
-      } catch {
-        try self.requireCurrent(session)
-        if error is CancellationError { throw error }
-        return false  // Original shortcut fallback on failure.
-      }
-    }
-    self.recommendations = (user?.id, Pending(id: id, session: session, task: task))
-    self.recommendationTasks[id] = task
-    let value = try await task.value
-    try self.requireCurrent(session)
-    return value
   }
 
   /// One replaceable email-link read per navigation route. URL is Sendable;
@@ -277,14 +229,11 @@ public final class AppLifecycleFeature {
     self.redirectVersions[route] = nil
   }
   public func reset() {
-    self.recommendations?.request.task.cancel()
     for route in Set(self.destinations.keys).union(self.redirectVersions.keys) { self.release(route: route) }
   }
   public func waitForOperations() async {
-    while !self.recommendationTasks.isEmpty
-      || !self.redirectTasks.isEmpty || !self.destinationTasks.isEmpty
+    while !self.redirectTasks.isEmpty || !self.destinationTasks.isEmpty
     {
-      for task in Array(self.recommendationTasks.values) { _ = await task.result }
       for task in Array(self.redirectTasks.values) { _ = await task.result }
       for task in Array(self.destinationTasks.values) { _ = await task.result }
     }

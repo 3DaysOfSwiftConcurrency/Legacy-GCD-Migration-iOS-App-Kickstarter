@@ -32,6 +32,7 @@ final class AppDelegateViewModelTests: TestCase {
   private lazy var applicationConfigurationService = ApplicationConfigurationService(
     load: { try await AppEnvironment.current.apiService.applicationConfiguration() }
   )
+  private lazy var discoveryFeature = DiscoveryFeature(provider: AsyncDiscoveryProvider())
   var vm: AppDelegateViewModelType!
 
   private let applicationIconBadgeNumber = ValueRecorder<Int>()
@@ -109,6 +110,7 @@ final class AppDelegateViewModelTests: TestCase {
   private func bindOutputs() {
     self.vm = AppDelegateViewModel(
       lifecycleFeature: self.lifecycleFeature,
+      discoveryFeature: self.discoveryFeature,
       requestApplicationConfiguration: { [self] in
         self.applicationConfigurationService.requestConfiguration()
       },
