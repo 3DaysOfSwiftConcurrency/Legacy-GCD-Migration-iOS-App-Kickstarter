@@ -209,6 +209,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var notificationTasks: [UUID: Task<Void, Never>] = [:]
   private var verificationTask: Task<Void, Never>?
   private let lifecycleFeature: AppLifecycleFeature
+  private let sessionFeature: SessionFeature
+  private let settingsFeature: SettingsFeature
   private let onboardingFeature: OnboardingFeature
   private let navigationRoute = UUID()
   @MainActor private final class RedirectObservation {
@@ -242,6 +244,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public init(
     lifecycleFeature: AppLifecycleFeature? = nil,
+    sessionFeature: SessionFeature? = nil,
+    settingsFeature: SettingsFeature? = nil,
     onboardingFeature: OnboardingFeature? = nil,
     pushDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
     userDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
@@ -252,6 +256,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelay = trackingDelay
     let lifecycleFeature = lifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.lifecycleFeature = lifecycleFeature
+    self.sessionFeature = sessionFeature ?? lifecycleFeature.sessionFeature
+    self.settingsFeature = settingsFeature ?? lifecycleFeature.settingsFeature
     self.onboardingFeature = onboardingFeature ?? AppModel.shared.onboardingFeature
   }
 
@@ -305,7 +311,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
           self.onPresentViewController?(navigation)
         case let .project(project):
           if let controller = ProjectDeepLink.viewController(
-            project, isLoggedIn: self.lifecycleFeature.sessionFeature.currentUser != nil
+            project, isLoggedIn: self.sessionFeature.currentUser != nil
           ) { self.onPresentViewController?(controller) }
         }
       } catch { /* Invalid, cancelled or failed links do not navigate. */ }
@@ -419,12 +425,13 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private func beginUserRefresh() {
     self.userReadTask?.cancel()
     self.userRequest?.cancel()
-    guard self.lifecycleFeature.isAuthenticated || self.lifecycleFeature.sessionFeature.currentUser != nil else {
+    let authenticated = AppEnvironment.current.apiService.isAuthenticated
+    guard authenticated || self.sessionFeature.currentUser != nil else {
       self.refreshShortcutItems(for: nil)
       return
     }
-    let request = self.lifecycleFeature.settingsFeature.requestRefresh(
-      allowSessionRestore: self.lifecycleFeature.isAuthenticated
+    let request = self.settingsFeature.requestRefresh(
+      allowSessionRestore: authenticated
     )
     self.userRequest = request
     self.userReadTask = Task { [weak self] in
@@ -464,7 +471,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private func refreshUserSetup() {
     self.setupObservation?.cancel()
     self.setupRequest?.cancel()
-    let request = self.lifecycleFeature.settingsFeature.requestSetup()
+    let request = self.settingsFeature.requestSetup()
     self.setupRequest = request
     self.setupObservation = Task {
       do {
@@ -476,7 +483,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func refreshConfiguration() {
-    self.lifecycleFeature.installVisitorCookies()
+    visitorCookies().forEach(AppEnvironment.current.cookieStorage.setCookie)
     self.configurationTask?.cancel()
     let request = self.lifecycleFeature.requestConfiguration()
     self.configurationTask = Task { [weak self] in
@@ -512,7 +519,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func applicationContinueUserActivity(_ userActivity: NSUserActivity) -> Bool {
     if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
-      self.continueUserActivityReturnValue = userActivity.webpageURL.flatMap { self.lifecycleFeature.navigationMatch($0) } != nil
+      self.continueUserActivityReturnValue = userActivity.webpageURL.flatMap { self.navigationMatch($0) } != nil
     }
     if userActivity.activityType == NSUserActivityTypeBrowsingWeb, let url = userActivity.webpageURL {
       self.handleURL(url)
@@ -549,7 +556,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public func synchronizePreferences() {
-    self.lifecycleFeature.synchronizePreferences()
+    _ = AppEnvironment.current.ubiquitousStore.synchronize()
   }
 
   public func applicationWillEnterForeground() {
@@ -680,8 +687,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func urlFromBrazeNotification(_ url: URL?) {
     guard let url else { return }
-    if let navigation = self.lifecycleFeature.deepLinkMatch(url) { self.handleNavigation(navigation) }
-    if shouldOpenUrlInBrowser(url, hasDeepLinkMatch: self.lifecycleFeature.deepLinkMatch(url) != nil) { self.onGoToMobileSafari?(url) }
+    if let navigation = self.deepLinkMatch(url) { self.handleNavigation(navigation) }
+    if shouldOpenUrlInBrowser(url, hasDeepLinkMatch: self.deepLinkMatch(url) != nil) { self.onGoToMobileSafari?(url) }
   }
 
   private func handleNavigation(_ navigation: Navigation) {
@@ -694,24 +701,34 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     if navigation == .tab(.login) { self.onGoToLoginWithIntent?(.generic) }
     if case let .project(_, subpage, _, _) = navigation,
        case .pledge(.manage) = subpage,
-       self.lifecycleFeature.sessionFeature.currentUser == nil {
+       self.sessionFeature.currentUser == nil {
       self.onGoToLoginWithIntent?(.erroredPledge)
     }
     self.resolveDestination(navigation)
   }
 
   private func handleURL(_ url: URL) {
-    let navigation = self.lifecycleFeature.navigationMatch(url)
+    let navigation = self.navigationMatch(url)
     if let navigation { self.handleNavigation(navigation) }
     if navigation == .profile(.verifyEmail), let token = accessTokenFromUrl(url) {
       self.verifyEmail(token: token)
     }
     if navigation == .emailClick { self.onFindRedirectUrl?(url) }
-    if shouldOpenUrlInBrowser(url, hasDeepLinkMatch: self.lifecycleFeature.deepLinkMatch(url) != nil) { self.onGoToMobileSafari?(url) }
+    if shouldOpenUrlInBrowser(url, hasDeepLinkMatch: self.deepLinkMatch(url) != nil) { self.onGoToMobileSafari?(url) }
+  }
+
+  private func navigationMatch(_ url: URL) -> Navigation? {
+    let config = AppEnvironment.current.apiService.serverConfig
+    return Navigation.match(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
+  }
+
+  private func deepLinkMatch(_ url: URL) -> Navigation? {
+    let config = AppEnvironment.current.apiService.serverConfig
+    return Navigation.deepLinkMatch(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
   }
 
   private func updateNotification(name: String, enabled: Bool) {
-    guard let request = self.lifecycleFeature.settingsFeature.requestNotification(named: name, enabled: enabled) else { return }
+    guard let request = self.settingsFeature.requestNotification(named: name, enabled: enabled) else { return }
     let operation = self.lifecycleFeature.sessionBound { try await request.value }
     let delay = self.settingsPresentationDelay
     let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
@@ -729,7 +746,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func verifyEmail(token: String) {
     self.verificationTask?.cancel()
-    let request = self.lifecycleFeature.settingsFeature.requestVerification(token: token)
+    let request = self.settingsFeature.requestVerification(token: token)
     let operation = self.lifecycleFeature.sessionBound { try await request.value }
     let delay = self.settingsPresentationDelay
     let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
@@ -870,7 +887,7 @@ private func navigation(fromPushEnvelope envelope: PushEnvelope) -> Navigation? 
 
   if let order = envelope.order {
     let path = order.pledgeManagerPath
-    let url = AppModel.shared.appLifecycleFeature.webURL(path: path)
+    let url = AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString + path
     return .project(.id(order.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
   }
 
@@ -884,7 +901,7 @@ private func navigation(fromPushEnvelope envelope: PushEnvelope) -> Navigation? 
 
   if let survey = envelope.survey {
     let path = survey.urls.web.survey
-    let url = AppModel.shared.appLifecycleFeature.webURL(path: path)
+    let url = AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString + path
     return .project(.id(survey.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
   }
 
