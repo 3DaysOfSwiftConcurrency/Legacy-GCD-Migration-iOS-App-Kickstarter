@@ -10,7 +10,7 @@ final class ChangeEmailScreenModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var model = ChangeEmailScreenModel(feature: self.feature, sleep: { _ in })
+  private lazy var model = ChangeEmailScreenModel(settingsFeature: self.feature, sleep: { _ in })
 
   override func setUp() async throws {
     try await super.setUp()

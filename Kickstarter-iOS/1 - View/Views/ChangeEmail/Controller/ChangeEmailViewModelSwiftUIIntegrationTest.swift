@@ -22,7 +22,7 @@ final class ChangeEmailScreenModel {
       !self.password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 
-  private let feature: SettingsFeature
+  private let settingsFeature: SettingsFeature
   private let sleep: (TimeInterval) async throws -> Void
   private var loadTask: Task<Void, Never>?
   private var saveTask: Task<Void, Never>?
@@ -31,10 +31,10 @@ final class ChangeEmailScreenModel {
   private var saveRevision = 0
   private var verifyRevision = 0
 
-  init(feature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.feature = feature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.sleep = sleep
   }
 
@@ -47,9 +47,10 @@ final class ChangeEmailScreenModel {
     self.loadRevision += 1
     let revision = self.loadRevision
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
-    self.loadTask = Task { [weak self, feature, sleep] in
+    let settingsFeature = self.settingsFeature
+    self.loadTask = Task { [weak self, settingsFeature, sleep] in
       do {
-        let user = try await feature.emailUser()
+        let user = try await settingsFeature.emailUser()
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.loadRevision == revision else { return }
@@ -72,9 +73,10 @@ final class ChangeEmailScreenModel {
     let revision = self.saveRevision
     self.isLoading = true
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
-    self.saveTask = Task { [weak self, feature, sleep] in
+    let settingsFeature = self.settingsFeature
+    self.saveTask = Task { [weak self, settingsFeature, sleep] in
       do {
-        _ = try await feature.updateAccount(.email(input))
+        _ = try await settingsFeature.updateAccount(.email(input))
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.saveRevision == revision else { return }
@@ -102,9 +104,10 @@ final class ChangeEmailScreenModel {
     self.verifyRevision += 1
     let revision = self.verifyRevision
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
-    self.verifyTask = Task { [weak self, feature, sleep] in
+    let settingsFeature = self.settingsFeature
+    self.verifyTask = Task { [weak self, settingsFeature, sleep] in
       do {
-        _ = try await feature.updateAccount(.sendVerification)
+        _ = try await settingsFeature.updateAccount(.sendVerification)
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.verifyRevision == revision else { return }
