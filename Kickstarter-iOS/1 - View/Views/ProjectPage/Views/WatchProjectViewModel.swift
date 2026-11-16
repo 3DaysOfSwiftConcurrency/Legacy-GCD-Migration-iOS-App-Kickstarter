@@ -18,7 +18,7 @@ final class WatchProjectViewModel {
   }
 
   var onEvent: ((Event) -> Void)?
-  private let feature: ProjectMediaFeature
+  private let projectMediaFeature: ProjectMediaFeature
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var configured: WatchProjectValue?
   private var project: Project?
@@ -28,26 +28,26 @@ final class WatchProjectViewModel {
   private var pendingIntent: ProjectMediaFeature.WatchIntent?
   private var task: Task<Void, Never>?
 
-  init(feature: ProjectMediaFeature? = nil, sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
+  init(projectMediaFeature: ProjectMediaFeature? = nil, sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
     if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
     else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     try Task.checkCancellation()
   }) {
-    self.feature = feature ?? AppModel.shared.projectMediaFeature
+    self.projectMediaFeature = projectMediaFeature ?? AppModel.shared.projectMediaFeature
     self.sleep = sleep
   }
 
   func configure(with value: WatchProjectValue) {
     self.invalidate()
     self.configured = value
-    if self.isReady { self.publishProject(self.feature.cached(value.project)) }
+    if self.isReady { self.publishProject(self.projectMediaFeature.cached(value.project)) }
   }
 
   func awakeFromNib() { self.ready() }
   func viewDidLoad() { self.ready() }
   private func ready() {
     self.isReady = true
-    if let value = self.configured { self.publishProject(self.feature.cached(value.project)) }
+    if let value = self.configured { self.publishProject(self.projectMediaFeature.cached(value.project)) }
   }
 
   func projectFromNotification(project: Project?) {
@@ -65,7 +65,7 @@ final class WatchProjectViewModel {
       )
     }
     guard self.isReady else { return }
-    guard self.feature.sessionFeature.currentUser != nil else {
+    guard self.projectMediaFeature.sessionFeature.currentUser != nil else {
       self.pendingLoginSelection = selected
       self.onEvent?(.login)
       return
@@ -83,22 +83,23 @@ final class WatchProjectViewModel {
   private func submit(selected: Bool) {
     guard var project = self.project else { return }
     self.invalidate()
-    let intent = self.feature.prepareWatch(projectID: project.graphID, watched: !selected, previous: selected)
+    let intent = self.projectMediaFeature.prepareWatch(projectID: project.graphID, watched: !selected, previous: selected)
     self.pendingIntent = intent
     project.personalization.isStarred = !selected
     self.publishProject(project)
     self.onEvent?(selected ? .selection : .success)
-    if self.feature.claimSaveProjectTip(for: project) { self.onEvent?(.savedAlert) }
-    if self.feature.claimSaveNotificationPrompt() {
+    if self.projectMediaFeature.claimSaveProjectTip(for: project) { self.onEvent?(.savedAlert) }
+    if self.projectMediaFeature.claimSaveNotificationPrompt() {
       self.onEvent?(.notification(Notification(name: .ksr_showNotificationsDialog, userInfo: [UserInfoKeys.context: PushNotificationDialog.Context.save])))
     }
-    let feature = self.feature
+    let projectMediaFeature = self.projectMediaFeature
     let sleep = self.sleep
     self.task = Task { [weak self] in
       do { try await sleep(0.5) } catch { return }
-      guard !Task.isCancelled, feature.isCurrentIntent(intent), let result = await feature.watch(project: project, intent: intent) else { return }
+      guard !Task.isCancelled, projectMediaFeature.isCurrentIntent(intent),
+            let result = await projectMediaFeature.watch(project: project, intent: intent) else { return }
       do { try await sleep(AppEnvironment.current.apiDelayInterval.searchDelaySeconds) } catch { return }
-      guard !Task.isCancelled, feature.isCurrentIntent(intent) else { return }
+      guard !Task.isCancelled, projectMediaFeature.isCurrentIntent(intent) else { return }
       self?.publishProject(result)
     }
   }
@@ -108,7 +109,7 @@ final class WatchProjectViewModel {
   private func invalidate() {
     self.task?.cancel()
     self.task = nil
-    if let pendingIntent { self.feature.cancelPreparedWatch(pendingIntent) }
+    if let pendingIntent { self.projectMediaFeature.cancelPreparedWatch(pendingIntent) }
     self.pendingIntent = nil
   }
 
@@ -125,8 +126,8 @@ final class WatchProjectViewModel {
   deinit {
     self.task?.cancel()
     if let intent = self.pendingIntent {
-      let feature = self.feature
-      Task { @MainActor in feature.cancelPreparedWatch(intent) }
+      let projectMediaFeature = self.projectMediaFeature
+      Task { @MainActor in projectMediaFeature.cancelPreparedWatch(intent) }
     }
   }
 }

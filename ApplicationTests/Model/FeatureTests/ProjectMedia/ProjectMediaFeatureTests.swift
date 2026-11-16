@@ -320,7 +320,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testReusedCellDiscardsDebouncedRequestAndItsOptimisticCache() async {
     let provider = ControlledMediaProvider()
     let feature = ProjectMediaFeature(makeProvider: { provider })
-    let vm = WatchProjectViewModel(feature: feature)
+    let vm = WatchProjectViewModel(projectMediaFeature: feature)
     await withEnvironment(currentUser: .template) {
       let original = Project.template
       var replacement = original

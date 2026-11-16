@@ -27,7 +27,7 @@ internal final class WatchProjectViewModelTests: TestCase {
     self.feature = ProjectMediaFeature(makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) })
     self.clock = WatchTestClock()
     let clock = self.clock!
-    self.vm = WatchProjectViewModel(feature: self.feature, sleep: { try await clock.sleep($0) })
+    self.vm = WatchProjectViewModel(projectMediaFeature: self.feature, sleep: { try await clock.sleep($0) })
 
     self.vm.onEvent = { [weak self] event in
       guard let self else { return }
