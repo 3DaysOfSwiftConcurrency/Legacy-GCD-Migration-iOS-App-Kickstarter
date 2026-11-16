@@ -16,7 +16,7 @@ final class ThanksViewModel {
     case showRecommendations([Project], KsApi.Category), updateUserInEnvironment(User)
   }
   var onEvent: ((Event) -> Void)?
-  private let feature: RecommendationsFeature
+  private let recommendationsFeature: RecommendationsFeature
   private let route = UUID()
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var recommendationTask: Task<Void, Never>?
@@ -29,15 +29,15 @@ final class ThanksViewModel {
        sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
          if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
        }) {
-    self.feature = recommendationsFeature ?? AppModel.shared.recommendationsFeature
+    self.recommendationsFeature = recommendationsFeature ?? AppModel.shared.recommendationsFeature
     self.sleep = sleep
   }
   deinit {
     self.recommendationTask?.cancel()
     self.newsletterTask?.cancel()
-    let feature = self.feature
+    let recommendationsFeature = self.recommendationsFeature
     let route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    Task { @MainActor in recommendationsFeature.release(route: route) }
   }
 
   func configure(with data: ThanksPageData) {
@@ -46,17 +46,17 @@ final class ThanksViewModel {
     self.recommendationTask?.cancel()
     let revision = UUID()
     self.recommendationRevision = revision
-    let feature = self.feature
+    let recommendationsFeature = self.recommendationsFeature
     let route = self.route
-    let session = feature.sessionFeature
+    let session = recommendationsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let command = feature.request(.afterBacking(data.project), route: route)
+    let command = recommendationsFeature.request(.afterBacking(data.project), route: route)
     self.recommendationTask = Task { [weak self] in
       await command.value
       guard !Task.isCancelled, let self, self.recommendationRevision == revision,
             session.isCurrent(userID: userID, generation: generation),
-            let selection = feature.selection(route: route), let category = selection.category else { return }
+            let selection = recommendationsFeature.selection(route: route), let category = selection.category else { return }
       self.recommendedProjects = selection.projects
       self.onEvent?(.showRecommendations(selection.projects, category))
     }
@@ -72,19 +72,19 @@ final class ThanksViewModel {
         ? Strings.You_have_successfully_pledged_to_project_post_campaign_html_short(pledge_total: total)
         : Strings.You_have_successfully_backed_project_html(project_name: project.name)
       self.onEvent?(.backedProjectText(text.simpleHtmlAttributedString(font: UIFont.ksr_subhead(), bold: UIFont.ksr_subhead().bolded) ?? NSAttributedString(string: "")))
-      switch self.feature.nextPostBackingPrompt(for: project) {
+      switch self.recommendationsFeature.nextPostBackingPrompt(for: project) {
       case .gamesNewsletter: self.onEvent?(.showGamesNewsletterAlert)
       case .rating: self.onEvent?(.showRatingAlert)
       case nil: break
       }
       AppEnvironment.current.ksrAnalytics.trackThanksPageViewed(project: project, reward: data.reward, checkoutData: data.checkoutData)
     }
-    if self.feature.shouldOfferPledgeNotifications { self.onEvent?(.postContextualNotification) }
+    if self.recommendationsFeature.shouldOfferPledgeNotifications { self.onEvent?(.postContextualNotification) }
   }
   func closeButtonTapped() {
     self.recommendationRevision = UUID()
     self.recommendationTask?.cancel()
-    self.feature.release(route: self.route)
+    self.recommendationsFeature.release(route: self.route)
     self.onEvent?(.postProjectBackedNotification(Notification(name: .ksr_projectBacked)))
   }
   func categoryCellTapped(_ category: KsApi.Category) {
@@ -100,9 +100,9 @@ final class ThanksViewModel {
     if AppEnvironment.current.countryCode == "DE" {
       self.onEvent?(.showGamesNewsletterOptInAlert(Strings.profile_settings_newsletter_games()))
     }
-    guard let user = self.feature.sessionFeature.currentUser else { return }
+    guard let user = self.recommendationsFeature.sessionFeature.currentUser else { return }
     self.newsletterTask?.cancel()
-    let settings = self.feature.settingsFeature
+    let settings = self.recommendationsFeature.settingsFeature
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let sleep = self.sleep
     self.newsletterTask = Task { [weak self] in
@@ -128,11 +128,11 @@ final class ThanksViewModel {
     }
     AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
     guard let externalId = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else { return }
-    let userId = self.feature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
+    let userId = self.recommendationsFeature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
     var extInfo = Array(repeating: "", count: 16)
     extInfo[0] = "i2"
     extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
-    self.feature.recordThirdPartyEvent(.init(
+    self.recommendationsFeature.recordThirdPartyEvent(.init(
       deviceId: externalId, eventName: ThirdPartyEventInputName.BackingComplete.rawValue,
       projectId: "\(data.project.id)", pledgeAmount: pledgeAmount, shipping: shipping,
       transactionId: transactionId, userId: userId,
