@@ -380,7 +380,7 @@ final class AppLifecycleFeatureTests: XCTestCase {
 
   func testCancellingPresentationWaitDoesNotCancelAdmittedRegistration() async throws {
     let request = self.feature.requestPushRegistration(token: "synthetic-a")
-    let operation = self.feature.sessionBound { try await request.value }
+    let operation = self.feature.sessionFeature.sessionBound { try await request.value }
     let observer = Task { try await operation() }
     await self.provider.registrations.waitFor(1)
     observer.cancel()

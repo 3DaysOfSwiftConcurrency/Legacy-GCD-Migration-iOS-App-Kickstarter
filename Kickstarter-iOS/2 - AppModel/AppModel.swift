@@ -1,3 +1,5 @@
+import Foundation
+
 /// Application composition root. Features own shared state and directly awaitable workflows.
 @MainActor
 public final class AppModel {
@@ -99,6 +101,22 @@ public final class AppModel {
     self.messagingFeature.reset()
     self.pledgeFeature.reset()
     self.pledgedProjectsFeature.reset()
+  }
+
+  /// Installs the device visitor identity for both web and API domains.
+  public func installVisitorCookies() {
+    let uuidString = (AppEnvironment.current.device.identifierForVendor ?? UUID()).uuidString
+    let server = AppEnvironment.current.apiService.serverConfig
+    [HTTPCookie?](arrayLiteral:
+      HTTPCookie(properties: [
+        .name: "vis", .value: uuidString, .domain: server.webBaseUrl.host as Any,
+        .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
+      ]),
+      HTTPCookie(properties: [
+        .name: "vis", .value: uuidString, .domain: server.apiBaseUrl.host as Any,
+        .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
+      ])
+    ).compact().forEach(AppEnvironment.current.cookieStorage.setCookie)
   }
 
   public static func live() -> AppModel {

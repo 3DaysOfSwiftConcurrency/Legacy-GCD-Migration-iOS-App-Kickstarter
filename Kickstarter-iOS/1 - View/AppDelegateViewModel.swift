@@ -483,7 +483,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func refreshConfiguration() {
-    visitorCookies().forEach(AppEnvironment.current.cookieStorage.setCookie)
+    AppModel.shared.installVisitorCookies()
     self.configurationTask?.cancel()
     let request = self.lifecycleFeature.requestConfiguration()
     self.configurationTask = Task { [weak self] in
@@ -729,7 +729,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func updateNotification(name: String, enabled: Bool) {
     guard let request = self.settingsFeature.requestNotification(named: name, enabled: enabled) else { return }
-    let operation = self.lifecycleFeature.sessionBound { try await request.value }
+    let operation = self.sessionFeature.sessionBound { try await request.value }
     let delay = self.settingsPresentationDelay
     let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let id = UUID()
@@ -747,7 +747,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private func verifyEmail(token: String) {
     self.verificationTask?.cancel()
     let request = self.settingsFeature.requestVerification(token: token)
-    let operation = self.lifecycleFeature.sessionBound { try await request.value }
+    let operation = self.sessionFeature.sessionBound { try await request.value }
     let delay = self.settingsPresentationDelay
     let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.verificationTask = Task { [weak self] in

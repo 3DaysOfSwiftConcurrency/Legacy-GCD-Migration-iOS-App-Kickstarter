@@ -103,6 +103,23 @@ public final class SessionFeature {
     self.currentUser?.id == userID && self.revision == generation
   }
 
+  /// Captures the authenticated session at admission so a completion cannot
+  /// publish after logout or account replacement.
+  public func sessionBound<Value>(_ operation: @escaping @MainActor () async throws -> Value)
+    -> @MainActor () async throws -> Value
+  {
+    let userID = self.currentUser?.id
+    let generation = self.revision
+    return { [self] in
+      try Task.checkCancellation()
+      guard self.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
+      let value = try await operation()
+      try Task.checkCancellation()
+      guard self.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
+      return value
+    }
+  }
+
   /// Persistence stays behind the existing current-user store. A stale response
   /// must never recreate a logged-out account or update a replacement account.
   public func commitUser(_ user: User, userID: Int?, generation: Int) {

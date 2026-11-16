@@ -127,10 +127,6 @@ public final class AppLifecycleFeature {
     _ = AppEnvironment.current.ubiquitousStore.synchronize()
   }
 
-  public func installVisitorCookies() {
-    visitorCookies().forEach(AppEnvironment.current.cookieStorage.setCookie)
-  }
-
   /// Owns authenticated web-session request construction for UIKit web screens.
   public var webBaseURL: URL {
     AppEnvironment.current.apiService.serverConfig.webBaseUrl
@@ -444,48 +440,4 @@ public final class AppLifecycleFeature {
     }
   }
 
-  /// Capture the session at admission and reject a result if it becomes obsolete.
-  internal func sessionBound<Value>(_ operation: @escaping @MainActor () async throws -> Value)
-    -> @MainActor () async throws -> Value
-  {
-    let session = self.session
-    return { [self] in
-      try self.requireCurrent(session)
-      let value = try await operation()
-      try self.requireCurrent(session)
-      return value
-    }
-  }
-}
-
-@MainActor
-private func visitorCookies() -> [HTTPCookie] {
-  let uuidString = (AppEnvironment.current.device.identifierForVendor ?? UUID()).uuidString
-
-  return [HTTPCookie?].init(
-    arrayLiteral:
-    HTTPCookie(
-      properties: [
-        .name: "vis",
-        .value: uuidString,
-        .domain: AppEnvironment.current.apiService.serverConfig.webBaseUrl.host as Any,
-        .path: "/",
-        .version: 0,
-        .expires: Date.distantFuture,
-        .secure: true
-      ]
-    ),
-    HTTPCookie(
-      properties: [
-        .name: "vis",
-        .value: uuidString,
-        .domain: AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host as Any,
-        .path: "/",
-        .version: 0,
-        .expires: Date.distantFuture,
-        .secure: true
-      ]
-    )
-  )
-  .compact()
 }
