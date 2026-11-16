@@ -6,6 +6,7 @@ public final class AppModel {
   public static let shared = AppModel.live()
 
   private var hasLaunched: Bool
+  private var remoteConfigurationRequest: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
 
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
@@ -92,7 +93,19 @@ public final class AppModel {
   @discardableResult public func requestRemoteConfiguration(
     client: AnyObject, activate: @escaping @MainActor () async throws -> Void
   ) -> Task<Void, Error> {
-    self.appLifecycleFeature.requestRemoteConfiguration(client: client, activate: activate)
+    let clientID = ObjectIdentifier(client)
+    if let pending = self.remoteConfigurationRequest, pending.client == clientID { return pending.task }
+    self.remoteConfigurationRequest?.task.cancel()
+    let id = UUID()
+    let task = Task { [self] in
+      defer { if self.remoteConfigurationRequest?.id == id { self.remoteConfigurationRequest = nil } }
+      try Task.checkCancellation()
+      try await activate()
+      try Task.checkCancellation()
+      guard self.remoteConfigurationRequest?.id == id else { throw CancellationError() }
+    }
+    self.remoteConfigurationRequest = (clientID, id, task)
+    return task
   }
 
   public func sessionChanged() {
