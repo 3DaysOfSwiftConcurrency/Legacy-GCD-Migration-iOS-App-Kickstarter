@@ -7,7 +7,7 @@ public enum Reachability: Sendable {
   case none
 
   @MainActor public static var current: Reachability {
-    AppModel.shared.appLifecycleFeature.connectivity
+    AppModel.shared.connectivityService.connectivity
   }
 
   static func from(flags: SCNetworkReachabilityFlags) -> Reachability {
@@ -85,7 +85,7 @@ private final class ReachabilityCallback: Sendable {
   init(continuation: AsyncStream<Reachability>.Continuation) { self.continuation = continuation }
 }
 
-/// Main-actor connectivity state shared by screens and the lifecycle feature.
+/// Main-actor connectivity state shared by screens and application infrastructure.
 @MainActor
 public final class ConnectivityState {
   public var value: Reachability {
@@ -109,4 +109,47 @@ public final class MainActorObservation {
     let cancel = self.cancel
     Task { @MainActor in cancel() }
   }
+}
+
+/// Application-scoped bridge from SystemConfiguration's callback stream to the
+/// observable connectivity state used by screens. It is infrastructure, not a
+/// product feature, and therefore survives account/session resets.
+@MainActor
+public final class ConnectivityService {
+  private let makeMonitor: () -> (any ReachabilityMonitoring)?
+  private var monitor: (any ReachabilityMonitoring)?
+  private var task: Task<Void, Never>?
+  private var started = false
+  private let state = ConnectivityState()
+
+  public init(makeMonitor: @escaping () -> (any ReachabilityMonitoring)? = { nil }) {
+    self.makeMonitor = makeMonitor
+  }
+
+  public var connectivity: Reachability {
+    self.start()
+    return self.state.value
+  }
+
+  public var source: ConnectivityState {
+    self.start()
+    return self.state
+  }
+
+  private func start() {
+    guard !self.started else { return }
+    self.started = true
+    guard let monitor = self.makeMonitor() else { return }
+    self.monitor = monitor
+    self.state.value = monitor.initial
+    let updates = monitor.updates
+    self.task = Task { [weak self] in
+      for await value in updates {
+        guard !Task.isCancelled, let self else { return }
+        self.state.value = value
+      }
+    }
+  }
+
+  deinit { self.task?.cancel() }
 }

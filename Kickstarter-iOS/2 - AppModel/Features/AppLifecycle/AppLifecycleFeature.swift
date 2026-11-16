@@ -81,37 +81,6 @@ public final class AppLifecycleFeature {
     let session: Session
     let task: Task<Value, Error>
   }
-  private let makeReachabilityMonitor: () -> (any ReachabilityMonitoring)?
-  private var reachabilityMonitor: (any ReachabilityMonitoring)?
-  private var connectivityTask: Task<Void, Never>?
-  private var connectivityStarted = false
-  private let connectivityState = ConnectivityState()
-
-  public var connectivity: Reachability {
-    self.startConnectivity()
-    return self.connectivityState.value
-  }
-  public var connectivitySource: ConnectivityState {
-    self.startConnectivity()
-    return self.connectivityState
-  }
-  private func startConnectivity() {
-    guard !self.connectivityStarted else { return }
-    self.connectivityStarted = true
-    guard let monitor = self.makeReachabilityMonitor() else { return }
-    self.reachabilityMonitor = monitor
-    self.connectivityState.value = monitor.initial
-    let updates = monitor.updates
-    self.connectivityTask = Task { [weak self] in
-      for await value in updates {
-        guard !Task.isCancelled, let self else { return }
-        self.connectivityState.value = value
-      }
-    }
-  }
-  // Connectivity is application-scoped, so account reset does not stop it.
-  deinit { self.connectivityTask?.cancel() }
-
   private var remoteConfigurationRequest: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
   private let applicationBadgeNumber: () -> Int
   private let makeProvider: () -> any AppLifecycleProvider
@@ -132,14 +101,12 @@ public final class AppLifecycleFeature {
   public init(
     sessionFeature: SessionFeature, settingsFeature: SettingsFeature,
     messagingFeature: MessagingFeature, makeProvider: @escaping () -> any AppLifecycleProvider,
-    makeReachabilityMonitor: @escaping () -> (any ReachabilityMonitoring)? = { nil },
     applicationBadgeNumber: @escaping () -> Int = { AppEnvironment.current.application.applicationIconBadgeNumber },
     resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
-    self.makeReachabilityMonitor = makeReachabilityMonitor
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
     self.messagingFeature = messagingFeature

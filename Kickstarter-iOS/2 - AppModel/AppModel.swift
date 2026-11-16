@@ -7,6 +7,7 @@ public final class AppModel {
 
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
+  public let connectivityService: ConnectivityService
   public let appLifecycleFeature: AppLifecycleFeature
   public let creatorDraftsFeature: CreatorDraftsFeature
   public let recommendationsFeature: RecommendationsFeature
@@ -31,6 +32,7 @@ public final class AppModel {
   public init(
     developerExamplesFeature: DeveloperExamplesFeature,
     onboardingFeature: OnboardingFeature,
+    connectivityService: ConnectivityService = ConnectivityService(),
     appLifecycleFeature: AppLifecycleFeature,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
@@ -54,6 +56,7 @@ public final class AppModel {
   ) {
     self.developerExamplesFeature = developerExamplesFeature
     self.onboardingFeature = onboardingFeature
+    self.connectivityService = connectivityService
     self.appLifecycleFeature = appLifecycleFeature
     self.creatorDraftsFeature = creatorDraftsFeature
     self.recommendationsFeature = recommendationsFeature
@@ -124,9 +127,9 @@ public final class AppModel {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
       }),
       onboardingFeature: OnboardingFeature(),
+      connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
       appLifecycleFeature: AppLifecycleFeature(sessionFeature: sessionFeature, settingsFeature: settingsFeature,
-        messagingFeature: messagingFeature, makeProvider: { AsyncAppLifecycleProvider(service: AppEnvironment.current.apiService) },
-        makeReachabilityMonitor: { SystemReachabilityMonitor() }),
+        messagingFeature: messagingFeature, makeProvider: { AsyncAppLifecycleProvider(service: AppEnvironment.current.apiService) }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
       }),

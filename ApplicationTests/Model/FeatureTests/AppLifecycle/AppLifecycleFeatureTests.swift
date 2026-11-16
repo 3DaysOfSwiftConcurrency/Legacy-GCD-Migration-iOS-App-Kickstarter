@@ -11,6 +11,7 @@ import SystemConfiguration
 final class AppLifecycleFeatureTests: XCTestCase {
   private var provider: ControlledLifecycleProvider!
   private var feature: AppLifecycleFeature!
+  private var connectivityService: ConnectivityService!
   private let route = UUID()
   private var connectivityMonitor: ControlledReachabilityMonitor!
   private var monitorStarts = 0
@@ -27,13 +28,13 @@ final class AppLifecycleFeatureTests: XCTestCase {
       sessionFeature: session, makeProvider: { AsyncMessagingProvider(service: MockService()) })
     self.connectivityMonitor = ControlledReachabilityMonitor()
     self.monitorStarts = 0
+    self.connectivityService = ConnectivityService(makeMonitor: { [weak self] in
+      self?.monitorStarts += 1
+      return self?.connectivityMonitor
+    })
     self.feature = AppLifecycleFeature(
       sessionFeature: session, settingsFeature: settings, messagingFeature: messaging,
       makeProvider: { provider },
-      makeReachabilityMonitor: { [weak self] in
-        self?.monitorStarts += 1
-        return self?.connectivityMonitor
-      },
       resolveRedirect: { _ in try await provider.redirects.request() }, sleep: { _ in try Task.checkCancellation() })
   }
   override func tearDown() async throws {
@@ -56,16 +57,16 @@ final class AppLifecycleFeatureTests: XCTestCase {
 
   func testConnectivitySharesNativeMonitorAndSurvivesSessionReset() async {
     XCTAssertEqual(self.monitorStarts, 0)
-    XCTAssertEqual(self.feature.connectivity, .wifi)
+    XCTAssertEqual(self.connectivityService.connectivity, .wifi)
     var first: [Reachability] = []
     var second: [Reachability] = []
     let delivered = expectation(description: "both observers received offline")
     delivered.expectedFulfillmentCount = 2
-    let a = self.feature.connectivitySource.observe {
+    let a = self.connectivityService.source.observe {
       first.append($0)
       if $0 == .none { delivered.fulfill() }
     }
-    let b = self.feature.connectivitySource.observe {
+    let b = self.connectivityService.source.observe {
       second.append($0)
       if $0 == .none { delivered.fulfill() }
     }
@@ -86,23 +87,23 @@ final class AppLifecycleFeatureTests: XCTestCase {
     let stopped = expectation(description: "stream cancelled")
     monitor.continuation.onTermination = { _ in stopped.fulfill() }
     var stoppedValues: [Reachability] = []
-    let a = self.feature.connectivitySource.observe { stoppedValues.append($0) }
+    let a = self.connectivityService.source.observe { stoppedValues.append($0) }
     a.stop()
     let delivered = expectation(description: "remaining observer")
-    let b = self.feature.connectivitySource.observe { if $0 == .wwan { delivered.fulfill() } }
+    let b = self.connectivityService.source.observe { if $0 == .wwan { delivered.fulfill() } }
     monitor.continuation.yield(.wwan)
     await fulfillment(of: [delivered], timeout: 2)
     XCTAssertEqual(stoppedValues, [.wifi])
     b.stop()
-    weak var released = self.feature
-    self.feature = nil
+    weak var released = self.connectivityService
+    self.connectivityService = nil
     XCTAssertNil(released)
     await fulfillment(of: [stopped], timeout: 2)
   }
 
   func testConnectivityObserverReceivesInitialValueSynchronously() {
     var values: [Reachability] = []
-    let observation = self.feature.connectivitySource.observe { values.append($0) }
+    let observation = self.connectivityService.source.observe { values.append($0) }
     XCTAssertEqual(values, [.wifi])
     XCTAssertEqual(self.monitorStarts, 1)
     withExtendedLifetime(observation) {}

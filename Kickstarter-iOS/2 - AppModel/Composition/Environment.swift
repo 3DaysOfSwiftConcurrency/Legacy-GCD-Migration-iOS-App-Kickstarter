@@ -150,7 +150,7 @@ public struct Environment {
     locale: Locale = .current,
     mainBundle: NSBundleType = Bundle.main,
     pushRegistrationType: PushRegistrationType.Type = PushRegistration.self,
-    reachability: ConnectivityState = AppModel.shared.appLifecycleFeature.connectivitySource,
+    reachability: ConnectivityState = AppModel.shared.connectivityService.source,
     remoteConfigClient: RemoteConfigClientType? = nil,
     statsigClient: StatsigClientType? = nil,
     ubiquitousStore: KeyValueStoreType = NSUbiquitousKeyValueStore.default,
