@@ -504,7 +504,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     self.remoteConfigTask?.cancel()
     let version = UUID()
     self.remoteConfigVersion = version
-    let request = AppModel.shared.appLifecycleFeature.requestRemoteConfiguration(client: client) {
+    let request = AppModel.shared.requestRemoteConfiguration(client: client) {
       try await client.fetchAndActivateAsync()
     }
     self.remoteConfigTask = Task { [weak self] in

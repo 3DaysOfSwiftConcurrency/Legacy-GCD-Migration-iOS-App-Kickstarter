@@ -89,6 +89,12 @@ public final class AppModel {
     _ = try? await self.appLifecycleFeature.configuration()
   }
 
+  @discardableResult public func requestRemoteConfiguration(
+    client: AnyObject, activate: @escaping @MainActor () async throws -> Void
+  ) -> Task<Void, Error> {
+    self.appLifecycleFeature.requestRemoteConfiguration(client: client, activate: activate)
+  }
+
   public func sessionChanged() {
     self.sessionFeature.sessionChanged()
     self.developerExamplesFeature.reset()
