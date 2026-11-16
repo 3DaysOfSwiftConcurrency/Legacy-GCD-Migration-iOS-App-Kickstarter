@@ -1,8 +1,5 @@
 import Foundation
-import UIKit
-import AppTrackingTransparency
 import Experimentation
-import UserNotifications
 import KsApi
 import Prelude
 
@@ -116,12 +113,6 @@ public final class AppLifecycleFeature {
   deinit { self.connectivityTask?.cancel() }
 
   private var remoteConfigurationRequest: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
-  private var notificationRequest: (options: UInt, id: UUID, task: Task<Bool, Never>)?
-  private var trackingRequest: Task<UInt, Never>?
-  private let authorizeNotifications: (UNAuthorizationOptions) async -> Bool
-  private let registerNotifications: () -> Void
-  private let readNotificationStatus: () async -> UNAuthorizationStatus
-  private let authorizeTracking: () async -> UInt
   private let applicationBadgeNumber: () -> Int
   private let makeProvider: () -> any AppLifecycleProvider
   private let resolveRedirect: (URL) async throws -> URL?
@@ -142,20 +133,6 @@ public final class AppLifecycleFeature {
     sessionFeature: SessionFeature, settingsFeature: SettingsFeature,
     messagingFeature: MessagingFeature, makeProvider: @escaping () -> any AppLifecycleProvider,
     makeReachabilityMonitor: @escaping () -> (any ReachabilityMonitoring)? = { nil },
-    authorizeNotifications: @escaping (UNAuthorizationOptions) async -> Bool = { options in
-      (try? await UNUserNotificationCenter.current().requestAuthorization(options: options)) ?? false
-    },
-    registerNotifications: @escaping () -> Void = { UIApplication.shared.registerForRemoteNotifications() },
-    readNotificationStatus: @escaping () async -> UNAuthorizationStatus = {
-      await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
-    },
-    authorizeTracking: @escaping () async -> UInt = {
-      await withCheckedContinuation { continuation in
-        AppEnvironment.current.appTrackingTransparency.requestAndSetAuthorizationStatus { status in
-          continuation.resume(returning: status.rawValue)
-        }
-      }
-    },
     applicationBadgeNumber: @escaping () -> Int = { AppEnvironment.current.application.applicationIconBadgeNumber },
     resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
@@ -169,10 +146,6 @@ public final class AppLifecycleFeature {
     self.makeProvider = makeProvider
     self.sleep = sleep
     self.resolveRedirect = resolveRedirect
-    self.authorizeNotifications = authorizeNotifications
-    self.registerNotifications = registerNotifications
-    self.readNotificationStatus = readNotificationStatus
-    self.authorizeTracking = authorizeTracking
     self.applicationBadgeNumber = applicationBadgeNumber
   }
   private var session: Session {
@@ -181,26 +154,6 @@ public final class AppLifecycleFeature {
   private func requireCurrent(_ session: Session) throws {
     try Task.checkCancellation()
     guard self.session == session else { throw CancellationError() }
-  }
-
-  /// Admitted system prompts settle even if their UI observer goes away. Equal
-  /// pending requests share; distinct option sets serialize behind the prompt.
-  public func notificationAuthorization(options: UNAuthorizationOptions) async -> Bool {
-    if let pending = self.notificationRequest, pending.options == options.rawValue {
-      return await pending.task.value
-    }
-    let previous = self.notificationRequest?.task
-    let id = UUID()
-    let task = Task { [authorizeNotifications, registerNotifications] in
-      if let previous { _ = await previous.value }
-      let granted = await authorizeNotifications(options)
-      if granted { registerNotifications() }
-      return granted
-    }
-    self.notificationRequest = (options.rawValue, id, task)
-    let value = await task.value
-    if self.notificationRequest?.id == id { self.notificationRequest = nil }
-    return value
   }
 
   public func synchronizePreferences() {
@@ -267,21 +220,6 @@ public final class AppLifecycleFeature {
 
   public func recordOnboardingCompletion() {
     AppEnvironment.current.userDefaults.hasSeenOnboarding = true
-  }
-
-  public func notificationStatus() async -> UNAuthorizationStatus {
-    await self.readNotificationStatus()
-  }
-
-  public func trackingAuthorization() async -> ATTrackingManager.AuthorizationStatus {
-    if let task = self.trackingRequest {
-      return ATTrackingManager.AuthorizationStatus(rawValue: await task.value) ?? .notDetermined
-    }
-    let task = Task { [authorizeTracking] in await authorizeTracking() }
-    self.trackingRequest = task
-    let value = await task.value
-    self.trackingRequest = nil
-    return ATTrackingManager.AuthorizationStatus(rawValue: value) ?? .notDetermined
   }
 
   @discardableResult public func requestRemoteConfiguration(

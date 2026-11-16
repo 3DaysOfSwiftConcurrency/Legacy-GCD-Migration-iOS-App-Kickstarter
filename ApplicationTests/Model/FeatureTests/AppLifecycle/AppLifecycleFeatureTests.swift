@@ -34,11 +34,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
         self?.monitorStarts += 1
         return self?.connectivityMonitor
       },
-      authorizeNotifications: { options in
-        provider.permissionOptions.append(options.rawValue)
-        return (try? await provider.permissions.request()) ?? false
-      }, registerNotifications: { provider.registrationCount += 1 },
-      authorizeTracking: { (try? await provider.tracking.request()) ?? 0 },
       resolveRedirect: { _ in try await provider.redirects.request() }, sleep: { _ in try Task.checkCancellation() })
   }
   override func tearDown() async throws {
@@ -134,55 +129,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
     }
     await fulfillment(of: [ended], timeout: 2)
     consumer.cancel()
-  }
-
-  func testNotificationPromptSharesPendingRequestAndSurvivesObserverCancellation() async throws {
-    let first = Task { await self.feature.notificationAuthorization(options: [.alert]) }
-    await self.provider.permissions.waitFor(1)
-    let second = Task { await self.feature.notificationAuthorization(options: [.alert]) }
-    await Task.yield()
-    first.cancel()
-    self.feature.reset()
-    try self.provider.permissions.finish(0, .success(true))
-    let firstValue = await first.value
-    let secondValue = await second.value
-    XCTAssertTrue(firstValue)
-    XCTAssertTrue(secondValue)
-    XCTAssertEqual(self.provider.permissions.count, 1)
-    XCTAssertEqual(self.provider.registrationCount, 1)
-  }
-
-  func testDistinctNotificationOptionsSerializeAndDeniedRequestDoesNotRegister() async throws {
-    let first = Task { await self.feature.notificationAuthorization(options: [.alert]) }
-    await self.provider.permissions.waitFor(1)
-    let second = Task { await self.feature.notificationAuthorization(options: [.sound]) }
-    await Task.yield()
-    XCTAssertEqual(self.provider.permissions.count, 1)
-    try self.provider.permissions.finish(0, .success(false))
-    await self.provider.permissions.waitFor(2)
-    try self.provider.permissions.finish(1, .success(true))
-    _ = await first.value
-    _ = await second.value
-    XCTAssertEqual(self.provider.permissionOptions, [UNAuthorizationOptions.alert.rawValue, UNAuthorizationOptions.sound.rawValue])
-    XCTAssertEqual(self.provider.registrationCount, 1)
-  }
-
-  func testTrackingPromptSharesAndAllowsLaterRequest() async throws {
-    let first = Task { await self.feature.trackingAuthorization() }
-    await self.provider.tracking.waitFor(1)
-    let second = Task { await self.feature.trackingAuthorization() }
-    await Task.yield()
-    first.cancel()
-    try self.provider.tracking.finish(0, .success(ATTrackingManager.AuthorizationStatus.authorized.rawValue))
-    _ = await first.value
-    let status = await second.value
-    XCTAssertEqual(status, .authorized)
-    XCTAssertEqual(self.provider.tracking.count, 1)
-    let next = Task { await self.feature.trackingAuthorization() }
-    await self.provider.tracking.waitFor(2)
-    try self.provider.tracking.finish(1, .success(ATTrackingManager.AuthorizationStatus.denied.rawValue))
-    let nextStatus = await next.value
-    XCTAssertEqual(nextStatus, .denied)
   }
 
   func testRemoteConfigurationSharesClientAndRetriesAfterFailure() async throws {
