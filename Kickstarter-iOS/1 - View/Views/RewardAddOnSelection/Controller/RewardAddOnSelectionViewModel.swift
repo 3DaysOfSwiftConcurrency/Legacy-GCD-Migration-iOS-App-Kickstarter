@@ -60,7 +60,7 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
   RewardAddOnSelectionViewModelInputs,
   RewardAddOnSelectionViewModelOutputs
 {
-  private let feature: RewardsFeature
+  private let rewardsFeature: RewardsFeature
   private var pendingConfiguration: PledgeViewData?
   private var isLoaded = false
   private let addOnsRoute = UUID()
@@ -110,12 +110,12 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
   private var addOnsRequestID: UUID?
   deinit {
     self.addOnsTask?.cancel()
-    let feature = self.feature
+    let rewardsFeature = self.rewardsFeature
     let route = self.addOnsRoute
-    Task { @MainActor in feature.releaseAddOns(route: route) }
+    Task { @MainActor in rewardsFeature.releaseAddOns(route: route) }
   }
-  public init(feature: RewardsFeature = AppModel.shared.rewardsFeature) {
-    self.feature = feature
+  public init(rewardsFeature: RewardsFeature = AppModel.shared.rewardsFeature) {
+    self.rewardsFeature = rewardsFeature
   }
 
   private func applyConfiguration(_ data: PledgeViewData) {
@@ -297,7 +297,7 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
     self.addOnsTask?.cancel()
     let id = UUID()
     self.addOnsRequestID = id
-    self.addOnsTask = self.feature.startAddOns(
+    self.addOnsTask = self.rewardsFeature.startAddOns(
       route: self.addOnsRoute, slug: data.project.slug,
       baseReward: data.rewards.first, shippingRule: data.selectedShippingRule
     ) { [weak self] result in

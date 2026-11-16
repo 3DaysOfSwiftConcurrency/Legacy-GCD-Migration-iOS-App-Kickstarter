@@ -15,7 +15,7 @@ final class RewardAddOnSelectionViewModelTests: TestCase {
       return AsyncRewardsProvider(service: AppEnvironment.current.apiService)
     })
   private lazy var vm: RewardAddOnSelectionViewModelType = RewardAddOnSelectionViewModel(
-    feature: self.feature)
+    rewardsFeature: self.feature)
   private func advanceAddOns() async {
     await self.feature.waitForAddOns()
 
