@@ -48,8 +48,7 @@ public final class AppModel {
     projectDetailsFeature: ProjectDetailsFeature,
     rewardsFeature: RewardsFeature,
     discussionFeature: DiscussionFeature,
-    projectMediaFeature: ProjectMediaFeature,
-    hasLaunched: Bool = false
+    projectMediaFeature: ProjectMediaFeature
   ) {
     self.developerExamplesFeature = developerExamplesFeature
     self.appLifecycleFeature = appLifecycleFeature
@@ -72,7 +71,7 @@ public final class AppModel {
     self.rewardsFeature = rewardsFeature
     self.discussionFeature = discussionFeature
     self.projectMediaFeature = projectMediaFeature
-    self.hasLaunched = hasLaunched
+    self.hasLaunched = false
   }
 
   /// Starts shared launch work once without making UI construction wait for it.
