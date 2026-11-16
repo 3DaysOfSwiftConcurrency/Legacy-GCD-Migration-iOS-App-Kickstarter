@@ -73,7 +73,10 @@ final class DemoCTAContainerView: UIView {
     _ = self.ctaStackView
       |> ctaStackViewStyle
 
-    _ = termsTextViewStyle(self.termsTextView, baseURL: AppModel.shared.appLifecycleFeature.webBaseURL)
+    _ = termsTextViewStyle(
+      self.termsTextView,
+      baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl
+    )
 
     _ = self.disclaimerStackView
       |> disclaimerStackViewStyle

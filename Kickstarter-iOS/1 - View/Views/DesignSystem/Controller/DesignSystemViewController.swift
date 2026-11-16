@@ -479,7 +479,7 @@ final class DesignSystemViewController: UIViewController {
 
 @MainActor
 private func attributedTermsText() -> NSAttributedString? {
-  let baseURL = AppModel.shared.appLifecycleFeature.webBaseURL
+  let baseURL = AppEnvironment.current.apiService.serverConfig.webBaseUrl
 
   guard
     let termsOfUseLink = HelpType.terms.url(withBaseUrl: baseURL)?.absoluteString,
