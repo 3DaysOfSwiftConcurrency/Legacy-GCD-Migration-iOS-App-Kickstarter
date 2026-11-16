@@ -31,14 +31,8 @@ final class OnboardingViewModelTest: TestCase {
   func testClosingOnboardingSuppressesLateNotificationCompletion() async throws {
     let gate = AccountRequestGate<UNAuthorizationStatus>()
     defer { gate.releaseAll() }
-    let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
-    let feature = AppLifecycleFeature(
-      sessionFeature: session,
-      settingsFeature: SettingsFeature(sessionFeature: session, makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }),
-      messagingFeature: MessagingFeature(sessionFeature: session, makeProvider: { AsyncMessagingProvider(service: MockService()) }),
-      makeProvider: { AsyncAppLifecycleProvider(service: MockService()) },
-      readNotificationStatus: { (try? await gate.request()) ?? .denied })
-    let model = OnboardingViewModel(appLifecycleFeature: feature)
+    let feature = OnboardingFeature(notificationStatus: { (try? await gate.request()) ?? .denied })
+    let model = OnboardingViewModel(onboardingFeature: feature)
     let advance = expectation(description: "Closed onboarding must not advance")
     advance.isInverted = true
     model.bind(items: { _ in }, advance: { advance.fulfill() })
@@ -51,16 +45,11 @@ final class OnboardingViewModelTest: TestCase {
 
   @MainActor
   func testRebindingOnboardingDeliversNotificationCompletionOnce() async throws {
-    let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
-    let feature = AppLifecycleFeature(
-      sessionFeature: session,
-      settingsFeature: SettingsFeature(sessionFeature: session, makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }),
-      messagingFeature: MessagingFeature(sessionFeature: session, makeProvider: { AsyncMessagingProvider(service: MockService()) }),
-      makeProvider: { AsyncAppLifecycleProvider(service: MockService()) },
+    let feature = OnboardingFeature(
       authorizeNotifications: { _ in true },
       registerNotifications: {},
-      readNotificationStatus: { .denied })
-    let model = OnboardingViewModel(appLifecycleFeature: feature)
+      notificationStatus: { .denied })
+    let model = OnboardingViewModel(onboardingFeature: feature)
     defer { model.stopObserving() }
     model.bind(items: { _ in }, advance: { XCTFail("Old appearance advanced") })
     let advance = expectation(description: "Current appearance advances")
@@ -81,18 +70,13 @@ final class OnboardingViewModelTest: TestCase {
   }
 
   func testAlreadyAuthorizedNotificationsDoNotPromptOrAdvance() async {
-    let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     var requested = false
-    let feature = AppLifecycleFeature(
-      sessionFeature: session,
-      settingsFeature: SettingsFeature(sessionFeature: session, makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }),
-      messagingFeature: MessagingFeature(sessionFeature: session, makeProvider: { AsyncMessagingProvider(service: MockService()) }),
-      makeProvider: { AsyncAppLifecycleProvider(service: MockService()) },
+    let feature = OnboardingFeature(
       authorizeNotifications: { _ in requested = true; return true },
       registerNotifications: {},
-      readNotificationStatus: { .authorized }
+      notificationStatus: { .authorized }
     )
-    let model = OnboardingViewModel(appLifecycleFeature: feature)
+    let model = OnboardingViewModel(onboardingFeature: feature)
     let advance = expectation(description: "Already authorized does not advance")
     advance.isInverted = true
     model.bind(items: { _ in }, advance: { advance.fulfill() })

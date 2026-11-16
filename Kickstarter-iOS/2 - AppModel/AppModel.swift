@@ -6,6 +6,7 @@ public final class AppModel {
   private var hasLaunched: Bool
 
   public let developerExamplesFeature: DeveloperExamplesFeature
+  public let onboardingFeature: OnboardingFeature
   public let appLifecycleFeature: AppLifecycleFeature
   public let creatorDraftsFeature: CreatorDraftsFeature
   public let recommendationsFeature: RecommendationsFeature
@@ -29,6 +30,7 @@ public final class AppModel {
 
   public init(
     developerExamplesFeature: DeveloperExamplesFeature,
+    onboardingFeature: OnboardingFeature,
     appLifecycleFeature: AppLifecycleFeature,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
@@ -51,6 +53,7 @@ public final class AppModel {
     projectMediaFeature: ProjectMediaFeature
   ) {
     self.developerExamplesFeature = developerExamplesFeature
+    self.onboardingFeature = onboardingFeature
     self.appLifecycleFeature = appLifecycleFeature
     self.creatorDraftsFeature = creatorDraftsFeature
     self.recommendationsFeature = recommendationsFeature
@@ -120,6 +123,7 @@ public final class AppModel {
       developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
       }),
+      onboardingFeature: OnboardingFeature(),
       appLifecycleFeature: AppLifecycleFeature(sessionFeature: sessionFeature, settingsFeature: settingsFeature,
         messagingFeature: messagingFeature, makeProvider: { AsyncAppLifecycleProvider(service: AppEnvironment.current.apiService) },
         makeReachabilityMonitor: { SystemReachabilityMonitor() }),

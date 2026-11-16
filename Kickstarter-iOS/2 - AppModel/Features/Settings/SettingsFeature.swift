@@ -1,6 +1,9 @@
+import AppTrackingTransparency
 import Foundation
 import KsApi
 import Prelude
+import UIKit
+import UserNotifications
 
 @MainActor
 public protocol AccountPreferencesProvider {
@@ -10,6 +13,49 @@ public protocol AccountPreferencesProvider {
   func update(_ change: SettingsFeature.AccountChange) async throws -> User?
   func emailUser() async throws -> GraphUser
   func verifyEmail(token: String) async throws -> EmailVerificationResponseEnvelope
+}
+
+/// Owns onboarding completion and the system permissions requested by onboarding.
+@MainActor
+public final class OnboardingFeature {
+  private let authorizeNotifications: (UNAuthorizationOptions) async -> Bool
+  private let registerNotifications: () -> Void
+  private let notificationStatus: () async -> UNAuthorizationStatus
+  private let trackingAuthorization: () async -> ATTrackingManager.AuthorizationStatus
+
+  public init(
+    authorizeNotifications: @escaping (UNAuthorizationOptions) async -> Bool = { options in
+      (try? await UNUserNotificationCenter.current().requestAuthorization(options: options)) ?? false
+    },
+    registerNotifications: @escaping () -> Void = { UIApplication.shared.registerForRemoteNotifications() },
+    notificationStatus: @escaping () async -> UNAuthorizationStatus = {
+      await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    },
+    trackingAuthorization: @escaping () async -> ATTrackingManager.AuthorizationStatus = {
+      await withCheckedContinuation { continuation in
+        AppEnvironment.current.appTrackingTransparency.requestAndSetAuthorizationStatus {
+          continuation.resume(returning: $0)
+        }
+      }
+    }
+  ) {
+    self.authorizeNotifications = authorizeNotifications
+    self.registerNotifications = registerNotifications
+    self.notificationStatus = notificationStatus
+    self.trackingAuthorization = trackingAuthorization
+  }
+
+  public var hasSeenOnboarding: Bool { AppEnvironment.current.userDefaults.hasSeenOnboarding }
+  public func recordCompletion() { AppEnvironment.current.userDefaults.hasSeenOnboarding = true }
+  public func currentNotificationStatus() async -> UNAuthorizationStatus { await self.notificationStatus() }
+  public func requestNotifications(options: UNAuthorizationOptions) async -> Bool {
+    let granted = await self.authorizeNotifications(options)
+    if granted { self.registerNotifications() }
+    return granted
+  }
+  public func requestTrackingAuthorization() async -> ATTrackingManager.AuthorizationStatus {
+    await self.trackingAuthorization()
+  }
 }
 
 @MainActor

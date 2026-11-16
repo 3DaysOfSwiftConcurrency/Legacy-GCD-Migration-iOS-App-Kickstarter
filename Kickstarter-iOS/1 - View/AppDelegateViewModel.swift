@@ -209,6 +209,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var notificationTasks: [UUID: Task<Void, Never>] = [:]
   private var verificationTask: Task<Void, Never>?
   private let lifecycleFeature: AppLifecycleFeature
+  private let onboardingFeature: OnboardingFeature
   private let navigationRoute = UUID()
   @MainActor private final class RedirectObservation {
     var task: Task<Void, Never>?
@@ -241,6 +242,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public init(
     lifecycleFeature: AppLifecycleFeature? = nil,
+    onboardingFeature: OnboardingFeature? = nil,
     pushDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
     userDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
     trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
@@ -250,6 +252,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelay = trackingDelay
     let lifecycleFeature = lifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.lifecycleFeature = lifecycleFeature
+    self.onboardingFeature = onboardingFeature ?? AppModel.shared.onboardingFeature
   }
 
 
@@ -360,7 +363,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func triggerOnboardingIfEligible() {
     guard AppEnvironment.current.appTrackingTransparency.shouldRequestAuthorizationStatus(),
-          !self.lifecycleFeature.hasSeenOnboarding else { return }
+          !self.onboardingFeature.hasSeenOnboarding else { return }
     self.onTriggerOnboardingFlow?()
   }
 
@@ -375,7 +378,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
       do {
         try await delay()
         try Task.checkCancellation()
-        guard active, let self, self.lifecycleFeature.hasSeenOnboarding else { return }
+        guard active, let self, self.onboardingFeature.hasSeenOnboarding else { return }
         let tracking = AppEnvironment.current.appTrackingTransparency
         if tracking.advertisingIdentifier == nil, tracking.shouldRequestAuthorizationStatus() {
           tracking.requestAndSetAuthorizationStatus(nil)
@@ -542,7 +545,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public func recordOnboardingCompletion() {
-    self.lifecycleFeature.recordOnboardingCompletion()
+    self.onboardingFeature.recordCompletion()
   }
 
   public func synchronizePreferences() {

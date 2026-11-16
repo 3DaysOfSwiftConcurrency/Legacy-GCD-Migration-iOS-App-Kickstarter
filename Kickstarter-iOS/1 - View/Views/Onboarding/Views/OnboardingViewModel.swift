@@ -40,9 +40,9 @@ public final class OnboardingViewModel {
   @MainActor private func completeTracking(advance: @escaping () -> Void) {
     guard self.completionTask == nil else { return }
     let version = self.completionVersion
-    let feature = self.appLifecycleFeature
+    let feature = self.onboardingFeature
     self.completionTask = Task { [weak self] in
-      let status = await feature.trackingAuthorization()
+      let status = await feature.requestTrackingAuthorization()
       guard !Task.isCancelled, let self, self.completionVersion == version else { return }
       self.didCompleteAppTrackingDialog(with: status)
       advance()
@@ -51,7 +51,7 @@ public final class OnboardingViewModel {
 
   // MARK: - Properties
 
-  private let appLifecycleFeature: AppLifecycleFeature
+  private let onboardingFeature: OnboardingFeature
   private let useCase: OnboardingUseCaseType
 
   // MARK: - Outputs
@@ -62,9 +62,9 @@ public final class OnboardingViewModel {
 
   public init(
     with bundle: Bundle = .main,
-    appLifecycleFeature: AppLifecycleFeature = AppModel.shared.appLifecycleFeature
+    onboardingFeature: OnboardingFeature = AppModel.shared.onboardingFeature
   ) {
-    self.appLifecycleFeature = appLifecycleFeature
+    self.onboardingFeature = onboardingFeature
     self.useCase = OnboardingUseCase(for: bundle)
 
     self.onboardingItems = self.useCase.uiOutputs.onboardingItems
@@ -79,16 +79,16 @@ public final class OnboardingViewModel {
 
   public func getNotifiedTapped() {
     guard self.completionTask == nil else { return }
-    let feature = self.appLifecycleFeature
+    let feature = self.onboardingFeature
     let version = self.completionVersion
     self.completionTask = Task { [weak self] in
-      let existing = await feature.notificationStatus()
+      let existing = await feature.currentNotificationStatus()
       guard !Task.isCancelled, let self, self.completionVersion == version else { return }
       guard existing != .authorized else { self.completionTask = nil; return }
       AppEnvironment.current.ksrAnalytics.trackSystemPermissionsDialogViewed(on: .onboardingNotificationsDialog)
-      _ = await feature.notificationAuthorization(options: [.alert, .sound, .badge])
+      _ = await feature.requestNotifications(options: [.alert, .sound, .badge])
       guard !Task.isCancelled, self.completionVersion == version else { return }
-      let status = await feature.notificationStatus()
+      let status = await feature.currentNotificationStatus()
       guard !Task.isCancelled, self.completionVersion == version else { return }
       self.onNotificationCompletion?(status)
     }
@@ -139,7 +139,7 @@ public final class OnboardingViewModel {
   }
 
   public func onboardingFlowEnded() {
-    self.appLifecycleFeature.recordOnboardingCompletion()
+    self.onboardingFeature.recordCompletion()
     AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(context: .onboardingClose)
   }
 
