@@ -36,7 +36,7 @@ public final class SearchFiltersUseCase: SearchFiltersUseCaseType, SearchFilters
   /// Initial selection publication remains an explicit Feature command.
   public init(
     searchFeature: SearchFeature,
-    isLoggedIn: @escaping @MainActor () -> Bool = { AppEnvironment.current.currentUser != nil }
+    isLoggedIn: @escaping @MainActor () -> Bool
   ) {
     self.searchFeature = searchFeature
     let selection = searchFeature.filterSelection

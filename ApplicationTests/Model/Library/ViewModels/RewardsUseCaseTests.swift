@@ -11,7 +11,7 @@ final class RewardsUseCaseTests: TestCase {
 
   override func setUp() async throws {
     try await super.setUp()
-    self.vm = RewardsUseCase()
+    self.vm = RewardsUseCase(isLoggedIn: { AppEnvironment.current.currentUser != nil })
     self.vm.onLogin = { [weak self] in self?.logins.append($0) }
     self.vm.onRewards = { [weak self] in self?.rewards += 1 }
   }

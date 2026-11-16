@@ -13,7 +13,7 @@ public final class LoginSignupUseCase {
 
   init(
     withLoginIntent intent: LoginIntent,
-    currentUser: @escaping @MainActor () -> User? = { AppEnvironment.current.currentUser }
+    currentUser: @escaping @MainActor () -> User?
   ) {
     self.intent = intent
     self.currentUser = currentUser

@@ -346,7 +346,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
 
     // MARK: Rewards
 
-    self.rewardsUseCase = RewardsUseCase()
+    self.rewardsUseCase = RewardsUseCase(isLoggedIn: { projectDetailsFeature.sessionFeature.currentUser != nil })
 
     // MARK: - Pledge View
 

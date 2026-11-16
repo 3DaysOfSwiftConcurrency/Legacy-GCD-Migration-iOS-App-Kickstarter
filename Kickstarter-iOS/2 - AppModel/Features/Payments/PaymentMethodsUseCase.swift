@@ -16,7 +16,7 @@ public final class PaymentMethodsUseCase {
   private var lastSelectedCard: PaymentSourceSelected?
   private let currentUser: @MainActor () -> User?
 
-  public init(currentUser: @escaping @MainActor () -> User? = { AppEnvironment.current.currentUser }) {
+  public init(currentUser: @escaping @MainActor () -> User?) {
     self.currentUser = currentUser
   }
 

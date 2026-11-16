@@ -28,7 +28,10 @@ final class SearchFiltersUseCaseTests: TestCase {
     try await super.setUp()
 
     MainActor.assumeIsolated {
-    self.useCase = SearchFiltersUseCase(searchFeature: self.searchFeature)
+    self.useCase = SearchFiltersUseCase(
+      searchFeature: self.searchFeature,
+      isLoggedIn: { AppEnvironment.current.currentUser != nil }
+    )
 
     self.selectionObservation = self.searchFeature.filterSelection.observe { [weak self] change in
       guard let self else { return }

@@ -102,9 +102,13 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
   public init(searchFeature: SearchFeature? = nil, sessionFeature: SessionFeature? = nil) {
     // Resolve the live default inside MainActor, not in a Swift 5 default argument.
     let searchFeature = searchFeature ?? AppModel.shared.searchFeature
+    let sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
     self.searchFeature = searchFeature
-    self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
-    self.searchFiltersUseCase = SearchFiltersUseCase(searchFeature: searchFeature)
+    self.sessionFeature = sessionFeature
+    self.searchFiltersUseCase = SearchFiltersUseCase(
+      searchFeature: searchFeature,
+      isLoggedIn: { sessionFeature.currentUser != nil }
+    )
     self.completionAnalytics = SearchCompletionAnalytics()
     self.completionAnalytics.onCount = { [weak self] count in
       self?.trackResultCompletion(count: count)

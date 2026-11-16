@@ -225,7 +225,10 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     let cardState = self.cardState
     let appleState = self.applePayState
 
-    self.loginSignupUseCase = LoginSignupUseCase(withLoginIntent: .backProject)
+    self.loginSignupUseCase = LoginSignupUseCase(
+      withLoginIntent: .backProject,
+      currentUser: { pledgeFeature.sessionFeature.currentUser }
+    )
     let login = self.loginSignupUseCase
     let openingState = PostCampaignOpeningState()
     login.onLoginState = { value in
@@ -233,7 +236,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       openingState.setLoggedIn(value)
     }
 
-    self.paymentMethodsUseCase = PaymentMethodsUseCase()
+    self.paymentMethodsUseCase = PaymentMethodsUseCase(currentUser: { pledgeFeature.sessionFeature.currentUser })
     let paymentMethods = self.paymentMethodsUseCase
     paymentMethods.onSelected = { value in
       cardState.select(value)

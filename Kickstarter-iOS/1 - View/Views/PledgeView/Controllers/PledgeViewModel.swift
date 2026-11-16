@@ -125,10 +125,13 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     let requestState = PledgeRequestState()
     formState.onChange = { ctaState.setEnabled($0) }
 
-    self.loginSignupUseCase = LoginSignupUseCase(withLoginIntent: .backProject)
+    self.loginSignupUseCase = LoginSignupUseCase(
+      withLoginIntent: .backProject,
+      currentUser: { feature.sessionFeature.currentUser }
+    )
     let login = self.loginSignupUseCase
 
-    self.paymentMethodsUseCase = PaymentMethodsUseCase()
+    self.paymentMethodsUseCase = PaymentMethodsUseCase(currentUser: { feature.sessionFeature.currentUser })
     let paymentMethods = self.paymentMethodsUseCase
     paymentMethods.onSelected = { value in
       ctaState.selectPayment(value)

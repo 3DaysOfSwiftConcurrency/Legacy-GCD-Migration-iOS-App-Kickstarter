@@ -8,7 +8,7 @@ public final class RewardsUseCase {
   var onLogin: ((LoginIntent) -> Void)?
   var onRewards: (() -> Void)?
 
-  public init(isLoggedIn: @escaping @MainActor () -> Bool = { AppEnvironment.current.currentUser != nil }) {
+  public init(isLoggedIn: @escaping @MainActor () -> Bool) {
     self.isLoggedIn = isLoggedIn
   }
 
