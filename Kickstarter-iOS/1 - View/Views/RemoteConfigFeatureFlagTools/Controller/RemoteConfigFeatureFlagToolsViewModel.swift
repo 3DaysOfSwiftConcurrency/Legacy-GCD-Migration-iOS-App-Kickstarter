@@ -12,14 +12,11 @@ public final class RemoteConfigFeatureFlagToolsViewModel {
   public private(set) var remoteConfigFeatures: RemoteConfigFeatures = []
   public private(set) var statsigFeatures: StatsigFeatures = []
   private var reloadTask: Task<Void, Never>?
-  private let appLifecycleFeature: AppLifecycleFeature
   private let sleep: () async throws -> Void
 
   public init(
-    appLifecycleFeature: AppLifecycleFeature? = nil,
     sleep: @escaping () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
   ) {
-    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.sleep = sleep
   }
   public func viewDidLoad() { self.reload() }
@@ -35,12 +32,12 @@ public final class RemoteConfigFeatureFlagToolsViewModel {
   }
   public func setFeatureAtIndexEnabled(index: Int, isEnabled: Bool) {
     guard self.remoteConfigFeatures.indices.contains(index) else { return }
-    self.appLifecycleFeature.setRemoteConfigOverride(self.remoteConfigFeatures[index].0, enabled: isEnabled)
+    AppEnvironment.current.userDefaults.remoteConfigFeatureFlags[self.remoteConfigFeatures[index].0.rawValue] = isEnabled
     self.didUpdateUserDefaults()
   }
   public func setStatsigFeatureAtIndexEnabled(index: Int, isEnabled: Bool) {
     guard self.statsigFeatures.indices.contains(index) else { return }
-    self.appLifecycleFeature.setStatsigOverride(self.statsigFeatures[index].0, enabled: isEnabled)
+    AppEnvironment.current.userDefaults.statsigFeatureFlags[self.statsigFeatures[index].0.rawValue] = isEnabled
     self.didUpdateUserDefaults()
   }
   private func reload() {
