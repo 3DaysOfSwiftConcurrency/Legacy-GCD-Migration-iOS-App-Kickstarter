@@ -146,7 +146,7 @@ public final class AppModel {
       }),
       onboardingFeature: OnboardingFeature(),
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
-      appLifecycleFeature: AppLifecycleFeature(sessionFeature: sessionFeature, settingsFeature: settingsFeature,
+      appLifecycleFeature: AppLifecycleFeature(sessionFeature: sessionFeature,
         messagingFeature: messagingFeature, makeProvider: { AsyncAppLifecycleProvider(service: AppEnvironment.current.apiService) }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)

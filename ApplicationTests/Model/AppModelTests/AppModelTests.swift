@@ -33,7 +33,7 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: OnboardingFeature(),
-      appLifecycleFeature: AppLifecycleFeature(sessionFeature: firstSession, settingsFeature: firstSettings,
+      appLifecycleFeature: AppLifecycleFeature(sessionFeature: firstSession,
         messagingFeature: firstMessaging, makeProvider: {
           XCTFail("Composition must not perform startup requests")
           return AsyncAppLifecycleProvider(service: MockService())
@@ -90,7 +90,7 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: OnboardingFeature(),
-      appLifecycleFeature: AppLifecycleFeature(sessionFeature: secondSession, settingsFeature: secondSettings,
+      appLifecycleFeature: AppLifecycleFeature(sessionFeature: secondSession,
         messagingFeature: secondMessaging, makeProvider: {
           XCTFail("Composition must not perform startup requests")
           return AsyncAppLifecycleProvider(service: MockService())

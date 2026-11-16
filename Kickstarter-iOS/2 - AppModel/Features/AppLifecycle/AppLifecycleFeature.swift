@@ -56,7 +56,6 @@ public struct AsyncAppLifecycleProvider: AppLifecycleProvider {
 @MainActor
 public final class AppLifecycleFeature {
   public let sessionFeature: SessionFeature
-  public let settingsFeature: SettingsFeature
   public let messagingFeature: MessagingFeature
   public struct ProjectDestination: Sendable {
     public let project: Project
@@ -98,15 +97,14 @@ public final class AppLifecycleFeature {
   private var pushTasks: [UUID: Task<String, Error>] = [:]
 
   public init(
-    sessionFeature: SessionFeature, settingsFeature: SettingsFeature,
-    messagingFeature: MessagingFeature, makeProvider: @escaping () -> any AppLifecycleProvider,
+    sessionFeature: SessionFeature, messagingFeature: MessagingFeature,
+    makeProvider: @escaping () -> any AppLifecycleProvider,
     resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.sessionFeature = sessionFeature
-    self.settingsFeature = settingsFeature
     self.messagingFeature = messagingFeature
     self.makeProvider = makeProvider
     self.sleep = sleep

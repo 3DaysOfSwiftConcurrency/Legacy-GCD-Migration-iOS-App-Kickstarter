@@ -103,7 +103,14 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   private func bindOutputs() {
-    self.vm = AppDelegateViewModel(lifecycleFeature: self.lifecycleFeature, pushDebounce: { try Task.checkCancellation() }, userDebounce: { try Task.checkCancellation() }, trackingDelay: { try Task.checkCancellation() })
+    self.vm = AppDelegateViewModel(
+      lifecycleFeature: self.lifecycleFeature,
+      sessionFeature: self.lifecycleFeature.sessionFeature,
+      settingsFeature: self.settingsFeature,
+      pushDebounce: { try Task.checkCancellation() },
+      userDebounce: { try Task.checkCancellation() },
+      trackingDelay: { try Task.checkCancellation() }
+    )
     (self.vm as? AppDelegateViewModel)?.settingsPresentationDelay = { _ in try Task.checkCancellation() }
     self.vm.outputs.onNotificationSettingsUpdated = { [weak self] in self?.notificationSettingsUpdated.record(()) }
 
@@ -1134,7 +1141,11 @@ final class AppDelegateViewModelTests: TestCase {
 
   func testPushRegistrationDebounceAdmitsLatestToken() async {
     await withEnvironment(currentUser: .template) {
-      let model = AppDelegateViewModel(lifecycleFeature: self.lifecycleFeature, pushDebounce: {
+      let model = AppDelegateViewModel(
+        lifecycleFeature: self.lifecycleFeature,
+        sessionFeature: self.lifecycleFeature.sessionFeature,
+        settingsFeature: self.settingsFeature,
+        pushDebounce: {
         try Task.checkCancellation()
       })
       var registered: [String] = []

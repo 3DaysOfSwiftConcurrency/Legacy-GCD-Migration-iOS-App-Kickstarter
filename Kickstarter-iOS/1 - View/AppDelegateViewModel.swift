@@ -256,8 +256,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelay = trackingDelay
     let lifecycleFeature = lifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.lifecycleFeature = lifecycleFeature
-    self.sessionFeature = sessionFeature ?? lifecycleFeature.sessionFeature
-    self.settingsFeature = settingsFeature ?? lifecycleFeature.settingsFeature
+    self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.onboardingFeature = onboardingFeature ?? AppModel.shared.onboardingFeature
   }
 

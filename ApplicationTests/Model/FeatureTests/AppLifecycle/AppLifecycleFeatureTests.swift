@@ -21,9 +21,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
     let provider = ControlledLifecycleProvider()
     self.provider = provider
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
-    let settings = SettingsFeature(
-      sessionFeature: session,
-      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) })
     let messaging = MessagingFeature(
       sessionFeature: session, makeProvider: { AsyncMessagingProvider(service: MockService()) })
     self.connectivityMonitor = ControlledReachabilityMonitor()
@@ -33,7 +30,7 @@ final class AppLifecycleFeatureTests: XCTestCase {
       return self?.connectivityMonitor
     })
     self.feature = AppLifecycleFeature(
-      sessionFeature: session, settingsFeature: settings, messagingFeature: messaging,
+      sessionFeature: session, messagingFeature: messaging,
       makeProvider: { provider },
       resolveRedirect: { _ in try await provider.redirects.request() }, sleep: { _ in try Task.checkCancellation() })
   }
