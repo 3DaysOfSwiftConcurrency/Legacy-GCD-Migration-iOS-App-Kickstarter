@@ -3,11 +3,16 @@ import KsApi
 
 @MainActor
 internal final class HelpWebViewModel {
-  private let appLifecycleFeature: AppLifecycleFeature
+  private let webBaseURL: () -> URL
+  private let prepareRequest: (URL) -> URLRequest
   private var helpType: HelpType?
 
-  init(appLifecycleFeature: AppLifecycleFeature? = nil) {
-    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
+  init(
+    webBaseURL: @escaping () -> URL = { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
+    prepareRequest: @escaping (URL) -> URLRequest = { AppEnvironment.current.apiService.preparedRequest(forURL: $0) }
+  ) {
+    self.webBaseURL = webBaseURL
+    self.prepareRequest = prepareRequest
   }
 
   func configureWith(helpType: HelpType) {
@@ -15,9 +20,9 @@ internal final class HelpWebViewModel {
   }
 
   func requestForViewDidLoad() -> URLRequest? {
-    guard let url = self.helpType?.url(withBaseUrl: self.appLifecycleFeature.webBaseURL) else {
+    guard let url = self.helpType?.url(withBaseUrl: self.webBaseURL()) else {
       return nil
     }
-    return self.appLifecycleFeature.preparedWebRequest(for: url)
+    return self.prepareRequest(url)
   }
 }
