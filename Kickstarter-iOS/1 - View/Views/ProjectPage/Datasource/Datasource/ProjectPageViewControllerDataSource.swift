@@ -94,7 +94,10 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
 
     switch (navigationSection, project) {
     case let (.overview, .left(project)):
-      if currentUserIsCreator(of: project) {
+      if currentUserIsCreator(
+        of: project,
+        currentUser: self.projectDetailsFeature.sessionFeature.currentUser
+      ) {
         self.set(
           values: [project],
           cellClass: ProjectPamphletCreatorHeaderCell.self,

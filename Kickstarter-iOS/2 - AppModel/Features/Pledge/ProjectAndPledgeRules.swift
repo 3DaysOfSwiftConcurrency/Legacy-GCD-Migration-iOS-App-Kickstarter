@@ -43,7 +43,10 @@ internal func userIsBackingProject(_ project: Project) -> Bool {
  */
 @MainActor
 public func currentUserIsCreator(of project: Project) -> Bool {
-  currentUserIsCreator(of: project, currentUser: AppEnvironment.current.currentUser)
+  // Legacy reusable card ViewModels have not yet received their owning feature.
+  // Keep their compatibility route at the CFA composition boundary, rather than
+  // allowing a reusable Model rule to reach into AppEnvironment.
+  currentUserIsCreator(of: project, currentUser: AppModel.shared.sessionFeature.currentUser)
 }
 
 /// A pure project-role decision for callers that already own a session boundary.

@@ -147,7 +147,9 @@ public final class ManagePledgeViewModel:
     )
     if let summary = managePledgeSummaryViewData(
       with: (project, backing.reward ?? .noReward), backing: backing,
-      rewardReceivedWithData: received, rewardReceivedViewControllerViewIsHidden: latestDelivery == 0
+      rewardReceivedWithData: received,
+      rewardReceivedViewControllerViewIsHidden: latestDelivery == 0,
+      currentUser: self.pledgeFeature.sessionFeature.currentUser
     ) { self.onPledgeSummary?(summary) }
     if let reward = backing.reward {
       let checkout = checkoutProperties(
@@ -513,7 +515,8 @@ private func managePledgeSummaryViewData(
   with projectAndReward: (Project, Reward),
   backing: Backing,
   rewardReceivedWithData: ManageViewPledgeRewardReceivedViewData,
-  rewardReceivedViewControllerViewIsHidden: Bool
+  rewardReceivedViewControllerViewIsHidden: Bool,
+  currentUser: User?
 ) -> ManagePledgeSummaryViewData? {
   let (project, backedReward) = projectAndReward
 
@@ -530,7 +533,7 @@ private func managePledgeSummaryViewData(
     bonusAmount: backing.bonusAmount,
     currentUserIsCreatorOfProject: currentUserIsCreator(
       of: project,
-      currentUser: self.pledgeFeature.sessionFeature.currentUser
+      currentUser: currentUser
     ),
     isNoReward: backedReward.id == Reward.noReward.id,
     locationName: backing.locationName,
