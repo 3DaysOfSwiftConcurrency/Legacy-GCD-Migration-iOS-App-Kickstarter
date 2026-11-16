@@ -10,7 +10,7 @@ final class FindFriendsFriendFollowCellViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) }, sleep: { _ in }
   )
-  private lazy var vm = FindFriendsFriendFollowCellViewModel(feature: self.feature, delay: {})
+  private lazy var vm = FindFriendsFriendFollowCellViewModel(friendsFeature: self.feature, delay: {})
 
   override func tearDown() async throws {
     self.feature.reset()

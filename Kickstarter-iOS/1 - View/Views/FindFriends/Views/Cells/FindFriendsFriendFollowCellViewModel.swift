@@ -18,14 +18,14 @@ public final class FindFriendsFriendFollowCellViewModel {
   public private(set) var projectsCreatedText: String?
   public private(set) var unfollowButtonAccessibilityLabel: String?
   @ObservationIgnored var onChange: (@MainActor () -> Void)?
-  @ObservationIgnored private let feature: FriendsFeature
+  @ObservationIgnored private let friendsFeature: FriendsFeature
   @ObservationIgnored private let delay: @MainActor () async throws -> Void
   @ObservationIgnored private var followObservation: Task<Void, Never>?
   @ObservationIgnored private var unfollowObservation: Task<Void, Never>?
   private var friend: User?
 
-  public init(feature: FriendsFeature? = nil, delay: (@MainActor () async throws -> Void)? = nil) {
-    self.feature = feature ?? AppModel.shared.friendsFeature
+  public init(friendsFeature: FriendsFeature? = nil, delay: (@MainActor () async throws -> Void)? = nil) {
+    self.friendsFeature = friendsFeature ?? AppModel.shared.friendsFeature
     self.delay = delay ?? {
       let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
@@ -34,7 +34,7 @@ public final class FindFriendsFriendFollowCellViewModel {
   }
 
   public func configureWith(friend: User) {
-    let friend = self.feature.cached(friend)
+    let friend = self.friendsFeature.cached(friend)
     self.friend = friend
     self.imageURL = URL(string: friend.avatar.medium)
     self.location = friend.location?.displayableName ?? ""
@@ -62,9 +62,10 @@ public final class FindFriendsFriendFollowCellViewModel {
 
   private func setFollowing(_ following: Bool) {
     guard let friend = self.friend else { return }
-    let generation = self.feature.sessionFeature.generation
-    let sessionUser = self.feature.sessionFeature.currentUser?.id
-    let command = self.feature.startFollowing(user: friend, following: following)
+    let friendsFeature = self.friendsFeature
+    let generation = friendsFeature.sessionFeature.generation
+    let sessionUser = friendsFeature.sessionFeature.currentUser?.id
+    let command = friendsFeature.startFollowing(user: friend, following: following)
     if following { self.followObservation?.cancel(); self.enableFollowButton = false }
     else { self.unfollowObservation?.cancel(); self.enableUnfollowButton = false }
     self.onChange?()
@@ -76,8 +77,8 @@ public final class FindFriendsFriendFollowCellViewModel {
         self.onChange?()
         try await self.delay()
         try Task.checkCancellation()
-        guard self.friend?.id == updated.id, self.feature.sessionFeature.generation == generation,
-              self.feature.sessionFeature.currentUser?.id == sessionUser else { return }
+        guard self.friend?.id == updated.id, friendsFeature.sessionFeature.generation == generation,
+              friendsFeature.sessionFeature.currentUser?.id == sessionUser else { return }
         self.applyFollowing(updated.isFriend ?? false)
       } catch {
         guard let self, !Task.isCancelled else { return }

@@ -239,7 +239,7 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testReusedFindFriendsCellIgnoresPreviousFriendCompletion() async throws {
-    let vm = FindFriendsFriendFollowCellViewModel(feature: self.feature, delay: {})
+    let vm = FindFriendsFriendFollowCellViewModel(friendsFeature: self.feature, delay: {})
     vm.configureWith(friend: Self.user(1))
     vm.followButtonTapped()
     await self.provider.writes.waitFor(1)
@@ -267,7 +267,7 @@ final class FriendsFeatureTests: TestCase {
     await self.feature.waitForOperations()
     await vm.waitForObservation()
     XCTAssertTrue(hidden.isEmpty)
-    let other = FindFriendsFriendFollowCellViewModel(feature: self.feature, delay: {})
+    let other = FindFriendsFriendFollowCellViewModel(friendsFeature: self.feature, delay: {})
     other.configureWith(friend: Self.user(1))
     XCTAssertEqual(other.hideFollowButton, true)
   }
@@ -275,7 +275,7 @@ final class FriendsFeatureTests: TestCase {
   func testDelayedSuccessDoesNotReachReplacementSession() async throws {
     let gate = AccountRequestGate<Void>()
     defer { gate.releaseAll() }
-    let vm = FindFriendsFriendFollowCellViewModel(feature: self.feature, delay: { try await gate.request() })
+    let vm = FindFriendsFriendFollowCellViewModel(friendsFeature: self.feature, delay: { try await gate.request() })
     vm.configureWith(friend: Self.user(1))
     vm.followButtonTapped()
     await self.provider.writes.waitFor(1)
