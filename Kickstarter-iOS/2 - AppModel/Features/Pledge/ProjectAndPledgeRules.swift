@@ -438,12 +438,11 @@ public func rewardCanShip(
 public func rewardsCarouselCanNavigateToReward(
   _ reward: Reward,
   in project: Project,
-  selectedShippingLocation location: Location?,
-  currentUserIsCreator: Bool = false
+  selectedShippingLocation location: Location?
 ) -> Bool {
   return rewardsCarouselCanNavigateToReward(
     reward, in: project, selectedShippingLocation: location,
-    currentUserIsCreator: currentUserIsCreator
+    currentUserIsCreator: false
   )
 }
 
