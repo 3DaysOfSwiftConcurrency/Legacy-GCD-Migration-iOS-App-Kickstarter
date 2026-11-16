@@ -82,7 +82,6 @@ public final class AppLifecycleFeature {
     let task: Task<Value, Error>
   }
   private var remoteConfigurationRequest: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
-  private let applicationBadgeNumber: () -> Int
   private let makeProvider: () -> any AppLifecycleProvider
   private let resolveRedirect: (URL) async throws -> URL?
   private var redirects: [UUID: (url: URL, request: Pending<URL?>)] = [:]
@@ -101,7 +100,6 @@ public final class AppLifecycleFeature {
   public init(
     sessionFeature: SessionFeature, settingsFeature: SettingsFeature,
     messagingFeature: MessagingFeature, makeProvider: @escaping () -> any AppLifecycleProvider,
-    applicationBadgeNumber: @escaping () -> Int = { AppEnvironment.current.application.applicationIconBadgeNumber },
     resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -113,7 +111,6 @@ public final class AppLifecycleFeature {
     self.makeProvider = makeProvider
     self.sleep = sleep
     self.resolveRedirect = resolveRedirect
-    self.applicationBadgeNumber = applicationBadgeNumber
   }
   private var session: Session {
     Session(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
@@ -125,64 +122,6 @@ public final class AppLifecycleFeature {
 
   public func synchronizePreferences() {
     _ = AppEnvironment.current.ubiquitousStore.synchronize()
-  }
-
-  /// Owns authenticated web-session request construction for UIKit web screens.
-  public var webBaseURL: URL {
-    AppEnvironment.current.apiService.serverConfig.webBaseUrl
-  }
-
-  public var apiBaseURL: URL { AppEnvironment.current.apiService.serverConfig.apiBaseUrl }
-
-  public var isAuthenticated: Bool { AppEnvironment.current.apiService.isAuthenticated }
-  public var currentApplicationBadgeNumber: Int { self.applicationBadgeNumber() }
-  public var isDebugBuild: Bool {
-    guard let environment = AppEnvironment.current else { return false }
-    return environment.mainBundle.isAlpha || environment.mainBundle.isBeta || environment.mainBundle.isDebug
-  }
-  public func canOpenExternalURL(_ url: URL) -> Bool { AppEnvironment.current.application.canOpenURL(url) }
-  public func openExternalURL(_ url: URL) {
-    AppEnvironment.current.application.open(url, options: [:], completionHandler: nil)
-  }
-  public var serverEnvironment: EnvironmentType { AppEnvironment.current.apiService.serverConfig.environment }
-  public func webURL(path: String) -> String { self.webBaseURL.absoluteString + path }
-  public func helpType(for url: URL) -> HelpType? {
-    HelpType.allCases.first { url.absoluteString == $0.url(withBaseUrl: self.webBaseURL)?.absoluteString }
-  }
-  public func navigationMatch(_ url: URL) -> Navigation? {
-    Navigation.match(url, apiBaseURL: self.apiBaseURL, webBaseURL: self.webBaseURL)
-  }
-  public func deepLinkMatch(_ url: URL) -> Navigation? {
-    Navigation.deepLinkMatch(url, apiBaseURL: self.apiBaseURL, webBaseURL: self.webBaseURL)
-  }
-  public func helpURL(_ type: HelpType) -> String? { type.url(withBaseUrl: self.webBaseURL)?.absoluteString }
-
-  public func preparedWebRequest(for url: URL) -> URLRequest {
-    AppEnvironment.current.apiService.preparedRequest(forURL: url)
-  }
-
-  public func preparedWebRequest(from request: URLRequest) -> URLRequest {
-    AppEnvironment.current.apiService.preparedRequest(forRequest: request)
-  }
-
-  public func isPreparedWebRequest(_ request: URLRequest) -> Bool {
-    AppEnvironment.current.apiService.isPrepared(request: request)
-  }
-
-  public func setRemoteConfigOverride(_ feature: RemoteConfigFeature, enabled: Bool) {
-    AppEnvironment.current.userDefaults.remoteConfigFeatureFlags[feature.rawValue] = enabled
-  }
-
-  public func setStatsigOverride(_ feature: StatsigFeature, enabled: Bool) {
-    AppEnvironment.current.userDefaults.statsigFeatureFlags[feature.rawValue] = enabled
-  }
-
-  public var hasSeenOnboarding: Bool {
-    AppEnvironment.current.userDefaults.hasSeenOnboarding
-  }
-
-  public func recordOnboardingCompletion() {
-    AppEnvironment.current.userDefaults.hasSeenOnboarding = true
   }
 
   @discardableResult public func requestRemoteConfiguration(
