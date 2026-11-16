@@ -10,7 +10,7 @@ final class FindFriendsViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) }, sleep: { _ in }
   )
-  private lazy var vm = FindFriendsViewModel(feature: self.feature, refreshDelay: {})
+  private lazy var vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: {})
 
   override func tearDown() async throws {
     self.feature.reset()

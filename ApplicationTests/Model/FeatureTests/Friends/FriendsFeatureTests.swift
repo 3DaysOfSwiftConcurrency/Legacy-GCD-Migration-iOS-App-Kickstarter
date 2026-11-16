@@ -295,7 +295,7 @@ final class FriendsFeatureTests: TestCase {
     currentUser.facebookConnected = true
     await withEnvironment(currentUser: currentUser) {
       do {
-        let vm = FindFriendsViewModel(feature: self.feature, refreshDelay: { try await gate.request() })
+        let vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: { try await gate.request() })
         vm.configureWith(source: .findFriends)
         vm.viewDidLoad()
         await self.provider.pages.waitFor(1)
@@ -321,7 +321,7 @@ final class FriendsFeatureTests: TestCase {
     user.facebookConnected = true
     await withEnvironment(currentUser: user) {
       do {
-        let vm = FindFriendsViewModel(feature: self.feature, refreshDelay: {})
+        let vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: {})
         vm.viewDidLoad()
         await self.provider.pages.waitFor(1)
         await self.provider.statisticsGate.waitFor(1)

@@ -17,7 +17,7 @@ public final class FindFriendsViewModel {
   public private(set) var showLoadingIndicator = false
   @ObservationIgnored var onChange: (@MainActor () -> Void)?
   @ObservationIgnored var onEvent: (@MainActor (Event) -> Void)?
-  @ObservationIgnored private let feature: FriendsFeature
+  @ObservationIgnored private let friendsFeature: FriendsFeature
   @ObservationIgnored private let refreshDelay: @MainActor () async throws -> Void
   @ObservationIgnored private let route = UUID()
   @ObservationIgnored private var pageObservation: Task<Void, Never>?
@@ -27,8 +27,8 @@ public final class FindFriendsViewModel {
   private var lastPaginationTrigger = false
   private var showedInitialLoader = false
 
-  public init(feature: FriendsFeature? = nil, refreshDelay: (@MainActor () async throws -> Void)? = nil) {
-    self.feature = feature ?? AppModel.shared.friendsFeature
+  public init(friendsFeature: FriendsFeature? = nil, refreshDelay: (@MainActor () async throws -> Void)? = nil) {
+    self.friendsFeature = friendsFeature ?? AppModel.shared.friendsFeature
     self.refreshDelay = refreshDelay ?? { try await Task.sleep(for: .seconds(2)) }
   }
 
@@ -53,7 +53,7 @@ public final class FindFriendsViewModel {
 
   private func updateFacebookState() {
     let show = FindFriendsFacebookConnectCellViewModel.showFacebookConnectionSection(
-      for: self.feature.sessionFeature.currentUser
+      for: self.friendsFeature.sessionFeature.currentUser
     )
     self.showFacebookConnect = show
     self.onChange?()
@@ -61,10 +61,10 @@ public final class FindFriendsViewModel {
   }
 
   private func loadPage(next: Bool = false) {
-    guard let task = self.feature.requestPage(route: self.route, next: next) else { return }
-    let feature = self.feature, route = self.route
-    let generation = feature.sessionFeature.generation
-    let userID = feature.sessionFeature.currentUser?.id
+    guard let task = self.friendsFeature.requestPage(route: self.route, next: next) else { return }
+    let friendsFeature = self.friendsFeature, route = self.route
+    let generation = friendsFeature.sessionFeature.generation
+    let userID = friendsFeature.sessionFeature.currentUser?.id
     if !next, self.friends != nil { self.friends = []; self.onChange?() }
     if !self.showedInitialLoader {
       self.showedInitialLoader = true
@@ -74,8 +74,8 @@ public final class FindFriendsViewModel {
     self.pageObservation?.cancel()
     self.pageObservation = Task { [weak self] in
       await task.value
-      guard let self, !Task.isCancelled, feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-      let snapshot = feature.snapshot(route: route)
+      guard let self, !Task.isCancelled, friendsFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+      let snapshot = friendsFeature.snapshot(route: route)
       if snapshot.pageError == nil { self.friends = snapshot.users }
       self.showLoadingIndicator = false
       self.onChange?()
@@ -83,16 +83,16 @@ public final class FindFriendsViewModel {
   }
 
   private func loadStatistics() {
-    let feature = self.feature, route = self.route
-    let generation = feature.sessionFeature.generation
-    let userID = feature.sessionFeature.currentUser?.id
-    let task = feature.requestStatistics(route: route)
+    let friendsFeature = self.friendsFeature, route = self.route
+    let generation = friendsFeature.sessionFeature.generation
+    let userID = friendsFeature.sessionFeature.currentUser?.id
+    let task = friendsFeature.requestStatistics(route: route)
     self.statisticsObservation?.cancel()
     self.statisticsObservation = Task { [weak self] in
       await task.value
-      guard let self, !Task.isCancelled, feature.sessionFeature.isCurrent(userID: userID, generation: generation),
+      guard let self, !Task.isCancelled, friendsFeature.sessionFeature.isCurrent(userID: userID, generation: generation),
             self.showFacebookConnect == false else { return }
-      if let stats = feature.snapshot(route: route).statistics { self.stats = stats; self.onChange?() }
+      if let stats = friendsFeature.snapshot(route: route).statistics { self.stats = stats; self.onChange?() }
     }
   }
 
@@ -104,20 +104,21 @@ public final class FindFriendsViewModel {
   }
 
   public func confirmFollowAllFriends() {
-    let generation = self.feature.sessionFeature.generation
-    let userID = self.feature.sessionFeature.currentUser?.id
-    let command = self.feature.startFollowAll()
+    let friendsFeature = self.friendsFeature
+    let generation = friendsFeature.sessionFeature.generation
+    let userID = friendsFeature.sessionFeature.currentUser?.id
+    let command = friendsFeature.startFollowAll()
     self.followAllObservation?.cancel()
     self.followAllObservation = Task { [weak self] in
       do {
         try await command.value
         guard let self, !Task.isCancelled,
-              self.feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+              friendsFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self.friends = []
         self.onChange?()
         try await self.refreshDelay()
         try Task.checkCancellation()
-        guard self.feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard friendsFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self.loadPage()
       } catch { }
     }
@@ -133,7 +134,7 @@ public final class FindFriendsViewModel {
     self.pageObservation?.cancel()
     self.statisticsObservation?.cancel()
     self.followAllObservation?.cancel()
-    let feature = self.feature, route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    let friendsFeature = self.friendsFeature, route = self.route
+    Task { @MainActor in friendsFeature.release(route: route) }
   }
 }
