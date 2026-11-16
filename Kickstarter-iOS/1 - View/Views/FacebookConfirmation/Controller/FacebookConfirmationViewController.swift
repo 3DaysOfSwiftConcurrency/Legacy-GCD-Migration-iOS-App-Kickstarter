@@ -70,7 +70,7 @@ internal final class FacebookConfirmationViewController: UIViewController,
     let isPad = self.traitCollection.userInterfaceIdiom == .pad
     applyDisclaimerTextViewStyle(
       self.disclaimerTextView,
-      baseURL: AppModel.shared.appLifecycleFeature.webBaseURL,
+      baseURL: self.viewModel.webBaseURL,
       useLargerText: isPad
     )
     applyLoginRootStackViewStyle(self.rootStackView, useLargerMargins: isPad)

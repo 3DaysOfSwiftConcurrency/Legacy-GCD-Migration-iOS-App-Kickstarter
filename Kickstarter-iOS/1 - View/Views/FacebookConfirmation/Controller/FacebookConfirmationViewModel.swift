@@ -18,6 +18,7 @@ public final class FacebookConfirmationViewModel {
   private var token = ""
   private var signupTask: Task<Void, Never>?
   private var revision = 0
+  public var webBaseURL: URL { self.authenticationFeature.webBaseURL }
 
   public init(authenticationFeature: AuthenticationFeature? = nil,
               sleep: @escaping (TimeInterval) async throws -> Void = { seconds in

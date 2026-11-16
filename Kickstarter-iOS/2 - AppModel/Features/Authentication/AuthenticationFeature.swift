@@ -55,8 +55,9 @@ public struct AsyncAuthenticationProvider: AuthenticationProvider {
 /// switch-to-latest interaction. Credentials exist only for the attempt lifetime.
 @MainActor
 public final class AuthenticationFeature {
+  public var webBaseURL: URL { AppEnvironment.current.apiService.serverConfig.webBaseUrl }
   public func helpType(for url: URL) -> HelpType? {
-    HelpType.allCases.first { url.absoluteString == $0.url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?.absoluteString }
+    HelpType.allCases.first { url.absoluteString == $0.url(withBaseUrl: self.webBaseURL)?.absoluteString }
   }
   private enum Operation { case login, resend }
 
