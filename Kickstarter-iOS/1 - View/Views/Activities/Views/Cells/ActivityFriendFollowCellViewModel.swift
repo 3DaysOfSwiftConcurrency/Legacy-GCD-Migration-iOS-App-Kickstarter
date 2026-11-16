@@ -9,13 +9,13 @@ public final class ActivityFriendFollowCellViewModel {
   public private(set) var hideFollowButton: Bool?
   public private(set) var title: NSAttributedString?
   @ObservationIgnored var onChange: (@MainActor () -> Void)?
-  @ObservationIgnored private let feature: FriendsFeature
+  @ObservationIgnored private let friendsFeature: FriendsFeature
   @ObservationIgnored private let delay: @MainActor () async throws -> Void
   @ObservationIgnored private var observation: Task<Void, Never>?
   private var friend: User?
 
-  public init(feature: FriendsFeature? = nil, delay: (@MainActor () async throws -> Void)? = nil) {
-    self.feature = feature ?? AppModel.shared.friendsFeature
+  public init(friendsFeature: FriendsFeature? = nil, delay: (@MainActor () async throws -> Void)? = nil) {
+    self.friendsFeature = friendsFeature ?? AppModel.shared.friendsFeature
     self.delay = delay ?? {
       let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
@@ -24,7 +24,7 @@ public final class ActivityFriendFollowCellViewModel {
   }
 
   public func configureWith(activity: Activity) {
-    self.friend = activity.user.map { self.feature.cached($0) }
+    self.friend = activity.user.map { self.friendsFeature.cached($0) }
     guard let friend = self.friend else { return }
     self.friendImageURL = URL(string: friend.avatar.small)
     let string = Strings.activity_user_name_is_now_following_you(user_name: "<b>\(friend.name)</b>")
@@ -37,9 +37,10 @@ public final class ActivityFriendFollowCellViewModel {
 
   public func followButtonTapped() {
     guard let friend = self.friend else { return }
-    let generation = self.feature.sessionFeature.generation
-    let userID = self.feature.sessionFeature.currentUser?.id
-    let task = self.feature.startFollowing(user: friend, following: true)
+    let friendsFeature = self.friendsFeature
+    let generation = friendsFeature.sessionFeature.generation
+    let userID = friendsFeature.sessionFeature.currentUser?.id
+    let task = friendsFeature.startFollowing(user: friend, following: true)
     self.observation?.cancel()
     self.observation = Task { [weak self] in
       do {
@@ -47,8 +48,8 @@ public final class ActivityFriendFollowCellViewModel {
         guard let self else { return }
         try await self.delay()
         try Task.checkCancellation()
-        guard self.friend?.id == result.id, self.feature.sessionFeature.generation == generation,
-              self.feature.sessionFeature.currentUser?.id == userID else { return }
+        guard self.friend?.id == result.id, friendsFeature.sessionFeature.generation == generation,
+              friendsFeature.sessionFeature.currentUser?.id == userID else { return }
         self.hideFollowButton = result.isFriend ?? false
         self.onChange?()
       } catch { }

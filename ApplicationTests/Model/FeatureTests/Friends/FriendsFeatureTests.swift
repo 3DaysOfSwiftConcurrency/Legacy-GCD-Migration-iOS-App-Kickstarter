@@ -253,7 +253,7 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testActivityAndFindFriendsShareFollowingStateWithoutSharingCellLifetime() async throws {
-    let vm = ActivityFriendFollowCellViewModel(feature: self.feature, delay: {})
+    let vm = ActivityFriendFollowCellViewModel(friendsFeature: self.feature, delay: {})
     var activity = Activity.template
     activity = activity |> Activity.lens.user .~ Self.user(1)
     vm.configureWith(activity: activity)
