@@ -123,7 +123,7 @@ public final class ManagePledgeViewModel:
     guard let loadedProject, let backing = self.loadedBacking else { return }
     let project = loadedProject |> Project.lens.personalization.backing .~ backing
     let rewards = distinctRewards([backing.reward ?? .noReward] + (backing.addOns ?? []))
-    let isCreator = currentUserIsCreator(of: project)
+    let isCreator = currentUserIsCreator(of: project, currentUser: self.pledgeFeature.sessionFeature.currentUser)
     self.currentProject = project
     self.currentRewards = rewards
     self.onLoadProjectAndRewards?(project, rewards)
@@ -528,7 +528,10 @@ private func managePledgeSummaryViewData(
     backerSequence: backing.sequence,
     backingState: backing.status,
     bonusAmount: backing.bonusAmount,
-    currentUserIsCreatorOfProject: currentUserIsCreator(of: project),
+    currentUserIsCreatorOfProject: currentUserIsCreator(
+      of: project,
+      currentUser: self.pledgeFeature.sessionFeature.currentUser
+    ),
     isNoReward: backedReward.id == Reward.noReward.id,
     locationName: backing.locationName,
     needsConversion: project.stats.needsConversion,

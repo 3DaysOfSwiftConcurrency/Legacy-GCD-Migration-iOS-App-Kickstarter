@@ -235,7 +235,11 @@ public final class RewardsFeature {
     let sessionFeature = self.sessionFeature
     let inserter: any NoRewardInserter =
       identity.moveNoReward
-      ? NoRewardAfterLastAvailableReward(shippingLocation: location, project: project)
+      ? NoRewardAfterLastAvailableReward(
+        shippingLocation: location,
+        project: project,
+        currentUser: self.sessionFeature.currentUser
+      )
       : NoRewardFirst()
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let sleep = self.sleep

@@ -43,9 +43,15 @@ internal func userIsBackingProject(_ project: Project) -> Bool {
  */
 @MainActor
 public func currentUserIsCreator(of project: Project) -> Bool {
-  guard let user = AppEnvironment.current.currentUser else { return false }
+  currentUserIsCreator(of: project, currentUser: AppEnvironment.current.currentUser)
+}
 
-  return project.creator.id == user.id
+/// A pure project-role decision for callers that already own a session boundary.
+@MainActor
+public func currentUserIsCreator(of project: Project, currentUser: User?) -> Bool {
+  guard let currentUser else { return false }
+
+  return project.creator.id == currentUser.id
 }
 
 /**

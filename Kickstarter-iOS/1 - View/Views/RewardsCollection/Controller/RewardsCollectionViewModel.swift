@@ -51,7 +51,11 @@ final class RewardsCollectionViewModel {
   func viewDidLoad() {
     guard let config = self.configuration else { return }
     self.didLoad = true
-    self.onEvent?(.title(titleForContext(config.context, project: config.project)))
+    self.onEvent?(.title(titleForContext(
+      config.context,
+      project: config.project,
+      currentUser: self.rewardsFeature.sessionFeature.currentUser
+    )))
     self.onEvent?(.showPlaceholderRewardCards(config.project.rewards.count))
     self.trackRewardsViewed(project: config.project, refTag: config.refTag)
     if self.hasLocation { self.startLoading() }
@@ -114,7 +118,15 @@ final class RewardsCollectionViewModel {
     self.selected = reward
     self.trackRewardClicked(reward, project: config.project, refTag: config.refTag)
     let rule = shippingRule(forReward: reward, selectedLocation: self.location)
-    guard rewardsCarouselCanNavigateToReward(reward, in: config.project, selectedShippingLocation: rule?.location) else { return }
+    guard rewardsCarouselCanNavigateToReward(
+      reward,
+      in: config.project,
+      selectedShippingLocation: rule?.location,
+      currentUserIsCreator: currentUserIsCreator(
+        of: config.project,
+        currentUser: self.rewardsFeature.sessionFeature.currentUser
+      )
+    ) else { return }
     let pledgeContext: PledgeViewContext = config.project.isInPostCampaignPledgingPhase ? .latePledge : .pledge
     let updateContext: PledgeViewContext = config.project.isPledgeOverTimeAllowed == true ? .editPledgeOverTime : .updateReward
     let data = PledgeViewData(
@@ -190,8 +202,12 @@ final class RewardsCollectionViewModel {
 // MARK: - Functions
 
 @MainActor
-private func titleForContext(_ context: RewardsCollectionViewContext, project: Project) -> String {
-  if currentUserIsCreator(of: project) {
+private func titleForContext(
+  _ context: RewardsCollectionViewContext,
+  project: Project,
+  currentUser: User?
+) -> String {
+  if currentUserIsCreator(of: project, currentUser: currentUser) {
     return Strings.View_your_rewards()
   }
 

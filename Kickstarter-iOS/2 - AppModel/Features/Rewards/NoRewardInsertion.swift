@@ -14,10 +14,10 @@ struct NoRewardAfterLastAvailableReward: NoRewardInserter {
   private let currentUserIsProjectCreator: Bool
 
   @MainActor
-  public init(shippingLocation: Location?, project: Project) {
+  public init(shippingLocation: Location?, project: Project, currentUser: User?) {
     self.shippingLocation = shippingLocation
     self.project = project
-    self.currentUserIsProjectCreator = currentUserIsCreator(of: project)
+    self.currentUserIsProjectCreator = currentUserIsCreator(of: project, currentUser: currentUser)
   }
 
   private func indexOfFirstUnavailableReward(_ rewards: [Reward]) -> Int? {

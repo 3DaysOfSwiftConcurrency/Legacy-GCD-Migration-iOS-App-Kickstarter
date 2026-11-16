@@ -72,7 +72,8 @@ final class NoRewardInserterTests: TestCase {
 
     let inserter = NoRewardAfterLastAvailableReward(
       shippingLocation: Location.usa,
-      project: Project.template
+      project: Project.template,
+      currentUser: nil
     )
 
     XCTAssertEqual(projectRewards.count, 7)
@@ -114,7 +115,8 @@ final class NoRewardInserterTests: TestCase {
 
     let inserter = NoRewardAfterLastAvailableReward(
       shippingLocation: Location.usa,
-      project: Project.template
+      project: Project.template,
+      currentUser: nil
     )
 
     XCTAssertEqual(projectRewards.count, 3)
@@ -151,7 +153,8 @@ final class NoRewardInserterTests: TestCase {
 
     let inserter = NoRewardAfterLastAvailableReward(
       shippingLocation: Location.usa,
-      project: Project.template
+      project: Project.template,
+      currentUser: nil
     )
 
     XCTAssertEqual(projectRewards.count, 4)
@@ -173,7 +176,11 @@ final class NoRewardInserterTests: TestCase {
     let project = Project.template
     let availableReward = Reward.digitalReward |> Reward.lens.isAvailable .~ true
     withEnvironment(currentUser: project.creator) {
-      let inserter = NoRewardAfterLastAvailableReward(shippingLocation: nil, project: project)
+      let inserter = NoRewardAfterLastAvailableReward(
+        shippingLocation: nil,
+        project: project,
+        currentUser: project.creator
+      )
       withEnvironment(currentUser: nil) {
         XCTAssertEqual(
           inserter.insert(noReward: .noReward, intoRewards: [availableReward]),
@@ -186,7 +193,8 @@ final class NoRewardInserterTests: TestCase {
   func testNoRewardAfterLastAvailableReward_succeedsWithEmptyProjectRewards() {
     let inserter = NoRewardAfterLastAvailableReward(
       shippingLocation: nil,
-      project: Project.template
+      project: Project.template,
+      currentUser: nil
     )
 
     let rewards = inserter.insert(noReward: Reward.noReward, intoRewards: [])
