@@ -65,7 +65,10 @@ final class AppModelTests: XCTestCase {
         makeProvider: { AsyncProfileProvider(service: MockService()) }
       ),
       searchFeature: firstFeature,
-      discoveryFeature: DiscoveryFeature(provider: NoRequestDiscoveryProvider()),
+      discoveryFeature: DiscoveryFeature(
+        provider: NoRequestDiscoveryProvider(),
+        currentUser: { firstSession.currentUser }
+      ),
       projectDetailsFeature: firstDetails,
       rewardsFeature: RewardsFeature(sessionFeature: firstSession, makeProvider: { AsyncRewardsProvider(service: MockService()) }),
       discussionFeature: firstDiscussion,
@@ -118,7 +121,10 @@ final class AppModelTests: XCTestCase {
         makeProvider: { AsyncProfileProvider(service: MockService()) }
       ),
       searchFeature: secondFeature,
-      discoveryFeature: DiscoveryFeature(provider: NoRequestDiscoveryProvider()),
+      discoveryFeature: DiscoveryFeature(
+        provider: NoRequestDiscoveryProvider(),
+        currentUser: { secondSession.currentUser }
+      ),
       projectDetailsFeature: secondDetails,
       rewardsFeature: RewardsFeature(sessionFeature: secondSession, makeProvider: { AsyncRewardsProvider(service: MockService()) }),
       discussionFeature: secondDiscussion,
