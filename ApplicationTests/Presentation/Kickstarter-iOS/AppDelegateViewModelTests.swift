@@ -29,6 +29,9 @@ final class AppDelegateViewModelTests: TestCase {
     makeProvider: { AsyncAppLifecycleProvider(service: AppEnvironment.current.apiService) },
     sleep: { _ in try Task.checkCancellation() }
   )
+  private lazy var applicationConfigurationService = ApplicationConfigurationService(
+    load: { try await AppEnvironment.current.apiService.applicationConfiguration() }
+  )
   var vm: AppDelegateViewModelType!
 
   private let applicationIconBadgeNumber = ValueRecorder<Int>()
@@ -78,6 +81,7 @@ final class AppDelegateViewModelTests: TestCase {
 
   override func tearDown() async throws {
     self.lifecycleFeature.reset()
+    self.applicationConfigurationService.reset()
     await self.lifecycleFeature.waitForOperations()
     await self.settingsFeature.waitForOperations()
     self.messagingFeature.reset()
@@ -105,6 +109,9 @@ final class AppDelegateViewModelTests: TestCase {
   private func bindOutputs() {
     self.vm = AppDelegateViewModel(
       lifecycleFeature: self.lifecycleFeature,
+      requestApplicationConfiguration: { [self] in
+        self.applicationConfigurationService.requestConfiguration()
+      },
       sessionFeature: self.lifecycleFeature.sessionFeature,
       settingsFeature: self.settingsFeature,
       pushDebounce: { try Task.checkCancellation() },

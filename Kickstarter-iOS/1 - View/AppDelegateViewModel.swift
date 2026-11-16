@@ -209,6 +209,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var notificationTasks: [UUID: Task<Void, Never>] = [:]
   private var verificationTask: Task<Void, Never>?
   private let lifecycleFeature: AppLifecycleFeature
+  private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
   private let sessionFeature: SessionFeature
   private let settingsFeature: SettingsFeature
   private let onboardingFeature: OnboardingFeature
@@ -244,6 +245,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public init(
     lifecycleFeature: AppLifecycleFeature? = nil,
+    requestApplicationConfiguration: (@MainActor () -> Task<Config, Error>)? = nil,
     sessionFeature: SessionFeature? = nil,
     settingsFeature: SettingsFeature? = nil,
     onboardingFeature: OnboardingFeature? = nil,
@@ -256,6 +258,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelay = trackingDelay
     let lifecycleFeature = lifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.lifecycleFeature = lifecycleFeature
+    self.requestApplicationConfiguration = requestApplicationConfiguration
+      ?? { AppModel.shared.requestApplicationConfiguration() }
     self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
     self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.onboardingFeature = onboardingFeature ?? AppModel.shared.onboardingFeature
@@ -485,7 +489,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private func refreshConfiguration() {
     AppModel.shared.installVisitorCookies()
     self.configurationTask?.cancel()
-    let request = self.lifecycleFeature.requestConfiguration()
+    let request = self.requestApplicationConfiguration()
     self.configurationTask = Task { [weak self] in
       do {
         let config = try await request.value

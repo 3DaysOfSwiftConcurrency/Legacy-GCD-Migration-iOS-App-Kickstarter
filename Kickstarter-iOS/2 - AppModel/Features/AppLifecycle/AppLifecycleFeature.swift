@@ -5,7 +5,6 @@ import Prelude
 
 @MainActor
 public protocol AppLifecycleProvider {
-  func configuration() async throws -> Config
   func register(token: String) async throws
   func recommendations() async throws -> Int
   func categories() async throws -> RootCategoriesEnvelope
@@ -19,9 +18,6 @@ public protocol AppLifecycleProvider {
 public struct AsyncAppLifecycleProvider: AppLifecycleProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func configuration() async throws -> Config {
-    try await self.service.applicationConfiguration()
-  }
   public func register(token: String) async throws {
     try await self.service.registerApplicationPushToken(token)
   }
@@ -86,11 +82,9 @@ public final class AppLifecycleFeature {
   private var redirectVersions: [UUID: UUID] = [:]
   private var redirectTasks: [UUID: Task<URL?, Error>] = [:]
   private let sleep: (TimeInterval) async throws -> Void
-  private var config: Pending<Config>?
   private var recommendations: (userID: Int?, request: Pending<Bool>)?
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
   private var pushTail: (token: String, request: Pending<String>)?
-  private var configTasks: [UUID: Task<Config, Error>] = [:]
   private var recommendationTasks: [UUID: Task<Bool, Error>] = [:]
   private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
   private var pushTasks: [UUID: Task<String, Error>] = [:]
@@ -119,33 +113,6 @@ public final class AppLifecycleFeature {
 
   public func synchronizePreferences() {
     _ = AppEnvironment.current.ubiquitousStore.synchronize()
-  }
-
-  public func configuration() async throws -> Config {
-    try Task.checkCancellation()
-    let value = try await self.requestConfiguration().value
-    try Task.checkCancellation()
-    return value
-  }
-  @discardableResult public func requestConfiguration() -> Task<Config, Error> {
-    let session = self.session
-    if let config = self.config, config.session == session { return config.task }
-    self.config?.task.cancel()
-    let id = UUID()
-    let provider = self.makeProvider()
-    let task = Task { [self] in
-      defer {
-        self.configTasks[id] = nil
-        if self.config?.id == id { self.config = nil }
-      }
-      try self.requireCurrent(session)
-      let value = try await provider.configuration()
-      try self.requireCurrent(session)
-      return value
-    }
-    self.config = Pending(id: id, session: session, task: task)
-    self.configTasks[id] = task
-    return task
   }
 
   public func hasRecommendations(for user: User?) async throws -> Bool {
@@ -342,15 +309,13 @@ public final class AppLifecycleFeature {
     self.redirectVersions[route] = nil
   }
   public func reset() {
-    self.config?.task.cancel()
     self.recommendations?.request.task.cancel()
     for route in Set(self.destinations.keys).union(self.redirectVersions.keys) { self.release(route: route) }
   }
   public func waitForOperations() async {
-    while !self.configTasks.isEmpty || !self.recommendationTasks.isEmpty
+    while !self.recommendationTasks.isEmpty
       || !self.redirectTasks.isEmpty || !self.destinationTasks.isEmpty || !self.pushTasks.isEmpty
     {
-      for task in Array(self.configTasks.values) { _ = await task.result }
       for task in Array(self.recommendationTasks.values) { _ = await task.result }
       for task in Array(self.redirectTasks.values) { _ = await task.result }
       for task in Array(self.destinationTasks.values) { _ = await task.result }

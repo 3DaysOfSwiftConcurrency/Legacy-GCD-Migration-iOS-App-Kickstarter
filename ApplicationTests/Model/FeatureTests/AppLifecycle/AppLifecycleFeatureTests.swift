@@ -171,32 +171,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
     XCTAssertNil(FirstRedirectResolver.destination(in: success))
   }
 
-  func testEquivalentConfigRefreshesShareAndNextRefreshLoadsAgain() async throws {
-    let first = self.feature.requestConfiguration()
-    let second = self.feature.requestConfiguration()
-    await self.provider.config.waitFor(1)
-    try self.provider.config.finish(0, .success(.template))
-    _ = try await first.value
-    _ = try await second.value
-    let next = self.feature.requestConfiguration()
-    await self.provider.config.waitFor(2)
-    try self.provider.config.finish(1, .success(.template))
-    _ = try await next.value
-    XCTAssertEqual(self.provider.config.count, 2)
-  }
-
-  func testSameAccountReauthenticationRejectsOldConfiguration() async throws {
-    let first = self.feature.requestConfiguration()
-    await self.provider.config.waitFor(1)
-    self.feature.sessionFeature.sessionChanged()
-    let second = self.feature.requestConfiguration()
-    await self.provider.config.waitFor(2)
-    try self.provider.config.finish(0, .success(.template))
-    try self.provider.config.finish(1, .success(.template))
-    await self.assertCancelled(first)
-    _ = try await second.value
-  }
-
   func testEquivalentDestinationSharesCompleteChain() async throws {
     let first = self.feature.requestDestination(
       self.link(1, .update(42, .commentThread("comment", "reply"))), route: self.route)
@@ -362,7 +336,6 @@ private final class ControlledLifecycleProvider: AppLifecycleProvider {
   let repliesGate = AccountRequestGate<CommentRepliesEnvelope>()
   var tokens: [String] = []
   var updateInputs: [(Int, Param)] = []
-  func configuration() async throws -> Config { try await self.config.request() }
   func register(token: String) async throws {
     self.tokens.append(token)
     try await self.registrations.request()

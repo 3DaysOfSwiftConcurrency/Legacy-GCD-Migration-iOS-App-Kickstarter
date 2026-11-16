@@ -221,6 +221,41 @@ final class RemoteConfigurationServiceTests: XCTestCase {
 }
 
 @MainActor
+final class ApplicationConfigurationServiceTests: XCTestCase {
+  func testEquivalentRefreshesShareAndNextRefreshLoadsAgain() async throws {
+    let gate = AccountRequestGate<Config>()
+    defer { gate.releaseAll() }
+    let service = ApplicationConfigurationService(load: { try await gate.request() })
+    let first = service.requestConfiguration()
+    let second = service.requestConfiguration()
+    await gate.waitFor(1)
+    try gate.finish(0, .success(.template))
+    _ = try await first.value
+    _ = try await second.value
+    let next = service.requestConfiguration()
+    await gate.waitFor(2)
+    try gate.finish(1, .success(.template))
+    _ = try await next.value
+    XCTAssertEqual(gate.count, 2)
+  }
+
+  func testResetRejectsAnOldConfiguration() async throws {
+    let gate = AccountRequestGate<Config>()
+    defer { gate.releaseAll() }
+    let service = ApplicationConfigurationService(load: { try await gate.request() })
+    let old = service.requestConfiguration()
+    await gate.waitFor(1)
+    service.reset()
+    let current = service.requestConfiguration()
+    await gate.waitFor(2)
+    try gate.finish(0, .success(.template))
+    try gate.finish(1, .success(.template))
+    if case .success = await old.result { XCTFail("Reset configuration completed") }
+    _ = try await current.value
+  }
+}
+
+@MainActor
 private final class NoRequestSearchProvider: SearchProjectsProvider {
   private(set) var requestCount = 0
 

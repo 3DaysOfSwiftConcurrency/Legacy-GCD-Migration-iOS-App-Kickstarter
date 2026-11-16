@@ -1,4 +1,5 @@
 import Foundation
+import KsApi
 
 /// Retains one remote-configuration activation at a time for the active SDK client.
 ///
@@ -29,6 +30,48 @@ public final class RemoteConfigurationService {
   }
 }
 
+/// Owns the application-configuration read triggered by launch and foreground signals.
+///
+/// Configuration is shared application infrastructure: it is not a screen concern and
+/// it is not a product feature. A session reset replaces any in-flight read.
+@MainActor
+public final class ApplicationConfigurationService {
+  private let load: @MainActor () async throws -> Config
+  private var request: (id: UUID, task: Task<Config, Error>)?
+
+  public init(load: @escaping @MainActor () async throws -> Config) {
+    self.load = load
+  }
+
+  public func configuration() async throws -> Config {
+    try Task.checkCancellation()
+    let value = try await self.requestConfiguration().value
+    try Task.checkCancellation()
+    return value
+  }
+
+  @discardableResult public func requestConfiguration() -> Task<Config, Error> {
+    if let request = self.request { return request.task }
+    let id = UUID()
+    let load = self.load
+    let task = Task { [self] in
+      defer { if self.request?.id == id { self.request = nil } }
+      try Task.checkCancellation()
+      let value = try await load()
+      try Task.checkCancellation()
+      guard self.request?.id == id else { throw CancellationError() }
+      return value
+    }
+    self.request = (id, task)
+    return task
+  }
+
+  public func reset() {
+    self.request?.task.cancel()
+    self.request = nil
+  }
+}
+
 /// Application composition root. Features own shared state and directly awaitable workflows.
 @MainActor
 public final class AppModel {
@@ -40,6 +83,7 @@ public final class AppModel {
   public let onboardingFeature: OnboardingFeature
   public let connectivityService: ConnectivityService
   public let remoteConfigurationService: RemoteConfigurationService
+  public let applicationConfigurationService: ApplicationConfigurationService
   public let appLifecycleFeature: AppLifecycleFeature
   public let creatorDraftsFeature: CreatorDraftsFeature
   public let recommendationsFeature: RecommendationsFeature
@@ -66,6 +110,9 @@ public final class AppModel {
     onboardingFeature: OnboardingFeature,
     connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService = RemoteConfigurationService(),
+    applicationConfigurationService: ApplicationConfigurationService = ApplicationConfigurationService(
+      load: { try await AppEnvironment.current.apiService.applicationConfiguration() }
+    ),
     appLifecycleFeature: AppLifecycleFeature,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
@@ -91,6 +138,7 @@ public final class AppModel {
     self.onboardingFeature = onboardingFeature
     self.connectivityService = connectivityService
     self.remoteConfigurationService = remoteConfigurationService
+    self.applicationConfigurationService = applicationConfigurationService
     self.appLifecycleFeature = appLifecycleFeature
     self.creatorDraftsFeature = creatorDraftsFeature
     self.recommendationsFeature = recommendationsFeature
@@ -118,7 +166,11 @@ public final class AppModel {
   public func applicationDidFinishLaunching() async {
     guard !self.hasLaunched else { return }
     self.hasLaunched = true
-    _ = try? await self.appLifecycleFeature.configuration()
+    _ = try? await self.applicationConfigurationService.configuration()
+  }
+
+  @discardableResult public func requestApplicationConfiguration() -> Task<Config, Error> {
+    self.applicationConfigurationService.requestConfiguration()
   }
 
   @discardableResult public func requestRemoteConfiguration(
@@ -129,6 +181,7 @@ public final class AppModel {
 
   public func sessionChanged() {
     self.sessionFeature.sessionChanged()
+    self.applicationConfigurationService.reset()
     self.developerExamplesFeature.reset()
     self.appLifecycleFeature.reset()
     self.creatorDraftsFeature.reset()
