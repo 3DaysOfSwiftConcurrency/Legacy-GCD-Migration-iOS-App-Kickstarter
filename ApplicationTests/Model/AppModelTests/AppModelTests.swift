@@ -256,6 +256,31 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
 }
 
 @MainActor
+final class DevicePushRegistrationServiceTests: XCTestCase {
+  func testDuplicatesShareAndChangedTokensExecuteInOrderAfterFailure() async throws {
+    let gate = AccountRequestGate<Void>()
+    var tokens: [String] = []
+    let service = DevicePushRegistrationService(register: { token in
+      tokens.append(token)
+      try await gate.request()
+    })
+    defer { gate.releaseAll() }
+    let first = service.request(token: "synthetic-a")
+    let duplicate = service.request(token: "synthetic-a")
+    let second = service.request(token: "synthetic-b")
+    await gate.waitFor(1)
+    XCTAssertEqual(tokens, ["synthetic-a"])
+    try gate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
+    await gate.waitFor(2)
+    try gate.finish(1, .success(()))
+    if case .success = await first.result { XCTFail("Failure was swallowed") }
+    if case .success = await duplicate.result { XCTFail("Failure was swallowed") }
+    XCTAssertEqual(try await second.value, "synthetic-b")
+    XCTAssertEqual(tokens, ["synthetic-a", "synthetic-b"])
+  }
+}
+
+@MainActor
 private final class NoRequestSearchProvider: SearchProjectsProvider {
   private(set) var requestCount = 0
 

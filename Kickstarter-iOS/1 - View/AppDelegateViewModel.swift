@@ -210,6 +210,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var verificationTask: Task<Void, Never>?
   private let lifecycleFeature: AppLifecycleFeature
   private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
+  private let requestDevicePushRegistration: @MainActor (String) -> Task<String, Error>
   private let sessionFeature: SessionFeature
   private let settingsFeature: SettingsFeature
   private let onboardingFeature: OnboardingFeature
@@ -246,6 +247,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public init(
     lifecycleFeature: AppLifecycleFeature? = nil,
     requestApplicationConfiguration: (@MainActor () -> Task<Config, Error>)? = nil,
+    requestDevicePushRegistration: (@MainActor (String) -> Task<String, Error>)? = nil,
     sessionFeature: SessionFeature? = nil,
     settingsFeature: SettingsFeature? = nil,
     onboardingFeature: OnboardingFeature? = nil,
@@ -260,6 +262,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.lifecycleFeature = lifecycleFeature
     self.requestApplicationConfiguration = requestApplicationConfiguration
       ?? { AppModel.shared.requestApplicationConfiguration() }
+    self.requestDevicePushRegistration = requestDevicePushRegistration
+      ?? { AppModel.shared.requestDevicePushRegistration(token: $0) }
     self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
     self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.onboardingFeature = onboardingFeature ?? AppModel.shared.onboardingFeature
@@ -624,7 +628,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
         try Task.checkCancellation()
         guard let self else { return }
         self.pushPresentationTask?.cancel()
-        let request = self.lifecycleFeature.requestPushRegistration(token: token)
+        let request = self.requestDevicePushRegistration(token)
         self.pushPresentationTask = Task { [weak self] in
           do {
             let registeredToken = try await request.value

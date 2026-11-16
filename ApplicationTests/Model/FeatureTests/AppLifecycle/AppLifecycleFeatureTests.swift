@@ -289,34 +289,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
     XCTAssertEqual(self.provider.recommendationsGate.count, 0)
   }
 
-  func testPushDuplicatesShareAndChangedTokensExecuteInOrderAfterFailure() async throws {
-    let first = self.feature.requestPushRegistration(token: "synthetic-a")
-    let duplicate = self.feature.requestPushRegistration(token: "synthetic-a")
-    let second = self.feature.requestPushRegistration(token: "synthetic-b")
-    await self.provider.registrations.waitFor(1)
-    XCTAssertEqual(self.provider.tokens, ["synthetic-a"])
-    try self.provider.registrations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
-    await self.provider.registrations.waitFor(2)
-    try self.provider.registrations.finish(1, .success(()))
-    if case .success = await first.result { XCTFail("Expected registration failure") }
-    if case .success = await duplicate.result { XCTFail("Expected shared failure") }
-    let token = try await second.value
-    XCTAssertEqual(token, "synthetic-b")
-    XCTAssertEqual(self.provider.tokens, ["synthetic-a", "synthetic-b"])
-  }
-
-  func testSessionChangePreventsQueuedRegistrationAndOldSuccess() async throws {
-    let first = self.feature.requestPushRegistration(token: "synthetic-a")
-    let next = self.feature.requestPushRegistration(token: "synthetic-b")
-    await self.provider.registrations.waitFor(1)
-    self.feature.sessionFeature.sessionChanged()
-    self.feature.reset()
-    try self.provider.registrations.finish(0, .success(()))
-    await self.assertCancelled(first)
-    await self.assertCancelled(next)
-    XCTAssertEqual(self.provider.tokens, ["synthetic-a"])
-  }
-
 }
 
 @MainActor

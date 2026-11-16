@@ -72,6 +72,40 @@ public final class ApplicationConfigurationService {
   }
 }
 
+/// Serializes device-token registration admitted by the application boundary.
+@MainActor
+public final class DevicePushRegistrationService {
+  private let register: @MainActor (String) async throws -> Void
+  private var generation = 0
+  private var tail: (token: String, generation: Int, id: UUID, task: Task<String, Error>)?
+
+  public init(register: @escaping @MainActor (String) async throws -> Void) {
+    self.register = register
+  }
+
+  @discardableResult public func request(token: String) -> Task<String, Error> {
+    let generation = self.generation
+    if let tail = self.tail, tail.token == token, tail.generation == generation { return tail.task }
+    let previous = self.tail?.task
+    let id = UUID()
+    let register = self.register
+    let task = Task { [self] in
+      defer { if self.tail?.id == id { self.tail = nil } }
+      if let previous { _ = await previous.result }
+      try Task.checkCancellation()
+      guard self.generation == generation else { throw CancellationError() }
+      try await register(token)
+      try Task.checkCancellation()
+      guard self.generation == generation, self.tail?.id == id else { throw CancellationError() }
+      return token
+    }
+    self.tail = (token, generation, id, task)
+    return task
+  }
+
+  public func sessionChanged() { self.generation += 1 }
+}
+
 /// Application composition root. Features own shared state and directly awaitable workflows.
 @MainActor
 public final class AppModel {
@@ -84,6 +118,7 @@ public final class AppModel {
   public let connectivityService: ConnectivityService
   public let remoteConfigurationService: RemoteConfigurationService
   public let applicationConfigurationService: ApplicationConfigurationService
+  public let devicePushRegistrationService: DevicePushRegistrationService
   public let appLifecycleFeature: AppLifecycleFeature
   public let creatorDraftsFeature: CreatorDraftsFeature
   public let recommendationsFeature: RecommendationsFeature
@@ -113,6 +148,9 @@ public final class AppModel {
     applicationConfigurationService: ApplicationConfigurationService = ApplicationConfigurationService(
       load: { try await AppEnvironment.current.apiService.applicationConfiguration() }
     ),
+    devicePushRegistrationService: DevicePushRegistrationService = DevicePushRegistrationService(
+      register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
+    ),
     appLifecycleFeature: AppLifecycleFeature,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
@@ -139,6 +177,7 @@ public final class AppModel {
     self.connectivityService = connectivityService
     self.remoteConfigurationService = remoteConfigurationService
     self.applicationConfigurationService = applicationConfigurationService
+    self.devicePushRegistrationService = devicePushRegistrationService
     self.appLifecycleFeature = appLifecycleFeature
     self.creatorDraftsFeature = creatorDraftsFeature
     self.recommendationsFeature = recommendationsFeature
@@ -173,6 +212,10 @@ public final class AppModel {
     self.applicationConfigurationService.requestConfiguration()
   }
 
+  @discardableResult public func requestDevicePushRegistration(token: String) -> Task<String, Error> {
+    self.devicePushRegistrationService.request(token: token)
+  }
+
   @discardableResult public func requestRemoteConfiguration(
     client: AnyObject, activate: @escaping @MainActor () async throws -> Void
   ) -> Task<Void, Error> {
@@ -182,6 +225,7 @@ public final class AppModel {
   public func sessionChanged() {
     self.sessionFeature.sessionChanged()
     self.applicationConfigurationService.reset()
+    self.devicePushRegistrationService.sessionChanged()
     self.developerExamplesFeature.reset()
     self.appLifecycleFeature.reset()
     self.creatorDraftsFeature.reset()

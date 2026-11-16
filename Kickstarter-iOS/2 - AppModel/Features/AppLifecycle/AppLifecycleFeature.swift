@@ -5,7 +5,6 @@ import Prelude
 
 @MainActor
 public protocol AppLifecycleProvider {
-  func register(token: String) async throws
   func recommendations() async throws -> Int
   func categories() async throws -> RootCategoriesEnvelope
   func survey(id: Int) async throws -> SurveyResponse
@@ -18,9 +17,6 @@ public protocol AppLifecycleProvider {
 public struct AsyncAppLifecycleProvider: AppLifecycleProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func register(token: String) async throws {
-    try await self.service.registerApplicationPushToken(token)
-  }
   public func recommendations() async throws -> Int {
     let params =
       DiscoveryParams.defaults
@@ -84,10 +80,8 @@ public final class AppLifecycleFeature {
   private let sleep: (TimeInterval) async throws -> Void
   private var recommendations: (userID: Int?, request: Pending<Bool>)?
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
-  private var pushTail: (token: String, request: Pending<String>)?
   private var recommendationTasks: [UUID: Task<Bool, Error>] = [:]
   private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
-  private var pushTasks: [UUID: Task<String, Error>] = [:]
 
   public init(
     sessionFeature: SessionFeature, messagingFeature: MessagingFeature,
@@ -150,32 +144,6 @@ public final class AppLifecycleFeature {
     let value = try await task.value
     try self.requireCurrent(session)
     return value
-  }
-
-  /// The debounce precedes admission. Distinct admitted tokens are serialized;
-  /// abandoning observation cannot retract a server-accepted registration.
-  @discardableResult public func requestPushRegistration(token: String) -> Task<String, Error> {
-    let session = self.session
-    if let tail = self.pushTail, tail.token == token, tail.request.session == session {
-      return tail.request.task
-    }
-    let previous = self.pushTail?.request.task
-    let id = UUID()
-    let provider = self.makeProvider()
-    let task = Task { [self] in
-      defer {
-        self.pushTasks[id] = nil
-        if self.pushTail?.request.id == id { self.pushTail = nil }
-      }
-      if let previous { _ = await previous.result }
-      try self.requireCurrent(session)
-      try await provider.register(token: token)
-      try self.requireCurrent(session)
-      return token
-    }
-    self.pushTail = (token, Pending(id: id, session: session, task: task))
-    self.pushTasks[id] = task
-    return task
   }
 
   /// One replaceable email-link read per navigation route. URL is Sendable;
@@ -314,12 +282,11 @@ public final class AppLifecycleFeature {
   }
   public func waitForOperations() async {
     while !self.recommendationTasks.isEmpty
-      || !self.redirectTasks.isEmpty || !self.destinationTasks.isEmpty || !self.pushTasks.isEmpty
+      || !self.redirectTasks.isEmpty || !self.destinationTasks.isEmpty
     {
       for task in Array(self.recommendationTasks.values) { _ = await task.result }
       for task in Array(self.redirectTasks.values) { _ = await task.result }
       for task in Array(self.destinationTasks.values) { _ = await task.result }
-      for task in Array(self.pushTasks.values) { _ = await task.result }
     }
   }
 
