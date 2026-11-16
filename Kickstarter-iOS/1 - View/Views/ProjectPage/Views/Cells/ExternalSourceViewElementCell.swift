@@ -5,7 +5,6 @@ import Prelude_UIKit
 import WebKit
 
 class ExternalSourceViewElementCell: UITableViewCell, ValueCell {
-  private let appLifecycleFeature = AppModel.shared.appLifecycleFeature
   // MARK: Properties
 
   private lazy var webView: WKWebView = {
@@ -23,6 +22,7 @@ class ExternalSourceViewElementCell: UITableViewCell, ValueCell {
 
   private let viewModel = ExternalSourceViewElementCellViewModel()
   private var contentHeightConstraint: NSLayoutConstraint?
+  private var webBaseURL: URL?
 
   // MARK: Initializers
 
@@ -68,13 +68,14 @@ class ExternalSourceViewElementCell: UITableViewCell, ValueCell {
 
   // MARK: Helpers
 
-  func configureWith(value: ExternalSourceViewElement) {
+  func configureWith(value: ExternalSourceViewElement, webBaseURL: URL) {
+    self.webBaseURL = webBaseURL
     self.viewModel.configureWith(element: value)
     if let htmlText = self.viewModel.htmlText {
       if let blank = URL(string: "about:blank") { self.webView.load(URLRequest(url: blank)) }
       if let url = URL(string: htmlText + "?playsinline=1") {
         var request = URLRequest(url: url)
-        request.addValue(self.appLifecycleFeature.webBaseURL.absoluteString,
+        request.addValue(webBaseURL.absoluteString,
                          forHTTPHeaderField: "Referer")
         self.webView.load(request)
       }
@@ -115,8 +116,8 @@ extension ExternalSourceViewElementCell: WKUIDelegate {
 
     if canOpenInNewWindow,
        let urlToLoad = navigationAction.request.url,
-       self.appLifecycleFeature.canOpenExternalURL(urlToLoad) {
-      self.appLifecycleFeature.openExternalURL(urlToLoad)
+       AppEnvironment.current.application.canOpenURL(urlToLoad) {
+      AppEnvironment.current.application.open(urlToLoad, options: [:], completionHandler: nil)
     }
 
     return nil

@@ -383,7 +383,7 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
     case let (cell as AudioVideoViewElementCell, value as (AudioVideoViewElement, AVPlayer?, UIImage?)):
       cell.configureWith(value: value)
     case let (cell as ExternalSourceViewElementCell, value as ExternalSourceViewElement):
-      cell.configureWith(value: value)
+      cell.configureWith(value: value, webBaseURL: self.projectDetailsFeature.webBaseURL)
     case let (cell as ReportProjectCell, value as Bool):
       cell.configureWith(value: value)
     case let (cell as SimilarProjectsTableViewCell, value as SimilarProjectsState):
