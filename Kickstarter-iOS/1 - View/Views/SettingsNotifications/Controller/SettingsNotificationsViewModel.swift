@@ -10,7 +10,7 @@ public final class SettingsNotificationsViewModel {
   public var onPickerSelection: ((EmailFrequency) -> Void)?
   public var onError: ((String) -> Void)?
   public var onManageProjects: (() -> Void)?
-  private let feature: SettingsFeature
+  private let settingsFeature: SettingsFeature
   private let sleep: (TimeInterval) async throws -> Void
   private var initialUser: User?
   private var pickerHidden: Bool?
@@ -18,21 +18,22 @@ public final class SettingsNotificationsViewModel {
   private var saves: [UUID: Task<Void, Never>] = [:]
   private var revision = 0
 
-  public init(feature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  public init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.feature = feature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
     self.sleep = sleep
   }
 
-  public var currentUser: User? { self.feature.sessionFeature.currentUser }
+  public var currentUser: User? { self.settingsFeature.sessionFeature.currentUser }
 
   public func viewDidLoad() {
-    if let user = self.feature.sessionFeature.currentUser { self.displayInitial(user) }
+    if let user = self.settingsFeature.sessionFeature.currentUser { self.displayInitial(user) }
     let id = UUID()
-    self.reads[id] = Task { [weak self, feature] in
+    let settingsFeature = self.settingsFeature
+    self.reads[id] = Task { [weak self, settingsFeature] in
       defer { self?.reads[id] = nil }
-      guard let user = try? await feature.refresh(), !Task.isCancelled else { return }
+      guard let user = try? await settingsFeature.refresh(), !Task.isCancelled else { return }
       self?.displayInitial(user)
     }
   }
@@ -67,15 +68,15 @@ public final class SettingsNotificationsViewModel {
     self.revision += 1
     let revision = self.revision
     let id = UUID()
-    let feature = self.feature
+    let settingsFeature = self.settingsFeature
     let sleep = self.sleep
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
       do {
-        result = .success(try await feature.save([.init(.notification(.creatorDigest), frequency == .dailySummary)],
-                                                 from: source))
+        result = .success(try await settingsFeature.save([.init(.notification(.creatorDigest), frequency == .dailySummary)],
+                                                         from: source))
       } catch { result = .failure(error) }
       do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }
