@@ -5,6 +5,21 @@ import XCTest
 
 @MainActor
 final class SessionFeatureTests: XCTestCase {
+  func testSessionBoundRejectsCancelledObserverAfterAdmittedWorkCompletes() async throws {
+    let gate = AccountRequestGate<Void>()
+    defer { gate.releaseAll() }
+    let feature = SessionFeature(makeProvider: { ControlledSessionProvider() })
+    let operation = feature.sessionBound { try await gate.request() }
+    let observer = Task { try await operation() }
+    await gate.waitFor(1)
+    observer.cancel()
+    try gate.finish(0, .success(()))
+    if case .failure(is CancellationError) = await observer.result {
+    } else {
+      XCTFail("Cancelled observation published an admitted result")
+    }
+  }
+
   func testSharedBadgeCommandCommitsOnceAndKeepsLatestPreferences() async throws {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }

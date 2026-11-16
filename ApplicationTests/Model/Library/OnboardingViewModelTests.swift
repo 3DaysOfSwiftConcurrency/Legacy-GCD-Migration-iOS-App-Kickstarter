@@ -100,8 +100,10 @@ final class OnboardingViewModelTest: TestCase {
     await Task.yield()
     first.cancel()
     try gate.finish(0, .success(true))
-    XCTAssertTrue(await first.value)
-    XCTAssertTrue(await second.value)
+    let firstValue = await first.value
+    let secondValue = await second.value
+    XCTAssertTrue(firstValue)
+    XCTAssertTrue(secondValue)
     XCTAssertEqual(gate.count, 1)
     XCTAssertEqual(registrations, 1)
   }
@@ -147,13 +149,16 @@ final class OnboardingViewModelTest: TestCase {
     await Task.yield()
     first.cancel()
     try gate.finish(0, .success(ATTrackingManager.AuthorizationStatus.authorized.rawValue))
-    XCTAssertEqual(await first.value, .authorized)
-    XCTAssertEqual(await second.value, .authorized)
+    let firstStatus = await first.value
+    let secondStatus = await second.value
+    XCTAssertEqual(firstStatus, .authorized)
+    XCTAssertEqual(secondStatus, .authorized)
     XCTAssertEqual(gate.count, 1)
     let next = Task { await feature.requestTrackingAuthorization() }
     await gate.waitFor(2)
     try gate.finish(1, .success(ATTrackingManager.AuthorizationStatus.denied.rawValue))
-    XCTAssertEqual(await next.value, .denied)
+    let nextStatus = await next.value
+    XCTAssertEqual(nextStatus, .denied)
   }
 
   func testAppTrackingTransparencyPopup_IsCalled_OnAllowTrackingTapped() {

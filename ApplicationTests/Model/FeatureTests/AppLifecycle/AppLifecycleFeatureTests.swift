@@ -375,19 +375,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
     XCTAssertEqual(self.provider.tokens, ["synthetic-a"])
   }
 
-  func testCancellingPresentationWaitDoesNotCancelAdmittedRegistration() async throws {
-    let request = self.feature.requestPushRegistration(token: "synthetic-a")
-    let operation = self.feature.sessionFeature.sessionBound { try await request.value }
-    let observer = Task { try await operation() }
-    await self.provider.registrations.waitFor(1)
-    observer.cancel()
-    try self.provider.registrations.finish(0, .success(()))
-    _ = try await request.value
-    await self.assertCancelled(observer)
-    await self.feature.waitForOperations()
-    XCTAssertEqual(self.provider.tokens, ["synthetic-a"])
-  }
-
 }
 
 @MainActor
