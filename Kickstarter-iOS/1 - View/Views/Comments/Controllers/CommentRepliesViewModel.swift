@@ -90,10 +90,10 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   CommentRepliesViewModelInputs,
   CommentRepliesViewModelOutputs {
   public func canBlock(author: Comment.Author) -> Bool {
-    self.feature.canBlock(author: author)
+    self.discussionFeature.canBlock(author: author)
   }
 
-  private let feature: DiscussionFeature
+  private let discussionFeature: DiscussionFeature
   private var latestRootComment: Comment?
   private var latestProject: Project?
   private var composerUser: User?
@@ -108,9 +108,9 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   private let route = UUID()
   private(set) var loadingTask: Task<Void, Never>?
 
-  public init(feature: DiscussionFeature? = nil) {
-    let feature = feature ?? AppModel.shared.discussionFeature
-    self.feature = feature
+  public init(discussionFeature: DiscussionFeature? = nil) {
+    let discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
+    self.discussionFeature = discussionFeature
     let route = self.route
     self.blockAnalytics.onInitiate = { project, blockedUserId in
       AppEnvironment.current.ksrAnalytics.trackBlockedUser(
@@ -118,7 +118,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
         typeContext: .initiate, targetUserId: "\(blockedUserId)"
       )
     }
-    self.pageObservation = feature.observePages { [weak self] update in
+    self.pageObservation = discussionFeature.observePages { [weak self] update in
       guard let self else { return }
       switch update {
       case let .page(eventRoute, comments, count):
@@ -136,7 +136,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   private let blockAnalytics = BlockUserAnalyticsContext()
   public func blockUser(id: String) {
     self.blockAnalytics.receive(userID: "\(id)")
-    self.blockPresentation.start(feature: self.feature, id: id) { [weak self] result in
+    self.blockPresentation.start(feature: self.discussionFeature, id: id) { [weak self] result in
       guard let self else { return }
       switch result {
       case .success:
@@ -161,7 +161,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
     guard comment.status == .failed, self.retryTasks[comment.id] == nil,
           let project = self.latestProject, self.latestRootComment != nil else { return }
     let commentableID = self.update.map { encodeToBase64("FreeformPost-\($0.id)") } ?? project.graphID
-    let task = self.feature.beginRetry(comment: comment, commentableID: commentableID, parentID: comment.parentId) { [weak self] replacement, id in
+    let task = self.discussionFeature.beginRetry(comment: comment, commentableID: commentableID, parentID: comment.parentId) { [weak self] replacement, id in
       guard let self else { return }
       self.latestFailableReply = (replacement, id)
       if let project = self.latestProject { self.onLoadFailableReply?(replacement, id, project) }
@@ -179,7 +179,9 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
           let user = self.composerUser else { return }
     let commentableID = self.update.map { encodeToBase64("FreeformPost-\($0.id)") } ?? project.graphID
     let id = UUID()
-    let task = self.feature.beginPresentedPost(project: project, commentableID: commentableID, parentID: root.id, user: user, body: text) { [weak self] comment, replacementID in
+    let task = self.discussionFeature.beginPresentedPost(
+      project: project, commentableID: commentableID, parentID: root.id, user: user, body: text
+    ) { [weak self] comment, replacementID in
       guard let self else { return }
       self.latestFailableReply = (comment, replacementID)
       if let project = self.latestProject { self.onLoadFailableReply?(comment, replacementID, project) }
@@ -209,12 +211,14 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   }
 
   public func paginateOrErrorCellWasTapped() {
-    self.loadingTask = self.feature.requestNextPage(route: self.route)
+    self.loadingTask = self.discussionFeature.requestNextPage(route: self.route)
   }
 
   public func retryFirstPage() {
     guard let comment = self.latestRootComment else { return }
-    self.loadingTask = self.feature.requestFirstPage(route: self.route, source: .replies(comment.id), refresh: true)
+    self.loadingTask = self.discussionFeature.requestFirstPage(
+      route: self.route, source: .replies(comment.id), refresh: true
+    )
   }
 
   public func dataSourceLoaded() {
@@ -230,7 +234,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
 
   public func viewDidLoad() {
     self.composerLoaded = true
-    self.composerUser = self.feature.sessionFeature.currentUser
+    self.composerUser = self.discussionFeature.sessionFeature.currentUser
     self.composerFirstResponder = false
     self.applyConfigurationIfLoaded()
   }
@@ -245,7 +249,9 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
     if let (comment, id) = self.latestFailableReply { self.onLoadFailableReply?(comment, id, project) }
     self.latestRootComment = configuration.comment
     self.onLoadRootComment?(configuration.comment)
-    self.loadingTask = self.feature.requestFirstPage(route: self.route, source: .replies(configuration.comment.id), refresh: true)
+    self.loadingTask = self.discussionFeature.requestFirstPage(
+      route: self.route, source: .replies(configuration.comment.id), refresh: true
+    )
   }
 
   private func updateComposer() {
@@ -274,16 +280,16 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
     self.retryTasks.values.forEach { $0.cancel() }
     self.postTasks.values.forEach { $0.cancel() }
 
-    let feature = self.feature
+    let discussionFeature = self.discussionFeature
     let route = self.route
     Task { @MainActor in
-      feature.release(route: route)
+      discussionFeature.release(route: route)
     }
   }
 
   func waitForLoads() async {
     await self.loadingTask?.value
-    await self.feature.waitForMutations()
+    await self.discussionFeature.waitForMutations()
     for task in self.retryTasks.values { await task.value }
     for task in self.postTasks.values { await task.value }
     await self.blockPresentation.wait()
