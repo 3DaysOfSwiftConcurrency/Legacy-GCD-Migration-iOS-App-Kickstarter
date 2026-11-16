@@ -28,10 +28,10 @@ public final class PledgeSummaryViewModel {
   private var plan: PledgePaymentPlansAndSelectionData?
   private var hasPlanConfiguration = false
   private var loaded = false
-  private let appLifecycleFeature: AppLifecycleFeature
+  private let pledgeFeature: PledgeFeature
 
-  public init(appLifecycleFeature: AppLifecycleFeature? = nil) {
-    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
+  public init(pledgeFeature: PledgeFeature? = nil) {
+    self.pledgeFeature = pledgeFeature ?? AppModel.shared.pledgeFeature
   }
 
   public func configure(with data: PledgeSummaryViewData) {
@@ -57,7 +57,7 @@ public final class PledgeSummaryViewModel {
   }
 
   public func tapped(_ url: URL) {
-    guard let type = self.appLifecycleFeature.helpType(for: url) else { return }
+    guard let type = self.pledgeFeature.helpType(for: url) else { return }
     self.onHelp?(type)
   }
 
