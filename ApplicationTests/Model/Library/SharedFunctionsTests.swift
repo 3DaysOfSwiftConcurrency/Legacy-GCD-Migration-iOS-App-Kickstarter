@@ -939,7 +939,7 @@ final class SharedFunctionsTests: TestCase {
       |> Project.lens.creator .~ creator
 
     withEnvironment(currentUser: creator) {
-      XCTAssertTrue(currentUserIsCreator(of: project))
+      XCTAssertTrue(currentUserIsCreator(of: project, currentUser: creator))
     }
   }
 
@@ -953,7 +953,7 @@ final class SharedFunctionsTests: TestCase {
       )
 
     withEnvironment(currentUser: user) {
-      XCTAssertFalse(currentUserIsCreator(of: project))
+      XCTAssertFalse(currentUserIsCreator(of: project, currentUser: user))
     }
   }
 

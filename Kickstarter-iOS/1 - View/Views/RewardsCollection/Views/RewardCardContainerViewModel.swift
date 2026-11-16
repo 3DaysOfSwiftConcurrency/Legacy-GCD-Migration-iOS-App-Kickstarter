@@ -11,15 +11,19 @@ public final class RewardCardContainerViewModel {
   }
   public var onDisplay: ((Display) -> Void)?
   public var onRewardSelected: ((Int) -> Void)?
+  private let sessionFeature: SessionFeature
   private var currentReward: Reward?
-  public init() {}
+  public init(sessionFeature: SessionFeature = AppModel.shared.sessionFeature) {
+    self.sessionFeature = sessionFeature
+  }
 
   public func configureWith(data: RewardCardViewData) {
     self.currentReward = data.reward
-    let title = pledgeButtonTitle(data: data)
+    let isCreator = currentUserIsCreator(of: data.project, currentUser: self.sessionFeature.currentUser)
+    let title = pledgeButtonTitle(data: data, isCreator: isCreator)
     self.onDisplay?(Display(
-      style: buttonStyleType(data: data),
-      enabled: rewardsCarouselCanNavigateToReward(data.reward, in: data.project, selectedShippingLocation: data.currentShippingLocation),
+      style: buttonStyleType(data: data, isCreator: isCreator),
+      enabled: rewardsCarouselCanNavigateToReward(data.reward, in: data.project, selectedShippingLocation: data.currentShippingLocation, currentUserIsCreator: isCreator),
       hidden: title == nil,
       title: title
     ))
@@ -36,8 +40,8 @@ public final class RewardCardContainerViewModel {
 // MARK: - Functions
 
 @MainActor
-private func pledgeButtonTitle(data: RewardCardViewData) -> String? {
-  if currentUserIsCreator(of: data.project) { return nil }
+private func pledgeButtonTitle(data: RewardCardViewData, isCreator: Bool) -> String? {
+  if isCreator { return nil }
 
   let projectBackingState = RewardCellProjectBackingStateType.state(with: data.project)
   let isBackingThisReward = userIsBacking(reward: data.reward, inProject: data.project)
@@ -71,8 +75,8 @@ private func pledgeButtonTitle(data: RewardCardViewData) -> String? {
 }
 
 @MainActor
-private func buttonStyleType(data: RewardCardViewData) -> ButtonStyleType {
-  if currentUserIsCreator(of: data.project) { return .none }
+private func buttonStyleType(data: RewardCardViewData, isCreator: Bool) -> ButtonStyleType {
+  if isCreator { return .none }
 
   let projectBackingState = RewardCellProjectBackingStateType.state(with: data.project)
   let isBackingThisReward = userIsBacking(reward: data.reward, inProject: data.project)

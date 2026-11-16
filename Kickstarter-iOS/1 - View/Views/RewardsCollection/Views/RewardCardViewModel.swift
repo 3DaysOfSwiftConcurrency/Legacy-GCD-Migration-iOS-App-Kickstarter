@@ -62,11 +62,17 @@ public final class RewardCardViewModel {
 
   var onDisplay: ((Display) -> Void)?
   var onRewardSelected: ((Int) -> Void)?
+  private let sessionFeature: SessionFeature
   private var currentReward: Reward?
+
+  init(sessionFeature: SessionFeature = AppModel.shared.sessionFeature) {
+    self.sessionFeature = sessionFeature
+  }
 
   func configure(with data: RewardCardViewData) {
     let project = data.project
     let reward = data.reward
+    let isCreator = currentUserIsCreator(of: project, currentUser: self.sessionFeature.currentUser)
     self.currentReward = reward
     let conversionText: String?
     if needsConversion(project: project) {
@@ -93,7 +99,7 @@ public final class RewardCardViewModel {
       estimatedShippingText(for: [reward], project: project, locationId: $0.id)
     } ?? nil
     self.onDisplay?(Display(
-      interactionEnabled: rewardsCarouselCanNavigateToReward(reward, in: project, selectedShippingLocation: data.currentShippingLocation),
+      interactionEnabled: rewardsCarouselCanNavigateToReward(reward, in: project, selectedShippingLocation: data.currentShippingLocation, currentUserIsCreator: isCreator),
       conversionText: conversionText,
       description: localizedDescription(project: project, reward: reward),
       shippingText: shippingText,
@@ -106,7 +112,7 @@ public final class RewardCardViewModel {
       pills: pillValues(project: project, reward: reward),
       minimumText: formattedAmountForRewardOrBacking(project: project, rewardOrBacking: .left(reward)),
       titleHidden: reward.title == nil && !reward.isNoReward,
-      title: rewardTitle(project: project, reward: reward),
+      title: rewardTitle(project: project, reward: reward, isCreator: isCreator),
       image: reward.image,
       badge: RewardCardBadgeData.forReward(reward)
     ))
@@ -150,8 +156,8 @@ private func localizedDescription(project: Project, reward: Reward) -> String {
 }
 
 @MainActor
-private func rewardTitle(project: Project, reward: Reward) -> NSAttributedString {
-  guard project.personalization.isBacking == true || currentUserIsCreator(of: project) else {
+private func rewardTitle(project: Project, reward: Reward, isCreator: Bool) -> NSAttributedString {
+  guard project.personalization.isBacking == true || isCreator else {
     return NSAttributedString(
       string: reward.isNoReward ? Strings.Pledge_without_a_reward() : reward.title.coalesceWith("")
     )

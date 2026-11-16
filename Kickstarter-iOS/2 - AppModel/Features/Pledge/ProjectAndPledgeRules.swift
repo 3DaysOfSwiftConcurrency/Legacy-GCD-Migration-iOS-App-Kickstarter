@@ -41,14 +41,6 @@ internal func userIsBackingProject(_ project: Project) -> Bool {
 
  - returns: A boolean.
  */
-@MainActor
-public func currentUserIsCreator(of project: Project) -> Bool {
-  // Legacy reusable card ViewModels have not yet received their owning feature.
-  // Keep their compatibility route at the CFA composition boundary, rather than
-  // allowing a reusable Model rule to reach into AppEnvironment.
-  currentUserIsCreator(of: project, currentUser: AppModel.shared.sessionFeature.currentUser)
-}
-
 /// A pure project-role decision for callers that already own a session boundary.
 @MainActor
 public func currentUserIsCreator(of project: Project, currentUser: User?) -> Bool {
@@ -446,11 +438,12 @@ public func rewardCanShip(
 public func rewardsCarouselCanNavigateToReward(
   _ reward: Reward,
   in project: Project,
-  selectedShippingLocation location: Location?
+  selectedShippingLocation location: Location?,
+  currentUserIsCreator: Bool = false
 ) -> Bool {
   return rewardsCarouselCanNavigateToReward(
     reward, in: project, selectedShippingLocation: location,
-    currentUserIsCreator: currentUserIsCreator(of: project)
+    currentUserIsCreator: currentUserIsCreator
   )
 }
 

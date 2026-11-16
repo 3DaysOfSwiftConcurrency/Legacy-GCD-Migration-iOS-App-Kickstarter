@@ -56,15 +56,21 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
   PledgeCTAContainerViewViewModelInputs, PledgeCTAContainerViewViewModelOutputs {
   public var onEvent: ((PledgeCTAEvent) -> Void)?
   private let sleep: @MainActor () async throws -> Void
+  private let sessionFeature: SessionFeature
   private var savedProjectTask: Task<Void, Never>?
   private var latestProject: Project?
   private var pledgeState: PledgeStateCTAType?
   private var buttonHidden: Bool?
   private var retryHidden: Bool?
 
-  public init(sleep: @escaping @MainActor () async throws -> Void = {
+  public init(
+    sessionFeature: SessionFeature = AppModel.shared.sessionFeature,
+    sleep: @escaping @MainActor () async throws -> Void = {
     try await Task.sleep(for: .milliseconds(100))
-  }) { self.sleep = sleep }
+  }) {
+    self.sessionFeature = sessionFeature
+    self.sleep = sleep
+  }
 
   public func configureWith(value: PledgeCTAContainerViewData) {
     switch value {
@@ -108,7 +114,11 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
   }
 
   private func updatePledgeState(project: Project, backing: Backing?) {
-    let next = pledgeCTA(project: project, backing: backing)
+    let next = pledgeCTA(
+      project: project,
+      backing: backing,
+      currentUser: self.sessionFeature.currentUser
+    )
     guard self.pledgeState != next else { return }
     self.pledgeState = next
     let prelaunch: PledgeCTAPrelaunchState
@@ -153,7 +163,7 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
 // MARK: - Functions
 
 @MainActor
-private func pledgeCTA(project: Project, backing: Backing?) -> PledgeStateCTAType {
+private func pledgeCTA(project: Project, backing: Backing?, currentUser: User?) -> PledgeStateCTAType {
   guard project.displayPrelaunch != .some(true) else {
     let projectIsSaved = project.personalization.isStarred ?? false
 
@@ -167,7 +177,7 @@ private func pledgeCTA(project: Project, backing: Backing?) -> PledgeStateCTATyp
   let isInPostCampaign = project.isInPostCampaignPledgingPhase
 
   guard let projectBacking = backing, project.personalization.isBacking == .some(true) else {
-    if currentUserIsCreator(of: project) {
+    if currentUserIsCreator(of: project, currentUser: currentUser) {
       return PledgeStateCTAType.viewYourRewards
     }
 
