@@ -111,7 +111,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     self.viewModel.outputs.onUpdateCurrentUser = { [weak self] _ in
       DispatchQueue.main.async { [weak self] in
         // The Feature committed already; never replay a delayed whole-user snapshot.
-        guard let user = AppModel.shared.appLifecycleFeature.sessionFeature.currentUser else { return }
+        guard let user = AppModel.shared.sessionFeature.currentUser else { return }
         // Update user in Braze.
         self?.braze?.changeUser(userId: String(user.id))
 
@@ -126,7 +126,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { [weak self] in
         // The Feature committed the edit. Read the latest session rather than
         // restoring an older command snapshot after presentation scheduling.
-        guard let user = AppModel.shared.appLifecycleFeature.sessionFeature.currentUser else { return }
+        guard let user = AppModel.shared.sessionFeature.currentUser else { return }
         self?.braze?.changeUser(userId: String(user.id))
         AppEnvironment.current.identify(user: user)
         self?.viewModel.inputs.currentUserUpdatedInEnvironment()
@@ -540,7 +540,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
       braze.inAppMessagePresenter = BrazeUI.BrazeInAppMessageUI()
 
-      if let userId = AppModel.shared.appLifecycleFeature.sessionFeature.currentUser?.id {
+      if let userId = AppModel.shared.sessionFeature.currentUser?.id {
         braze.changeUser(userId: String(userId))
       }
 
