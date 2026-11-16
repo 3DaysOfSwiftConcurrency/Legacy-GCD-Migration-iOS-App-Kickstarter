@@ -19,7 +19,8 @@ final class ProjectRisksDisclaimerCellViewModelTests: TestCase {
     let delegate = RisksDisclaimerDelegateProbe()
     cell.delegate = delegate
     let webBaseURL = AppEnvironment.current.apiService.serverConfig.webBaseUrl
-    cell.configureWith(value: (), webBaseURL: webBaseURL)
+    cell.configureWebBaseURL(webBaseURL)
+    cell.configureWith(value: ())
     let expected = try XCTUnwrap(HelpType.trust.url(withBaseUrl: webBaseURL))
     cell.perform(NSSelectorFromString("descriptionLabelTapped"))
     XCTAssertEqual(delegate.urls, [expected])

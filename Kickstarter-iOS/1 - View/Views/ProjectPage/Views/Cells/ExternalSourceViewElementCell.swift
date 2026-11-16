@@ -68,14 +68,15 @@ class ExternalSourceViewElementCell: UITableViewCell, ValueCell {
 
   // MARK: Helpers
 
-  func configureWith(value: ExternalSourceViewElement, webBaseURL: URL) {
-    self.webBaseURL = webBaseURL
+  func configureWebBaseURL(_ webBaseURL: URL) { self.webBaseURL = webBaseURL }
+
+  func configureWith(value: ExternalSourceViewElement) {
     self.viewModel.configureWith(element: value)
     if let htmlText = self.viewModel.htmlText {
       if let blank = URL(string: "about:blank") { self.webView.load(URLRequest(url: blank)) }
       if let url = URL(string: htmlText + "?playsinline=1") {
         var request = URLRequest(url: url)
-        request.addValue(webBaseURL.absoluteString,
+        request.addValue(self.webBaseURL?.absoluteString ?? "",
                          forHTTPHeaderField: "Referer")
         self.webView.load(request)
       }

@@ -65,6 +65,9 @@ public final class ProjectDetailsFeature {
   public func helpType(for url: URL) -> HelpType? {
     HelpType.helpType(from: url, baseURL: self.webBaseURL)
   }
+  public func helpURL(_ type: HelpType) -> String? {
+    type.url(withBaseUrl: self.webBaseURL)?.absoluteString
+  }
   public func recordThirdPartyEvent(_ input: KsApi.TriggerThirdPartyEventInput) {
     _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
   }

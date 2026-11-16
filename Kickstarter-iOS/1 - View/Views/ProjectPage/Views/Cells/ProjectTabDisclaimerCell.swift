@@ -16,6 +16,7 @@ final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
   // MARK: - Properties
 
   weak var delegate: ProjectTabDisclaimerCellDelegate?
+  private var webBaseURL: URL?
 
   private lazy var descriptionTextView: UITextView = {
     UITextView(frame: .zero)
@@ -67,7 +68,10 @@ final class ProjectTabDisclaimerCell: UITableViewCell, ValueCell {
 
   // MARK: - Configuration
 
-  func configureWith(value: ProjectDisclaimerType, webBaseURL: URL) {
+  func configureWebBaseURL(_ webBaseURL: URL) { self.webBaseURL = webBaseURL }
+
+  func configureWith(value: ProjectDisclaimerType) {
+    guard let webBaseURL else { return }
     self.descriptionTextView.attributedText = self.attributedText(from: value, webBaseURL: webBaseURL)
   }
 

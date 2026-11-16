@@ -7,10 +7,10 @@ struct ReportProjectLabelView: View {
   private let prohibitedItemsURL: String
   private let communityURL: String
 
-  init(flagged: Bool, appLifecycleFeature: AppLifecycleFeature = AppModel.shared.appLifecycleFeature) {
+  init(flagged: Bool, prohibitedItemsURL: String, communityURL: String) {
     self.flagged = flagged
-    self.prohibitedItemsURL = appLifecycleFeature.helpURL(.prohibitedItems) ?? ""
-    self.communityURL = appLifecycleFeature.helpURL(.community) ?? ""
+    self.prohibitedItemsURL = prohibitedItemsURL
+    self.communityURL = communityURL
   }
 
   @SwiftUI.Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -67,6 +67,6 @@ struct ReportProjectLabelView: View {
 
 struct ReportProjectView_Previews: PreviewProvider {
   static var previews: some View {
-    ReportProjectLabelView(flagged: false)
+    ReportProjectLabelView(flagged: false, prohibitedItemsURL: "", communityURL: "")
   }
 }

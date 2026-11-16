@@ -7,10 +7,21 @@ internal final class ReportProjectCell: UITableViewCell, ValueCell {
   private var reportHost: UIHostingController<ReportProjectLabelView>?
   private var leadingInset: NSLayoutConstraint?
   private var trailingInset: NSLayoutConstraint?
+  private var prohibitedItemsURL = ""
+  private var communityURL = ""
+
+  internal func configureURLs(prohibitedItemsURL: String, communityURL: String) {
+    self.prohibitedItemsURL = prohibitedItemsURL
+    self.communityURL = communityURL
+  }
 
   internal func configureWith(value projectFlagged: Bool) {
     self.setupTableViewCellStyle(projectFlagged: projectFlagged)
-    self.setupReportProjectLabelView(projectFlagged: projectFlagged)
+    self.setupReportProjectLabelView(
+      projectFlagged: projectFlagged,
+      prohibitedItemsURL: self.prohibitedItemsURL,
+      communityURL: self.communityURL
+    )
   }
 
   internal override func bindStyles() {
@@ -36,16 +47,28 @@ internal final class ReportProjectCell: UITableViewCell, ValueCell {
       |> ReportProjectCell.lens.accessibilityLabel .~ accessibilityLabel
   }
 
-  private func setupReportProjectLabelView(projectFlagged: Bool) {
+  private func setupReportProjectLabelView(
+    projectFlagged: Bool,
+    prohibitedItemsURL: String,
+    communityURL: String
+  ) {
     let inset = self.traitCollection.isRegularRegular ? Styles.grid(16) : Styles.gridHalf(5)
     if let host = self.reportHost {
       self.leadingInset?.constant = inset
       self.trailingInset?.constant = -inset
-      host.rootView = ReportProjectLabelView(flagged: projectFlagged)
+      host.rootView = ReportProjectLabelView(
+        flagged: projectFlagged,
+        prohibitedItemsURL: prohibitedItemsURL,
+        communityURL: communityURL
+      )
       return
     }
     let hostingController =
-      UIHostingController(rootView: ReportProjectLabelView(flagged: projectFlagged))
+      UIHostingController(rootView: ReportProjectLabelView(
+        flagged: projectFlagged,
+        prohibitedItemsURL: prohibitedItemsURL,
+        communityURL: communityURL
+      ))
 
     self.reportHost = hostingController
     hostingController.view.translatesAutoresizingMaskIntoConstraints = false

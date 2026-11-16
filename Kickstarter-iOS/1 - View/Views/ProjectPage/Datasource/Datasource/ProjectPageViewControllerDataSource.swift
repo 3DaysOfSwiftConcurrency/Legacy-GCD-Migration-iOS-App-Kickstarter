@@ -357,7 +357,8 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
     case let (cell as ProjectTabCheckmarkListCell, value as ProjectTabFundingOptions):
       cell.configureWith(value: value)
     case let (cell as ProjectTabDisclaimerCell, value as ProjectDisclaimerType):
-      cell.configureWith(value: value, webBaseURL: self.projectDetailsFeature.webBaseURL)
+      cell.configureWebBaseURL(self.projectDetailsFeature.webBaseURL)
+      cell.configureWith(value: value)
     case let (cell as ProjectHeaderCell, value as String):
       cell.configureWith(value: value)
     case let (cell as ProjectFAQsAskAQuestionCell, _):
@@ -375,7 +376,8 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
     case let (cell as ProjectRisksCell, value as String):
       cell.configureWith(value: value)
     case let (cell as ProjectRisksDisclaimerCell, _):
-      cell.configureWith(value: (), webBaseURL: self.projectDetailsFeature.webBaseURL)
+      cell.configureWebBaseURL(self.projectDetailsFeature.webBaseURL)
+      cell.configureWith(value: ())
     case let (cell as TextViewElementCell, value as TextViewElement):
       cell.configureWith(value: value)
     case let (cell as ImageViewElementCell, value as (ImageViewElement, UIImage?)):
@@ -383,8 +385,13 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
     case let (cell as AudioVideoViewElementCell, value as (AudioVideoViewElement, AVPlayer?, UIImage?)):
       cell.configureWith(value: value)
     case let (cell as ExternalSourceViewElementCell, value as ExternalSourceViewElement):
-      cell.configureWith(value: value, webBaseURL: self.projectDetailsFeature.webBaseURL)
+      cell.configureWebBaseURL(self.projectDetailsFeature.webBaseURL)
+      cell.configureWith(value: value)
     case let (cell as ReportProjectCell, value as Bool):
+      cell.configureURLs(
+        prohibitedItemsURL: self.projectDetailsFeature.helpURL(.prohibitedItems) ?? "",
+        communityURL: self.projectDetailsFeature.helpURL(.community) ?? ""
+      )
       cell.configureWith(value: value)
     case let (cell as SimilarProjectsTableViewCell, value as SimilarProjectsState):
       cell.configureWith(value: value)

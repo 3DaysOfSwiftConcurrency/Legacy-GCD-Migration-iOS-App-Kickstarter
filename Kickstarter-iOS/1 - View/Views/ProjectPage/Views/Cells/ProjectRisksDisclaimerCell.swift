@@ -65,7 +65,9 @@ final class ProjectRisksDisclaimerCell: UITableViewCell, ValueCell {
 
   // MARK: - Configuration
 
-  func configureWith(value _: Void, webBaseURL: URL) { self.webBaseURL = webBaseURL }
+  func configureWebBaseURL(_ webBaseURL: URL) { self.webBaseURL = webBaseURL }
+
+  func configureWith(value _: Void) {}
 
   private func configureViews() {
     _ = (self.rootStackView, self.contentView)
