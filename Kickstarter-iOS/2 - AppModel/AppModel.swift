@@ -153,7 +153,10 @@ public final class AppModel {
       activityFeature: activityFeature,
       profileFeature: profileFeature,
       searchFeature: SearchFeature(provider: searchProvider, lookupProvider: AsyncSearchLookupProvider()),
-      discoveryFeature: DiscoveryFeature(provider: AsyncDiscoveryProvider()),
+      discoveryFeature: DiscoveryFeature(
+        provider: AsyncDiscoveryProvider(),
+        currentUser: { sessionFeature.currentUser }
+      ),
       projectDetailsFeature: ProjectDetailsFeature(sessionFeature: sessionFeature, discussionFeature: discussionFeature, makeProvider: {
         AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService)
       }),
