@@ -135,18 +135,15 @@ public protocol DiscoveryPageViewModelType {
 public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, DiscoveryPageViewModelInputs,
   DiscoveryPageViewModelOutputs {
   private let discoveryFeature: DiscoveryFeature
-  private let appLifecycleFeature: AppLifecycleFeature
   private var discoveryObservation: MainActorObservation?
   internal private(set) var pageTask: Task<Void, Never>?
   internal private(set) var activityTask: Task<Void, Never>?
 
   public init(
-    discoveryFeature: DiscoveryFeature? = nil,
-    appLifecycleFeature: AppLifecycleFeature? = nil
+    discoveryFeature: DiscoveryFeature? = nil
   ) {
     let discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
     self.discoveryFeature = discoveryFeature
-    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
     self.discoveryObservation = discoveryFeature.observe { [weak self] update in
       guard let self else { return }
       switch update {
@@ -172,7 +169,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
 
   private var previousEnvironment: EnvironmentType?
   public func currentEnvironmentChanged() {
-    let environment = self.appLifecycleFeature.serverEnvironment
+    let environment = self.discoveryFeature.serverEnvironment
     guard self.previousEnvironment != environment else { return }
     self.previousEnvironment = environment
     self.refreshLastReadyFeed()

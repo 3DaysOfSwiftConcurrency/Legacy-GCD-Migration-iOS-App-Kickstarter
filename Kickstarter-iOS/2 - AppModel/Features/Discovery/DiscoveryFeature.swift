@@ -29,6 +29,13 @@ public struct AsyncDiscoveryProvider: DiscoveryProvider {
 /// Main-actor updates notify the existing UIKit presentation of changes.
 @MainActor @Observable
 public final class DiscoveryFeature {
+  public var serverEnvironment: EnvironmentType {
+    AppEnvironment.current.apiService.serverConfig.environment
+  }
+  public var isDebugBuild: Bool {
+    guard let environment = AppEnvironment.current else { return false }
+    return environment.mainBundle.isAlpha || environment.mainBundle.isBeta || environment.mainBundle.isDebug
+  }
   public struct PageSnapshot {
     public fileprivate(set) var projects: [Project] = []
     public fileprivate(set) var parameters: DiscoveryParams?
