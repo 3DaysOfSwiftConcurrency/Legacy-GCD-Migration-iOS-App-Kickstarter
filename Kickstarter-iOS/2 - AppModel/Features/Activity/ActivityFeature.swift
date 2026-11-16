@@ -31,6 +31,7 @@ public final class ActivityFeature {
   public private(set) var surveyError: Error?
   public private(set) var isLoading = false
   private let makeProvider: () -> any ActivityProvider
+  private let applicationBadgeNumber: () -> Int
   private let sleep: (TimeInterval) async throws -> Void
   private var accountID: Int?
   private var generation: Int?
@@ -56,14 +57,21 @@ public final class ActivityFeature {
 
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any ActivityProvider,
+    applicationBadgeNumber: @escaping () -> Int = {
+      AppEnvironment.current.application.applicationIconBadgeNumber
+    },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.applicationBadgeNumber = applicationBadgeNumber
     self.sleep = sleep
   }
+
+  /// The Activity tab owns the presentation value for its unread badge.
+  public var currentApplicationBadgeNumber: Int { self.applicationBadgeNumber() }
 
   private func synchronizeAccount() {
     let id = self.sessionFeature.currentUser?.id

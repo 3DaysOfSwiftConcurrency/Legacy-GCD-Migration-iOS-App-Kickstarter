@@ -145,7 +145,7 @@ public protocol RootViewModelType {
 @MainActor
 public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootViewModelOutputs {
   private let profileFeature: ProfileFeature
-  private let appLifecycleFeature: AppLifecycleFeature
+  private let activityFeature: ActivityFeature
   private var sessionFeature: SessionFeature { self.profileFeature.sessionFeature }
   private var latestSelectedIndex: RootViewControllerIndex?
   private var lastUserSelectedIndex = 0
@@ -175,10 +175,10 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   private var badgePresentationTasks: [UUID: Task<Void, Never>] = [:]
   private var badgeIdentity: (userID: Int, generation: Int, token: UUID)?
 
-  public init(profileFeature: ProfileFeature? = nil, appLifecycleFeature: AppLifecycleFeature? = nil) {
+  public init(profileFeature: ProfileFeature? = nil, activityFeature: ActivityFeature? = nil) {
     let profileFeature = profileFeature ?? AppModel.shared.profileFeature
     self.profileFeature = profileFeature
-    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
+    self.activityFeature = activityFeature ?? AppModel.shared.activityFeature
   }
 
   private func refreshCurrentUser() {
@@ -365,7 +365,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     let previousIndex = self.activityIndex
     self.observeFloatingFlag()
     if let index = previousIndex {
-      self.updateBadge(self.appLifecycleFeature.currentApplicationBadgeNumber, index: index)
+      self.updateBadge(self.activityFeature.currentApplicationBadgeNumber, index: index)
     }
   }
 
@@ -441,7 +441,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     self.hasLoadedRootView = true
     self.selectIndex(0)
     if let index = previousIndex {
-      self.updateBadge(self.appLifecycleFeature.currentApplicationBadgeNumber, index: index)
+      self.updateBadge(self.activityFeature.currentApplicationBadgeNumber, index: index)
     }
   }
 

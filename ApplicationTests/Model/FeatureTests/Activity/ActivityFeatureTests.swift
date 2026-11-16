@@ -20,6 +20,16 @@ final class ActivityFeatureTests: TestCase {
     )
   }
 
+  func testUnreadBadgeValueComesFromTheActivityFeatureDependency() {
+    let feature = ActivityFeature(
+      sessionFeature: self.session(),
+      makeProvider: { AsyncActivityProvider(service: MockService()) },
+      applicationBadgeNumber: { 7 }
+    )
+
+    XCTAssertEqual(feature.currentApplicationBadgeNumber, 7)
+  }
+
   func testNativeObservationTracksLoadingAndActivityChanges() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }

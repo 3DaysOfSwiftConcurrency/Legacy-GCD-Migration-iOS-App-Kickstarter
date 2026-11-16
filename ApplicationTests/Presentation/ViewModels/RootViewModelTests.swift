@@ -15,7 +15,10 @@ final class RootViewModelTests: TestCase {
   })
   private lazy var vm = RootViewModel(profileFeature: ProfileFeature(
     sessionFeature: self.sessionFeature,
-    makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }))
+    makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }), activityFeature: ActivityFeature(
+      sessionFeature: self.sessionFeature,
+      makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
+    ))
   let viewControllerNames = ValueRecorder<[String]>()
   let filterDiscovery = ValueRecorder<DiscoveryParams>()
   let floatingTabBarEnabled = ValueRecorder<Bool>()
