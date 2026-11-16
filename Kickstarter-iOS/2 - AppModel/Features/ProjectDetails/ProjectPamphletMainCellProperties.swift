@@ -206,5 +206,7 @@ extension ProjectPamphletMainCellProperties {
 
 @MainActor
 private func getCurrentCurrency() -> String {
-  AppEnvironment.current.currentUser?.chosenCurrency ?? Project.Country.us.currencyCode
+  // Project card properties predate feature-owned presentation inputs. Keep the
+  // compatibility fallback at the shared session boundary, not AppEnvironment.
+  AppModel.shared.sessionFeature.currentUser?.chosenCurrency ?? Project.Country.us.currencyCode
 }
