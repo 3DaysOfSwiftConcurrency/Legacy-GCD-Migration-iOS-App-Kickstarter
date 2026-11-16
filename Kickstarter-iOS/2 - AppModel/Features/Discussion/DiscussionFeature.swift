@@ -49,6 +49,9 @@ public final class DiscussionFeature {
   public func helpType(for url: URL) -> HelpType? {
     HelpType.helpType(from: url, baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl)
   }
+  public func helpURL(_ type: HelpType) -> String? {
+    type.url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?.absoluteString
+  }
 
   public func canBlock(author: Comment.Author) -> Bool {
     guard let currentUser = self.sessionFeature.currentUser else { return false }

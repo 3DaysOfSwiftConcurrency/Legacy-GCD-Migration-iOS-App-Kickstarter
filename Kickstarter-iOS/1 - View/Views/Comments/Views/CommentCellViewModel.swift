@@ -12,23 +12,23 @@ final class CommentCellViewModel {
   }
 
   var onEvent: ((Event) -> Void)?
-  private let appLifecycleFeature: AppLifecycleFeature
+  private let discussionFeature: DiscussionFeature
   private let sessionFeature: SessionFeature
   private var comment: Comment?
   private var lastProjectAccess: Bool?
 
   init(
-    appLifecycleFeature: AppLifecycleFeature? = nil,
+    discussionFeature: DiscussionFeature? = nil,
     sessionFeature: SessionFeature? = nil
   ) {
-    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
+    self.discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
     self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
   }
 
   func configureWith(comment: Comment, project: Project?) {
     self.comment = comment
     self.onEvent?(.authorImageURL(comment.author.isBlocked ? nil : URL(string: comment.author.imageUrl)))
-    self.onEvent?(.body(getCommentBody(comment, communityGuidelinesURL: self.appLifecycleFeature.helpURL(.community))))
+    self.onEvent?(.body(getCommentBody(comment, communityGuidelinesURL: self.discussionFeature.helpURL(.community))))
     self.onEvent?(.authorName(comment.author.isBlocked ? Strings.Blocked_user() : comment.author.name))
     self.publishStatus(comment.status)
     if let createdAt = comment.createdAt {
