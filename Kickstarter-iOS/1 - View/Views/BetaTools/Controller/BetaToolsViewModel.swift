@@ -81,15 +81,22 @@ public final class BetaToolsViewModel {
   private var lastEnvironment: EnvironmentType?
   private var selectedLanguage: Language?
   private var selectedEnvironment: EnvironmentType?
-  private let appLifecycleFeature: AppLifecycleFeature
+  private let sessionFeature: SessionFeature
+  private let serverEnvironment: () -> EnvironmentType
 
-  public init(appLifecycleFeature: AppLifecycleFeature? = nil) {
-    self.appLifecycleFeature = appLifecycleFeature ?? AppModel.shared.appLifecycleFeature
+  public init(
+    sessionFeature: SessionFeature? = nil,
+    serverEnvironment: @escaping () -> EnvironmentType = {
+      AppEnvironment.current.apiService.serverConfig.environment
+    }
+  ) {
+    self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
+    self.serverEnvironment = serverEnvironment
   }
-  public var currentUser: User? { self.appLifecycleFeature.sessionFeature.currentUser }
+  public var currentUser: User? { self.sessionFeature.currentUser }
   public func viewDidLoad() {
     self.originalLanguage = AppEnvironment.current.language
-    self.originalEnvironment = self.appLifecycleFeature.serverEnvironment
+    self.originalEnvironment = self.serverEnvironment()
     self.selectedLanguage = self.originalLanguage
     self.selectedEnvironment = self.originalEnvironment
     self.updateData()
