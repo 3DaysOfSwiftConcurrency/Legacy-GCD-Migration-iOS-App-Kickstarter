@@ -32,6 +32,7 @@ public struct AsyncProjectMediaProvider: ProjectMediaProvider {
 /// Start and completion may both be in flight; neither cancels the other.
 @MainActor
 public final class ProjectMediaFeature {
+  public var webBaseURL: URL { AppEnvironment.current.apiService.serverConfig.webBaseUrl }
   private struct ImageKey: Hashable { let route: UUID; let url: URL }
   private var images: [ImageKey: (id: UUID, task: Task<UIImage, Error>)] = [:]
   private let loadImage: @MainActor (URL) async throws -> UIImage

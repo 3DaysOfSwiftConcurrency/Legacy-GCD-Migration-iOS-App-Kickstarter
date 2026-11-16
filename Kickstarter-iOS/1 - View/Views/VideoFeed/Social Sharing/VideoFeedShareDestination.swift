@@ -102,7 +102,7 @@ enum VideoFeedShareDestination: String, CaseIterable, Identifiable {
 
   @MainActor
   static func projectURL(for item: VideoFeedItem) -> URL? {
-    AppModel.shared.appLifecycleFeature.webBaseURL
+    AppModel.shared.projectMediaFeature.webBaseURL
       .appendingPathComponent("projects/\(item.slug)")
   }
 
