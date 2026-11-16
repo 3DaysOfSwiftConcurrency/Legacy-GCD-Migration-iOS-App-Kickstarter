@@ -104,6 +104,8 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   private var latestFailableReply: (Comment, String)?
   private var retryTasks: [String: Task<Void, Never>] = [:]
   private var postTasks: [UUID: Task<Void, Never>] = [:]
+  /// Retains cleanup work that observes a Feature-owned comment mutation.
+  private var mutationCompletionTasks: [UUID: Task<Void, Never>] = [:]
   private var pageObservation: MainActorObservation?
   private let route = UUID()
   private(set) var loadingTask: Task<Void, Never>?
@@ -167,9 +169,12 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
       if let project = self.latestProject { self.onLoadFailableReply?(replacement, id, project) }
     }
     self.retryTasks[comment.id] = task
-    Task { [weak self] in
+    let completionID = UUID()
+    self.mutationCompletionTasks[completionID] = Task { [weak self] in
       await task.value
-      self?.retryTasks[comment.id] = nil
+      guard let self else { return }
+      self.retryTasks[comment.id] = nil
+      self.mutationCompletionTasks[completionID] = nil
     }
   }
 
@@ -187,9 +192,12 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
       if let project = self.latestProject { self.onLoadFailableReply?(comment, replacementID, project) }
     }
     self.postTasks[id] = task
-    Task { [weak self] in
+    let completionID = UUID()
+    self.mutationCompletionTasks[completionID] = Task { [weak self] in
       await task.value
-      self?.postTasks[id] = nil
+      guard let self else { return }
+      self.postTasks[id] = nil
+      self.mutationCompletionTasks[completionID] = nil
     }
   }
 
@@ -279,6 +287,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
     self.loadingTask?.cancel()
     self.retryTasks.values.forEach { $0.cancel() }
     self.postTasks.values.forEach { $0.cancel() }
+    self.mutationCompletionTasks.values.forEach { $0.cancel() }
 
     let discussionFeature = self.discussionFeature
     let route = self.route
@@ -292,6 +301,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
     await self.discussionFeature.waitForMutations()
     for task in self.retryTasks.values { await task.value }
     for task in self.postTasks.values { await task.value }
+    for task in self.mutationCompletionTasks.values { await task.value }
     await self.blockPresentation.wait()
   }
 
