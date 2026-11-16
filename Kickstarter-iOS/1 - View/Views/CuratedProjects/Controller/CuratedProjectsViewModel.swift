@@ -14,7 +14,7 @@ public final class CuratedProjectsViewModel {
   var onLoading: ((Bool) -> Void)?
   var onProjects: (([Project]) -> Void)?
   var onError: ((String) -> Void)?
-  private let feature: RecommendationsFeature
+  private let recommendationsFeature: RecommendationsFeature
   private let route = UUID()
   private var categories: [KsApi.Category]?
   private var loaded = false
@@ -22,7 +22,7 @@ public final class CuratedProjectsViewModel {
   @ObservationIgnored private var presentation: Task<Void, Never>?
 
   public init(recommendationsFeature: RecommendationsFeature? = nil) {
-    self.feature = recommendationsFeature ?? AppModel.shared.recommendationsFeature
+    self.recommendationsFeature = recommendationsFeature ?? AppModel.shared.recommendationsFeature
   }
 
   public func configure(with categories: [KsApi.Category]) {
@@ -42,17 +42,17 @@ public final class CuratedProjectsViewModel {
     self.presentation?.cancel()
     let revision = UUID()
     self.revision = revision
-    let feature = self.feature
+    let recommendationsFeature = self.recommendationsFeature
     let route = self.route
-    let session = feature.sessionFeature
+    let session = recommendationsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let command = feature.request(.curated(categories), route: route)
+    let command = recommendationsFeature.request(.curated(categories), route: route)
     self.presentation = Task { [weak self] in
       await command.value
       guard !Task.isCancelled, let self, self.revision == revision,
             session.isCurrent(userID: userID, generation: generation),
-            let selection = feature.selection(route: route) else { return }
+            let selection = recommendationsFeature.selection(route: route) else { return }
       self.projects = selection.projects
       self.onProjects?(selection.projects)
       if selection.projects.isEmpty { self.onError?(Strings.general_error_something_wrong()) }
@@ -64,20 +64,20 @@ public final class CuratedProjectsViewModel {
   public func doneButtonTapped() {
     self.revision = UUID()
     self.presentation?.cancel()
-    self.feature.release(route: self.route)
+    self.recommendationsFeature.release(route: self.route)
     self.onDismiss?()
   }
 
   public func projectTapped(_ project: Project?) {
-    guard let project, self.feature.selection(route: self.route) != nil else { return }
+    guard let project, self.recommendationsFeature.selection(route: self.route) != nil else { return }
     self.onProject?((project, self.projects, .onboarding))
   }
 
   func waitForPresentation() async { await self.presentation?.value }
   deinit {
     self.presentation?.cancel()
-    let feature = self.feature
+    let recommendationsFeature = self.recommendationsFeature
     let route = self.route
-    Task { @MainActor in feature.release(route: route) }
+    Task { @MainActor in recommendationsFeature.release(route: route) }
   }
 }
