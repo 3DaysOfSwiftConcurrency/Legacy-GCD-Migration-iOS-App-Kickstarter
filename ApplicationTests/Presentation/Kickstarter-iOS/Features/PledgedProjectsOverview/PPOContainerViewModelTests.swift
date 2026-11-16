@@ -8,7 +8,7 @@ import XCTest
 final class PPOContainerViewModelTests: XCTestCase {
   func testAddressAcknowledgedShowsSuccessAndRefreshesOnce() async {
     let feature = self.feature(MockService(confirmBackingAddressResult: .success(true)))
-    let model = PPOContainerViewModel(feature: feature)
+    let model = PPOContainerViewModel(pledgeFeature: feature)
     var progress: [PPOActionState] = []
     var banners: [MessageBannerType] = []
     var refreshes = 0
@@ -27,7 +27,7 @@ final class PPOContainerViewModelTests: XCTestCase {
   }
   func testAddressNegativeAcknowledgementPreservesProgressAndErrorBanner() async {
     let feature = self.feature(MockService(confirmBackingAddressResult: .success(false)))
-    let model = PPOContainerViewModel(feature: feature)
+    let model = PPOContainerViewModel(pledgeFeature: feature)
     var progress: [PPOActionState] = []
     var errors = 0
     var refreshes = 0
@@ -46,7 +46,7 @@ final class PPOContainerViewModelTests: XCTestCase {
   func testAddressFailureDoesNotReportSuccessOrRefresh() async {
     let feature = self.feature(
       MockService(confirmBackingAddressResult: .failure(.couldNotParseJSON)))
-    let model = PPOContainerViewModel(feature: feature)
+    let model = PPOContainerViewModel(pledgeFeature: feature)
     var progress: [PPOActionState] = []
     var errors = 0
     let banner = model.showBanner.sink { if $0.type == .error { errors += 1 } }
@@ -59,7 +59,7 @@ final class PPOContainerViewModelTests: XCTestCase {
   func testReceiptFailurePublishesOneErrorAndOneRefresh() async {
     let feature = self.feature(
       MockService(updateRewardReceivedResult: .failure(.couldNotParseJSON)))
-    let model = PPOContainerViewModel(feature: feature)
+    let model = PPOContainerViewModel(pledgeFeature: feature)
     var errors = 0
     var refreshes = 0
     let banner = model.showBanner.sink { if $0.type == .error { errors += 1 } }
@@ -75,7 +75,7 @@ final class PPOContainerViewModelTests: XCTestCase {
   }
   func testReceiptSuccessKeepsOptimisticCardWithoutBannerOrRefresh() async {
     let feature = self.feature(MockService(updateRewardReceivedResult: .success(true)))
-    let model = PPOContainerViewModel(feature: feature)
+    let model = PPOContainerViewModel(pledgeFeature: feature)
     var banners = 0
     var refreshes = 0
     let banner = model.showBanner.sink { _ in banners += 1 }

@@ -27,11 +27,13 @@ protocol PPOContainerViewModelOutputs {
 
 @MainActor
 final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerViewModelOutputs {
-  var hasUnseenActivity: Bool { (self.feature.sessionFeature.currentUser?.unseenActivityCount ?? 0) > 0 }
+  var hasUnseenActivity: Bool {
+    (self.pledgeFeature.sessionFeature.currentUser?.unseenActivityCount ?? 0) > 0
+  }
 
-  init(feature injectedFeature: PledgeFeature? = nil) {
-    let feature = injectedFeature ?? AppModel.shared.pledgeFeature
-    self.feature = feature
+  init(pledgeFeature injectedPledgeFeature: PledgeFeature? = nil) {
+    let pledgeFeature = injectedPledgeFeature ?? AppModel.shared.pledgeFeature
+    self.pledgeFeature = pledgeFeature
     let sessionStarted = NotificationCenter.default
       .publisher(for: .ksr_sessionStarted)
       .withEmptyValues()
@@ -50,7 +52,7 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
       sessionStarted,
       sessionEnded
     )
-    .map { _ in feature.sessionFeature.currentUser }
+    .map { _ in pledgeFeature.sessionFeature.currentUser }
 
     self.viewWillAppearSubject
       .map { _ -> PPOStripeConfiguration in
@@ -134,11 +136,11 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
   ) {
     onProgress(.confirmed)
     let id = UUID()
-    let feature = self.feature
+    let pledgeFeature = self.pledgeFeature
     self.tasks[id] = Task { [weak self] in
       defer { self?.tasks[id] = nil }
       do {
-        let acknowledged = try await feature.confirmAddress(backingID: backingId, addressID: addressId)
+        let acknowledged = try await pledgeFeature.confirmAddress(backingID: backingId, addressID: addressId)
         guard !Task.isCancelled, let self else { return }
         onProgress(.succeeded)
         self.showBannerSubject.send(
@@ -154,11 +156,11 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
 
   func updateRewardReceived(backingId: String, rewardReceived: Bool) {
     let id = UUID()
-    let feature = self.feature
+    let pledgeFeature = self.pledgeFeature
     self.tasks[id] = Task { [weak self] in
       defer { self?.tasks[id] = nil }
       do {
-        let acknowledged = try await feature.receipt(backingID: backingId, received: rewardReceived)
+        let acknowledged = try await pledgeFeature.receipt(backingID: backingId, received: rewardReceived)
         guard !Task.isCancelled, let self, !acknowledged else { return }
         self.showReceiptFailure()
       } catch {
@@ -221,7 +223,7 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
   private let showBannerSubject = PassthroughSubject<MessageBannerConfiguration, Never>()
   private let process3DSAuthenticationState = PassthroughSubject<PPOActionState, Never>()
   private let stripeConfigurationSubject = PassthroughSubject<PPOStripeConfiguration, Never>()
-  private let feature: PledgeFeature
+  private let pledgeFeature: PledgeFeature
   private var tasks: [UUID: Task<Void, Never>] = [:]
   private let receiptFailureSubject = PassthroughSubject<Void, Never>()
   private let actionFinishedPerformingSubject = PassthroughSubject<Void, Never>()
