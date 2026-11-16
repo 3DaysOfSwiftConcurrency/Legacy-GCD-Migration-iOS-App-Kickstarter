@@ -80,7 +80,6 @@ public final class AppLifecycleFeature {
     let session: Session
     let task: Task<Value, Error>
   }
-  private var remoteConfigurationRequest: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
   private let makeProvider: () -> any AppLifecycleProvider
   private let resolveRedirect: (URL) async throws -> URL?
   private var redirects: [UUID: (url: URL, request: Pending<URL?>)] = [:]
@@ -120,24 +119,6 @@ public final class AppLifecycleFeature {
 
   public func synchronizePreferences() {
     _ = AppEnvironment.current.ubiquitousStore.synchronize()
-  }
-
-  @discardableResult public func requestRemoteConfiguration(
-    client: AnyObject, activate: @escaping @MainActor () async throws -> Void
-  ) -> Task<Void, Error> {
-    let clientID = ObjectIdentifier(client)
-    if let pending = self.remoteConfigurationRequest, pending.client == clientID { return pending.task }
-    self.remoteConfigurationRequest?.task.cancel()
-    let id = UUID()
-    let task = Task { [self] in
-      defer { if self.remoteConfigurationRequest?.id == id { self.remoteConfigurationRequest = nil } }
-      try Task.checkCancellation()
-      try await activate()
-      try Task.checkCancellation()
-      guard self.remoteConfigurationRequest?.id == id else { throw CancellationError() }
-    }
-    self.remoteConfigurationRequest = (clientID, id, task)
-    return task
   }
 
   public func configuration() async throws -> Config {

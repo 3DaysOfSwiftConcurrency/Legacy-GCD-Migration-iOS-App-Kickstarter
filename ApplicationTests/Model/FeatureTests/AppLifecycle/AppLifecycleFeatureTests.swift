@@ -129,38 +129,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
     consumer.cancel()
   }
 
-  func testRemoteConfigurationSharesClientAndRetriesAfterFailure() async throws {
-    let client = NSObject()
-    let gate = AccountRequestGate<Void>()
-    defer { gate.releaseAll() }
-    let first = self.feature.requestRemoteConfiguration(client: client) { try await gate.request() }
-    let second = self.feature.requestRemoteConfiguration(client: client) { XCTFail("Duplicate activation") }
-    await gate.waitFor(1)
-    try gate.finish(0, .failure(URLError(.notConnectedToInternet)))
-    for request in [first, second] {
-      if case .success = await request.result { XCTFail("Failure was swallowed") }
-    }
-    let retry = self.feature.requestRemoteConfiguration(client: client) { try await gate.request() }
-    await gate.waitFor(2)
-    try gate.finish(1, .success(()))
-    try await retry.value
-    XCTAssertEqual(gate.count, 2)
-  }
-
-  func testRemoteConfigurationReplacementRejectsLateOldClientCompletion() async throws {
-    let oldClient = NSObject(), newClient = NSObject()
-    let gate = AccountRequestGate<Void>()
-    defer { gate.releaseAll() }
-    let old = self.feature.requestRemoteConfiguration(client: oldClient) { try await gate.request() }
-    await gate.waitFor(1)
-    let new = self.feature.requestRemoteConfiguration(client: newClient) { try await gate.request() }
-    await gate.waitFor(2)
-    try gate.finish(1, .success(()))
-    try await new.value
-    try gate.finish(0, .success(()))
-    await self.assertCancelled(old)
-  }
-
   func testRedirectSharesPendingURL() async throws {
     let url = try XCTUnwrap(URL(string: "https://example.test/click"))
     let first = Task { try await self.feature.firstRedirect(url, route: self.route) }

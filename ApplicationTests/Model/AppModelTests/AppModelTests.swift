@@ -184,6 +184,43 @@ final class AppModelTests: XCTestCase {
 }
 
 @MainActor
+final class RemoteConfigurationServiceTests: XCTestCase {
+  func testActivationSharesClientAndRetriesAfterFailure() async throws {
+    let service = RemoteConfigurationService()
+    let client = NSObject()
+    let gate = AccountRequestGate<Void>()
+    defer { gate.releaseAll() }
+    let first = service.activate(client: client) { try await gate.request() }
+    let second = service.activate(client: client) { XCTFail("Duplicate activation") }
+    await gate.waitFor(1)
+    try gate.finish(0, .failure(URLError(.notConnectedToInternet)))
+    for request in [first, second] {
+      if case .success = await request.result { XCTFail("Failure was swallowed") }
+    }
+    let retry = service.activate(client: client) { try await gate.request() }
+    await gate.waitFor(2)
+    try gate.finish(1, .success(()))
+    try await retry.value
+    XCTAssertEqual(gate.count, 2)
+  }
+
+  func testReplacingClientRejectsLateOldClientCompletion() async throws {
+    let service = RemoteConfigurationService()
+    let oldClient = NSObject(), newClient = NSObject()
+    let gate = AccountRequestGate<Void>()
+    defer { gate.releaseAll() }
+    let old = service.activate(client: oldClient) { try await gate.request() }
+    await gate.waitFor(1)
+    let new = service.activate(client: newClient) { try await gate.request() }
+    await gate.waitFor(2)
+    try gate.finish(1, .success(()))
+    try await new.value
+    try gate.finish(0, .success(()))
+    if case .success = await old.result { XCTFail("Replaced activation completed") }
+  }
+}
+
+@MainActor
 private final class NoRequestSearchProvider: SearchProjectsProvider {
   private(set) var requestCount = 0
 

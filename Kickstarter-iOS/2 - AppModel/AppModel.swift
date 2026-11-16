@@ -1,16 +1,45 @@
 import Foundation
 
+/// Retains one remote-configuration activation at a time for the active SDK client.
+///
+/// This is application infrastructure rather than a product feature. `AppModel` receives
+/// the application lifecycle signal and owns this service at the composition boundary.
+@MainActor
+public final class RemoteConfigurationService {
+  private var request: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
+
+  public init() {}
+
+  @discardableResult public func activate(
+    client: AnyObject, operation: @escaping @MainActor () async throws -> Void
+  ) -> Task<Void, Error> {
+    let clientID = ObjectIdentifier(client)
+    if let request = self.request, request.client == clientID { return request.task }
+    self.request?.task.cancel()
+    let id = UUID()
+    let task = Task { [self] in
+      defer { if self.request?.id == id { self.request = nil } }
+      try Task.checkCancellation()
+      try await operation()
+      try Task.checkCancellation()
+      guard self.request?.id == id else { throw CancellationError() }
+    }
+    self.request = (clientID, id, task)
+    return task
+  }
+}
+
 /// Application composition root. Features own shared state and directly awaitable workflows.
 @MainActor
 public final class AppModel {
   public static let shared = AppModel.live()
 
   private var hasLaunched: Bool
-  private var remoteConfigurationRequest: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
 
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
   public let connectivityService: ConnectivityService
+  public let remoteConfigurationService: RemoteConfigurationService
   public let appLifecycleFeature: AppLifecycleFeature
   public let creatorDraftsFeature: CreatorDraftsFeature
   public let recommendationsFeature: RecommendationsFeature
@@ -36,6 +65,7 @@ public final class AppModel {
     developerExamplesFeature: DeveloperExamplesFeature,
     onboardingFeature: OnboardingFeature,
     connectivityService: ConnectivityService = ConnectivityService(),
+    remoteConfigurationService: RemoteConfigurationService = RemoteConfigurationService(),
     appLifecycleFeature: AppLifecycleFeature,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
@@ -60,6 +90,7 @@ public final class AppModel {
     self.developerExamplesFeature = developerExamplesFeature
     self.onboardingFeature = onboardingFeature
     self.connectivityService = connectivityService
+    self.remoteConfigurationService = remoteConfigurationService
     self.appLifecycleFeature = appLifecycleFeature
     self.creatorDraftsFeature = creatorDraftsFeature
     self.recommendationsFeature = recommendationsFeature
@@ -93,19 +124,7 @@ public final class AppModel {
   @discardableResult public func requestRemoteConfiguration(
     client: AnyObject, activate: @escaping @MainActor () async throws -> Void
   ) -> Task<Void, Error> {
-    let clientID = ObjectIdentifier(client)
-    if let pending = self.remoteConfigurationRequest, pending.client == clientID { return pending.task }
-    self.remoteConfigurationRequest?.task.cancel()
-    let id = UUID()
-    let task = Task { [self] in
-      defer { if self.remoteConfigurationRequest?.id == id { self.remoteConfigurationRequest = nil } }
-      try Task.checkCancellation()
-      try await activate()
-      try Task.checkCancellation()
-      guard self.remoteConfigurationRequest?.id == id else { throw CancellationError() }
-    }
-    self.remoteConfigurationRequest = (clientID, id, task)
-    return task
+    self.remoteConfigurationService.activate(client: client, operation: activate)
   }
 
   public func sessionChanged() {
