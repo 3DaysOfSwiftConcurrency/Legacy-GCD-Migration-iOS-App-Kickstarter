@@ -84,6 +84,7 @@ public protocol PledgeViewModelType {
 public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   PledgeViewModelOutputs {
   private let pledgeFeature: PledgeFeature
+  private let paymentsFeature: PaymentsFeature
   private var paymentRevision = UUID()
   var paymentPresentation: CheckoutPaymentPresentation? {
     guard self.configuredData != nil else { return nil }
@@ -91,26 +92,22 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   }
 
   private let analytics: () -> KSRAnalytics
-  private let currencyContext: @MainActor () -> PledgeCurrencyContext
-  private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
-
   public init(
     pledgeFeature: PledgeFeature,
     authenticationFeature: AuthenticationFeature,
     paymentsFeature: PaymentsFeature,
     analytics: @escaping () -> KSRAnalytics,
-    currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
-    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
-    responseDelay: @escaping () -> TimeInterval,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.pledgeFeature = pledgeFeature
+    self.paymentsFeature = paymentsFeature
     self.analytics = analytics
-    self.currencyContext = currencyContext
-    self.hasEligibleApplePayCard = hasEligibleApplePayCard
+    let currencyContext = { paymentsFeature.currencyContext }
+    let hasEligibleApplePayCard = { paymentsFeature.hasEligibleApplePayCard(for: $0) }
+    let responseDelay = { paymentsFeature.responseDelaySeconds }
     let formState = self.formState
     let ctaState = PledgeCTAState()
     let requestState = PledgeRequestState()
@@ -217,7 +214,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       }
       let shipping: String?
       let conversion: String?
-      if let rule = data.selectedShippingRule, let currency = self?.currencyContext() {
+      if let rule = data.selectedShippingRule, let currency = currencyContext() {
         shipping = estimatedShippingText(for: data.rewards, project: data.project,
           locationId: rule.location.id, currency: currency, selectedQuantities: data.selectedQuantities)
         conversion = estimatedShippingConversionText(for: data.rewards, project: data.project,
@@ -304,7 +301,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     }
     completionState.onSuccess = { [weak self] context in
       guard let self else { return }
-      if context.isCreating, let data = self.thanksState.pageData(hasEligibleApplePayCard: self.hasEligibleApplePayCard) {
+      if context.isCreating, let data = self.thanksState.pageData(hasEligibleApplePayCard: hasEligibleApplePayCard) {
         self.onGoToThanks?(data)
       }
       if context.isUpdating { self.onPledgeUpdateSucceeded?(Strings.Got_it_your_changes_have_been_saved()) }
@@ -378,7 +375,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       from: data.project, baseReward: reward, addOnRewards: data.rewards,
       selectedQuantities: data.selectedQuantities, additionalPledgeAmount: PledgeAmounts(data).bonus,
       pledgeTotal: total, shippingTotal: 0, checkoutId: nil, isApplePay: false,
-      hasEligibleApplePayCard: self.hasEligibleApplePayCard(data.project)
+      hasEligibleApplePayCard: self.paymentsFeature.hasEligibleApplePayCard(for: data.project)
     )
     self.analytics().trackCheckoutPaymentPageViewed(
       project: data.project, reward: reward, pledgeViewContext: data.context,
@@ -441,7 +438,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       from: data.project, baseReward: reward, addOnRewards: data.rewards,
       selectedQuantities: data.selectedQuantities, additionalPledgeAmount: PledgeAmounts(configuredData).bonus,
       pledgeTotal: data.pledgeTotal, shippingTotal: 0, checkoutId: nil, isApplePay: isApplePay,
-      hasEligibleApplePayCard: self.hasEligibleApplePayCard(data.project)
+      hasEligibleApplePayCard: self.paymentsFeature.hasEligibleApplePayCard(for: data.project)
     )
     self.analytics().trackPledgeSubmitButtonClicked(
       project: data.project, reward: reward, typeContext: isApplePay ? .applePay : .creditCard,

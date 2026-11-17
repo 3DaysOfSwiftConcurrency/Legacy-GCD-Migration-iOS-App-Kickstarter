@@ -209,22 +209,19 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   PostCampaignCheckoutViewModelInputs,
   PostCampaignCheckoutViewModelOutputs {
   private let analytics: () -> KSRAnalytics
-  private let currencyContext: @MainActor () -> PledgeCurrencyContext
-  private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
+  private let paymentsFeature: PaymentsFeature
 
   public init(
     pledgeFeature: PledgeFeature,
     authenticationFeature: AuthenticationFeature,
     paymentsFeature: PaymentsFeature,
-    analytics: @escaping () -> KSRAnalytics,
-    currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
-    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
-    responseDelay: @escaping @MainActor () -> TimeInterval
+    analytics: @escaping () -> KSRAnalytics
   ) {
     self.pledgeFeature = pledgeFeature
+    self.paymentsFeature = paymentsFeature
     self.analytics = analytics
-    self.currencyContext = currencyContext
-    self.hasEligibleApplePayCard = hasEligibleApplePayCard
+    let currencyContext = { paymentsFeature.currencyContext }
+    let responseDelay = { paymentsFeature.responseDelaySeconds }
     self.cardValidation = CheckoutValidationLane(responseDelay: responseDelay)
     self.applePayValidation = CheckoutValidationLane(responseDelay: responseDelay)
 
@@ -402,7 +399,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       self?.onPledgeRewardsSummary?(rewardsData, bonus, pledgeData)
       let shipping: String?
       let conversion: String?
-      if let rule = data.selectedShippingRule, let currency = self?.currencyContext() {
+      if let rule = data.selectedShippingRule, let currency = currencyContext() {
         shipping = estimatedShippingText(for: data.rewards, project: data.project,
           locationId: rule.location.id, currency: currency, selectedQuantities: data.selectedQuantities)
         conversion = estimatedShippingConversionText(for: data.rewards, project: data.project,
@@ -473,7 +470,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       shippingTotal: shippingTotal,
       checkoutId: checkoutId,
       isApplePay: isApplePay,
-      hasEligibleApplePayCard: self.hasEligibleApplePayCard(data.project)
+      hasEligibleApplePayCard: self.paymentsFeature.hasEligibleApplePayCard(for: data.project)
     )
   }
 

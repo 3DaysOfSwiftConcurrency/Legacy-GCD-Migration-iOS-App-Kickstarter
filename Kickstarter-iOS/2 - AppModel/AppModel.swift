@@ -333,7 +333,12 @@ public final class AppModel {
         supportedApplePayNetworks: {
           AppEnvironment.current.applePayCapabilities.supportedNetworks(for: $0)
         },
-        stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
+        stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
+        currencyContext: { .live() },
+        hasEligibleApplePayCard: {
+          AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0)
+        },
+        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
       ),
       messagingFeature: messagingFeature,
       sessionFeature: sessionFeature,

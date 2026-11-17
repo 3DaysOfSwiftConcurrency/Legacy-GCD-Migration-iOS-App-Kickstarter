@@ -244,6 +244,12 @@ reject_matches 'Payment presentation reads Stripe policy through PaymentsFeature
   "$app_view/Views/PledgeView/Controllers/PledgeViewController.swift" \
   "$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewController.swift" \
   "$app_view/Views/PaymentMethods/Controller/PaymentMethodSettingsViewController.swift"
+reject_matches 'Checkout presentation policy belongs to PaymentsFeature composition.' \
+  'applePayCapabilities|apiDelayInterval|PledgeCurrencyContext[.]live|[.]live[(][)]' \
+  "$app_view/Views/PledgeView/Controllers/PledgeViewController.swift" \
+  "$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewController.swift" \
+  "$app_view/Views/ManagePledge/Controllers/ManagePledgeViewController.swift" \
+  "$app_view/Views/PaymentMethods/Controller/PaymentMethodSettingsViewController.swift"
 reject_matches 'Pledged Projects card formatting receives locale from its Feature.' \
   'AppEnvironment[.]current' "$app_model/Features/PledgedProjects/PPOProjectCardModel+Parsing.swift"
 reject_matches 'Settings presentation receives application metadata from SettingsFeature.' \

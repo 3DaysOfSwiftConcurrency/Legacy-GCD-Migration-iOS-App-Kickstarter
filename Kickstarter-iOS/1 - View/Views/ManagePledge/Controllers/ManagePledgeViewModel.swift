@@ -97,16 +97,12 @@ public final class ManagePledgeViewModel:
     }
   }
   private let analytics: () -> KSRAnalytics
-  private let currencyContext: @MainActor () -> PledgeCurrencyContext
-  private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
-  private let responseDelay: () -> TimeInterval
+  private let paymentsFeature: PaymentsFeature
 
   public init(
     pledgeFeature: PledgeFeature,
+    paymentsFeature: PaymentsFeature,
     analytics: @escaping () -> KSRAnalytics,
-    currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
-    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
-    responseDelay: @escaping () -> TimeInterval,
     schedule: @escaping @MainActor (TimeInterval, @escaping @MainActor @Sendable () -> Void) -> (@Sendable () -> Void) = { delay, action in
       let task = Task { @MainActor in
         guard !delay.isInfinite else { return }
@@ -118,10 +114,8 @@ public final class ManagePledgeViewModel:
     }
   ) {
     self.pledgeFeature = pledgeFeature
+    self.paymentsFeature = paymentsFeature
     self.analytics = analytics
-    self.currencyContext = currencyContext
-    self.hasEligibleApplePayCard = hasEligibleApplePayCard
-    self.responseDelay = responseDelay
     self.schedule = schedule
   }
 
@@ -145,9 +139,9 @@ public final class ManagePledgeViewModel:
 
     let latestDelivery = rewards.compactMap(\.estimatedDeliveryOn).reduce(0, max)
     let shipping = backing.locationId.flatMap { locationID in
-      estimatedShippingText(for: rewards, project: project, locationId: locationID,
-                            currency: self.currencyContext(),
-                            selectedQuantities: selectedRewardQuantities(in: backing))
+      guard let currency = self.paymentsFeature.currencyContext else { return nil }
+      return estimatedShippingText(for: rewards, project: project, locationId: locationID,
+                                   currency: currency, selectedQuantities: selectedRewardQuantities(in: backing))
     }.map { Strings.About_reward_amount(reward_amount: $0) }
     let received = ManageViewPledgeRewardReceivedViewData(
       project: project, backerCompleted: backing.backerCompleted ?? false,
@@ -166,7 +160,7 @@ public final class ManagePledgeViewModel:
         selectedQuantities: selectedRewardQuantities(in: backing), additionalPledgeAmount: backing.bonusAmount,
         pledgeTotal: backing.amount, shippingTotal: Double(backing.shippingAmount ?? 0),
         isApplePay: backing.paymentSource?.paymentType == .applePay,
-        hasEligibleApplePayCard: self.hasEligibleApplePayCard(project)
+        hasEligibleApplePayCard: self.paymentsFeature.hasEligibleApplePayCard(for: project)
       )
       self.analytics().trackManagePledgePageViewed(
         project: project, reward: reward, checkoutData: checkout
@@ -221,7 +215,7 @@ public final class ManagePledgeViewModel:
     self.backingReadTask?.cancel()
     self.cancelPresentation(.backingResult)
     let pledgeFeature = self.pledgeFeature
-    let responseDelay = self.responseDelay
+    let responseDelay = { self.paymentsFeature.responseDelaySeconds }
     let route = self.backingRoute
     let session = pledgeFeature.sessionIdentity
     let id = UUID()
@@ -258,7 +252,7 @@ public final class ManagePledgeViewModel:
     self.projectReadTask?.cancel()
     self.cancelPresentation(.projectResult)
     let pledgeFeature = self.pledgeFeature
-    let responseDelay = self.responseDelay
+    let responseDelay = { self.paymentsFeature.responseDelaySeconds }
     let route = self.projectRoute
     let session = pledgeFeature.sessionIdentity
     let id = UUID()

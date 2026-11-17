@@ -26,6 +26,26 @@ final class PaymentsFeatureTests: TestCase {
     XCTAssertEqual(feature.stripePublishableKey, "pk_test_composed")
   }
 
+  func testCheckoutPresentationPoliciesUseComposedValues() throws {
+    let currency = PledgeCurrencyContext(
+      launchedCountries: .init(countries: []),
+      viewerCountryCode: "GB",
+      locale: Locale(identifier: "en_GB")
+    )
+    let feature = PaymentsFeature(
+      sessionFeature: self.session,
+      makeProvider: { self.provider },
+      currencyContext: { currency },
+      hasEligibleApplePayCard: { $0.id == 42 },
+      responseDelaySeconds: { 1.25 }
+    )
+
+    XCTAssertEqual(try XCTUnwrap(feature.currencyContext).viewerCountryCode, "GB")
+    XCTAssertTrue(feature.hasEligibleApplePayCard(for: Project.template |> Project.lens.id .~ 42))
+    XCTAssertFalse(feature.hasEligibleApplePayCard(for: Project.template |> Project.lens.id .~ 7))
+    XCTAssertEqual(feature.responseDelaySeconds, 1.25)
+  }
+
   func testApplePayRequestUsesComposedNetworkPolicy() {
     let feature = PaymentsFeature(
       sessionFeature: self.session,

@@ -19,8 +19,7 @@ internal final class PaymentMethodSettingsViewController: UIViewController,
 
   private func makeViewModel() -> PaymentMethodSettingsViewModel {
     PaymentMethodSettingsViewModel(
-      paymentsFeature: AppModel.shared.paymentsFeature,
-      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      paymentsFeature: AppModel.shared.paymentsFeature
     )
   }
   private let paymentSheet = PaymentSheetOperation()

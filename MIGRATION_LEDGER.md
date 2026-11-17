@@ -4979,3 +4979,28 @@ claimed. The CFA gate rejects restored per-screen environment key reads. Live St
 wallet authorization and the whole Library suite remain unverified. This is not full
 CFA compliance. Swift packages, target identifiers and existing history are unchanged.
 No push.
+
+### Payments owns checkout presentation platform — 17 November 2026
+
+Author: Matthew Thomas.
+
+PaymentsFeature now composes pledge currency context, Apple Pay card eligibility and
+presentation response timing in addition to Stripe and Apple Pay network policy.
+Crowdfunding checkout, post-campaign checkout, Manage Pledge and payment settings no
+longer accept or construct independent environment closures for those values. Their
+controllers provide the shared PaymentsFeature from AppModel; test-only missing platform
+values use inert defaults rather than a production global fallback.
+
+Focused PaymentsFeature validation passed all 18 tests. The bounded PaymentsFeature,
+AppModel, crowdfunding, post-campaign, Manage Pledge and payment-settings Library
+selection passed all 198 tests. The bounded non-snapshot PPO/native-payment presentation
+selection passed all 15 tests. All successful runs had zero failures and skips on
+iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-payments-platform-focused-3.xcresult`,
+`/private/tmp/kickstarter-payments-platform-library.xcresult` and
+`/private/tmp/kickstarter-payments-platform-presentation.xcresult`.
+
+Reference-device snapshot suites, live Stripe, wallet authorization and the whole
+Library suite remain unverified. The CFA gate rejects restored controller-level Apple
+Pay, currency-context or response-delay composition. This is not full CFA compliance.
+Swift packages, target identifiers and existing history are unchanged. No push.

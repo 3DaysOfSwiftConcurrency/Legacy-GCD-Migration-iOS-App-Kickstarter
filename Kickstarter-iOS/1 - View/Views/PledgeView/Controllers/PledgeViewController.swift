@@ -136,10 +136,7 @@ final class PledgeViewController: UIViewController,
     pledgeFeature: self.pledgeFeature,
     authenticationFeature: AppModel.shared.authenticationFeature,
     paymentsFeature: self.paymentsFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics },
-    currencyContext: { .live() },
-    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
-    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
 
   // MARK: - Lifecycle

@@ -68,6 +68,13 @@ internal final class ManagePledgeViewModelTests: TestCase {
       precondition(AppEnvironment.current.apiService is MockService, "Tests require MockService")
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
     })
+  private lazy var paymentsFeature = PaymentsFeature(
+    sessionFeature: self.sessionFeature,
+    makeProvider: { AsyncPaymentsProvider(service: MockService()) },
+    currencyContext: { .live() },
+    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
+    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+  )
   private var vm: ManagePledgeViewModelType!
   private let clock = ManagePledgeTestClock()
 
@@ -101,10 +108,8 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.vm = ManagePledgeViewModel(
         pledgeFeature: self.pledgeFeature,
+        paymentsFeature: self.paymentsFeature,
         analytics: { AppEnvironment.current.ksrAnalytics },
-        currencyContext: { .live() },
-        hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
-        responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
         schedule: { [clock] delay, action in clock.schedule(delay, action: action) }
       )
 

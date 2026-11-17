@@ -12,7 +12,6 @@ final class PaymentMethodSettingsViewModel {
   }
   var onEvent: ((Event) -> Void)?
   private let paymentsFeature: PaymentsFeature
-  private let responseDelay: @MainActor () -> TimeInterval
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private let presentationTasks = PaymentPresentationTasks()
   private var isEditing = false
@@ -23,13 +22,11 @@ final class PaymentMethodSettingsViewModel {
 
   init(
     paymentsFeature: PaymentsFeature,
-    responseDelay: @escaping @MainActor () -> TimeInterval,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.paymentsFeature = paymentsFeature
-    self.responseDelay = responseDelay
     self.sleep = sleep
   }
 
@@ -46,7 +43,7 @@ final class PaymentMethodSettingsViewModel {
   func failedToAddNewCard() { self.loadCards() }
   private func loadCards() {
     let feature = self.paymentsFeature
-    let delay = self.responseDelay()
+    let delay = self.paymentsFeature.responseDelaySeconds
     let sleep = self.sleep
     let identity = feature.sessionIdentity
     self.presentationTasks.replace(.cards) { [weak self] in
@@ -71,7 +68,7 @@ final class PaymentMethodSettingsViewModel {
     guard self.latestCards?.session == identity else { return }
     self.setEnabled(visibleCellCount > 0)
     let feature = self.paymentsFeature
-    let delay = self.responseDelay()
+    let delay = self.paymentsFeature.responseDelaySeconds
     let sleep = self.sleep
     self.presentationTasks.replace(.delete) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
@@ -100,7 +97,7 @@ final class PaymentMethodSettingsViewModel {
   func paymentMethodsFooterViewDidTapAddNewCardButton() {
     self.shouldCancel = false
     let feature = self.paymentsFeature
-    let delay = self.responseDelay()
+    let delay = self.paymentsFeature.responseDelaySeconds
     let sleep = self.sleep
     let identity = feature.sessionIdentity
     self.presentationTasks.replace(.setup) { [weak self] in
@@ -128,7 +125,7 @@ final class PaymentMethodSettingsViewModel {
   func paymentSheetDidAdd(setupIntent: String, session identity: PaymentsFeature.SessionIdentity) {
     guard self.isCurrent(identity) else { return }
     let feature = self.paymentsFeature
-    let delay = self.responseDelay()
+    let delay = self.paymentsFeature.responseDelaySeconds
     let sleep = self.sleep
     self.presentationTasks.replace(.store) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }

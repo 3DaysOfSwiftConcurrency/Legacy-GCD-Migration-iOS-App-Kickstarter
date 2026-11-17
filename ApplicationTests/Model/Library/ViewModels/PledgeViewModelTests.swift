@@ -48,7 +48,10 @@ final class PledgeViewModelTests: TestCase {
   private lazy var paymentsFeature = PaymentsFeature(
     sessionFeature: self.sessionFeature,
     makeProvider: { AsyncPaymentsProvider(service: MockService()) },
-    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
+    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
+    currencyContext: { .live() },
+    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
+    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
   private lazy var feature = PledgeFeature(
     platform: .live(),
@@ -64,9 +67,6 @@ final class PledgeViewModelTests: TestCase {
     authenticationFeature: self.authenticationFeature,
     paymentsFeature: self.paymentsFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
-    currencyContext: { .live() },
-    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
-    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     sleep: { [delayGate] in await delayGate.sleep($0) }
   )
 

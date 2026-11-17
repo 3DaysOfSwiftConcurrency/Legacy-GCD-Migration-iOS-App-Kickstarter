@@ -104,12 +104,12 @@ final class ApplePayTokenOperationTests: XCTestCase {
       paymentsFeature: PaymentsFeature(
         sessionFeature: session,
         makeProvider: { AsyncPaymentsProvider(service: service) },
-        stripePublishableKey: { "fixture" }
+        stripePublishableKey: { "fixture" },
+        currencyContext: { .live() },
+        hasEligibleApplePayCard: { _ in true },
+        responseDelaySeconds: { 0 }
       ),
-      analytics: { AppEnvironment.current.ksrAnalytics },
-      currencyContext: { .live() },
-      hasEligibleApplePayCard: { _ in true },
-      responseDelay: { 0 }
+      analytics: { AppEnvironment.current.ksrAnalytics }
     )
     let reward = Reward.noReward
     func selection(bonus: Double) -> PledgeViewData {

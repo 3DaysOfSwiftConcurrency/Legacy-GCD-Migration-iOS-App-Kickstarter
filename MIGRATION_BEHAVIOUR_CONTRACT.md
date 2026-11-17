@@ -1943,3 +1943,17 @@ safe for arbitrary concurrent environment mutation.
 - Controlled Feature and Pledged Projects tests prove the supplied value reaches
   presentation. Live Stripe, wallet, authorization and reference-device snapshots
   remain outside this checkpoint.
+
+## Payments presentation-platform ownership — 17 November 2026
+
+- PaymentsFeature supplies pledge currency context, Apple Pay card eligibility and
+  response timing alongside its Stripe and Apple Pay network policies. Crowdfunding,
+  post-campaign, Manage Pledge and payment-settings presentation consume that Feature
+  rather than accepting parallel environment closures.
+- Currency symbols and locale, eligibility decisions, response-delay timing, checkout
+  task ownership, card selection and admitted mutation behavior are preserved. Missing
+  test-only platform values retain inert defaults rather than a hidden global fallback.
+- Controlled coverage proves independently composed platform values. Affected checkout,
+  Manage Pledge, AppModel and native-payment regressions preserve existing behavior.
+  Live transactions, wallet authorization and reference-device snapshots remain outside
+  this checkpoint.

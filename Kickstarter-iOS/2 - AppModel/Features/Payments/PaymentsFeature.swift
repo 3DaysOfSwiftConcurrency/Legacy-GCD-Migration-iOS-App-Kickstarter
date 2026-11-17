@@ -41,22 +41,37 @@ public final class PaymentsFeature {
   private let trackThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
   private let supportedApplePayNetworks: @MainActor (Project) -> [PKPaymentNetwork]
   private let stripeKey: @MainActor () -> String
+  private let pledgeCurrencyContext: @MainActor () -> PledgeCurrencyContext?
+  private let applePayEligibility: @MainActor (Project) -> Bool
+  private let responseDelay: @MainActor () -> TimeInterval
 
   public init(
     sessionFeature: SessionFeature,
     makeProvider: @escaping () -> any PaymentsProvider,
     trackThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void = { _ in },
     supportedApplePayNetworks: @escaping @MainActor (Project) -> [PKPaymentNetwork] = { _ in [] },
-    stripePublishableKey: @escaping @MainActor () -> String = { "" }
+    stripePublishableKey: @escaping @MainActor () -> String = { "" },
+    currencyContext: @escaping @MainActor () -> PledgeCurrencyContext? = { nil },
+    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool = { _ in false },
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
     self.trackThirdPartyEvent = trackThirdPartyEvent
     self.supportedApplePayNetworks = supportedApplePayNetworks
     self.stripeKey = stripePublishableKey
+    self.pledgeCurrencyContext = currencyContext
+    self.applePayEligibility = hasEligibleApplePayCard
+    self.responseDelay = responseDelaySeconds
   }
 
   public var stripePublishableKey: String { self.stripeKey() }
+  public var currencyContext: PledgeCurrencyContext? { self.pledgeCurrencyContext() }
+  public var responseDelaySeconds: TimeInterval { self.responseDelay() }
+
+  public func hasEligibleApplePayCard(for project: Project) -> Bool {
+    self.applePayEligibility(project)
+  }
 
   public func paymentRequest(
     for project: Project,

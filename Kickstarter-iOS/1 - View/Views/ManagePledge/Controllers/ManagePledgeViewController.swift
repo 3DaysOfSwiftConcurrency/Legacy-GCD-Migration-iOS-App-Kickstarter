@@ -17,10 +17,8 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
   weak var delegate: ManagePledgeViewControllerDelegate?
   private let viewModel: ManagePledgeViewModelType = ManagePledgeViewModel(
     pledgeFeature: AppModel.shared.pledgeFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics },
-    currencyContext: { .live() },
-    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
-    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    paymentsFeature: AppModel.shared.paymentsFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
 
   // MARK: - Properties

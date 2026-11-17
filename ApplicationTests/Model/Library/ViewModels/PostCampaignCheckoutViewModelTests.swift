@@ -30,7 +30,10 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
   private lazy var paymentsFeature = PaymentsFeature(
     sessionFeature: self.sessionFeature,
     makeProvider: { [paymentsProvider] in paymentsProvider },
-    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
+    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
+    currencyContext: { .live() },
+    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
+    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
   private lazy var pledgeFeature = PledgeFeature(
     platform: .live(),
@@ -43,10 +46,7 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
     pledgeFeature: self.pledgeFeature,
     authenticationFeature: self.authenticationFeature,
     paymentsFeature: self.paymentsFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics },
-    currencyContext: { .live() },
-    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
-    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
 
   private let checkoutResponse = CreateCheckoutEnvelope(
