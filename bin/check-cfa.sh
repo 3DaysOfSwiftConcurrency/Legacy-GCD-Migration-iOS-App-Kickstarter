@@ -42,6 +42,9 @@ pledge_manager_view_model="$app_view/Views/SurveyResponse/Controller/PledgeManag
 reject_matches 'Deep-link data resolution belongs to AppModel and its Features.' \
   'discussionFeature|discoveryFeature|activityFeature|messagingFeature|authenticationFeature|sessionFeature' \
   "$app_view/Navigation/DeepLinkRouter.swift"
+reject_matches 'Deep-link project presentation receives the AppModel-owned composition graph.' \
+  'ManagePledgeViewController[.]instantiate[(][)]' \
+  "$app_view/Navigation/DeepLinkRouter.swift"
 reject_matches 'AppModel deep-link coordination returns data, not UIKit controllers.' \
   'import UIKit|UIViewController|UINavigationController' "$app_model/AppModel+DeepLinks.swift"
 reject_matches 'ProjectMediaFeature owns video-feed availability policy.' \

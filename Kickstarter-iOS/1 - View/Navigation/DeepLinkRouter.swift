@@ -145,7 +145,10 @@ public final class DeepLinkRouter {
       case let .discovery(params): deliver(.showDiscovery(params))
       case let .message(thread): deliver(.showMessageThread(thread))
       case .survey, .project:
-        if let controller = destination.makeViewController(isLoggedIn: self.session.userID != nil) {
+        if let controller = destination.makeViewController(
+          isLoggedIn: self.session.userID != nil,
+          projectPageComposition: self.projectPageComposition
+        ) {
           deliver(.showViewController(controller))
         }
       }
@@ -178,6 +181,7 @@ public final class DeepLinkRouter {
   private let settingsLinks: SettingsLinkPresentation
   private let serverConfig: () -> ServerConfigType
   private let discoveryResponseDelay: () -> TimeInterval
+  private let projectPageComposition: ProjectPageComposition
   private var destinations: [UUID: (navigation: Navigation, request: Pending<DeepLinkDestination?>)] = [:]
   private var destinationTasks: [UUID: Task<DeepLinkDestination?, Error>] = [:]
   private var presentations: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
@@ -191,6 +195,7 @@ public final class DeepLinkRouter {
     firstRedirect: @escaping (URL, UUID) async throws -> URL?,
     releaseRedirect: @escaping (UUID) -> Void,
     settingsLinks: SettingsLinkPresentation,
+    projectPageComposition: ProjectPageComposition,
     serverConfig: @escaping () -> ServerConfigType,
     discoveryResponseDelay: @escaping () -> TimeInterval
   ) {
@@ -199,6 +204,7 @@ public final class DeepLinkRouter {
     self.firstRedirect = firstRedirect
     self.releaseRedirect = releaseRedirect
     self.settingsLinks = settingsLinks
+    self.projectPageComposition = projectPageComposition
     self.serverConfig = serverConfig
     self.discoveryResponseDelay = discoveryResponseDelay
   }
@@ -345,7 +351,10 @@ public final class DeepLinkRouter {
 
 extension DeepLinkDestination {
   @MainActor
-  func makeViewController(isLoggedIn: Bool) -> UINavigationController? {
+  func makeViewController(
+    isLoggedIn: Bool,
+    projectPageComposition: ProjectPageComposition
+  ) -> UINavigationController? {
     switch self {
     case let .survey(url):
       let controller = PledgeManagerWebViewController.configuredWith(url: url)
@@ -353,7 +362,11 @@ extension DeepLinkDestination {
       navigation.modalPresentationStyle = .pageSheet
       return navigation
     case let .project(project):
-      return ProjectDeepLink.viewController(project, isLoggedIn: isLoggedIn)
+      return ProjectDeepLink.viewController(
+        project,
+        isLoggedIn: isLoggedIn,
+        composition: projectPageComposition
+      )
     case .discovery, .message:
       return nil
     }
@@ -364,12 +377,15 @@ extension DeepLinkDestination {
 @MainActor
 private enum ProjectDeepLink {
   static func viewController(
-    _ destination: ProjectDetailsFeature.LinkContext, isLoggedIn: Bool
+    _ destination: ProjectDetailsFeature.LinkContext,
+    isLoggedIn: Bool,
+    composition: ProjectPageComposition
   ) -> UINavigationController? {
     let project = destination.project
     let page = ProjectPageViewController.configuredWith(
       projectOrParam: .left(project), refInfo: destination.refInfo,
-      secretRewardToken: destination.secretRewardToken
+      secretRewardToken: destination.secretRewardToken,
+      composition: composition
     )
     var controllers: [UIViewController] = [page]
     switch destination.subpage {
@@ -398,7 +414,9 @@ private enum ProjectDeepLink {
     case .pledge(.manage):
       guard isLoggedIn,
             let backingID = project.personalization.backing?.id else { return nil }
-      let controller = ManagePledgeViewController.instantiate()
+      let controller = ManagePledgeViewController.instantiate(
+        composition: composition.managePledge
+      )
       controller.configureWith(params: (.id(project.id), .id(backingID)))
       controllers.append(controller)
       let navigation = RewardPledgeNavigationController(nibName: nil, bundle: nil)

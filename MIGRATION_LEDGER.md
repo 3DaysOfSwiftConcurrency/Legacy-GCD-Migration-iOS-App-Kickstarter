@@ -5630,3 +5630,28 @@ Visual rendering and the whole Library and Presentation suites remain unverified
 gate rejects parameterless Manage Pledge construction in ProjectPageViewController. This
 is not full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Deep-link project composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppDelegate now injects its AppModel-owned ProjectPageComposition into DeepLinkRouter.
+After AppModel resolves project-domain data, the router forwards that composition to
+ProjectPageViewController and to the nested ManagePledgeViewController used for errored
+pledge links. The router continues to own UIKit delivery lifetime while AppModel and its
+Features continue to own asynchronous domain resolution.
+
+DeepLinkRouterTests passed all 16 focused tests. The four errored-pledge application
+routes and generic-project notification route passed all 5 focused Presentation tests.
+The bounded DeepLinkRouter, AppModel and Project Page selection passed all 88 tests. All
+successful runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-deeplink-project-composition-library.xcresult`,
+`/private/tmp/kickstarter-deeplink-project-composition-presentation-focused.xcresult`
+and `/private/tmp/kickstarter-deeplink-project-composition-bounded.xcresult`.
+
+The broader ApplicationRoutingTests run is not reported as green: 8 of 107 tests failed
+in discovery-category delivery expectations while all affected project/pledge routes
+passed. Evidence: `/private/tmp/kickstarter-deeplink-project-composition-presentation.xcresult`.
+The whole suites remain unverified. The CFA gate rejects restored parameterless Manage
+Pledge construction in DeepLinkRouter. This is not full CFA compliance. Swift packages,
+target identifiers and existing history are unchanged. No push.

@@ -116,6 +116,7 @@ final class ApplicationRoutingTests: TestCase {
     firstRedirect: { [model = self.model] in try await model.resolveEmailLink($0, route: $1) },
     releaseRedirect: { [model = self.model] in model.releaseEmailLink(route: $0) },
     settingsLinks: self.settingsLinks,
+    projectPageComposition: self.model.projectPageComposition,
     serverConfig: { AppEnvironment.current.apiService.serverConfig },
     discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )

@@ -58,6 +58,7 @@ final class DeepLinkRouterTests: XCTestCase {
       firstRedirect: { try await model.resolveEmailLink($0, route: $1) },
       releaseRedirect: { model.releaseEmailLink(route: $0) },
       settingsLinks: self.settingsLinks,
+      projectPageComposition: model.projectPageComposition,
       serverConfig: { ServerConfig.local },
       discoveryResponseDelay: { [weak self] in self?.discoveryDelay ?? 0 }
     )

@@ -2281,3 +2281,13 @@ safe for arbitrary concurrent environment mutation.
 - ProjectPageViewController passes the nested graph into Manage Pledge while preserving
   its existing navigation controller and trait-based presentation behavior.
 - Focused AppModel and Project Page validation passes 72 tests.
+
+## Deep-link project composition — 17 November 2026
+
+- AppDelegate now gives DeepLinkRouter the AppModel-owned ProjectPageComposition.
+- Resolved project deep links use that graph for both Project Page and nested Manage
+  Pledge presentation instead of selecting global-default controller factories.
+- Focused router coverage passes 16 tests, affected project/pledge presentation coverage
+  passes 5 tests, and the bounded router/AppModel/Project Page selection passes 88 tests.
+- The broader ApplicationRoutingTests attempt is not counted as passing: 8 of 107 tests
+  failed in pre-existing discovery-category delivery expectations.

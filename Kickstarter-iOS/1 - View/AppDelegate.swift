@@ -32,6 +32,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         settingsFeature: model.settingsFeature,
         responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
       ),
+      projectPageComposition: model.projectPageComposition,
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
     )
