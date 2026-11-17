@@ -9,7 +9,9 @@ import XCTest
 @MainActor
 final class ProjectPamphletMainCellViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = ProjectPamphletMainCellViewModel()
+  private let vm = ProjectPamphletMainCellViewModel(
+    preferredCurrency: { AppEnvironment.current.currentUser?.chosenCurrency }
+  )
 
   private let backingLabelHidden = PamphletRecorder<Bool>()
   private let backersTitleLabelText = PamphletRecorder<String>()
@@ -80,7 +82,7 @@ final class ProjectPamphletMainCellViewModelTests: TestCase {
   }
 
   func testVideoPlayerConfiguredOnceAfterProjectAndDelegateAreReady() {
-    let vm = ProjectPamphletMainCellViewModel()
+    let vm = ProjectPamphletMainCellViewModel(preferredCurrency: { nil })
     var configurations = 0
     vm.onEvent = { if case .configureVideoPlayerController = $0 { configurations += 1 } }
     vm.delegateDidSet()

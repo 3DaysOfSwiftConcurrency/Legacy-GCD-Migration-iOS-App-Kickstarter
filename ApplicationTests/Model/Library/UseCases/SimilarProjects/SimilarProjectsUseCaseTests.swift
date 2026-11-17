@@ -232,8 +232,8 @@ final class SimilarProjectsUseCaseTests: TestCase {
     XCTAssertEqual(properties.goalUsd, floor(Float(100_000) * properties.projectUsdExchangeRate))
 
     // Test currency-related properties
-    XCTAssertEqual(properties.currentCurrency, "USD") // Default currency
-    XCTAssertFalse(properties.needsConversion) // Same currency, no conversion needed
+    XCTAssertEqual(properties.currentCurrency(fallback: nil), "USD")
+    XCTAssertEqual(properties.currency, properties.currentCurrency(fallback: nil))
   }
 
   func testProjectPamphletMainCellProperties_GoalMet() async {
@@ -272,18 +272,9 @@ final class SimilarProjectsUseCaseTests: TestCase {
       .fragments.projectPamphletMainCellPropertiesFragment
       .projectPamphletMainCellProperties
 
-    // Test with default currency (USD)
-    XCTAssertFalse(properties.needsConversion)
-    XCTAssertTrue(properties.omitUSCurrencyCode)
-
-    // The needsConversion property should return true when currency != currentCurrency
     XCTAssertEqual(properties.currency, "USD")
-    XCTAssertEqual(properties.currentCurrency, "USD")
-    XCTAssertFalse(properties.needsConversion)
-
-    // Test USD currency code omission
-    XCTAssertEqual(properties.currentCurrency, "USD")
-    XCTAssertTrue(properties.omitUSCurrencyCode)
+    XCTAssertEqual(properties.currentCurrency(fallback: nil), "USD")
+    XCTAssertEqual(properties.currentCurrency(fallback: "CAD"), "CAD")
   }
 
   func testProjectPamphletMainCellProperties_ZeroPledgeHandling() async {

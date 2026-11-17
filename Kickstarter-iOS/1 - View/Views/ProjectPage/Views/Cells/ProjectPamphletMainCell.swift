@@ -21,7 +21,9 @@ internal final class ProjectPamphletMainCell: UITableViewCell, ValueCell {
     }
   }
 
-  fileprivate let viewModel = ProjectPamphletMainCellViewModel()
+  fileprivate let viewModel = ProjectPamphletMainCellViewModel(
+    preferredCurrency: { AppModel.shared.sessionFeature.currentUser?.chosenCurrency }
+  )
 
   fileprivate weak var videoController: VideoViewController?
 

@@ -3239,3 +3239,8 @@ Push permission registration now calls the authorization function supplied by
 the AppDelegate handler, using its injected OnboardingFeature. The demo and
 test adapters still control their own authorization responses. All 124
 AppDelegate simulator tests passed and the CFA check covers this adapter.
+
+Project card currency formatting now takes the session currency from the cell
+composition boundary and keeps project-provided currency ahead of that fallback.
+The focused main-cell, Similar Projects and Project Page suites passed 112 tests.
+`make check-cfa` now rejects direct `AppModel.shared` access throughout Features.

@@ -52,6 +52,11 @@ final class ProjectPamphletMainCellViewModel {
   private var videoInitialized = false
   private var videoPlaying = false
   private var lastBackingHidden: Bool?
+  private let preferredCurrency: () -> String?
+
+  init(preferredCurrency: @escaping () -> String?) {
+    self.preferredCurrency = preferredCurrency
+  }
 
   func awakeFromNib() {
     self.awake = true
@@ -120,14 +125,18 @@ final class ProjectPamphletMainCellViewModel {
     }
     self.onEvent?(.deadlineTitleLabelText(duration.0))
     self.onEvent?(.deadlineSubtitleLabelText(duration.1))
-    let conversion = properties.needsConversion
+    let currency = properties.currentCurrency(fallback: self.preferredCurrency())
+    let conversion = properties.currency != currency
+    let omitCode = currency == Project.Country.us.currencyCode
     self.onEvent?(.conversionLabelHidden(!conversion))
     self.onEvent?(.locationNameLabelText(properties.locationName))
     self.onEvent?(.locationStackViewHidden(properties.locationName.isEmpty))
-    self.onEvent?(.pledgedTitleLabelText(pledgedText(for: properties, conversion)))
-    self.onEvent?(.pledgedSubtitleLabelText(goalText(for: properties, conversion)))
-    if conversion { self.onEvent?(.conversionLabelText(conversionText(for: properties))) }
-    self.onEvent?(.statsStackViewAccessibilityLabel(statsStackViewAccessibilityLabelForProperties(properties, needsConversion: conversion)))
+    self.onEvent?(.pledgedTitleLabelText(pledgedText(for: properties, conversion, omitCode: omitCode)))
+    self.onEvent?(.pledgedSubtitleLabelText(goalText(for: properties, conversion, omitCode: omitCode)))
+    if conversion { self.onEvent?(.conversionLabelText(conversionText(for: properties, omitCode: omitCode))) }
+    self.onEvent?(.statsStackViewAccessibilityLabel(statsStackViewAccessibilityLabelForProperties(
+      properties, needsConversion: conversion, omitCode: omitCode
+    )))
     if let prelaunch = properties.displayPrelaunch { self.onEvent?(.isPrelaunchProject(prelaunch)) }
     self.onEvent?(.progressPercentage(clamp(0, 1)(properties.fundingProgress)))
     self.configureVideoIfReady()
@@ -137,7 +146,8 @@ final class ProjectPamphletMainCellViewModel {
 @MainActor
 private func statsStackViewAccessibilityLabelForProperties(
   _ properties: ProjectPamphletMainCellProperties,
-  needsConversion: Bool
+  needsConversion: Bool,
+  omitCode: Bool
 ) -> String {
   let projectCurrencyData = pledgeAmountAndGoalAndCountry(
     forProperties: properties,
@@ -147,12 +157,12 @@ private func statsStackViewAccessibilityLabelForProperties(
   let pledged = Format.currency(
     projectCurrencyData.pledgedAmount,
     currencyCode: projectCurrencyData.currency,
-    omitCurrencyCode: properties.omitUSCurrencyCode
+    omitCurrencyCode: omitCode
   )
   let goal = Format.currency(
     projectCurrencyData.goalAmount,
     currencyCode: projectCurrencyData.currency,
-    omitCurrencyCode: properties.omitUSCurrencyCode
+    omitCurrencyCode: omitCode
   )
 
   let backersCount = properties.backersCount
@@ -220,7 +230,9 @@ private func pledgeAmountAndGoalAndCountry(
 }
 
 @MainActor
-private func goalText(for properties: ProjectPamphletMainCellProperties, _ needsConversion: Bool) -> String {
+private func goalText(
+  for properties: ProjectPamphletMainCellProperties, _ needsConversion: Bool, omitCode: Bool
+) -> String {
   let projectCurrencyData = pledgeAmountAndGoalAndCountry(
     forProperties: properties,
     needsConversion: needsConversion
@@ -230,7 +242,7 @@ private func goalText(for properties: ProjectPamphletMainCellProperties, _ needs
     goal: Format.currency(
       projectCurrencyData.goalAmount,
       currencyCode: projectCurrencyData.currency,
-      omitCurrencyCode: properties.omitUSCurrencyCode
+      omitCurrencyCode: omitCode
     )
   )
 }
@@ -238,7 +250,8 @@ private func goalText(for properties: ProjectPamphletMainCellProperties, _ needs
 @MainActor
 private func pledgedText(
   for properties: ProjectPamphletMainCellProperties,
-  _ needsConversion: Bool
+  _ needsConversion: Bool,
+  omitCode: Bool
 ) -> String {
   let projectCurrencyData = pledgeAmountAndGoalAndCountry(
     forProperties: properties,
@@ -248,22 +261,22 @@ private func pledgedText(
   return Format.currency(
     projectCurrencyData.pledgedAmount,
     currencyCode: projectCurrencyData.currency,
-    omitCurrencyCode: properties.omitUSCurrencyCode
+    omitCurrencyCode: omitCode
   )
 }
 
 @MainActor
-private func conversionText(for properties: ProjectPamphletMainCellProperties) -> String {
+private func conversionText(for properties: ProjectPamphletMainCellProperties, omitCode: Bool) -> String {
   return Strings.discovery_baseball_card_stats_convert_from_pledged_of_goal(
     pledged: Format.currency(
       properties.pledged.amount,
       currencyCode: properties.currency,
-      omitCurrencyCode: properties.omitUSCurrencyCode
+      omitCurrencyCode: omitCode
     ),
     goal: Format.currency(
       properties.goal.amount,
       currencyCode: properties.currency,
-      omitCurrencyCode: properties.omitUSCurrencyCode
+      omitCurrencyCode: omitCode
     )
   )
 }

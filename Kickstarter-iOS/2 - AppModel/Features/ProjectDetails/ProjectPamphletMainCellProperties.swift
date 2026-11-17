@@ -182,31 +182,11 @@ extension ProjectPamphletMainCellProperties {
     self.userCurrency.flatMap(Project.Country.init(currencyCode:))
   }
 
-  /// Omit US currency code
-  @MainActor
-  public var omitUSCurrencyCode: Bool {
-    self.currentCurrency == Project.Country.us.currencyCode
-  }
-
-  /// Project pledge & goal values need conversion
-  @MainActor
-  public var needsConversion: Bool {
-    self.currency != self.currentCurrency
-  }
-
   public var goalMet: Bool {
     self.pledged >= self.goal
   }
 
-  @MainActor
-  public var currentCurrency: String {
-    self.userCurrency ?? getCurrentCurrency()
+  public func currentCurrency(fallback: String?) -> String {
+    self.userCurrency ?? fallback ?? Project.Country.us.currencyCode
   }
-}
-
-@MainActor
-private func getCurrentCurrency() -> String {
-  // Project card properties predate feature-owned presentation inputs. Keep the
-  // compatibility fallback at the shared session boundary, not AppEnvironment.
-  AppModel.shared.sessionFeature.currentUser?.chosenCurrency ?? Project.Country.us.currencyCode
 }
