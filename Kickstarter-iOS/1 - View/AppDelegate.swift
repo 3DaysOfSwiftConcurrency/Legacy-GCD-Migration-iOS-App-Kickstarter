@@ -21,7 +21,24 @@ import UserNotifications
 @UIApplicationMain
 internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
-  fileprivate let viewModel: AppDelegateViewModelType = AppDelegateViewModel()
+  fileprivate let viewModel: AppDelegateViewModelType = {
+    let model = AppModel.shared
+    let router = DeepLinkRouter(
+      sessionFeature: model.sessionFeature,
+      messagingFeature: model.messagingFeature,
+      discussionFeature: model.discussionFeature,
+      discoveryFeature: model.discoveryFeature,
+      activityFeature: model.activityFeature
+    )
+    return AppDelegateViewModel(
+      deepLinkRouter: router,
+      authenticationFeature: model.authenticationFeature,
+      discoveryFeature: model.discoveryFeature,
+      sessionFeature: model.sessionFeature,
+      settingsFeature: model.settingsFeature,
+      onboardingFeature: model.onboardingFeature
+    )
+  }()
   // Custom Braze cancellable type. As long as we keep a reference to this active, Braze will
   // use this to tell us about any Braze push notifications the app handles.
   fileprivate var brazeSubscription: BrazeKit.Braze.Cancellable?

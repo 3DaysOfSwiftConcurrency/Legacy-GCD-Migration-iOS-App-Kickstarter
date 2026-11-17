@@ -247,7 +247,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var trackingObserver: ((any AppTrackingTransparencyType), UUID)?
 
   public init(
-    deepLinkRouter: DeepLinkRouter? = nil,
+    deepLinkRouter: DeepLinkRouter,
     authenticationFeature: AuthenticationFeature? = nil,
     discoveryFeature: DiscoveryFeature? = nil,
     requestApplicationConfiguration: (@MainActor () -> Task<Config, Error>)? = nil,
@@ -262,13 +262,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.pushDebounce = pushDebounce
     self.userDebounce = userDebounce
     self.trackingDelay = trackingDelay
-    let deepLinkRouter = deepLinkRouter ?? DeepLinkRouter(
-      sessionFeature: sessionFeature ?? AppModel.shared.sessionFeature,
-      messagingFeature: AppModel.shared.messagingFeature,
-      discussionFeature: AppModel.shared.discussionFeature,
-      discoveryFeature: discoveryFeature ?? AppModel.shared.discoveryFeature,
-      activityFeature: AppModel.shared.activityFeature
-    )
     self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
     self.deepLinkRouter = deepLinkRouter
     self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
