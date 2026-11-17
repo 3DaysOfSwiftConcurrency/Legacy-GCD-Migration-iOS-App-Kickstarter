@@ -9,8 +9,10 @@ import XCTest
 final class FriendsFeatureTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let provider = ControlledFriendsProvider()
-  private let session = SessionFeature(
-    makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template },
+  private var currentUser = User.template
+  private lazy var session = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: MockService()) },
+    currentUser: { [weak self] in self?.currentUser },
     updateUser: { _ in })
   private lazy var feature = FriendsFeature(
     sessionFeature: self.session, makeProvider: { self.provider }, sleep: { _ in })
@@ -293,6 +295,7 @@ final class FriendsFeatureTests: TestCase {
     defer { gate.releaseAll() }
     var currentUser = User.template
     currentUser.facebookConnected = true
+    self.currentUser = currentUser
     await withEnvironment(currentUser: currentUser) {
       do {
         let vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: { try await gate.request() })
@@ -319,6 +322,7 @@ final class FriendsFeatureTests: TestCase {
   func testScreenRequestsNextPageAtThreshold() async throws {
     var user = User.template
     user.facebookConnected = true
+    self.currentUser = user
     await withEnvironment(currentUser: user) {
       do {
         let vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: {})

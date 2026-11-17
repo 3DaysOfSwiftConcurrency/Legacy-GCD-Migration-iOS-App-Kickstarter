@@ -61,6 +61,8 @@ reject_matches 'Backer Dashboard view models must receive Profile from their con
   "$app_view/Views/BackerDashboardProjects/*ViewModel.swift"
 reject_matches 'Activity view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/Activities/*ViewModel.swift"
+reject_matches 'Find Friends view models must receive Friends explicitly.' \
+  'AppModel[.]shared' "$app_view/Views/FindFriends/*ViewModel.swift"
 reject_matches 'Discussion view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/Comments/*ViewModel.swift"
 reject_matches 'Messaging view models must receive their dependencies explicitly.' \

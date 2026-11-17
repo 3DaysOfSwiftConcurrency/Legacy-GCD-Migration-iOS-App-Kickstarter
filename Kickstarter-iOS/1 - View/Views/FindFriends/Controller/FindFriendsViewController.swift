@@ -5,7 +5,9 @@ import Prelude
 import UIKit
 
 internal final class FindFriendsViewController: UITableViewController {
-  fileprivate let viewModel = FindFriendsViewModel()
+  fileprivate let viewModel = FindFriendsViewModel(
+    friendsFeature: AppModel.shared.friendsFeature
+  )
   fileprivate let dataSource = FindFriendsDataSource()
   fileprivate let loadingIndicatorView = UIActivityIndicatorView()
   fileprivate let backgroundView = UIView()

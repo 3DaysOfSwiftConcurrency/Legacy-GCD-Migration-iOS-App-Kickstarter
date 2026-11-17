@@ -3286,3 +3286,8 @@ Messaging controllers now supply Messaging and Discussion explicitly. Thread
 cells provide only the current-user ID lookup needed for rendering. Six focused
 Messaging suites passed 48 simulator tests and `make check-cfa` covers the
 Messaging view-model boundaries.
+
+Find Friends and friend-follow cells now receive Friends from their UI owners.
+Two tests that require a Facebook-connected user now set that value in the
+injected session fixture. The focused Friends suites passed 31 simulator tests,
+and `make check-cfa` guards both view models.

@@ -27,8 +27,8 @@ public final class FindFriendsViewModel {
   private var lastPaginationTrigger = false
   private var showedInitialLoader = false
 
-  public init(friendsFeature: FriendsFeature? = nil, refreshDelay: (@MainActor () async throws -> Void)? = nil) {
-    self.friendsFeature = friendsFeature ?? AppModel.shared.friendsFeature
+  public init(friendsFeature: FriendsFeature, refreshDelay: (@MainActor () async throws -> Void)? = nil) {
+    self.friendsFeature = friendsFeature
     self.refreshDelay = refreshDelay ?? { try await Task.sleep(for: .seconds(2)) }
   }
 

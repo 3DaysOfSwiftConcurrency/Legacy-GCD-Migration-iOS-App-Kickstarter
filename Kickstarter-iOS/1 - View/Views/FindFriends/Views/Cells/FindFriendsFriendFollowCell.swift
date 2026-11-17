@@ -13,7 +13,9 @@ internal final class FindFriendsFriendFollowCell: UITableViewCell, ValueCell {
   @IBOutlet fileprivate var followButton: UIButton!
   @IBOutlet fileprivate var unfollowButton: UIButton!
 
-  fileprivate let viewModel = FindFriendsFriendFollowCellViewModel()
+  fileprivate let viewModel = FindFriendsFriendFollowCellViewModel(
+    friendsFeature: AppModel.shared.friendsFeature
+  )
 
   func configureWith(value: (friend: User, source: FriendsSource)) {
     self.viewModel.configureWith(friend: value.friend)

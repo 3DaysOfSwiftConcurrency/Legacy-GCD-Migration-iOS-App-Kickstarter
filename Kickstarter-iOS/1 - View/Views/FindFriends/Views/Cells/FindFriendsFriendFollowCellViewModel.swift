@@ -24,8 +24,8 @@ public final class FindFriendsFriendFollowCellViewModel {
   @ObservationIgnored private var unfollowObservation: Task<Void, Never>?
   private var friend: User?
 
-  public init(friendsFeature: FriendsFeature? = nil, delay: (@MainActor () async throws -> Void)? = nil) {
-    self.friendsFeature = friendsFeature ?? AppModel.shared.friendsFeature
+  public init(friendsFeature: FriendsFeature, delay: (@MainActor () async throws -> Void)? = nil) {
+    self.friendsFeature = friendsFeature
     self.delay = delay ?? {
       let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
