@@ -360,6 +360,7 @@ public final class AppModel {
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
   let trackingConsent: AppTrackingConsent
+  let pushAuthorization: PushAuthorization
   public let connectivityService: ConnectivityService
   public let remoteConfigurationService: RemoteConfigurationService
   public let applicationConfigurationService: ApplicationConfigurationService
@@ -389,6 +390,7 @@ public final class AppModel {
     developerExamplesFeature: DeveloperExamplesFeature,
     onboardingFeature: OnboardingFeature,
     trackingConsent: AppTrackingConsent,
+    pushAuthorization: PushAuthorization,
     connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService,
     applicationConfigurationService: ApplicationConfigurationService,
@@ -418,6 +420,7 @@ public final class AppModel {
     self.developerExamplesFeature = developerExamplesFeature
     self.onboardingFeature = onboardingFeature
     self.trackingConsent = trackingConsent
+    self.pushAuthorization = pushAuthorization
     self.connectivityService = connectivityService
     self.remoteConfigurationService = remoteConfigurationService
     self.applicationConfigurationService = applicationConfigurationService
@@ -530,6 +533,10 @@ public final class AppModel {
       trackingConsent: AppTrackingConsent(
         tracking: { AppEnvironment.current.appTrackingTransparency },
         hasSeenOnboarding: { onboarding.hasSeenOnboarding }
+      ),
+      pushAuthorization: PushAuthorization(
+        pushRegistration: { AppEnvironment.current.pushRegistrationType },
+        onboardingFeature: onboarding
       ),
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
       remoteConfigurationService: RemoteConfigurationService(

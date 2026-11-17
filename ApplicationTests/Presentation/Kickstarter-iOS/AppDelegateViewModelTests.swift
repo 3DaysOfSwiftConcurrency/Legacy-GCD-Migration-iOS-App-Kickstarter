@@ -71,6 +71,10 @@ final class AppDelegateViewModelTests: TestCase {
     sessionFeature: self.settingsFeature.sessionFeature,
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
+  private let pushAuthorization = PushAuthorization(
+    pushRegistration: { AppEnvironment.current.pushRegistrationType },
+    onboardingFeature: .live()
+  )
   private let trackingConsent = AppTrackingConsent(
     tracking: { AppEnvironment.current.appTrackingTransparency },
     hasSeenOnboarding: { AppEnvironment.current.userDefaults.hasSeenOnboarding },
@@ -191,7 +195,6 @@ final class AppDelegateViewModelTests: TestCase {
     )
     return AppDelegateViewModel(
       deepLinkRouter: self.deepLinkRouter,
-      pushRegistration: { AppEnvironment.current.pushRegistrationType },
       applicationShortcuts: ApplicationShortcutService(
         session: session,
         hasRecommendations: { [discoveryFeature = self.discoveryFeature] in
@@ -200,8 +203,7 @@ final class AppDelegateViewModelTests: TestCase {
       ),
       devicePushRegistration: registration,
       sessionFeature: session,
-      settingsFeature: self.settingsFeature,
-      onboardingFeature: .live()
+      settingsFeature: self.settingsFeature
     )
   }
 
@@ -209,7 +211,7 @@ final class AppDelegateViewModelTests: TestCase {
     self.vm = self.makeDelegateHandler()
     self.vm.outputs.onNotificationSettingsUpdated = { [weak self] in self?.notificationSettingsUpdated.record(()) }
 
-    self.vm.outputs.onApplicationIconBadgeNumber = { [weak self] in self?.applicationIconBadgeNumber.record($0) }
+    self.pushAuthorization.onBadgeReset = { [weak self] in self?.applicationIconBadgeNumber.record(0) }
     self.vm.outputs.onEmailVerificationCompleted = { [weak self] message, success in
       self?.emailVerificationCompletedMessage.record(message)
       self?.emailVerificationCompletedSuccess.record(success)
@@ -226,7 +228,7 @@ final class AppDelegateViewModelTests: TestCase {
       guard let navigation = controller as? UINavigationController else { return }
       self?.presentViewController.record(navigation.viewControllers.count)
     }
-    self.vm.outputs.onPushTokenRegistrationStarted = { [weak self] in self?.pushRegistrationStarted.record(()) }
+    self.pushAuthorization.onRegistrationAttempted = { [weak self] in self?.pushRegistrationStarted.record(()) }
     self.vm.outputs.onPushTokenSuccessfullyRegistered = { [weak self] in self?.pushTokenSuccessfullyRegistered.record($0) }
     self.vm.outputs.onRegisterPushTokenInBraze = { [weak self] in self?.registerPushTokenInBraze.record($0) }
     self.vm.outputs.onSetApplicationShortcutItems = { [weak self] in self?.setApplicationShortcutItems.record($0) }
@@ -234,9 +236,21 @@ final class AppDelegateViewModelTests: TestCase {
     self.trackingConsent.onAuthorizationStatus = { [weak self] in
       self?.trackingAuthorizationStatus.record($0)
     }
-    self.vm.outputs.onTriggerOnboardingFlow = { [weak self] in self?.triggerOnboardingFlow.record(()) }
+    self.pushAuthorization.onOfferOnboarding = { [weak self] in self?.triggerOnboardingFlow.record(()) }
     self.vm.outputs.onUnregisterForRemoteNotifications = { [weak self] in self?.unregisterForRemoteNotifications.record(()) }
     self.vm.outputs.onUpdateCurrentUser = { [weak self] in self?.updateCurrentUserInEnvironment.record($0) }
+  }
+
+  private func launchApplication(
+    application: UIApplication?, launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) {
+    self.vm.inputs.applicationDidFinishLaunching(application: application, launchOptions: launchOptions)
+    self.pushAuthorization.applicationDidFinishLaunching()
+  }
+
+  private func enterForeground() {
+    self.pushAuthorization.applicationWillEnterForeground()
+    self.vm.inputs.applicationWillEnterForeground()
   }
 
   func testResetApplicationIconBadgeNumber_registeredForPushNotifications_WillEnterForeground() async {
@@ -245,7 +259,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(pushRegistrationType: MockPushRegistration.self) {
       self.applicationIconBadgeNumber.assertValues([])
 
-      self.vm.inputs.applicationWillEnterForeground()
+      self.enterForeground()
 
       self.applicationIconBadgeNumber.assertValues([0])
     }
@@ -257,7 +271,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(pushRegistrationType: MockPushRegistration.self) {
       self.applicationIconBadgeNumber.assertValues([])
 
-      self.vm.inputs.applicationWillEnterForeground()
+      self.enterForeground()
 
       self.applicationIconBadgeNumber.assertValues([])
     }
@@ -269,7 +283,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(pushRegistrationType: MockPushRegistration.self) {
       self.applicationIconBadgeNumber.assertValues([])
 
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchApplication(application: UIApplication.shared, launchOptions: nil)
 
       self.applicationIconBadgeNumber.assertValues([0])
     }
@@ -281,7 +295,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(pushRegistrationType: MockPushRegistration.self) {
       self.applicationIconBadgeNumber.assertValues([])
 
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchApplication(application: UIApplication.shared, launchOptions: nil)
 
       self.applicationIconBadgeNumber.assertValues([])
     }
@@ -1025,9 +1039,9 @@ final class AppDelegateViewModelTests: TestCase {
       self.pushRegistrationStarted.assertValueCount(0)
       self.pushTokenSuccessfullyRegistered.assertValueCount(0)
 
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: [:])
+      self.launchApplication(application: UIApplication.shared, launchOptions: [:])
       self.vm.inputs.userSessionStarted()
-      self.vm.inputs.didAcceptReceivingRemoteNotifications()
+      self.pushAuthorization.requestAuthorization()
 
       self.pushRegistrationStarted.assertValueCount(1)
 
@@ -1058,7 +1072,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.pushRegistrationStarted.assertValueCount(0)
       self.pushTokenSuccessfullyRegistered.assertValueCount(0)
 
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: [:])
+      self.launchApplication(application: UIApplication.shared, launchOptions: [:])
       self.vm.inputs.userSessionStarted()
 
       self.pushRegistrationStarted.assertValueCount(1)
@@ -1089,7 +1103,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.pushRegistrationStarted.assertValueCount(0)
       self.pushTokenSuccessfullyRegistered.assertValueCount(0)
 
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: [:])
+      self.launchApplication(application: UIApplication.shared, launchOptions: [:])
       self.vm.inputs.userSessionStarted()
 
       self.pushRegistrationStarted.assertValueCount(1)
@@ -1119,10 +1133,10 @@ final class AppDelegateViewModelTests: TestCase {
     ) {
       XCTAssertEqual([], segmentClient.events)
 
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: [:])
+      self.launchApplication(application: UIApplication.shared, launchOptions: [:])
       self.vm.inputs.userSessionStarted()
 
-      self.vm.inputs.didAcceptReceivingRemoteNotifications()
+      self.pushAuthorization.requestAuthorization()
     }
   }
 
@@ -1836,7 +1850,7 @@ final class AppDelegateViewModelTests: TestCase {
       pushRegistrationType: MockPushRegistration.self,
       userDefaults: userDefaults
     ) {
-      self.vm.inputs.applicationWillEnterForeground()
+      self.enterForeground()
       self.vm.inputs.didReceive(remoteNotification: updatePushData)
       self.vm.inputs.showNotificationDialog(notification: notification)
 
@@ -2195,7 +2209,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2226,7 +2240,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.triggerOnboardingFlow.assertValueCount(0)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2253,7 +2267,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.triggerOnboardingFlow.assertValueCount(0)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2279,7 +2293,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.triggerOnboardingFlow.assertValueCount(0)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2312,7 +2326,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2347,7 +2361,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()

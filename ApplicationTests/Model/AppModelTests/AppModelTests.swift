@@ -4,7 +4,33 @@ import GraphAPI
 @testable import KsApi
 
 import Prelude
+import UserNotifications
 import XCTest
+
+@MainActor
+final class PushAuthorizationTests: XCTestCase {
+  func testAcceptedPermissionRequestsStandardOptionsAndRegistersOnce() async {
+    let store = MockKeyValueStore()
+    let finished = self.expectation(description: "Authorization finishes")
+    var requestedOptions: [UNAuthorizationOptions] = []
+    var registrationCount = 0
+    let onboarding = OnboardingFeature(
+      completionStore: { store },
+      authorizeNotifications: {
+        requestedOptions.append($0)
+        return true
+      },
+      registerNotifications: { registrationCount += 1 }
+    )
+    let authorization = PushAuthorization(pushRegistration: { PushRegistration.self }, onboardingFeature: onboarding)
+    authorization.onRegistrationAttempted = { finished.fulfill() }
+
+    authorization.requestAuthorization()
+    await self.fulfillment(of: [finished], timeout: 2)
+    XCTAssertEqual(requestedOptions, [[.alert, .sound, .badge]])
+    XCTAssertEqual(registrationCount, 1)
+  }
+}
 
 @MainActor
 final class AppTrackingConsentTests: XCTestCase {
@@ -175,15 +201,19 @@ final class AppModelTests: XCTestCase {
       provider: NoRequestDiscoveryProvider(),
       currentUser: { firstSession.currentUser }
     )
+    let firstOnboarding = OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store })
     let first = AppModel(
       developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load developer examples")
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
-      onboardingFeature: OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store }),
+      onboardingFeature: firstOnboarding,
       trackingConsent: AppTrackingConsent(
         tracking: { [tracking = MockAppTrackingTransparency()] in tracking },
         hasSeenOnboarding: { false }
+      ),
+      pushAuthorization: PushAuthorization(
+        pushRegistration: { PushRegistration.self }, onboardingFeature: firstOnboarding
       ),
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
@@ -233,15 +263,19 @@ final class AppModelTests: XCTestCase {
       provider: NoRequestDiscoveryProvider(),
       currentUser: { secondSession.currentUser }
     )
+    let secondOnboarding = OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store })
     let second = AppModel(
       developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load developer examples")
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
-      onboardingFeature: OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store }),
+      onboardingFeature: secondOnboarding,
       trackingConsent: AppTrackingConsent(
         tracking: { [tracking = MockAppTrackingTransparency()] in tracking },
         hasSeenOnboarding: { false }
+      ),
+      pushAuthorization: PushAuthorization(
+        pushRegistration: { PushRegistration.self }, onboardingFeature: secondOnboarding
       ),
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),

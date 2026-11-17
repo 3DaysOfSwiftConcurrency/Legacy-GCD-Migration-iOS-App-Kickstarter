@@ -57,6 +57,9 @@ reject_matches 'Settings link presentation receives its dependencies from compos
 reject_matches 'AppTrackingConsent owns tracking requests and observation.' \
   'AppTrackingTransparencyType|onTrackingAuthorizationStatus|onRequestTrackingAuthorization|trackingDelay|applicationActive\(' \
   "$delegate_handler"
+reject_matches 'Push authorization owns launch and foreground permission checks.' \
+  'PushRegistrationType|onApplicationIconBadgeNumber|onTriggerOnboardingFlow|didAcceptReceivingRemoteNotifications' \
+  "$delegate_handler"
 reject_matches 'DeepLinkRouter receives platform dependencies from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Navigation/DeepLinkRouter.swift"
 reject_matches 'Navigation owns incoming URL, push envelope, and shortcut routing decisions.' \

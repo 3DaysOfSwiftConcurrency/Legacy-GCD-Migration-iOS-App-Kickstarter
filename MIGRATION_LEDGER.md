@@ -3657,3 +3657,20 @@ The simulator passed eight focused AppModel, consent, and onboarding
 use-case tests, 14 onboarding view-model tests, and 137 bounded
 delegate and Root Tabs regressions. The consent checks use an injected
 tracking adapter. Physical-device authorization UI remains unverified.
+
+### Push authorization ownership — Matthew Thomas
+
+PushAuthorization owns launch and foreground checks, tracks pending
+authorization operations, and emits badge and onboarding events.
+AppModel composes it with OnboardingFeature, which continues to
+serialize native permission prompts and register for notifications
+only after authorization. AppDelegate sends the lifecycle signals
+and handles badge and onboarding presentation. The contextual alert
+acceptance calls PushAuthorization directly. The source check guards
+the permission boundary in the legacy delegate handler.
+
+The simulator passed 17 focused push and onboarding tests and 137
+bounded delegate and Root Tabs tests. The async permission test
+verified the alert, sound, and badge options and one registration
+after a simulated grant. Live APNs and the native consent dialog
+remain outside this coverage.

@@ -39,12 +39,10 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     )
     return AppDelegateViewModel(
       deepLinkRouter: router,
-      pushRegistration: { AppEnvironment.current.pushRegistrationType },
       applicationShortcuts: model.applicationShortcuts,
       devicePushRegistration: model.devicePushRegistrationService,
       sessionFeature: model.sessionFeature,
-      settingsFeature: model.settingsFeature,
-      onboardingFeature: model.onboardingFeature
+      settingsFeature: model.settingsFeature
     )
   }()
   // Custom Braze cancellable type. As long as we keep a reference to this active, Braze will
@@ -206,11 +204,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { UIApplication.shared.open(url) }
     }
 
-    self.viewModel.outputs.onApplicationIconBadgeNumber = { value in
-      DispatchQueue.main.async { UIApplication.shared.applicationIconBadgeNumber = value }
+    AppModel.shared.pushAuthorization.onBadgeReset = {
+      DispatchQueue.main.async { UIApplication.shared.applicationIconBadgeNumber = 0 }
     }
 
-    self.viewModel.outputs.onPushTokenRegistrationStarted = {
+    AppModel.shared.pushAuthorization.onRegistrationAttempted = {
       DispatchQueue.main.async { print("📲 [Push Registration] Push token registration started 🚀") }
     }
 
@@ -222,7 +220,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { [weak self] in self?.braze?.notifications.register(deviceToken: token) }
     }
 
-    self.viewModel.outputs.onTriggerOnboardingFlow = { [weak self] in
+    AppModel.shared.pushAuthorization.onOfferOnboarding = { [weak self] in
       DispatchQueue.main.async { [weak self] in
         guard let rootTabBarController = self?.rootTabBarController else { return }
 
@@ -303,6 +301,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    AppModel.shared.pushAuthorization.applicationDidFinishLaunching()
     AppModel.shared.trackingConsent.applicationDidFinishLaunching()
     self.synchronizePreferences()
     self.configureAnalytics()
@@ -321,6 +320,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 
   func applicationWillEnterForeground(_: UIApplication) {
+    AppModel.shared.pushAuthorization.applicationWillEnterForeground()
     self.viewModel.inputs.applicationWillEnterForeground()
     AppModel.shared.applicationWillEnterForeground()
   }
@@ -391,8 +391,8 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       let context = notification.userInfo?[UserInfoKeys.context] as? PushNotificationDialog.Context,
       let presenter = (notification.userInfo?[UserInfoKeys.viewController] as? UIViewController)
         ?? self.rootTabBarController else { return }
-    self.permissionAlertPresenter.schedule(context: context, presenter: presenter) { [weak self] in
-      self?.viewModel.inputs.didAcceptReceivingRemoteNotifications()
+    self.permissionAlertPresenter.schedule(context: context, presenter: presenter) {
+      AppModel.shared.pushAuthorization.requestAuthorization()
     }
   }
 

@@ -36,9 +36,6 @@ public protocol AppDelegateViewModelInputs {
   /// Call after having invoked AppEnvironment.updateCurrentUser with a fresh user.
   func currentUserUpdatedInEnvironment()
 
-  /// Call when the user taps "OK" from the contextual alert.
-  func didAcceptReceivingRemoteNotifications()
-
   /// Call when the app delegate receives a remote notification.
   func didReceive(remoteNotification notification: [AnyHashable: Any])
   func didReceive(pushEnvelope: PushEnvelope)
@@ -63,9 +60,6 @@ public protocol AppDelegateViewModelInputs {
 public protocol AppDelegateViewModelOutputs: AnyObject {
   /// The value to return from the delegate's `application:didFinishLaunchingWithOptions:` method.
   var applicationDidFinishLaunchingReturnValue: Bool { get }
-
-  /// Emits the application icon badge number
-  var onApplicationIconBadgeNumber: ((Int) -> Void)? { get set }
 
   /// Return this value in the delegate method.
   var continueUserActivityReturnValue: Bool { get }
@@ -103,9 +97,6 @@ public protocol AppDelegateViewModelOutputs: AnyObject {
   /// Emits when a view controller should be presented.
   var onPresentViewController: ((UIViewController) -> Void)? { get set }
 
-  /// Emits when the push token registration begins.
-  var onPushTokenRegistrationStarted: (() -> Void)? { get set }
-
   /// Emits the push token that has been successfully registered on the server.
   var onPushTokenSuccessfullyRegistered: ((String) -> Void)? { get set }
 
@@ -117,9 +108,6 @@ public protocol AppDelegateViewModelOutputs: AnyObject {
 
   /// Emits when an alert should be shown.
   var onShowAlert: ((Notification) -> Void)? { get set }
-
-  /// Emits when application didFinishLaunchingWithOptions and the Onboarding Flow feature flag is enabled.
-  var onTriggerOnboardingFlow: (() -> Void)? { get set }
 
   /// Emits when we should unregister the user from notifications.
   var onUnregisterForRemoteNotifications: (() -> Void)? { get set }
@@ -141,39 +129,30 @@ public protocol AppDelegateViewModelType {
 public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateViewModelInputs,
   AppDelegateViewModelOutputs {
   private let deepLinkRouter: DeepLinkRouter
-  private let pushRegistration: () -> PushRegistrationType.Type
   private let applicationShortcuts: ApplicationShortcutService
   private let devicePushRegistration: DevicePushRegistrationService
   private let sessionFeature: SessionFeature
   private let settingsFeature: SettingsFeature
-  private let onboardingFeature: OnboardingFeature
   private let navigationRoute = UUID()
-  private var pushTasks: [UUID: Task<Void, Never>] = [:]
-  private var hasDeniedPushAuthorization = false
 
   init(
     deepLinkRouter: DeepLinkRouter,
-    pushRegistration: @escaping () -> PushRegistrationType.Type,
     applicationShortcuts: ApplicationShortcutService,
     devicePushRegistration: DevicePushRegistrationService,
     sessionFeature: SessionFeature,
-    settingsFeature: SettingsFeature,
-    onboardingFeature: OnboardingFeature
+    settingsFeature: SettingsFeature
   ) {
     self.deepLinkRouter = deepLinkRouter
-    self.pushRegistration = pushRegistration
     self.applicationShortcuts = applicationShortcuts
     self.devicePushRegistration = devicePushRegistration
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
-    self.onboardingFeature = onboardingFeature
   }
 
 
   deinit {
     let devicePushRegistration = self.devicePushRegistration
     let settingsFeature = self.settingsFeature
-    self.pushTasks.values.forEach { $0.cancel() }
     let feature = self.deepLinkRouter
     let route = self.navigationRoute
     Task { @MainActor in
@@ -205,64 +184,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   func waitForDestination() async {
     await self.deepLinkRouter.waitForPresentation(route: self.navigationRoute)
-  }
-
-  private final class PushOperationState {
-    var finished = false
-  }
-
-  private func performPushOperation(
-    _ start: (@escaping @MainActor (Bool) -> Void) -> Task<Void, Never>?,
-    completion: @escaping @MainActor (Bool) -> Void
-  ) {
-    let id = UUID()
-    let state = PushOperationState()
-    let task = start { [weak self] value in
-      state.finished = true
-      self?.pushTasks[id] = nil
-      completion(value)
-    }
-    if let task, !state.finished { self.pushTasks[id] = task }
-  }
-
-  private func checkPushAuthorizationForLaunch() {
-    if self.hasDeniedPushAuthorization { self.triggerOnboardingIfEligible() }
-    self.performPushOperation({ completion in
-      self.pushRegistration().hasAuthorizedNotifications(completion: completion)
-    }) { [weak self] authorized in
-      guard let self else { return }
-      if authorized {
-        self.beginPushRegistration()
-      } else {
-        self.hasDeniedPushAuthorization = true
-        self.triggerOnboardingIfEligible()
-      }
-    }
-  }
-
-  private func checkPushAuthorizationForBadge() {
-    self.performPushOperation({ completion in
-      self.pushRegistration().hasAuthorizedNotifications(completion: completion)
-    }) { [weak self] authorized in
-      if authorized { self?.onApplicationIconBadgeNumber?(0) }
-    }
-  }
-
-  private func beginPushRegistration() {
-    self.performPushOperation({ completion in
-      self.pushRegistration().register(
-        for: [.alert, .sound, .badge],
-        requestAuthorization: { [onboardingFeature = self.onboardingFeature] options in
-          await onboardingFeature.requestNotifications(options: options)
-        },
-        completion: completion
-      )
-    }) { [weak self] _ in self?.onPushTokenRegistrationStarted?() }
-  }
-
-  private func triggerOnboardingIfEligible() {
-    guard self.onboardingFeature.shouldOfferOnboarding else { return }
-    self.onTriggerOnboardingFlow?()
   }
 
   private func scheduleUserRefresh() {
@@ -319,14 +240,11 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     if let item = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem {
       self.applicationPerformActionForShortcutItem(item)
     }
-    self.checkPushAuthorizationForLaunch()
-    self.checkPushAuthorizationForBadge()
     self.scheduleUserRefresh()
     self.refreshUserSetup()
   }
 
   public func applicationWillEnterForeground() {
-    self.checkPushAuthorizationForBadge()
     self.scheduleUserRefresh()
     self.refreshUserSetup()
   }
@@ -357,10 +275,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   func waitForPushRegistration() async {
     await self.devicePushRegistration.waitForScheduledDelivery()
-  }
-
-  public func didAcceptReceivingRemoteNotifications() {
-    self.beginPushRegistration()
   }
 
   public func applicationOpenUrl(
@@ -414,7 +328,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public private(set) var applicationDidFinishLaunchingReturnValue = true
 
-  public var onApplicationIconBadgeNumber: ((Int) -> Void)?
   public private(set) var continueUserActivityReturnValue = false
   public var onEmailVerificationCompleted: ((String, Bool) -> Void)?
   public var onForceLogout: (() -> Void)?
@@ -427,12 +340,10 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public var onGoToSearch: (() -> Void)?
   public var onPostNotification: ((Notification) -> Void)?
   public var onPresentViewController: ((UIViewController) -> Void)?
-  public var onPushTokenRegistrationStarted: (() -> Void)?
   public var onPushTokenSuccessfullyRegistered: ((String) -> Void)?
   public var onRegisterPushTokenInBraze: ((Data) -> Void)?
   public var onSetApplicationShortcutItems: (([ShortcutItem]) -> Void)?
   public var onShowAlert: ((Notification) -> Void)?
-  public var onTriggerOnboardingFlow: (() -> Void)?
   public var onUnregisterForRemoteNotifications: (() -> Void)?
   public var onUpdateCurrentUser: ((User) -> Void)?
   public var onNotificationSettingsUpdated: (() -> Void)?
