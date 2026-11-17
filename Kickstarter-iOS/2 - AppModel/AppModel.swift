@@ -293,6 +293,7 @@ public final class AppModel {
     let discoveryFeature = DiscoveryFeature(
       provider: AsyncDiscoveryProvider(service: AppEnvironment.current.apiService),
       loadCategories: { try await AppEnvironment.current.apiService.fetchSearchCategories() },
+      categoryCache: { AppEnvironment.current.cache },
       localStore: { AppEnvironment.current.userDefaults },
       cloudStore: { AppEnvironment.current.ubiquitousStore },
       serverEnvironment: { AppEnvironment.current.apiService.serverConfig.environment },
@@ -384,7 +385,10 @@ public final class AppModel {
           debounceSeconds: { AppEnvironment.current.debounceInterval.searchDelaySeconds }
         ),
         provider: searchProvider,
-        lookupProvider: AsyncSearchLookupProvider()
+        lookupProvider: AsyncSearchLookupProvider(
+          service: AppEnvironment.current.apiService,
+          cache: AppEnvironment.current.cache
+        )
       ),
       discoveryFeature: discoveryFeature,
       projectDetailsFeature: ProjectDetailsFeature(

@@ -109,6 +109,9 @@ Swift packages are excluded.
 - DiscoveryFeature now receives its transport, local/cloud stores, category loader,
   build/server metadata and response timing from AppModel composition. Its provider
   and state owner no longer resolve dependencies through AppEnvironment.
+- SearchFeature now receives its lookup transport, cache and timing policy from
+  AppModel composition. Discovery filters receive their category-loading use case
+  from DiscoveryFeature instead of constructing a second global composition root.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

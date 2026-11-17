@@ -60,6 +60,7 @@ public final class DiscoveryFeature {
   private var recommendationGeneration = 0
   private let provider: any DiscoveryProvider
   private let loadCategories: @MainActor () async throws -> RootCategoriesEnvelope
+  private let resolveCategoryCache: @MainActor () -> KSCache
   private let resolveLocalStore: (@MainActor () -> any KeyValueStoreType)?
   private let resolveCloudStore: (@MainActor () -> any KeyValueStoreType)?
   private let resolveServerEnvironment: @MainActor () -> EnvironmentType
@@ -273,6 +274,7 @@ public final class DiscoveryFeature {
   public init(
     provider: any DiscoveryProvider,
     loadCategories: (@MainActor () async throws -> RootCategoriesEnvelope)? = nil,
+    categoryCache: (@MainActor () -> KSCache)? = nil,
     localStore: (@MainActor () -> any KeyValueStoreType)? = nil,
     cloudStore: (@MainActor () -> any KeyValueStoreType)? = nil,
     serverEnvironment: @escaping @MainActor () -> EnvironmentType = { .production },
@@ -287,6 +289,8 @@ public final class DiscoveryFeature {
   ) {
     self.provider = provider
     self.loadCategories = loadCategories ?? { throw DiscoveryCompositionError.missingCategoryLoader }
+    let fallbackCategoryCache = KSCache()
+    self.resolveCategoryCache = categoryCache ?? { fallbackCategoryCache }
     self.resolveLocalStore = localStore
     self.resolveCloudStore = cloudStore
     self.resolveServerEnvironment = serverEnvironment
@@ -302,6 +306,15 @@ public final class DiscoveryFeature {
 
   func rootCategories() async throws -> RootCategoriesEnvelope {
     try await self.loadCategories()
+  }
+
+  func makeCategoriesUseCase() -> FetchCategoriesUseCase {
+    FetchCategoriesUseCase(
+      cache: self.resolveCategoryCache,
+      fetch: { try await self.loadCategories().rootCategories },
+      responseDelaySeconds: self.responseDelaySeconds,
+      sleep: self.sleep
+    )
   }
 
   public func snapshot(for sort: DiscoveryParams.Sort) -> PageSnapshot {

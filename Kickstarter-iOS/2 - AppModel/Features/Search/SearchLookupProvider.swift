@@ -14,25 +14,31 @@ public protocol SearchLookupProvider {
 /// Does not introduce a second cache or start work during construction.
 @MainActor
 public final class AsyncSearchLookupProvider: SearchLookupProvider {
-  public init() {}
+  private let service: any ServiceType
+  private let cacheStore: KSCache
+
+  public init(service: any ServiceType, cache: KSCache) {
+    self.service = service
+    self.cacheStore = cache
+  }
 
   public var cachedCategories: [KsApi.Category]? {
-    AppEnvironment.current.cache[KSCache.ksr_discoveryFiltersCategories] as? [KsApi.Category]
+    self.cacheStore[KSCache.ksr_discoveryFiltersCategories] as? [KsApi.Category]
   }
 
   public func cache(categories: [KsApi.Category]) {
-    AppEnvironment.current.cache[KSCache.ksr_discoveryFiltersCategories] = categories
+    self.cacheStore[KSCache.ksr_discoveryFiltersCategories] = categories
   }
 
   public func fetchCategories() async throws -> [KsApi.Category] {
-    try await AppEnvironment.current.apiService.fetchSearchCategories().rootCategories
+    try await self.service.fetchSearchCategories().rootCategories
   }
 
   public func fetchDefaultLocations() async throws -> [Location] {
-    try await AppEnvironment.current.apiService.fetchSearchDefaultLocations()
+    try await self.service.fetchSearchDefaultLocations()
   }
 
   public func fetchLocations(query: String) async throws -> [Location] {
-    try await AppEnvironment.current.apiService.fetchSearchLocations(term: query)
+    try await self.service.fetchSearchLocations(term: query)
   }
 }

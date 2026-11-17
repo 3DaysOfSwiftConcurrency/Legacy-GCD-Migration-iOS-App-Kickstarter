@@ -10,7 +10,7 @@ public final class DiscoveryFiltersViewModel {
   var onTopRows: (([SelectableRow], Int?) -> Void)?
   var onSelectedRow: ((SelectableRow) -> Void)?
   private let discoveryFeature: DiscoveryFeature
-  private let categoriesUseCase = FetchCategoriesUseCase()
+  private let categoriesUseCase: FetchCategoriesUseCase
   private var configuredRow: SelectableRow?
   private var initialRow: SelectableRow?
   private var initialTopFilters: [DiscoveryParams]?
@@ -29,6 +29,7 @@ public final class DiscoveryFiltersViewModel {
 
   public init(discoveryFeature: DiscoveryFeature) {
     self.discoveryFeature = discoveryFeature
+    self.categoriesUseCase = discoveryFeature.makeCategoriesUseCase()
     self.categoriesUseCase.onCategories = { [weak self] in self?.receivedCategories($0) }
     self.categoriesUseCase.onLoading = { [weak self] in self?.onLoading?($0) }
   }

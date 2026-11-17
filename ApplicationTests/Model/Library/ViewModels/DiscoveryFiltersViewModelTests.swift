@@ -56,6 +56,7 @@ internal final class DiscoveryFiltersViewModelTests: TestCase {
       discoveryFeature: DiscoveryFeature(
         provider: EnvironmentDiscoveryProvider(),
         loadCategories: { try await AppEnvironment.current.apiService.fetchSearchCategories() },
+        categoryCache: { AppEnvironment.current.cache },
         localStore: { AppEnvironment.current.userDefaults },
         cloudStore: { AppEnvironment.current.ubiquitousStore },
         sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })

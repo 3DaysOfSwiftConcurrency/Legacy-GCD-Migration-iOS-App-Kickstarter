@@ -5070,3 +5070,26 @@ resolvers. Live discovery services, visual rendering and the whole Library suite
 unverified. The CFA gate rejects restored global access in DiscoveryFeature. This is not
 full CFA compliance. Swift packages, target identifiers and existing history are unchanged.
 No push.
+
+### Search and discovery-category composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now supplies SearchFeature's lookup provider with an explicit authenticated
+service and cache. DiscoveryFeature composes category loading from its existing loader,
+cache, response timing and sleep dependencies; DiscoveryFiltersViewModel no longer
+constructs a globally configured use case. Search lookup concurrency, cache-first
+category behavior, retries, stale-result rejection and filter presentation remain
+unchanged.
+
+Focused Search lookup, category use-case and Discovery Filters validation passed all
+36 tests. The bounded Search, Discovery and AppModel selection passed all 188 tests.
+Both successful runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2.
+Evidence: `/private/tmp/kickstarter-search-composition-focused-3.xcresult` and
+`/private/tmp/kickstarter-search-composition-bounded.xcresult`.
+
+Live search/discovery services, visual rendering and the whole Library suite remain
+unverified. The CFA gate rejects restored global access in Search lookup/category
+loading and direct category use-case construction in Discovery Filters. This is not
+full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.

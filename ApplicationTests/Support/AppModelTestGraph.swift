@@ -17,6 +17,29 @@ struct EnvironmentDiscoveryProvider: DiscoveryProvider {
   }
 }
 
+@MainActor
+final class EnvironmentSearchLookupProvider: SearchLookupProvider {
+  var cachedCategories: [KsApi.Category]? {
+    AppEnvironment.current.cache[KSCache.ksr_discoveryFiltersCategories] as? [KsApi.Category]
+  }
+
+  func cache(categories: [KsApi.Category]) {
+    AppEnvironment.current.cache[KSCache.ksr_discoveryFiltersCategories] = categories
+  }
+
+  func fetchCategories() async throws -> [KsApi.Category] {
+    try await AppEnvironment.current.apiService.fetchSearchCategories().rootCategories
+  }
+
+  func fetchDefaultLocations() async throws -> [Location] {
+    try await AppEnvironment.current.apiService.fetchSearchDefaultLocations()
+  }
+
+  func fetchLocations(query: String) async throws -> [Location] {
+    try await AppEnvironment.current.apiService.fetchSearchLocations(term: query)
+  }
+}
+
 /// Isolated application composition; unrelated capabilities use inert mock services.
 @MainActor
 func makeTestAppModel(
@@ -41,6 +64,7 @@ func makeTestAppModel(
   )
   let discoveryFeature = discoveryFeature ?? DiscoveryFeature(
     provider: EnvironmentDiscoveryProvider(), loadCategories: { .template },
+    categoryCache: { AppEnvironment.current.cache },
     localStore: { AppEnvironment.current.userDefaults },
     cloudStore: { AppEnvironment.current.ubiquitousStore },
     serverEnvironment: { AppEnvironment.current.apiService.serverConfig.environment },
@@ -340,8 +364,20 @@ extension SearchFeature.Platform {
 
 extension SearchFeature {
   convenience init(
+    platform: Platform,
     provider: any SearchProjectsProvider,
-    lookupProvider: (any SearchLookupProvider)? = nil,
+    lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { _ in },
+    sleep: @escaping @MainActor (TimeInterval) async throws -> Void
+  ) {
+    self.init(
+      platform: platform, provider: provider, lookupProvider: EnvironmentSearchLookupProvider(),
+      lookupSleep: lookupSleep, sleep: sleep
+    )
+  }
+
+  convenience init(
+    provider: any SearchProjectsProvider,
+    lookupProvider: any SearchLookupProvider = EnvironmentSearchLookupProvider(),
     lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -356,6 +392,21 @@ extension SearchFeature {
     self.init(
       platform: .test(), provider: provider, lookupProvider: lookupProvider,
       lookupSleep: lookupSleep, sleep: sleep
+    )
+  }
+}
+
+extension FetchCategoriesUseCase {
+  convenience init(fetch: (@MainActor () async throws -> [KsApi.Category])? = nil) {
+    self.init(
+      cache: { AppEnvironment.current.cache },
+      fetch: fetch ?? { try await AppEnvironment.current.apiService.fetchSearchCategories().rootCategories },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      sleep: { seconds in
+        if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
+        else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+        try Task.checkCancellation()
+      }
     )
   }
 }

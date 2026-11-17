@@ -8,10 +8,21 @@ public final class FetchCategoriesUseCase {
   var onLoading: ((Bool) -> Void)?
   private var request: Task<Void, Never>?
 
-  private let fetch: (@MainActor () async throws -> [KsApi.Category])?
+  private let cache: @MainActor () -> KSCache
+  private let fetch: @MainActor () async throws -> [KsApi.Category]
+  private let responseDelaySeconds: @MainActor () -> TimeInterval
+  private let sleep: @MainActor (TimeInterval) async throws -> Void
 
-  public init(fetch: (@MainActor () async throws -> [KsApi.Category])? = nil) {
+  public init(
+    cache: @escaping @MainActor () -> KSCache,
+    fetch: @escaping @MainActor () async throws -> [KsApi.Category],
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
+    sleep: @escaping @MainActor (TimeInterval) async throws -> Void
+  ) {
+    self.cache = cache
     self.fetch = fetch
+    self.responseDelaySeconds = responseDelaySeconds
+    self.sleep = sleep
   }
 
   deinit { self.request?.cancel() }
@@ -23,15 +34,14 @@ public final class FetchCategoriesUseCase {
   @discardableResult
   public func start() -> Task<Void, Never> {
     if let request = self.request { return request }
-    let environment: Environment = AppEnvironment.current
-    let cache = environment.cache
+    let cache = self.cache()
     if let cached = cache[KSCache.ksr_discoveryFiltersCategories] as? [KsApi.Category] {
       self.onCategories?(cached)
       if !cached.isEmpty { return Task {} }
     }
-    let service = environment.apiService
     let fetch = self.fetch
-    let delay = environment.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
+    let sleep = self.sleep
     self.onLoading?(true)
     let task = Task { @MainActor [weak self] in
       defer {
@@ -42,15 +52,13 @@ public final class FetchCategoriesUseCase {
         try Task.checkCancellation()
         let result: Result<[KsApi.Category], Error>
         do {
-          if let fetch { result = .success(try await fetch()) }
-          else { result = .success(try await service.fetchSearchCategories().rootCategories) }
+          result = .success(try await fetch())
         }
         catch { result = .failure(error) }
         try Task.checkCancellation()
-        if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-        else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
+        try await sleep(delay)
         try Task.checkCancellation()
-        guard let self, AppEnvironment.current.cache === cache else { return }
+        guard let self, self.cache() === cache else { return }
         if case let .success(categories) = result {
           cache[KSCache.ksr_discoveryFiltersCategories] = categories
           self.onCategories?(categories)

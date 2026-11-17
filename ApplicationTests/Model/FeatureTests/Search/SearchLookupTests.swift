@@ -274,7 +274,10 @@ final class SearchLookupTests: TestCase {
       (GraphAPI.LocationsByTermQuery.self, suggestions)
     ]))
     defer { AppEnvironment.popEnvironment() }
-    let provider = AsyncSearchLookupProvider()
+    let provider = AsyncSearchLookupProvider(
+      service: AppEnvironment.current.apiService,
+      cache: AppEnvironment.current.cache
+    )
     let defaultValues = try await provider.fetchDefaultLocations()
     let suggestedValues = try await provider.fetchLocations(query: "Fairfax")
     XCTAssertEqual(defaultValues.count, 3)
@@ -284,13 +287,16 @@ final class SearchLookupTests: TestCase {
 
   func testLiveProviderUsesExistingCacheAndMockCategoryFixture() async throws {
     let cache = KSCache()
-    let provider = AsyncSearchLookupProvider()
     AppEnvironment.pushEnvironment(
       apiService: MockService(fetchGraphCategoriesResult: .success(
         RootCategoriesEnvelope(rootCategories: [.art, .games])
       )), cache: cache
     )
     defer { AppEnvironment.popEnvironment() }
+    let provider = AsyncSearchLookupProvider(
+      service: AppEnvironment.current.apiService,
+      cache: AppEnvironment.current.cache
+    )
     XCTAssertNil(provider.cachedCategories)
     let categories = try await provider.fetchCategories()
     provider.cache(categories: categories)

@@ -99,7 +99,7 @@ public final class SearchFeature {
   public init(
     platform: Platform,
     provider: any SearchProjectsProvider,
-    lookupProvider: (any SearchLookupProvider)? = nil,
+    lookupProvider: any SearchLookupProvider,
     lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -119,7 +119,7 @@ public final class SearchFeature {
     self.sleep = sleep
     self.lookupSleep = lookupSleep
     self.filterSelection = SearchFilterSelection()
-    self.lookupProvider = lookupProvider ?? AsyncSearchLookupProvider()
+    self.lookupProvider = lookupProvider
   }
 
   /// Default choices and lookup data are loaded only on explicit screen demand.

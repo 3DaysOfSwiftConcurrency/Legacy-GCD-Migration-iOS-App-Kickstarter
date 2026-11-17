@@ -1994,3 +1994,16 @@ safe for arbitrary concurrent environment mutation.
   response rejection are unchanged. Controlled coverage verifies direct service,
   store and metadata composition; live discovery data and visual behavior remain
   outside this checkpoint.
+
+## Search and discovery-category composition — 17 November 2026
+
+- AppModel supplies SearchFeature's lookup provider, whose authenticated service and
+  cache are explicit retained dependencies. Search request, lookup overlap,
+  cancellation and stale-result ownership remain in SearchFeature.
+- DiscoveryFeature composes the category-loading use case from its category loader,
+  cache, response timing and sleep policy. DiscoveryFiltersViewModel observes that
+  composed use case and no longer constructs one from the process environment.
+- Existing cache-first behavior, retries, response timing, category presentation and
+  Search screen behavior are preserved by 36 focused and 188 bounded passing tests.
+  Live services, visual rendering and the whole Library suite remain outside this
+  checkpoint.
