@@ -5563,3 +5563,26 @@ The whole Library and Presentation suites remain unverified. The CFA gate reject
 restored ambient composition or raw session access in PPOContainerViewController. This
 is not full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Manage Pledge child composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+ManagePledgeViewController now constructs its summary controller with the PledgeFeature
+from ManagePledgeComposition. The summary controller forwards that exact feature to its
+reward-received child. Both child controllers use required explicit initializers and no
+longer select AppModel.shared, keeping the complete Manage Pledge subtree in one feature
+graph.
+
+Focused ManagePledgeViewModel, ManagePledgeSummaryViewModel and
+ManageViewPledgeRewardReceivedViewModel validation passed all 68 tests with zero failures
+or skips on iPhone 17 Pro Max, iOS 26.2. The PresentationTests target also completed
+build-for-testing successfully. Evidence:
+`/private/tmp/kickstarter-manage-pledge-child-composition-library-2.xcresult` and
+`/private/tmp/kickstarter-manage-pledge-child-composition-presentation-build.xcresult`.
+
+The presentation snapshot run was not counted as a pass: its harness requires an iPad
+mini (A17 Pro) simulator running iOS 18.6, which is not installed. The whole Library and
+Presentation suites remain unverified. The CFA gate rejects restored ambient composition
+in either child controller. This is not full CFA compliance. Swift packages, target
+identifiers and existing history are unchanged. No push.

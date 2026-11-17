@@ -2254,3 +2254,13 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel/Payments coverage passes 27 tests and focused container/root
   presentation coverage passes 12 tests. The bounded affected selections pass 35
   Library tests and 39 Presentation tests. The whole suites remain outside this checkpoint.
+
+## Manage Pledge child composition — 17 November 2026
+
+- ManagePledgeViewController now passes its composition-owned PledgeFeature into the
+  summary controller, which forwards the same feature to the reward-received controller.
+- Neither child controller selects an AppModel graph. Their view models and web policy
+  are constructed from the feature owned by the presenting Manage Pledge flow.
+- Focused Manage Pledge model coverage passes 68 tests. The PresentationTests target
+  builds for testing; snapshot execution still requires the unavailable iPad mini
+  (A17 Pro) simulator running iOS 18.6.

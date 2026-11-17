@@ -110,7 +110,7 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
   }()
 
   private lazy var pledgeSummaryViewController: ManagePledgeSummaryViewController = {
-    ManagePledgeSummaryViewController.instantiate()
+    ManagePledgeSummaryViewController(pledgeFeature: self.composition.pledgeFeature)
   }()
 
   private lazy var pledgeSummarySectionViews = {

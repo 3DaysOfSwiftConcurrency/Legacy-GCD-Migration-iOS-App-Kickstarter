@@ -12,7 +12,17 @@ private enum Layout {
 final class ManagePledgeSummaryViewController: UIViewController {
   // MARK: - Properties
 
-  private let pledgeFeature = AppModel.shared.pledgeFeature
+  private let pledgeFeature: PledgeFeature
+
+  init(pledgeFeature: PledgeFeature) {
+    self.pledgeFeature = pledgeFeature
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is unavailable")
+  }
 
   private lazy var backerInfoContainerStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var backerInfoStackView: UIStackView = { UIStackView(frame: .zero) }()
@@ -30,7 +40,7 @@ final class ManagePledgeSummaryViewController: UIViewController {
   }()
 
   private lazy var rewardReceivedViewController: ManageViewPledgeRewardReceivedViewController = {
-    ManageViewPledgeRewardReceivedViewController.instantiate()
+    ManageViewPledgeRewardReceivedViewController(pledgeFeature: self.pledgeFeature)
   }()
 
   private lazy var pledgeAmountSummaryViewController: PledgeAmountSummaryViewController = {

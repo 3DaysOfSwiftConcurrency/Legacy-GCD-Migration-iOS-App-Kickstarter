@@ -332,6 +332,10 @@ reject_matches 'Manage Pledge receives analytics through PledgeFeature compositi
 reject_matches 'Manage Pledge receives one composed feature graph.' \
   'AppModel[.]shared[.](pledgeFeature|paymentsFeature|rewardsFeature)|AppEnvironment[.]current' \
   "$app_view/Views/ManagePledge/Controllers/ManagePledgeViewController.swift"
+reject_matches 'Manage Pledge child controllers receive their parent-owned PledgeFeature.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/ManagePledge/Controllers/ManagePledgeSummaryViewController.swift" \
+  "$app_view/Views/ManagePledge/Controllers/ManageViewPledgeRewardReceivedViewController.swift"
 reject_matches 'Pledged Projects card formatting receives locale from its Feature.' \
   'AppEnvironment[.]current' "$app_model/Features/PledgedProjects/PPOProjectCardModel+Parsing.swift"
 reject_matches 'Pledged Projects analytics belong to PledgedProjectsFeature composition.' \

@@ -7,10 +7,16 @@ import UIKit
 final class ManageViewPledgeRewardReceivedViewController: UIViewController {
   // MARK: - Properties
 
-  private lazy var viewModel = self.makeViewModel()
+  private let viewModel: ManageViewPledgeRewardReceivedViewModel
 
-  private func makeViewModel() -> ManageViewPledgeRewardReceivedViewModel {
-    ManageViewPledgeRewardReceivedViewModel(pledgeFeature: AppModel.shared.pledgeFeature)
+  init(pledgeFeature: PledgeFeature) {
+    self.viewModel = ManageViewPledgeRewardReceivedViewModel(pledgeFeature: pledgeFeature)
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is unavailable")
   }
 
   private lazy var rootStackView: UIStackView = { UIStackView(frame: .zero) }()

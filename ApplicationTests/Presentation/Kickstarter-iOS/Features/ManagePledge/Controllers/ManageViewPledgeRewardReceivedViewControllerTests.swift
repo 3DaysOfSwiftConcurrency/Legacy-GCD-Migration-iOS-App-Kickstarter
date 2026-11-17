@@ -31,7 +31,9 @@ final class ManageViewPledgeRewardReceivedViewControllerTests: TestCase {
     let devices = [Device.phone4_7inch, Device.phone5_8inch, Device.pad]
     orthogonalCombos(Language.allLanguages, devices).forEach { language, device in
       withEnvironment(language: language) {
-        let controller = ManageViewPledgeRewardReceivedViewController.instantiate()
+        let controller = ManageViewPledgeRewardReceivedViewController(
+          pledgeFeature: AppModel.shared.pledgeFeature
+        )
         controller.configureWith(data: data)
 
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
@@ -60,7 +62,9 @@ final class ManageViewPledgeRewardReceivedViewControllerTests: TestCase {
     let devices = [Device.phone4_7inch, Device.phone5_8inch, Device.pad]
     orthogonalCombos(Language.allLanguages, devices).forEach { language, device in
       withEnvironment(language: language) {
-        let controller = ManageViewPledgeRewardReceivedViewController.instantiate()
+        let controller = ManageViewPledgeRewardReceivedViewController(
+          pledgeFeature: AppModel.shared.pledgeFeature
+        )
         controller.configureWith(data: data)
 
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
@@ -89,7 +93,9 @@ final class ManageViewPledgeRewardReceivedViewControllerTests: TestCase {
     let devices = [Device.phone4_7inch, Device.phone5_8inch, Device.pad]
     orthogonalCombos(Language.allLanguages, devices).forEach { language, device in
       withEnvironment(language: language) {
-        let controller = ManageViewPledgeRewardReceivedViewController.instantiate()
+        let controller = ManageViewPledgeRewardReceivedViewController(
+          pledgeFeature: AppModel.shared.pledgeFeature
+        )
         controller.configureWith(data: data)
 
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
@@ -118,7 +124,9 @@ final class ManageViewPledgeRewardReceivedViewControllerTests: TestCase {
     let devices = [Device.phone4_7inch, Device.phone5_8inch, Device.pad]
     orthogonalCombos(Language.allLanguages, devices).forEach { language, device in
       withEnvironment(language: language) {
-        let controller = ManageViewPledgeRewardReceivedViewController.instantiate()
+        let controller = ManageViewPledgeRewardReceivedViewController(
+          pledgeFeature: AppModel.shared.pledgeFeature
+        )
         controller.configureWith(data: data)
 
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
