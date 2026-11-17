@@ -12,7 +12,9 @@ public final class RewardCardView: UIView {
   // MARK: - Properties
 
   weak var delegate: RewardCardViewDelegate?
-  private let viewModel = RewardCardViewModel()
+  private let viewModel = RewardCardViewModel(
+    currentUser: { AppModel.shared.sessionFeature.currentUser }
+  )
 
   private let rootStackView: UIStackView = UIStackView(frame: .zero)
 

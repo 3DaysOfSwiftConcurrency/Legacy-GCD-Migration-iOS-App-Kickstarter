@@ -47,7 +47,9 @@ final class RewardsCollectionViewController: UICollectionViewController {
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
-  private let viewModel = RewardsCollectionViewModel()
+  private let viewModel = RewardsCollectionViewModel(
+    rewardsFeature: AppModel.shared.rewardsFeature
+  )
 
   static func instantiate(
     with project: Project,

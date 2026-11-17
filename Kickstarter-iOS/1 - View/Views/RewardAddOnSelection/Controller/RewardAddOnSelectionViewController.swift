@@ -40,7 +40,9 @@ final class RewardAddOnSelectionViewController: UIViewController {
   }()
 
   private let viewModel: RewardAddOnSelectionViewModelType =
-    RewardAddOnSelectionViewModel()
+    RewardAddOnSelectionViewModel(
+    rewardsFeature: AppModel.shared.rewardsFeature
+  )
 
   // MARK: - Lifecycle
 

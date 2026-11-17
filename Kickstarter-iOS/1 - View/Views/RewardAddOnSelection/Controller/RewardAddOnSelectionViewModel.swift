@@ -114,7 +114,7 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
     let route = self.addOnsRoute
     Task { @MainActor in rewardsFeature.releaseAddOns(route: route) }
   }
-  public init(rewardsFeature: RewardsFeature = AppModel.shared.rewardsFeature) {
+  public init(rewardsFeature: RewardsFeature) {
     self.rewardsFeature = rewardsFeature
   }
 

@@ -11,15 +11,15 @@ public final class RewardCardContainerViewModel {
   }
   public var onDisplay: ((Display) -> Void)?
   public var onRewardSelected: ((Int) -> Void)?
-  private let sessionFeature: SessionFeature
+  private let currentUser: () -> User?
   private var currentReward: Reward?
-  public init(sessionFeature: SessionFeature = AppModel.shared.sessionFeature) {
-    self.sessionFeature = sessionFeature
+  public init(currentUser: @escaping () -> User?) {
+    self.currentUser = currentUser
   }
 
   public func configureWith(data: RewardCardViewData) {
     self.currentReward = data.reward
-    let isCreator = currentUserIsCreator(of: data.project, currentUser: self.sessionFeature.currentUser)
+    let isCreator = currentUserIsCreator(of: data.project, currentUser: self.currentUser())
     let title = pledgeButtonTitle(data: data, isCreator: isCreator)
     self.onDisplay?(Display(
       style: buttonStyleType(data: data, isCreator: isCreator),

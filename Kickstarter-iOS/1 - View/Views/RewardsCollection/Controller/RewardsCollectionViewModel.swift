@@ -34,8 +34,8 @@ final class RewardsCollectionViewModel {
   private var pendingPledge: (PledgeViewData, Bool)?
   private var showDivider: Bool?
 
-  init(rewardsFeature: RewardsFeature? = nil) {
-    self.rewardsFeature = rewardsFeature ?? AppModel.shared.rewardsFeature
+  init(rewardsFeature: RewardsFeature) {
+    self.rewardsFeature = rewardsFeature
   }
   deinit {
     self.loadingTask?.cancel()

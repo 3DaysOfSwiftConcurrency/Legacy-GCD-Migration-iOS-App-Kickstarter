@@ -8,7 +8,9 @@ import XCTest
 @MainActor
 final class RewardCardContainerViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  fileprivate let vm = RewardCardContainerViewModel()
+  fileprivate let vm = RewardCardContainerViewModel(
+    currentUser: { AppEnvironment.current.currentUser }
+  )
 
   private let pledgeButtonStyleType = Recorder<ButtonStyleType>()
   private let pledgeButtonEnabled = Recorder<Bool>()

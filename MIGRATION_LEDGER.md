@@ -3319,3 +3319,8 @@ Project Page now supplies the Report Project information and form view models
 from one reporting feature. The SwiftUI screens retain their own view models
 and defer form creation until navigation needs it. All 19 focused reporting
 simulator tests and `make check-cfa` passed.
+
+Rewards Collection and Add-on Selection now receive Rewards from their
+controllers. Reward cards and their containers receive a current-user lookup
+for creator-specific display. The focused Rewards suites passed 125 simulator
+tests and `make check-cfa` guards both view-model directories.

@@ -10,7 +10,9 @@ import XCTest
 @MainActor
 final class RewardCardViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  fileprivate let vm = RewardCardViewModel()
+  fileprivate let vm = RewardCardViewModel(
+    currentUser: { AppEnvironment.current.currentUser }
+  )
 
   private let cardUserInteractionIsEnabled = RewardCardRecording<Bool>()
   private let conversionLabelHidden = RewardCardRecording<Bool>()

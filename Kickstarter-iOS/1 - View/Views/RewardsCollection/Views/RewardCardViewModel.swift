@@ -62,17 +62,17 @@ public final class RewardCardViewModel {
 
   var onDisplay: ((Display) -> Void)?
   var onRewardSelected: ((Int) -> Void)?
-  private let sessionFeature: SessionFeature
+  private let currentUser: () -> User?
   private var currentReward: Reward?
 
-  init(sessionFeature: SessionFeature = AppModel.shared.sessionFeature) {
-    self.sessionFeature = sessionFeature
+  init(currentUser: @escaping () -> User?) {
+    self.currentUser = currentUser
   }
 
   func configure(with data: RewardCardViewData) {
     let project = data.project
     let reward = data.reward
-    let isCreator = currentUserIsCreator(of: project, currentUser: self.sessionFeature.currentUser)
+    let isCreator = currentUserIsCreator(of: project, currentUser: self.currentUser())
     self.currentReward = reward
     let conversionText: String?
     if needsConversion(project: project) {

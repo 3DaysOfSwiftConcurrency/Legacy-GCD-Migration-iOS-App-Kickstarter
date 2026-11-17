@@ -14,7 +14,9 @@ public final class RewardCardContainerView: UIView {
     }
   }
 
-  private let viewModel = RewardCardContainerViewModel()
+  private let viewModel = RewardCardContainerViewModel(
+    currentUser: { AppModel.shared.sessionFeature.currentUser }
+  )
 
   // MARK: - Properties
 
