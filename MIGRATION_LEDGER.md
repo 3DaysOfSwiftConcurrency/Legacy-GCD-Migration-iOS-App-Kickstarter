@@ -3437,3 +3437,9 @@ combined email/mobile display and no longer reads the global app cache.
 The regression covers a committed override followed by same-user session
 replacement. Fourteen focused tests and 46 bounded list view-model,
 Settings and Session tests passed on the simulator.
+
+Settings receives account-fields response timing from app composition and
+validates the original read revision before and after that delay. The CFA
+source check now rejects direct environment reads in SettingsFeature. All
+46 focused Settings and Session tests and 126 Settings Account and
+AppDelegate presentation tests passed on the simulator.

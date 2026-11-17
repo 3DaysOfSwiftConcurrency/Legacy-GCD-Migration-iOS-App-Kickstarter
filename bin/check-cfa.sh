@@ -96,6 +96,8 @@ reject_matches 'Messaging view models must receive their dependencies explicitly
   "$app_view/Views/Messages/*ViewModel.swift" "$app_view/Views/SearchMessages/*ViewModel.swift"
 reject_matches 'Features must receive their application dependencies explicitly.' \
   'AppModel[.]shared' "$app_model/Features"
+reject_matches 'Settings must receive environment dependencies from composition.' \
+  'AppEnvironment[.]current' "$app_model/Features/Settings/SettingsFeature.swift"
 reject_matches 'View models must receive API and current-user dependencies from composition.' \
   'AppEnvironment[.]current[.](apiService|currentUser)([^[:alnum:]_]|$)' "$app_view/*ViewModel.swift"
 reject_matches 'View models must receive application dependencies from composition.' \

@@ -397,6 +397,30 @@ extension SettingsFeatureTests {
     XCTAssertEqual(fixture.provider.emails.count, 1)
   }
 
+  func testAccountFieldsChecksTheOriginalReadAfterItsConfiguredDelay() async throws {
+    let fixture = AccountWritesFixture()
+    let delay = AccountRequestGate<Void>()
+    defer { fixture.provider.emails.releaseAll(); delay.releaseAll() }
+    let feature = SettingsFeature(
+      sessionFeature: fixture.session,
+      accountFieldsDelaySeconds: { 2.5 },
+      makeProvider: { fixture.provider }
+    )
+    let read = Task {
+      try await feature.accountFields { seconds in
+        XCTAssertEqual(seconds, 2.5)
+        try await delay.request()
+      }
+    }
+    await fixture.provider.emails.waitFor(1)
+    try fixture.provider.emails.finish(0, .success(.template))
+    await delay.waitFor(1)
+    fixture.session.invalidateReads()
+    try delay.finish(0, .success(()))
+    do { _ = try await read.value; XCTFail("Invalidated account fields were returned") }
+    catch is CancellationError {}
+  }
+
   func testEmailVerificationSharesAndDistinctLinksQueueWithoutLoggingIn() async throws {
     let fixture = AccountWritesFixture()
     fixture.user = nil // A deep link carries its own token.

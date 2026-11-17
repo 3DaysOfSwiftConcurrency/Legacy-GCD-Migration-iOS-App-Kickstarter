@@ -127,6 +127,7 @@ public final class SettingsFeature {
   private let session: SessionFeature
   private let makeProvider: () -> any AccountPreferencesProvider
   private let hasStoredCredentials: @MainActor () -> Bool
+  private let accountFieldsDelaySeconds: @MainActor () -> TimeInterval
   private let refreshDebounce: @MainActor () async throws -> Void
   private var scheduledRefresh: Task<Void, Never>?
   private var lifecycleRefresh: Task<Void, Never>?
@@ -159,6 +160,7 @@ public final class SettingsFeature {
   public init(
     sessionFeature: SessionFeature,
     hasStoredCredentials: @escaping @MainActor () -> Bool = { false },
+    accountFieldsDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     refreshDebounce: @escaping @MainActor () async throws -> Void = {
       try await Task.sleep(for: .seconds(5))
     },
@@ -166,6 +168,7 @@ public final class SettingsFeature {
   ) {
     self.session = sessionFeature
     self.hasStoredCredentials = hasStoredCredentials
+    self.accountFieldsDelaySeconds = accountFieldsDelaySeconds
     self.refreshDebounce = refreshDebounce
     self.makeProvider = makeProvider
   }
@@ -441,6 +444,12 @@ public final class SettingsFeature {
   }
 
   public func emailUser() async throws -> GraphUser {
+    try await self.readEmailUser()
+  }
+
+  private func readEmailUser(
+    beforeDelivery: (@MainActor () async throws -> Void)? = nil
+  ) async throws -> GraphUser {
     let generation = self.session.generation
     let userID = self.session.currentUser?.id
     while let previous = self.tail?.task { _ = await previous.result }
@@ -461,40 +470,29 @@ public final class SettingsFeature {
       }
       self.emailRead = (id, userID, generation, revision, task)
     }
-    do {
-      let user = try await task.value
+    func requireCurrentRead() throws {
       try Task.checkCancellation()
-      guard revision == self.session.readGeneration, self.session.isCurrent(
-        userID: userID,
-        generation: generation
-      )
+      guard revision == self.session.readGeneration,
+            self.session.isCurrent(userID: userID, generation: generation)
       else { throw CancellationError() }
-      return user
-    } catch {
-      guard !Task.isCancelled, revision == self.session.readGeneration,
-            self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
-      throw error
     }
+
+    let result = await task.result
+    try requireCurrentRead()
+    if let beforeDelivery {
+      if case let .failure(error) = result, error is CancellationError { throw error }
+      try await beforeDelivery()
+      try requireCurrentRead()
+    }
+    return try result.get()
   }
 
   public func accountFields(sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) async throws -> GraphUser {
-    let generation = self.session.generation
-    let userID = self.session.currentUser?.id
-    let result: Result<GraphUser, Error>
-    do {
-      result = .success(try await self.emailUser())
-    } catch {
-      if error is CancellationError || Task.isCancelled { throw CancellationError() }
-      result = .failure(error)
+    try await self.readEmailUser {
+      try await sleep(self.accountFieldsDelaySeconds())
     }
-    let revision = self.session.readGeneration
-    try await sleep(AppEnvironment.current.apiDelayInterval.searchDelaySeconds)
-    try Task.checkCancellation()
-    guard self.session.isCurrent(userID: userID, generation: generation),
-          self.session.readGeneration == revision else { throw CancellationError() }
-    return try result.get()
   }
 
   /// Start a session-bound refresh immediately; the caller may cancel this read.

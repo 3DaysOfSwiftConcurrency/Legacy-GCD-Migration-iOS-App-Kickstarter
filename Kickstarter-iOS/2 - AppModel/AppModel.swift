@@ -414,6 +414,7 @@ public final class AppModel {
     let settingsFeature = SettingsFeature(
       sessionFeature: sessionFeature,
       hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
+      accountFieldsDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
     )
     let messagingFeature = MessagingFeature(sessionFeature: sessionFeature, makeProvider: {
