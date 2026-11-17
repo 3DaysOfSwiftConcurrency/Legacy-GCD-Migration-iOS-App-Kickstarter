@@ -9,7 +9,7 @@ import XCTest
 @MainActor
 final class PledgeStatusLabelViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = PledgeStatusLabelViewModel()
+  private let vm = PledgeStatusLabelViewModel(webBaseURL: { URL(string: "https://backing.example.invalid")! })
 
   func testBadgeAndMissingTextPreserveExistingLabel() {
     let first = PledgeStatusLabelViewData(
@@ -525,7 +525,7 @@ final class PledgeStatusLabelViewModelTests: TestCase {
     ])
   }
 
-  func testBackingStatus_Errored_Backer_PledgeOverTime() {
+  func testBackingStatus_Errored_Backer_PledgeOverTime() throws {
     let data = PledgeStatusLabelViewData(
       currentUserIsCreatorOfProject: false,
       needsConversion: false,
@@ -543,6 +543,13 @@ final class PledgeStatusLabelViewModelTests: TestCase {
     XCTAssertEqual(self.vm.labelText.map { [$0.string] } ?? [], [
       "We can’t process your Pledge Over Time payment. Please view your pledge on a web browser and log in to fix your payment."
     ])
+
+    let text = try XCTUnwrap(self.vm.labelText)
+    var links: [URL] = []
+    text.enumerateAttribute(.link, in: NSRange(location: 0, length: text.length)) { value, _, _ in
+      if let url = value as? URL { links.append(url) }
+    }
+    XCTAssertEqual(links.map(\.absoluteString), ["https://backing.example.invalid/projects/1/a-fun-project/backing/details"])
   }
 
   func testBackingStatus_AuthenticationRequired_Backer_PledgeOverTime() {

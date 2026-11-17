@@ -5,9 +5,10 @@ import XCTest
 
 @MainActor
 class ProjectURLBuilderTests: XCTestCase {
-  func testGetProjectBackingDetailsURL() {
-    let backingDetailsURL = getProjectBackingDetailsURL(with: Project.template)
-    let url = "https://www.kickstarter.com/projects/1/a-fun-project/backing/details"
+  func testGetProjectBackingDetailsURL() throws {
+    let baseURL = try XCTUnwrap(URL(string: "https://backing.example.invalid"))
+    let backingDetailsURL = getProjectBackingDetailsURL(with: Project.template, webBaseURL: baseURL)
+    let url = "https://backing.example.invalid/projects/1/a-fun-project/backing/details"
 
     XCTAssertNotNil(backingDetailsURL)
     XCTAssertEqual(backingDetailsURL?.absoluteString, url)

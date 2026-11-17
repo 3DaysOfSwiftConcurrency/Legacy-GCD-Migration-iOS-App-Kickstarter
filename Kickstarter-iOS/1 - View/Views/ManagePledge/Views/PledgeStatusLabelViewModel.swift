@@ -27,13 +27,17 @@ extension PledgeStatusLabelViewData {
 
 @MainActor @Observable
 public final class PledgeStatusLabelViewModel {
-  public init() {}
+  private let webBaseURL: @MainActor () -> URL
+
+  public init(webBaseURL: @escaping @MainActor () -> URL) {
+    self.webBaseURL = webBaseURL
+  }
 
   public private(set) var labelText: NSAttributedString?
   public private(set) var badgeHidden = true
 
   public func configure(with data: PledgeStatusLabelViewData) {
-    if let text = statusLabelText(with: data) {
+    if let text = statusLabelText(with: data, webBaseURL: self.webBaseURL) {
       self.labelText = text
     }
     let pledgeIsErrored = data.backingState == .errored || data.backingState == .authenticationRequired
@@ -45,7 +49,9 @@ public final class PledgeStatusLabelViewModel {
 // MARK: - Functions
 
 @MainActor
-private func statusLabelText(with data: PledgeStatusLabelViewData) -> NSAttributedString? {
+private func statusLabelText(
+  with data: PledgeStatusLabelViewData, webBaseURL: @MainActor () -> URL
+) -> NSAttributedString? {
   let currentUserIsCreatorOfProject = data.currentUserIsCreatorOfProject
 
   let paragraphStyle = NSMutableParagraphStyle()
@@ -87,7 +93,7 @@ private func statusLabelText(with data: PledgeStatusLabelViewData) -> NSAttribut
     // TODO: These changes are temporary and will be updated to return the correct text once the native implementation for this case is complete. [MBL-2012](https://kickstarter.atlassian.net/browse/MBL-2012)
     return nil
   case (.errored, false, true), (.authenticationRequired, false, true):
-    return attributedPlotErroredString(with: data, attributes: attributes)
+    return attributedPlotErroredString(with: data, attributes: attributes, webBaseURL: webBaseURL())
   case (.pledged, _, false):
     return attributedConfirmationString(with: data)
   case (.pledged, _, true):
@@ -228,13 +234,14 @@ private func attributedPledgeOverTimeConfirmationString(with data: PledgeStatusL
 @MainActor
 private func attributedPlotErroredString(
   with data: PledgeStatusLabelViewData,
-  attributes attrs: [NSAttributedString.Key: Any]
+  attributes attrs: [NSAttributedString.Key: Any],
+  webBaseURL: URL
 ) -> NSAttributedString? {
   guard let project = data.project else {
     return nil
   }
 
-  guard let backingDetailLink = getProjectBackingDetailsURL(with: project) else {
+  guard let backingDetailLink = getProjectBackingDetailsURL(with: project, webBaseURL: webBaseURL) else {
     return nil
   }
 

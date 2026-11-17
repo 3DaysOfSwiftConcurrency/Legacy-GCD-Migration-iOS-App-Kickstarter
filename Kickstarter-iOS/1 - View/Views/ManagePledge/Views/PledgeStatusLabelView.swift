@@ -12,7 +12,9 @@ final class PledgeStatusLabelView: UIView {
   private lazy var textView = { UITextView(frame: .zero) }()
   private lazy var badgeView = { BadgeView(frame: .zero) }()
 
-  private let viewModel = PledgeStatusLabelViewModel()
+  private let viewModel = PledgeStatusLabelViewModel(webBaseURL: {
+    AppModel.shared.projectDetailsFeature.webBaseURL
+  })
 
   // MARK: - Lifecycle
 

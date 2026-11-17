@@ -3458,6 +3458,13 @@ cards. The existing quantity and conversion paths are preserved. All 219
 focused shipping and checkout tests and 111 card and shipping-selector
 regressions passed on the simulator.
 
+The backing-details URL builder now takes its web host explicitly. The
+pledge status label receives the Project Details host from its view, and
+the payment-error test verifies the actual attributed link. The CFA check
+now covers the full Project Details folder for direct environment reads.
+All 28 focused tests and 114 Manage Pledge, Project Page and Pledged
+Projects regression tests passed.
+
 Checkout analytics now takes project-specific Apple Pay card eligibility
 as an explicit input. Pledge, post-campaign checkout, Manage Pledge,
 Rewards and Add-on Selection receive it from their controllers. The CFA
