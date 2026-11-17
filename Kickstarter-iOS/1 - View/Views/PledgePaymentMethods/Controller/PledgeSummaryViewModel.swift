@@ -30,8 +30,8 @@ public final class PledgeSummaryViewModel {
   private var loaded = false
   private let pledgeFeature: PledgeFeature
 
-  public init(pledgeFeature: PledgeFeature? = nil) {
-    self.pledgeFeature = pledgeFeature ?? AppModel.shared.pledgeFeature
+  public init(pledgeFeature: PledgeFeature) {
+    self.pledgeFeature = pledgeFeature
   }
 
   public func configure(with data: PledgeSummaryViewData) {

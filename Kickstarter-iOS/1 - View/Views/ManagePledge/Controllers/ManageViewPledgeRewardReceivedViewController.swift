@@ -7,7 +7,9 @@ import UIKit
 final class ManageViewPledgeRewardReceivedViewController: UIViewController {
   // MARK: - Properties
 
-  private let viewModel = ManageViewPledgeRewardReceivedViewModel()
+  private let viewModel = ManageViewPledgeRewardReceivedViewModel(
+    pledgeFeature: AppModel.shared.pledgeFeature
+  )
 
   private lazy var rootStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var rewardReceivedInfoStackView: UIStackView = { UIStackView(frame: .zero) }()

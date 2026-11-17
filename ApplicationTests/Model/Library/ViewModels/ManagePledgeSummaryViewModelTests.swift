@@ -10,7 +10,10 @@ import XCTest
 final class ManagePledgeSummaryViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
-  private let vm = ManagePledgeSummaryViewModel()
+  private let vm = ManagePledgeSummaryViewModel(pledgeFeature: PledgeFeature(
+    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
+  ))
 
   func testTextOutputsEmitTheCorrectValue_US_ProjectCountryCurrency() {
     let data = ManagePledgeSummaryViewData(

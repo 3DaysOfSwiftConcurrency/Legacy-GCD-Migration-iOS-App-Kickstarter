@@ -13,7 +13,9 @@ internal protocol PledgeManagerWebViewControllerDelegate: AnyObject {
 internal final class PledgeManagerWebViewController: WebViewController {
   internal weak var delegate: PledgeManagerWebViewControllerDelegate?
   private var sessionStartedObserver: MainActorNotificationObservation?
-  fileprivate let viewModel = PledgeManagerWebViewModel()
+  fileprivate let viewModel = PledgeManagerWebViewModel(
+    pledgeFeature: AppModel.shared.pledgeFeature
+  )
 
   internal static func configuredWith(url: String)
     -> PledgeManagerWebViewController {

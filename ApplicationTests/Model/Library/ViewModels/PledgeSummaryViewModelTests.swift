@@ -8,7 +8,10 @@ import XCTest
 @MainActor
 internal final class PledgeSummaryViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = PledgeSummaryViewModel()
+  private let vm = PledgeSummaryViewModel(pledgeFeature: PledgeFeature(
+    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
+  ))
 
   private let amountLabelAttributedText = Recorder<NSAttributedString>()
   private let amountLabelText = Recorder<String>()

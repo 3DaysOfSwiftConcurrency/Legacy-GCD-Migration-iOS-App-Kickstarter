@@ -22,7 +22,9 @@ final class PledgeRewardsSummaryTotalViewController: UIViewController {
     PledgeOverTimeBadgeView(frame: .zero)
   }()
 
-  private let viewModel = PledgeSummaryViewModel()
+  private let viewModel = PledgeSummaryViewModel(
+    pledgeFeature: AppModel.shared.pledgeFeature
+  )
 
   // MARK: - Lifecycle
 

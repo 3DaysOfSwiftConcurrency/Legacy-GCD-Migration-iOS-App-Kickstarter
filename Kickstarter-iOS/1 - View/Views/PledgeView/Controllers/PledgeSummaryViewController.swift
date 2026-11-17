@@ -18,7 +18,9 @@ final class PledgeSummaryViewController: UIViewController {
   private lazy var titleLabel: UILabel = { UILabel(frame: .zero) }()
   private lazy var totalConversionLabel: UILabel = { UILabel(frame: .zero) }()
   private lazy var totalStackView: UIStackView = { UIStackView(frame: .zero) }()
-  private let viewModel = PledgeSummaryViewModel()
+  private let viewModel = PledgeSummaryViewModel(
+    pledgeFeature: AppModel.shared.pledgeFeature
+  )
 
   // MARK: - Lifecycle
 

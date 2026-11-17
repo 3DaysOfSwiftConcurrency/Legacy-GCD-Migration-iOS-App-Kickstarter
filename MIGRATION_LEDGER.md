@@ -3315,6 +3315,11 @@ The project notifications screen and its cells now receive Settings from
 their UI owners. The focused project notification suites passed 14 simulator
 tests. The CFA check guards both view models.
 
+Pledge summary, manage-pledge reward receipt, and pledge-manager web screens
+now receive Pledge from their controllers. The focused simulator run passed 81
+tests across these screens and PledgeFeature. The CFA check covers their view
+models.
+
 Project Page now supplies the Report Project information and form view models
 from one reporting feature. The SwiftUI screens retain their own view models
 and defer form creation until navigation needs it. All 19 focused reporting

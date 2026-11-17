@@ -35,7 +35,7 @@ public struct ManagePledgeSummaryViewData: Equatable {
 public final class ManagePledgeSummaryViewModel {
   private let pledgeFeature: PledgeFeature
 
-  public init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature) {
+  public init(pledgeFeature: PledgeFeature) {
     self.pledgeFeature = pledgeFeature
   }
   public private(set) var data: ManagePledgeSummaryViewData?

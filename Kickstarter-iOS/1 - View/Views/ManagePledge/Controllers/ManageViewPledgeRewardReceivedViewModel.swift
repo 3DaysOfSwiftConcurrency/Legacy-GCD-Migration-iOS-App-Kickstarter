@@ -31,7 +31,7 @@ public final class ManageViewPledgeRewardReceivedViewModel {
   private var data: ManageViewPledgeRewardReceivedViewData?
   private var loaded = false
 
-  public init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature,
+  public init(pledgeFeature: PledgeFeature,
               delay: @escaping @MainActor () async throws -> Void = {
     let interval = AppEnvironment.current.apiDelayInterval
     switch interval {

@@ -40,7 +40,9 @@ final class ManagePledgeSummaryViewController: UIViewController {
   private lazy var totalAmountStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var totalLabel: UILabel = { UILabel(frame: .zero) }()
 
-  private let viewModel = ManagePledgeSummaryViewModel()
+  private let viewModel = ManagePledgeSummaryViewModel(
+    pledgeFeature: AppModel.shared.pledgeFeature
+  )
 
   // MARK: - Lifecycle
 

@@ -44,6 +44,9 @@ reject_matches 'Checkout view models must receive dependencies from their contro
   'AppModel[.]shared|AppEnvironment[.]current' "$pledge_view_model" "$post_campaign_view_model"
 reject_matches 'Pledge management view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$manage_pledge_view_model" "$cancel_pledge_view_model"
+reject_matches 'Pledge summary and web view models must receive Pledge explicitly.' \
+  'AppModel[.]shared' "$app_view/Views/ManagePledge/*ViewModel.swift" \
+  "$app_view/Views/PledgePaymentMethods/*ViewModel.swift" "$app_view/Views/SurveyResponse/*ViewModel.swift"
 reject_matches 'ProjectPageViewModel must receive dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$project_page_view_model"
 reject_matches 'Project Page and update view models must receive their feature dependencies explicitly.' \

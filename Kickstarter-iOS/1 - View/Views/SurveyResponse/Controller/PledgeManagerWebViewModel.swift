@@ -30,7 +30,7 @@ final class PledgeManagerWebViewModel {
   private var updateTask: Task<Void, Never>?
   private var updateRevision = UUID()
 
-  init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature) {
+  init(pledgeFeature: PledgeFeature) {
     self.pledgeFeature = pledgeFeature
   }
   deinit {
