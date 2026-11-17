@@ -304,14 +304,19 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   private var latestFAQSelection: (Int, [Bool])?
   private var selectedNavigationIndex: Int?
   private var latestNavigationSection: NavigationSection?
-  private var relatedState: SimilarProjectsState = .loading
-  private var hasRelatedStateEmission = false
+  private var relatedState: SimilarProjectsState {
+    let snapshot = self.projectDetailsFeature.relatedSnapshot(for: self.projectRoute)
+    guard let project = self.latestProject, snapshot.projectID == String(project.id),
+          !snapshot.isLoading else { return .loading }
+    if let error = snapshot.error { return .error(error: error) }
+    guard snapshot.hasLoaded else { return .loading }
+    return .loaded(projects: snapshot.projects)
+  }
   private var requestRefTag: RefTag?
   private var pendingViewedProjects: [(Project, RefTag?)] = []
   private var pendingAppearances = 0
   private var didRecordAttribution = false
   private var didInspectFirstCookie = false
-  private var lastRelatedProjectID: String?
   internal private(set) var loadingTask: Task<Void, Never>?
 
   private let analytics: () -> KSRAnalytics
@@ -330,7 +335,6 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     self.advertisingIdentifier = advertisingIdentifier
     self.platformVersion = platformVersion
     self.projectDetailsFeature = projectDetailsFeature
-    self.similarProjectsUseCase = SimilarProjectsUseCase(projectDetailsFeature: projectDetailsFeature)
 
 
     // MARK: Project notice
@@ -370,19 +374,12 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     }
     self.rewardsUseCase.onLogin = { [weak self] in self?.onGoToLoginWithIntent?($0) }
 
-    self.similarProjectsUseCase.onState = { [weak self] state in
-      guard let self else { return }
-      self.relatedState = state
-      self.hasRelatedStateEmission = true
-      self.showSelectedProjectTabIfReady()
-    }
-
-    self.similarProjectsUseCase.onNavigate = { [weak self] in self?.onNavigateToSimilarProject?($0) }
-
     let route = self.projectRoute
     self.projectDetailsObservation = projectDetailsFeature.observe { [weak self] update in
       guard let self else { return }
       switch update {
+      case let .relatedChanged(updateRoute) where updateRoute == route:
+        self.showSelectedProjectTabIfReady()
       case let .loading(updateRoute, loading) where updateRoute == route:
         if loading { self.onConfigurePledgeCTA?(.loading) }
       case let .completion(updateRoute, result) where updateRoute == route:
@@ -423,15 +420,8 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
       self.projectDetailsFeature.storeReferral(for: project, fallback: refTag)
     }
     let projectID = "\(project.id)"
-    if self.lastRelatedProjectID != projectID {
-      self.lastRelatedProjectID = projectID
-      let session = self.projectDetailsFeature.sessionFeature
-      let userID = session.currentUser?.id
-      let generation = session.generation
-      DispatchQueue.main.async { [weak self] in
-        guard session.isCurrent(userID: userID, generation: generation) else { return }
-        self?.similarProjectsUseCase.projectIDLoaded(projectID: projectID)
-      }
+    if self.projectDetailsFeature.relatedSnapshot(for: self.projectRoute).projectID != projectID {
+      self.projectDetailsFeature.requestRelated(route: self.projectRoute, projectID: projectID)
     }
   }
 
@@ -483,6 +473,10 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   internal func waitForBlocking() async {
     await self.projectDetailsFeature.discussionFeature.waitForMutations()
     await self.blockPresentation.wait()
+  }
+
+  func waitForRelatedProjects() async {
+    await self.projectDetailsFeature.waitForRelatedProjects(route: self.projectRoute)
   }
 
   deinit {
@@ -649,7 +643,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   }
 
   private func showSelectedProjectTabIfReady() {
-    guard self.hasRelatedStateEmission, let section = self.latestNavigationSection,
+    guard self.hasLoadedView, let section = self.latestNavigationSection,
           let project = self.latestProject else { return }
     let expanded = Array(repeating: false, count: project.extendedProjectProperties?.faqs.count ?? 0)
     var urls: [URL] = []
@@ -686,15 +680,12 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   }
 
   public func userSessionChanged() {
-    self.lastRelatedProjectID = nil
-    self.similarProjectsUseCase.sessionChanged()
-    self.relatedState = .loading
+    self.projectDetailsFeature.releaseRelated(route: self.projectRoute)
     self.loadProject(force: true)
   }
 
   public func viewDidLoad() {
     self.hasLoadedView = true
-    self.hasRelatedStateEmission = true
     self.showSelectedProjectTabIfReady()
     if let (projectOrParam, refInfo, _) = self.configData, projectOrParam.canDisplayProjectPreview {
       self.onConfigureDataSource?((.overview, projectOrParam, refInfo?.refTag))
@@ -756,10 +747,8 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
 
   // MARK: - Similar Projects
 
-  private let similarProjectsUseCase: SimilarProjectsUseCase
-
   public func similarProjectTapped(project: ProjectCardProperties) {
-    self.similarProjectsUseCase.projectTapped(project: project)
+    self.onNavigateToSimilarProject?(project)
   }
 
   public var onNavigateToSimilarProject: ((ProjectCardProperties) -> Void)?

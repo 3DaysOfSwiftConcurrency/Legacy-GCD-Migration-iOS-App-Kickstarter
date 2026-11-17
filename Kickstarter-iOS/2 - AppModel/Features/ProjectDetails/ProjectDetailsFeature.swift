@@ -147,8 +147,10 @@ public final class ProjectDetailsFeature {
   }
 
   public struct RelatedSnapshot {
+    public fileprivate(set) var projectID: String?
     public fileprivate(set) var projects: [ProjectCardProperties] = []
     public fileprivate(set) var isLoading = false
+    public fileprivate(set) var hasLoaded = false
     public fileprivate(set) var error: ErrorEnvelope?
   }
 
@@ -188,6 +190,10 @@ public final class ProjectDetailsFeature {
     await self.requestRelated(route: route, projectID: projectID).value
   }
 
+  func waitForRelatedProjects(route: UUID) async {
+    await self.relatedPages[route]?.request?.task.value
+  }
+
   /// Recommendations are independent of the project's required dependencies.
   /// Equivalent requests share work; a changed project replaces only this route.
   @discardableResult
@@ -203,6 +209,7 @@ public final class ProjectDetailsFeature {
     page.request?.task.cancel()
     let requestID = UUID()
     let provider = self.makeProvider()
+    if page.snapshot.projectID != projectID { page.snapshot = RelatedSnapshot(projectID: projectID) }
     page.snapshot.isLoading = true
     page.snapshot.error = nil
     let task = Task { [weak self] in
@@ -210,6 +217,10 @@ public final class ProjectDetailsFeature {
         if page.request?.id == requestID {
           page.request = nil
           page.snapshot.isLoading = false
+          if !Task.isCancelled, session.isCurrent(in: sessionFeature),
+             let self, self.relatedPages[route] === page {
+            self.emit(.relatedChanged(route))
+          }
         }
       }
       do {
@@ -218,6 +229,7 @@ public final class ProjectDetailsFeature {
         try Self.checkSession(session, sessionFeature: sessionFeature)
         guard let self, self.relatedPages[route]?.request?.id == requestID else { return }
         page.snapshot.projects = projects
+        page.snapshot.hasLoaded = true
       } catch is CancellationError {
         // Keep cancellation distinct from the existing visible error state.
       } catch {
@@ -272,6 +284,7 @@ public final class ProjectDetailsFeature {
   internal enum Update {
     case loading(UUID, Bool)
     case completion(UUID, Result<Project, ErrorEnvelope>)
+    case relatedChanged(UUID)
   }
   private var observers: [(id: UUID, callback: (Update) -> Void)] = []
   internal func observe(_ callback: @escaping (Update) -> Void) -> MainActorObservation {
@@ -423,6 +436,7 @@ public final class ProjectDetailsFeature {
   }
 
   public func release(route: UUID) {
+    self.releaseRelated(route: route)
     self.attributionRoutes[route] = nil
     self.cancel(route: route)
     self.pages.removeValue(forKey: route)

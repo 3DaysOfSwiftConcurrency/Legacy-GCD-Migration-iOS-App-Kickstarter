@@ -3,7 +3,21 @@
 The real Xcode target is LibraryTests in Kickstarter.xcodeproj, using scheme
 Library-iOS. The package test stub is not the migration regression suite.
 
-## Latest checkpoint — discussion reads and project media
+## Latest checkpoint — Project Page related projects
+
+106 focused ProjectPageViewModelTests, ProjectPageRelatedProjectsTests and
+ProjectDetailsFeatureTests passed, followed by 89 bounded tracking, creator,
+media, Rewards and Recommendations regressions. Both selections used LibraryTests
+on iPhone 17 Pro Max, iOS 26.2, with no failures or skips. Result bundles are
+`/private/tmp/kickstarter-project-related-focused.xcresult` and
+`/private/tmp/kickstarter-project-related-regression.xcresult`.
+
+ProjectPageRelatedProjectsTests replaces the removed SimilarProjectsUseCaseTests
+with page-level loading, selection, project replacement, same-project refresh and
+session-change scenarios. The existing parsing cases remain in that suite.
+The full suite, live requests and visual parity were not checked by this run.
+
+## Previous checkpoint — discussion reads and project media
 
 454 combined tests passed with zero failures/skips, followed by the app build:
 /private/tmp/kickstarter-discussion-media.ga9kgf. Run the sibling
@@ -62,7 +76,7 @@ independent routes and account changes. ProjectDetailsFeatureTests adds related
 request ownership tests. Existing per-view-model tests retain their presentation
 assertions and await owned tasks. New test membership is in LibraryTests in the
 Xcode project; production Library/KsApi sources use package file discovery.
-RewardsCollectionViewModelTests, SimilarProjectsUseCaseTests and
+RewardsCollectionViewModelTests, ProjectPageRelatedProjectsTests and
 NoRewardInserterTests are nonvisual and individually opt out of the snapshot-only
 reference-device restriction. Visual suites retain that restriction.
 

@@ -42,6 +42,11 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
+    var relatedUpdates = 0
+    let observation = feature.observe { update in
+      if case let .relatedChanged(updatedRoute) = update, updatedRoute == route { relatedUpdates += 1 }
+    }
+    defer { observation.stop() }
     let first = feature.requestRelated(route: route, projectID: "1")
     let shared = feature.requestRelated(route: route, projectID: "1")
     await provider.waitFor("related:1")
@@ -56,6 +61,8 @@ final class ProjectDetailsFeatureTests: TestCase {
     XCTAssertTrue(first.isCancelled)
     XCTAssertNil(feature.relatedSnapshot(for: route).error)
     XCTAssertFalse(feature.relatedSnapshot(for: route).isLoading)
+    XCTAssertEqual(feature.relatedSnapshot(for: route).projectID, "2")
+    XCTAssertEqual(relatedUpdates, 1)
   }
 
   func testRelatedFailureAndEmptySuccessAreDistinctAndRetryable() async {
@@ -256,6 +263,8 @@ final class ProjectDetailsFeatureTests: TestCase {
         if id == route { events.append(loading ? "loading" : "finished") }
       case let .completion(id, result):
         if id == route, case .success = result { events.append("project") }
+      case .relatedChanged:
+        break
       }
     }
     await feature.load(route: route, param: .id(1))
@@ -552,7 +561,7 @@ final class ProjectDetailsFeatureTests: TestCase {
 }
 
 @MainActor
-private final class ControlledProjectDetailsProvider: ProjectDetailsProvider {
+final class ControlledProjectDetailsProvider: ProjectDetailsProvider {
   var pauseAttribution = false
   var attributions: [GraphAPI.CreateAttributionEventInput] = []
   let attributionGate = AccountRequestGate<Void>()

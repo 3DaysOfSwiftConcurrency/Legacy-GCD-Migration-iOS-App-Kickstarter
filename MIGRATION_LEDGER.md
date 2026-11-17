@@ -4120,3 +4120,29 @@ visual transitions remain unverified.
 Project Page still defers related-project admission with an unowned
 main-queue callback. The presentation helper and the ViewModel also
 retain separate related-project state.
+
+### Project Page related-project ownership — Matthew Thomas
+
+ProjectDetailsFeature owns the related-project request and its snapshot,
+including the project identity, loading state, completed result, and error.
+ProjectPageViewModel derives the displayed state from that snapshot and
+observes completion for its own route. SimilarProjectsUseCase, its task,
+the ViewModel's duplicate stored state, and the deferred main-queue request
+admission are removed. Releasing the page route releases its related request.
+
+The page keeps completed recommendations when refreshing the same project.
+Opening another project displays loading until that project's request finishes.
+A session change clears the previous recommendations and reloads them for the
+same project. Tapping a related project retains the existing navigation output.
+Controlled tests cover replacement, late failure suppression, and request sharing;
+the former helper scenarios now run through the page ViewModel.
+
+LibraryTests on iPhone 17 Pro Max, iOS 26.2 passed 106 focused Project Page,
+related-project and Project Details tests, then 89 bounded tracking, creator,
+media, Rewards and Recommendations regressions, with no failures or skips.
+Result bundles: `/private/tmp/kickstarter-project-related-focused.xcresult` and
+`/private/tmp/kickstarter-project-related-regression.xcresult`.
+These results cover this checkpoint, not the complete migration. Live networking,
+visual parity and the full Library-iOS suite remain unverified. Swift packages
+were not changed. Project Page controller presentation still contains deferred
+main-queue callbacks that need a separate lifetime audit.

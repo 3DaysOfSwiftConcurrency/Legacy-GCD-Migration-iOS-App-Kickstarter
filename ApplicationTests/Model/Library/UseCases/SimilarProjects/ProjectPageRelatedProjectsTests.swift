@@ -7,131 +7,130 @@ import Prelude
 import XCTest
 
 @MainActor
-final class SimilarProjectsUseCaseTests: TestCase {
+final class ProjectPageRelatedProjectsTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private var useCase: SimilarProjectsUseCase!
+  private var vm: ProjectPageViewModel!
   private var tappedProjects: [ProjectCardProperties] = []
   private var states: [SimilarProjectsState] = []
-  private var mockService: MockService!
+  private var details: ProjectDetailsFeature!
 
   override func setUp() async throws {
     try await super.setUp()
-    MainActor.assumeIsolated {
-      // Create mock data for similar projects
-      let mockProjectNodes: [GraphAPI.FetchSimilarProjectsQuery.Data.Projects.Node?] = [
-        self.createMockProjectNode(id: 1, name: "Project 1"),
-        self.createMockProjectNode(id: 2, name: "Project 2"),
-        self.createMockProjectNode(id: 3, name: "Project 3"),
-        self.createMockProjectNode(id: 4, name: "Project 4")
-      ]
+    let nodes = (1...4).map { self.createMockProjectNode(id: $0, name: "Project \($0)") }
+    let data = GraphAPI.FetchSimilarProjectsQuery.Data(projects: .init(nodes: nodes))
+    let service = MockService(
+      fetchGraphQLResponses: [(GraphAPI.FetchSimilarProjectsQuery.self, data)],
+      fetchProjectPamphletResult: .success(.init(project: .template, backingId: nil)),
+      fetchProjectRewardsResult: .success([.template])
+    )
+    self.prepare(provider: AsyncProjectDetailsProvider(service: service))
+  }
 
-      // Create mock project data
-      let mockProjects = GraphAPI.FetchSimilarProjectsQuery.Data.Projects(nodes: mockProjectNodes)
+  private func prepare(provider: any ProjectDetailsProvider) {
+    let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    self.details = ProjectDetailsFeature(
+      platform: .live(), sessionFeature: session,
+      discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session,
+        makeProvider: { AsyncDiscussionProvider(service: MockService()) }),
+      makeProvider: { provider }, useFastLoading: { false }, includeRichText: { false },
+      sleep: { _ in try Task.checkCancellation() }
+    )
+    self.vm = ProjectPageViewModelTests.makeViewModel(
+      details: self.details,
+      media: ProjectMediaFeature(sessionFeature: session,
+        makeProvider: { AsyncProjectMediaProvider(service: MockService()) })
+    )
+    self.vm.onShowProjectPageTab = { [weak self] in self?.states.append($0.5) }
+    self.vm.onNavigateToSimilarProject = { [weak self] in self?.tappedProjects.append($0) }
+  }
 
-      // Create mock query data
-      let mockData = GraphAPI.FetchSimilarProjectsQuery.Data(projects: mockProjects)
-
-      self.mockService = MockService(
-        fetchGraphQLResponses: [
-          (GraphAPI.FetchSimilarProjectsQuery.self, mockData)
-        ]
-      )
-
-      // Initialize the use case with our mock service
-      self.useCase = SimilarProjectsUseCase(projectDetailsFeature: ProjectDetailsFeature(
-        platform: .live(),
-      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
-      discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }),
-      makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) },
-      useFastLoading: { false },
-      includeRichText: { false }
-      ))
-      self.states = [self.useCase.similarProjects]
-      self.useCase.onState = { [weak self] in self?.states.append($0) }
-      self.useCase.onNavigate = { [weak self] in self?.tappedProjects.append($0) }
-    }
+  private func loadPage() async {
+    self.vm.configureAndLoad(.left(.template))
+    self.vm.projectNavigationSelectorViewDidSelect(index: NavigationSection.campaign.rawValue)
+    await self.vm.loadingTask?.value
+    await self.vm.waitForRelatedProjects()
   }
 
   override func tearDown() async throws {
-    MainActor.assumeIsolated {
-      self.useCase = nil
-      self.mockService = nil
-    }
+    self.vm = nil
+    self.details = nil
     try await super.tearDown()
   }
 
   func testInitialState() async {
-    await withEnvironment(apiService: self.mockService) {
-      // The useCase should start with a loading state
-      XCTAssertEqual(1, self.states.count)
-
-      if case .loading = self.states[0] {
-        // Expected loading state
-      } else {
-        XCTFail("Expected initial loading state")
-      }
-    }
+    XCTAssertTrue(self.states.isEmpty)
+    await self.loadPage()
+    guard case .loading? = self.states.first else { return XCTFail("Expected initial loading state") }
   }
 
-  func testProjectIDLoaded_emitsLoadedState() async {
-    await withEnvironment(apiService: self.mockService) {
-      // Verify we're in loading state
-      XCTAssertEqual(1, self.states.count)
-      if case .loading = self.states[0] {
-        // Expected loading state
-      } else {
-        XCTFail("Expected loading state")
-      }
-
-      // When loading a project ID
-      self.useCase.projectIDLoaded(projectID: "1")
-      await self.useCase.loadingTask?.value
-
-      // Verify we received loaded state with projects
-      XCTAssertEqual(2, self.states.count)
-
-      if case let .loaded(projects) = self.states[1] {
-        XCTAssertEqual(4, projects.count, "Expected 4 similar projects")
-      } else {
-        XCTFail("Expected loaded state with projects")
-      }
-    }
+  func testProjectLoadedEmitsRelatedProjects() async {
+    await self.loadPage()
+    guard case let .loaded(projects)? = self.states.last else { return XCTFail("Expected recommendations") }
+    XCTAssertEqual(projects.count, 4)
   }
 
-  func testProjectTapped_emitsNavigateToProject() async {
-    await withEnvironment(apiService: self.mockService) {
-      // When loading a project ID
-      self.useCase.projectIDLoaded(projectID: "1")
-      await self.useCase.loadingTask?.value
-      guard
-        case let .loaded(projects) = self.states[1],
-        let project = projects.first
-      else {
-        return XCTFail()
-      }
-
-      // Send project tapped event
-      self.useCase.projectTapped(project: project)
-
-      // Verify navigate signal fired
-      XCTAssertEqual(1, self.tappedProjects.count)
-      XCTAssertEqual(project.projectID, self.tappedProjects[0].projectID)
-    }
+  func testRelatedProjectSelectionNavigates() async throws {
+    await self.loadPage()
+    guard case let .loaded(projects)? = self.states.last else { return XCTFail("Expected recommendations") }
+    let project = try XCTUnwrap(projects.first)
+    self.vm.similarProjectTapped(project: project)
+    XCTAssertEqual(self.tappedProjects.map(\.projectID), [project.projectID])
   }
 
-  func testSessionChangeClearsLoadedRecommendationsAndAllowsTheSameProjectToReload() async {
-    await withEnvironment(apiService: self.mockService) {
-      self.useCase.projectIDLoaded(projectID: "1")
-      await self.useCase.loadingTask?.value
-      guard case .loaded = self.useCase.similarProjects else { return XCTFail("Expected recommendations") }
+  func testSessionChangeClearsLoadedRecommendationsAndReloadsTheSameProject() async {
+    await self.loadPage()
+    guard case .loaded? = self.states.last else { return XCTFail("Expected recommendations") }
+    self.details.sessionFeature.sessionChanged()
+    self.vm.userSessionChanged()
+    self.vm.projectNavigationSelectorViewDidSelect(index: NavigationSection.overview.rawValue)
+    guard case .loading? = self.states.last else { return XCTFail("Expected fresh state") }
+    await self.vm.loadingTask?.value
+    await self.vm.waitForRelatedProjects()
+    guard case .loaded? = self.states.last else { return XCTFail("Expected replacement recommendations") }
+  }
 
-      self.useCase.sessionChanged()
-      guard case .loading = self.useCase.similarProjects else { return XCTFail("Expected fresh state") }
+  func testNewProjectDisplaysLoadingUntilItsOwnRecommendationsComplete() async throws {
+    let provider = ControlledProjectDetailsProvider()
+    provider.pauseProjects = true
+    provider.pauseRelated = true
+    defer { provider.releaseAll() }
+    self.prepare(provider: provider)
+    self.vm.configureAndLoad(.left(.template))
+    self.vm.projectNavigationSelectorViewDidSelect(index: NavigationSection.campaign.rawValue)
+    await provider.waitFor("project")
+    try provider.finishProject(0, id: 1)
+    await self.vm.loadingTask?.value
+    await provider.waitFor("related:1")
+    try provider.finishRelated(0, error: nil)
+    await self.vm.waitForRelatedProjects()
+    guard case .loaded? = self.states.last else { return XCTFail("Expected first project's recommendations") }
 
-      self.useCase.projectIDLoaded(projectID: "1")
-      await self.useCase.loadingTask?.value
-      guard case .loaded = self.useCase.similarProjects else { return XCTFail("Expected replacement recommendations") }
-    }
+    let next = Project.template |> Project.lens.id .~ 2
+    self.vm.configureWith(projectOrParam: .left(next), refInfo: nil)
+    self.vm.viewDidLoad()
+    await provider.waitFor("project", count: 2)
+    try provider.finishProject(1, id: 2)
+    await self.vm.loadingTask?.value
+    await provider.waitFor("related:2")
+    guard case .loading? = self.states.last else { return XCTFail("Expected replacement loading state") }
+
+    try provider.finishRelated(1, error: .graphError("replacement failed"))
+    await self.vm.waitForRelatedProjects()
+    guard case .error? = self.states.last else { return XCTFail("Expected current project's error") }
+  }
+
+  func testRefreshingTheSameProjectKeepsItsCompletedRecommendations() async {
+    let provider = ControlledProjectDetailsProvider()
+    self.prepare(provider: provider)
+    await self.loadPage()
+    guard case .loaded? = self.states.last else { return XCTFail("Expected recommendations") }
+
+    self.vm.didBackProject()
+    await self.vm.loadingTask?.value
+    await self.vm.waitForRelatedProjects()
+
+    XCTAssertEqual(provider.calls.filter { $0.hasPrefix("related:") }.count, 1)
+    guard case .loaded? = self.states.last else { return XCTFail("Expected retained recommendations") }
   }
 
   // MARK: - SimilarProject Parsing Tests

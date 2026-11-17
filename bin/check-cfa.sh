@@ -37,6 +37,8 @@ test -f "$post_campaign_view_model"
 test -f "$manage_pledge_view_model"
 test -f "$cancel_pledge_view_model"
 test -f "$project_page_view_model"
+reject_matches 'Project Page observes related projects through ProjectDetailsFeature.' \
+  'SimilarProjectsUseCase|DispatchQueue[.]main' "$project_page_view_model"
 test -f "$discovery_feature"
 reject_matches 'RootViewModel must receive its dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current|featureFloatingTabBarEnabled|profileFeature[.]sessionFeature' "$root_view_model"

@@ -1,5 +1,26 @@
 # Kickstarter migration behaviour contract
 
+## Project Page related projects — 17 November 2026
+
+Author: Matthew Thomas.
+
+- Opening a project shows a loading state until its related-project request
+  succeeds or fails; an empty successful result remains distinct from a failure.
+- Refreshing the same project within the same session retains its completed
+  related projects without issuing another related-project request.
+- Opening another project cannot display the previous project's recommendations
+  as the new project's result. The new request displays its own loading/error state.
+- A session change clears the prior recommendations and reloads them even when
+  the project ID is unchanged. Superseded requests cannot publish a late outcome.
+- Selecting a related project delivers the existing project navigation output.
+- ProjectPageViewModel derives these presentation states from ProjectDetailsFeature;
+  the Feature owns the request and result for the page's route.
+
+The focused main-module run passed 106 tests and the bounded regression run passed
+89 tests on iPhone 17 Pro Max, iOS 26.2, with no failures or skips. This verifies
+controlled page/Feature behavior; live networking and rendered visual parity
+remain unverified. See the matching checkpoint in MIGRATION_LEDGER.md.
+
 ## Pledge mutation transport snapshot contract — 29 October 2026
 
 Author: Matthew Thomas. 29 October 2026.
