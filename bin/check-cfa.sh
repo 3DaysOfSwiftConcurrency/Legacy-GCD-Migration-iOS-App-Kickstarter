@@ -286,6 +286,9 @@ reject_matches 'Project Page pledge CTA receives session and analytics through P
 reject_matches 'Project Page receives one composed feature graph.' \
   'AppModel[.]shared[.](projectDetailsFeature|projectMediaFeature|rewardsFeature|projectReportingFeature)' \
   "$app_view/Views/ProjectPage/Controller/ProjectPageViewController.swift"
+reject_matches 'Project Page forwards its composed Manage Pledge graph.' \
+  'ManagePledgeViewController[.]instantiate[(][)]' \
+  "$app_view/Views/ProjectPage/Controller/ProjectPageViewController.swift"
 reject_matches 'Rewards analytics belong to RewardsFeature composition.' \
   'AppEnvironment[.]current|ksrAnalytics|appTrackingTransparency|mainBundle[.]platformVersion' \
   "$app_view/Views/RewardsCollection/Controller/RewardsCollectionViewModel.swift" \

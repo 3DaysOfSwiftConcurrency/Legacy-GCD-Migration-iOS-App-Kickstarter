@@ -5609,3 +5609,24 @@ The whole Library and Presentation suites remain unverified. The CFA gate reject
 former default-composition Manage Pledge launch from PPOContainerViewController. This is
 not full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Project Page to Manage Pledge composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProjectPageComposition now nests the AppModel-owned ManagePledgeComposition. Project Page
+derives RewardsFeature from that graph when opening reward selection and passes the same
+graph to ManagePledgeViewController for pledge management. This removes the duplicate
+top-level RewardsFeature reference and prevents the transition from selecting the process
+singleton. The existing RewardPledgeNavigationController construction and trait-based
+iPad presentation policy are unchanged.
+
+Focused AppModelTests and ProjectPageViewModelTests passed all 72 tests with zero failures
+or skips on iPhone 17 Pro Max, iOS 26.2. The selection covers composition identity,
+current-backing Manage Pledge routing and Project Page navigation behavior. Evidence:
+`/private/tmp/kickstarter-project-page-manage-composition-library.xcresult`.
+
+Visual rendering and the whole Library and Presentation suites remain unverified. The CFA
+gate rejects parameterless Manage Pledge construction in ProjectPageViewController. This
+is not full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.

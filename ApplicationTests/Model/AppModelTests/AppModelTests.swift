@@ -402,9 +402,17 @@ final class AppModelTests: XCTestCase {
       first.projectPageComposition.projectDetailsFeature === first.projectDetailsFeature
     )
     XCTAssertTrue(first.projectPageComposition.projectMediaFeature === first.projectMediaFeature)
-    XCTAssertTrue(first.projectPageComposition.rewardsFeature === first.rewardsFeature)
     XCTAssertTrue(
       first.projectPageComposition.projectReportingFeature === first.projectReportingFeature
+    )
+    XCTAssertTrue(
+      first.projectPageComposition.managePledge.pledgeFeature === first.pledgeFeature
+    )
+    XCTAssertTrue(
+      first.projectPageComposition.managePledge.paymentsFeature === first.paymentsFeature
+    )
+    XCTAssertTrue(
+      first.projectPageComposition.managePledge.rewardsFeature === first.rewardsFeature
     )
     XCTAssertTrue(first.pledgeCheckoutComposition.pledgeFeature === first.pledgeFeature)
     XCTAssertTrue(

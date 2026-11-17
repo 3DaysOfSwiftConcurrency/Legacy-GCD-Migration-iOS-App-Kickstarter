@@ -117,19 +117,19 @@ extension OnboardingFeature {
 public struct ProjectPageComposition {
   public let projectDetailsFeature: ProjectDetailsFeature
   public let projectMediaFeature: ProjectMediaFeature
-  public let rewardsFeature: RewardsFeature
   public let projectReportingFeature: ProjectReportingFeature
+  public let managePledge: ManagePledgeComposition
 
   public init(
     projectDetailsFeature: ProjectDetailsFeature,
     projectMediaFeature: ProjectMediaFeature,
-    rewardsFeature: RewardsFeature,
-    projectReportingFeature: ProjectReportingFeature
+    projectReportingFeature: ProjectReportingFeature,
+    managePledge: ManagePledgeComposition
   ) {
     self.projectDetailsFeature = projectDetailsFeature
     self.projectMediaFeature = projectMediaFeature
-    self.rewardsFeature = rewardsFeature
     self.projectReportingFeature = projectReportingFeature
+    self.managePledge = managePledge
   }
 }
 
@@ -257,8 +257,8 @@ public final class AppModel {
     ProjectPageComposition(
       projectDetailsFeature: self.projectDetailsFeature,
       projectMediaFeature: self.projectMediaFeature,
-      rewardsFeature: self.rewardsFeature,
-      projectReportingFeature: self.projectReportingFeature
+      projectReportingFeature: self.projectReportingFeature,
+      managePledge: self.managePledgeComposition
     )
   }
 

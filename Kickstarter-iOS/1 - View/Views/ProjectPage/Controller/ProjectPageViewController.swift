@@ -762,7 +762,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
       with: project,
       refTag: refTag,
       secretRewardToken: secretRewardToken,
-      rewardsFeature: self.composition.rewardsFeature
+      rewardsFeature: self.composition.managePledge.rewardsFeature
     )
 
     assert(
@@ -774,7 +774,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   }
 
   private func goToManagePledge(params: ManagePledgeViewParamConfigData) {
-    let vc = ManagePledgeViewController.instantiate()
+    let vc = ManagePledgeViewController.instantiate(composition: self.composition.managePledge)
     vc.delegate = self
     vc.configureWith(params: params)
 

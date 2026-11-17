@@ -2273,3 +2273,11 @@ safe for arbitrary concurrent environment mutation.
   and forwards that exact graph when it presents Manage Pledge.
 - Focused AppModel composition coverage passes 8 tests, and focused Pledged Projects and
   root-navigation coverage passes 12 tests.
+
+## Project Page to Manage Pledge composition — 17 November 2026
+
+- ProjectPageComposition now nests one ManagePledgeComposition and derives RewardsFeature
+  from that graph instead of carrying a duplicate top-level Rewards reference.
+- ProjectPageViewController passes the nested graph into Manage Pledge while preserving
+  its existing navigation controller and trait-based presentation behavior.
+- Focused AppModel and Project Page validation passes 72 tests.
