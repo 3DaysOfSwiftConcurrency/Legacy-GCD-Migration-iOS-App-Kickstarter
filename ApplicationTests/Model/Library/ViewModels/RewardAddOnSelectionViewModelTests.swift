@@ -9,6 +9,7 @@ import XCTest
 final class RewardAddOnSelectionViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = RewardsFeature(
+    platform: .live(),
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)

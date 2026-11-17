@@ -2,6 +2,19 @@ import Foundation
 import KsApi
 import Prelude
 
+extension RewardsFeature.Platform {
+  @MainActor
+  static func live() -> Self {
+    Self(
+      configuredCountry: { AppEnvironment.current.config?.countryCode },
+      country: { AppEnvironment.current.countryCode },
+      now: { AppEnvironment.current.dateType.init().timeIntervalSince1970 },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      recordThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) }
+    )
+  }
+}
+
 extension PledgeFeature.Platform {
   @MainActor
   static func live() -> Self {
@@ -514,9 +527,11 @@ public final class AppModel {
       projectDetailsFeature: ProjectDetailsFeature(sessionFeature: sessionFeature, discussionFeature: discussionFeature, makeProvider: {
         AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService)
       }),
-      rewardsFeature: RewardsFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncRewardsProvider(service: AppEnvironment.current.apiService)
-      }),
+      rewardsFeature: RewardsFeature(
+        platform: .live(),
+        sessionFeature: sessionFeature,
+        makeProvider: { AsyncRewardsProvider(service: AppEnvironment.current.apiService) }
+      ),
       discussionFeature: discussionFeature,
       projectMediaFeature: ProjectMediaFeature(
         sessionFeature: sessionFeature,

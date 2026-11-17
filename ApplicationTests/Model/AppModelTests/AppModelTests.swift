@@ -111,7 +111,7 @@ final class AppModelTests: XCTestCase {
       searchFeature: firstFeature,
       discoveryFeature: firstDiscovery,
       projectDetailsFeature: firstDetails,
-      rewardsFeature: RewardsFeature(sessionFeature: firstSession, makeProvider: { AsyncRewardsProvider(service: MockService()) }),
+      rewardsFeature: RewardsFeature(platform: .live(), sessionFeature: firstSession, makeProvider: { AsyncRewardsProvider(service: MockService()) }),
       discussionFeature: firstDiscussion,
       projectMediaFeature: ProjectMediaFeature(sessionFeature: firstSession, makeProvider: {
         AsyncProjectMediaProvider(service: MockService())
@@ -163,7 +163,7 @@ final class AppModelTests: XCTestCase {
       searchFeature: secondFeature,
       discoveryFeature: secondDiscovery,
       projectDetailsFeature: secondDetails,
-      rewardsFeature: RewardsFeature(sessionFeature: secondSession, makeProvider: { AsyncRewardsProvider(service: MockService()) }),
+      rewardsFeature: RewardsFeature(platform: .live(), sessionFeature: secondSession, makeProvider: { AsyncRewardsProvider(service: MockService()) }),
       discussionFeature: secondDiscussion,
       projectMediaFeature: ProjectMediaFeature(sessionFeature: secondSession, makeProvider: {
         AsyncProjectMediaProvider(service: MockService())

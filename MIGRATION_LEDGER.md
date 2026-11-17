@@ -3433,6 +3433,13 @@ session cannot receive the old failure. The CFA check rejects direct
 environment reads in PledgeFeature. All 58 focused tests, 144 bounded
 checkout regressions, and five Pledged Projects presentation tests passed.
 
+Rewards receives country configuration, clock, response timing and
+third-party event recording from app composition. Shipping fallback and
+reward date rules now take their inputs directly. The CFA check rejects
+direct environment lookups in RewardsFeature. All 107 focused tests and
+104 Rewards Collection, Add-on Selection and Pledge regression tests
+passed on the simulator.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

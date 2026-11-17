@@ -10,7 +10,7 @@ import XCTest
 @MainActor
 final class PledgeShippingLocationViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = PledgeShippingLocationViewModel(rewardsFeature: RewardsFeature(sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+  private let vm = PledgeShippingLocationViewModel(rewardsFeature: RewardsFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncRewardsProvider(service: AppEnvironment.current.apiService) },
     sleep: { _ in try Task.checkCancellation() }
   ), dismissDelay: { try Task.checkCancellation() })

@@ -43,7 +43,7 @@ final class RewardsCollectionViewModelTests: TestCase {
   private let goToCustomizeYourReward = RewardsRecorder<PledgeViewData>()
   private let showPlaceholderRewardCards = RewardsRecorder<Int>()
 
-  private let vm = RewardsCollectionViewModel(rewardsFeature: RewardsFeature(sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+  private let vm = RewardsCollectionViewModel(rewardsFeature: RewardsFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncRewardsProvider(service: AppEnvironment.current.apiService) },
     sleep: { _ in try Task.checkCancellation() }
   ))

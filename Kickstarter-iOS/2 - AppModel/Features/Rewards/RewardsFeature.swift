@@ -41,8 +41,30 @@ public struct AsyncRewardsProvider: RewardsProvider {
 /// independent route; a changed country supersedes that route's previous read.
 @MainActor
 public final class RewardsFeature {
+  public struct Platform {
+    let configuredCountry: @MainActor () -> String?
+    let country: @MainActor () -> String
+    let now: @MainActor () -> TimeInterval
+    let responseDelaySeconds: @MainActor () -> TimeInterval
+    let recordThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
+
+    public init(
+      configuredCountry: @escaping @MainActor () -> String?,
+      country: @escaping @MainActor () -> String,
+      now: @escaping @MainActor () -> TimeInterval,
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
+      recordThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
+    ) {
+      self.configuredCountry = configuredCountry
+      self.country = country
+      self.now = now
+      self.responseDelaySeconds = responseDelaySeconds
+      self.recordThirdPartyEvent = recordThirdPartyEvent
+    }
+  }
+
   public func recordThirdPartyEvent(_ input: KsApi.TriggerThirdPartyEventInput) {
-    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
+    self.platform.recordThirdPartyEvent(input)
   }
   public struct ShippingSnapshot {
     public fileprivate(set) var locations: [Location] = []
@@ -96,7 +118,7 @@ public final class RewardsFeature {
     let requestID = UUID()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     let sleep = self.sleep
     entry.snapshot.isLoading = true
     entry.snapshot.error = nil
@@ -124,7 +146,7 @@ public final class RewardsFeature {
         entry.snapshot.locations = locations
         entry.snapshot.selectedLocation =
           locations.first { $0.id == selectedLocationID }
-          ?? defaultShippingLocation(fromLocations: locations)
+          ?? defaultShippingLocation(fromLocations: locations, configuredCountry: self.platform.configuredCountry())
       } catch is CancellationError {
         // Obsolete reads do not notify the delegate or display an error.
       } catch {
@@ -181,11 +203,13 @@ public final class RewardsFeature {
   private var routes: [UUID: Route] = [:]
   public let sessionFeature: SessionFeature
   private let makeProvider: @MainActor () -> any RewardsProvider
+  private let platform: Platform
   private let fastCheckout: @MainActor () -> Bool
   private let moveNoReward: @MainActor () -> Bool
   private let sleep: @MainActor (TimeInterval) async throws -> Void
 
   public init(
+    platform: Platform,
     sessionFeature: SessionFeature,
     makeProvider: @escaping @MainActor () -> any RewardsProvider,
     fastCheckout: @escaping @MainActor () -> Bool = {
@@ -206,6 +230,7 @@ public final class RewardsFeature {
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.platform = platform
     self.fastCheckout = fastCheckout
     self.moveNoReward = moveNoReward
     self.sleep = sleep
@@ -241,7 +266,7 @@ public final class RewardsFeature {
         currentUser: self.sessionFeature.currentUser
       )
       : NoRewardFirst()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     let sleep = self.sleep
     entry.snapshot.isLoading = true
     entry.snapshot.error = nil
@@ -268,7 +293,8 @@ public final class RewardsFeature {
         guard identity.userID == sessionFeature.currentUser?.id,
           let self, self.routes[route]?.request?.id == requestID
         else { return }
-        let visibleRewards = rewards.filter { isStartDateBeforeToday(for: $0) }
+        let now = self.platform.now()
+        let visibleRewards = rewards.filter { isStartDateBeforeToday(for: $0, now: now) }
         entry.snapshot.rewards = visibleRewards
         entry.snapshot.hasResult = true
       } catch is CancellationError {
@@ -331,7 +357,7 @@ public final class RewardsFeature {
     if let baseReward, !baseReward.isNoReward, baseReward.hasAddOns {
       if self.fastCheckout() {
         query = .fast(
-          baseReward.id, shippingRule?.location.country ?? AppEnvironment.current.countryCode)
+          baseReward.id, shippingRule?.location.country ?? self.platform.country())
       } else {
         query = .standard(slug, shippingRule?.location.graphID)
       }
@@ -346,7 +372,7 @@ public final class RewardsFeature {
     let id = UUID()
     self.addOnsVersions[route] = id
     let provider = self.makeProvider()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     let task = Task { [self] () throws -> [Reward]? in
       defer {
         self.addOnsTasks[id] = nil

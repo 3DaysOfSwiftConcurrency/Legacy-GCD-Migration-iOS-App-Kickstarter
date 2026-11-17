@@ -210,11 +210,9 @@ public func projectCountry(
   return launchedCountries.countries.first { $0.currencyCode == currencyCode }
 }
 
-@MainActor
-public func defaultShippingLocation(fromLocations locations: [Location]) -> Location? {
-  let environmentCountry = AppEnvironment.current.config?.countryCode
+public func defaultShippingLocation(fromLocations locations: [Location], configuredCountry: String?) -> Location? {
   if let currentLocation = locations
-    .first(where: { $0.country == environmentCountry }) {
+    .first(where: { $0.country == configuredCountry }) {
     return currentLocation
   }
 
@@ -482,10 +480,9 @@ public func rewardsCarouselCanNavigateToReward(
 
  - returns: A Bool representing whether the reward has a start date prior to the current date/time.
  */
-@MainActor
-public func isStartDateBeforeToday(for reward: Reward) -> Bool {
-  return reward.startsAt == nil || (reward.startsAt ?? 0) <= AppEnvironment.current.dateType.init()
-    .timeIntervalSince1970
+public func isStartDateBeforeToday(for reward: Reward, now: TimeInterval) -> Bool {
+  guard let startsAt = reward.startsAt else { return true }
+  return startsAt <= now
 }
 
 /**
@@ -495,10 +492,9 @@ public func isStartDateBeforeToday(for reward: Reward) -> Bool {
 
  - returns: A Bool representing whether the reward has an end date after to the current date/time.
  */
-@MainActor
-public func isEndDateAfterToday(for reward: Reward) -> Bool {
-  return reward.endsAt == nil || (reward.endsAt ?? 0) >= AppEnvironment.current.dateType.init()
-    .timeIntervalSince1970
+public func isEndDateAfterToday(for reward: Reward, now: TimeInterval) -> Bool {
+  guard let endsAt = reward.endsAt else { return true }
+  return endsAt >= now
 }
 
 /*

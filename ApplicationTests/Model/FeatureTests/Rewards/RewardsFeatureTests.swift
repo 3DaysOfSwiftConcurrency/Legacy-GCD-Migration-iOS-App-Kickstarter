@@ -13,6 +13,7 @@ final class RewardsFeatureTests: TestCase {
   private func feature(_ provider: ControlledRewardsProvider, move: Bool = false) -> RewardsFeature
   {
     RewardsFeature(
+      platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }
       ),
       makeProvider: { provider },
@@ -154,6 +155,7 @@ final class RewardsFeatureTests: TestCase {
 
   private func shippingFeature(_ provider: ControlledShippingProvider) -> RewardsFeature {
     RewardsFeature(
+      platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }
       ), makeProvider: { provider }, sleep: { _ in try Task.checkCancellation() })
   }
@@ -657,6 +659,7 @@ private final class AddOnsFixture {
   let fast: Bool
   init(fast: Bool = false) { self.fast = fast }
   lazy var feature = RewardsFeature(
+    platform: .live(),
     sessionFeature: self.session, makeProvider: { self.provider }, fastCheckout: { self.fast })
   func start(
     _ route: UUID, shipping: ShippingRule? = nil,

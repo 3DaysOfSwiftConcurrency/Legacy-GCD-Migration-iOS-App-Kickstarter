@@ -28,7 +28,7 @@ final class SharedFunctionsTests: TestCase {
   func testDefaultShippingLocation_Empty() {
     XCTAssertEqual(
       nil,
-      defaultShippingLocation(fromLocations: []),
+      defaultShippingLocation(fromLocations: [], configuredCountry: nil),
       "Default shipping location is nil if there are no shipping locations."
     )
   }
@@ -43,7 +43,7 @@ final class SharedFunctionsTests: TestCase {
         Location.template |> Location.lens.country .~ "CZ",
         Location.template |> Location.lens.country .~ "CA"
       ]
-      let location = defaultShippingLocation(fromLocations: locations)
+      let location = defaultShippingLocation(fromLocations: locations, configuredCountry: config.countryCode)
 
       XCTAssertEqual(
         "DE",
@@ -63,7 +63,7 @@ final class SharedFunctionsTests: TestCase {
         Location.template |> Location.lens.country .~ "US",
         Location.template |> Location.lens.country .~ "CA"
       ]
-      let location = defaultShippingLocation(fromLocations: locations)
+      let location = defaultShippingLocation(fromLocations: locations, configuredCountry: config.countryCode)
       XCTAssertEqual(
         "US",
         location?.country,
@@ -82,7 +82,7 @@ final class SharedFunctionsTests: TestCase {
         Location.template |> Location.lens.country .~ "CZ",
         Location.template |> Location.lens.country .~ "CA"
       ]
-      let location = defaultShippingLocation(fromLocations: locations)
+      let location = defaultShippingLocation(fromLocations: locations, configuredCountry: config.countryCode)
       XCTAssertEqual(
         "CZ",
         location?.country,
@@ -371,42 +371,42 @@ final class SharedFunctionsTests: TestCase {
     let reward = Reward.template
       |> Reward.lens.startsAt .~ nil
 
-    XCTAssertTrue(isStartDateBeforeToday(for: reward))
+    XCTAssertTrue(isStartDateBeforeToday(for: reward, now: MockDate().timeIntervalSince1970))
   }
 
   func testIsStartDateBeforeToday_Reward_StartsAt_PastDate() {
     let reward = Reward.template
       |> Reward.lens.startsAt .~ (MockDate().timeIntervalSince1970 - 60)
 
-    XCTAssertTrue(isStartDateBeforeToday(for: reward))
+    XCTAssertTrue(isStartDateBeforeToday(for: reward, now: MockDate().timeIntervalSince1970))
   }
 
   func testIsStartDateBeforeToday_Reward_StartsAt_FutureDate() {
     let reward = Reward.template
       |> Reward.lens.startsAt .~ (MockDate().timeIntervalSince1970 + 60)
 
-    XCTAssertFalse(isStartDateBeforeToday(for: reward))
+    XCTAssertFalse(isStartDateBeforeToday(for: reward, now: MockDate().timeIntervalSince1970))
   }
 
   func testIsEndDateAfterToday_Reward_EndsAt_Nil() {
     let reward = Reward.template
       |> Reward.lens.endsAt .~ nil
 
-    XCTAssertTrue(isEndDateAfterToday(for: reward))
+    XCTAssertTrue(isEndDateAfterToday(for: reward, now: MockDate().timeIntervalSince1970))
   }
 
   func testIsEndDateAfterToday_Reward_EndsAt_PastDate() {
     let reward = Reward.template
       |> Reward.lens.endsAt .~ (MockDate().timeIntervalSince1970 - 60)
 
-    XCTAssertFalse(isEndDateAfterToday(for: reward))
+    XCTAssertFalse(isEndDateAfterToday(for: reward, now: MockDate().timeIntervalSince1970))
   }
 
   func testIsEndDateAfterToday_Reward_EndsAt_FutureDate() {
     let reward = Reward.template
       |> Reward.lens.endsAt .~ (MockDate().timeIntervalSince1970 + 60)
 
-    XCTAssertTrue(isEndDateAfterToday(for: reward))
+    XCTAssertTrue(isEndDateAfterToday(for: reward, now: MockDate().timeIntervalSince1970))
   }
 
   func testRoundedToDecimalPlaces_Double() {
