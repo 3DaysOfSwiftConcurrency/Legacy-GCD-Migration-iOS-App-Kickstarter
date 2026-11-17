@@ -25,11 +25,11 @@ final class ThanksViewModel {
   private var data: ThanksPageData?
   private var recommendedProjects: [Project]?
 
-  init(recommendationsFeature: RecommendationsFeature? = nil,
+  init(recommendationsFeature: RecommendationsFeature,
        sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
          if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
        }) {
-    self.recommendationsFeature = recommendationsFeature ?? AppModel.shared.recommendationsFeature
+    self.recommendationsFeature = recommendationsFeature
     self.sleep = sleep
   }
   deinit {

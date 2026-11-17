@@ -33,7 +33,9 @@ final class CuratedProjectsViewController: UIViewController {
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
-  private let viewModel = CuratedProjectsViewModel()
+  private let viewModel = CuratedProjectsViewModel(
+    recommendationsFeature: AppModel.shared.recommendationsFeature
+  )
 
   // MARK: - Lifecycle
 

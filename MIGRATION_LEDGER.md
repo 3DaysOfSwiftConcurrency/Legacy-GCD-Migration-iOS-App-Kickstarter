@@ -3291,3 +3291,7 @@ Find Friends and friend-follow cells now receive Friends from their UI owners.
 Two tests that require a Facebook-connected user now set that value in the
 injected session fixture. The focused Friends suites passed 31 simulator tests,
 and `make check-cfa` guards both view models.
+
+Curated Projects and Thanks now receive Recommendations from their controllers.
+Both view-model suites and RecommendationsFeature passed 36 focused simulator
+tests. The CFA source check guards both view-model boundaries.

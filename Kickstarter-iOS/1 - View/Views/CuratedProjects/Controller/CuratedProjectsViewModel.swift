@@ -21,8 +21,8 @@ public final class CuratedProjectsViewModel {
   private var revision = UUID()
   @ObservationIgnored private var presentation: Task<Void, Never>?
 
-  public init(recommendationsFeature: RecommendationsFeature? = nil) {
-    self.recommendationsFeature = recommendationsFeature ?? AppModel.shared.recommendationsFeature
+  public init(recommendationsFeature: RecommendationsFeature) {
+    self.recommendationsFeature = recommendationsFeature
   }
 
   public func configure(with categories: [KsApi.Category]) {
