@@ -5290,3 +5290,22 @@ that simulator is not installed. Visual snapshots and the whole Library suite th
 remain unverified. The CFA gate rejects restored ambient composition in both controllers.
 This is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
+
+### Project Page presentation-trait policy — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProjectPageViewController now derives iPad presentation behavior from its own trait
+collection instead of AppEnvironment device state. This covers login, pledge manager and
+checkout navigation. The asynchronous login callback binds its weak controller before
+reading traits or presenting, preserving cancellation when the screen has disappeared.
+
+Focused Project Page validation passed all 64 tests. The bounded AppModel, Rewards,
+Manage Pledge, pledge checkout and post-campaign checkout selection passed all 214 tests.
+Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-project-page-trait-policy-focused-final.xcresult` and
+`/private/tmp/kickstarter-project-page-trait-policy-bounded.xcresult`.
+
+Visual snapshots and the whole Library suite remain unverified. The CFA gate rejects
+restored ambient device policy in ProjectPageViewController. This is not full CFA
+compliance. Swift packages, target identifiers and existing history are unchanged. No push.

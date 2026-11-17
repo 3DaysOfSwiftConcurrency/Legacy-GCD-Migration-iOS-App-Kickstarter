@@ -464,11 +464,12 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
 
     self.viewModel.outputs.onGoToLoginWithIntent = { [weak self] intent in
       DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
         let loginTout = LoginToutViewController.configuredWith(loginIntent: intent)
-        let isIpad = AppEnvironment.current.device.userInterfaceIdiom == .pad
+        let isIpad = self.traitCollection.userInterfaceIdiom == .pad
         let nav = UINavigationController(rootViewController: loginTout)
           |> \.modalPresentationStyle .~ (isIpad ? .formSheet : .fullScreen)
-        self?.present(nav, animated: true, completion: nil)
+        self.present(nav, animated: true, completion: nil)
       }
     }
 
@@ -741,7 +742,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
 
   private func goToLoginTout() {
     let vc = LoginToutViewController.configuredWith(loginIntent: .starProject)
-    let isIpad = AppEnvironment.current.device.userInterfaceIdiom == .pad
+    let isIpad = self.traitCollection.userInterfaceIdiom == .pad
     let nav = UINavigationController(rootViewController: vc)
       |> \.modalPresentationStyle .~ (isIpad ? .formSheet : .fullScreen)
 
@@ -771,7 +772,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
 
     let nc = RewardPledgeNavigationController(rootViewController: vc)
 
-    if AppEnvironment.current.device.userInterfaceIdiom == .pad {
+    if self.traitCollection.userInterfaceIdiom == .pad {
       nc.modalPresentationStyle = .pageSheet
     }
 
@@ -783,7 +784,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
 
     let nc = RewardPledgeNavigationController(rootViewController: vc)
 
-    if AppEnvironment.current.device.userInterfaceIdiom == .pad {
+    if self.traitCollection.userInterfaceIdiom == .pad {
       nc.modalPresentationStyle = .pageSheet
     }
 
@@ -980,7 +981,7 @@ extension ProjectPageViewController: ProjectPageNavigationDelegate {
   }
 
   func showShareSheet(_ controller: UIActivityViewController, sourceView: UIView?) {
-    if UIDevice.current.userInterfaceIdiom == .pad {
+    if self.traitCollection.userInterfaceIdiom == .pad {
       controller.modalPresentationStyle = .popover
       let popover = controller.popoverPresentationController
       popover?.sourceView = sourceView

@@ -2114,3 +2114,14 @@ safe for arbitrary concurrent environment mutation.
   Page and Manage Pledge selection passes 114 tests. Both PresentationTests controller
   suites compile, but their snapshot harness requires an unavailable iPad mini (A17 Pro)
   simulator on iOS 18.6; visual snapshots remain unverified in this checkpoint.
+
+## Project Page presentation-trait policy — 17 November 2026
+
+- ProjectPageViewController now derives iPad presentation decisions from its own trait
+  collection for login, pledge manager and checkout navigation. It no longer asks the
+  process environment for device idiom.
+- Full-screen, form-sheet and page-sheet behavior is unchanged for the active traits. A
+  weak asynchronous login callback now binds the controller before reading those traits.
+- Focused Project Page coverage passes 64 tests. The bounded AppModel, Rewards, Manage
+  Pledge and checkout selection passes 214 tests. Visual snapshots and the whole Library
+  suite remain outside this checkpoint.
