@@ -20,7 +20,6 @@ public final class MessageDialogViewModel {
   private var sendTask: Task<Void, Never>?
   private var sendVersion = UUID()
 
-  public convenience init() { self.init(messagingFeature: AppModel.shared.messagingFeature) }
   public init(messagingFeature: MessagingFeature, sleep: @escaping (TimeInterval) async throws -> Void = { delay in
     if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
     else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }

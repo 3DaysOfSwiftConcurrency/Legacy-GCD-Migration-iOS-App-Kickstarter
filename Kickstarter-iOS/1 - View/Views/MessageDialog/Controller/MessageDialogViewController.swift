@@ -12,7 +12,9 @@ internal protocol MessageDialogViewControllerDelegate: AnyObject {
 
 internal final class MessageDialogViewController: UIViewController {
   private var keyboardObservation: Keyboard.Observation?
-  fileprivate let viewModel = MessageDialogViewModel()
+  fileprivate let viewModel = MessageDialogViewModel(
+    messagingFeature: AppModel.shared.messagingFeature
+  )
   internal weak var delegate: MessageDialogViewControllerDelegate?
 
   @IBOutlet private var bodyTextView: UITextView!

@@ -4,7 +4,9 @@ import KsApi
 import UIKit
 
 internal final class SearchMessagesViewController: UITableViewController {
-  fileprivate let viewModel = MessagesSearchViewModel()
+  fileprivate let viewModel = MessagesSearchViewModel(
+    messagingFeature: AppModel.shared.messagingFeature
+  )
   fileprivate let dataSource = SearchMessagesDataSource()
 
   @IBOutlet fileprivate var searchTextField: UITextField!

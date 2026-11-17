@@ -30,17 +30,17 @@ struct MessageThreadPresentation {
 
 @MainActor
 final class MessageThreadCellViewModel {
-  private let messagingFeature: MessagingFeature
+  private let currentUserID: () -> Int?
   private var thread: MessageThread?
 
-  init(messagingFeature: MessagingFeature = AppModel.shared.messagingFeature) {
-    self.messagingFeature = messagingFeature
+  init(currentUserID: @escaping () -> Int?) {
+    self.currentUserID = currentUserID
   }
 
   func configureWith(messageThread: MessageThread) -> MessageThreadPresentation {
     self.thread = messageThread
     return MessageThreadPresentation(
-      thread: messageThread, currentUserID: self.messagingFeature.sessionFeature.currentUser?.id
+      thread: messageThread, currentUserID: self.currentUserID()
     )
   }
 

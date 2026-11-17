@@ -30,12 +30,6 @@ public final class MessagesViewModel {
   private var latestBlockedID: String?
   var onBlockSuccess: (() -> Void)?
   var onBlockError: (() -> Void)?
-  public convenience init() {
-    self.init(
-      messagingFeature: AppModel.shared.messagingFeature,
-      discussionFeature: AppModel.shared.discussionFeature
-    )
-  }
   public init(messagingFeature: MessagingFeature, discussionFeature: DiscussionFeature) {
     self.messagingFeature = messagingFeature
     self.discussionFeature = discussionFeature

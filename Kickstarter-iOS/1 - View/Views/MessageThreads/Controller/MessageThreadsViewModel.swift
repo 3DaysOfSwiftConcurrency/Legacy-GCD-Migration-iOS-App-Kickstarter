@@ -22,7 +22,6 @@ public final class MessageThreadsViewModel {
   private var hadRequested = false
   private var projectionTask: Task<Void, Never>?
 
-  public convenience init() { self.init(messagingFeature: AppModel.shared.messagingFeature) }
   public init(messagingFeature: MessagingFeature) { self.messagingFeature = messagingFeature }
 
   deinit {

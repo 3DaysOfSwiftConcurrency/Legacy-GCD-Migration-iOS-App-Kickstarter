@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class MessageThreadCellViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = MessageThreadCellViewModel()
+  private let vm = MessageThreadCellViewModel(currentUserID: { AppEnvironment.current.currentUser?.id })
 
   func testThreadPresentationAndReplyIndicator() {
     let thread = MessageThread.template

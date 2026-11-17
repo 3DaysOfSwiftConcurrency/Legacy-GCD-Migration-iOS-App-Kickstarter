@@ -5,7 +5,9 @@ import Prelude
 import UIKit
 
 internal final class MessageThreadCell: UITableViewCell, ValueCell {
-  private let viewModel = MessageThreadCellViewModel()
+  private let viewModel = MessageThreadCellViewModel(
+    currentUserID: { AppModel.shared.sessionFeature.currentUser?.id }
+  )
 
   @IBOutlet private var avatarImageView: UIImageView!
   @IBOutlet private var bodyLabel: UILabel!

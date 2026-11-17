@@ -3281,3 +3281,8 @@ Comment dialogs, lists, replies and cells now receive Discussion explicitly.
 Comment cells use Discussion's session for author badges and access checks.
 Five focused Discussion and comment suites passed 124 simulator tests.
 `make check-cfa` now guards the Comments view models.
+
+Messaging controllers now supply Messaging and Discussion explicitly. Thread
+cells provide only the current-user ID lookup needed for rendering. Six focused
+Messaging suites passed 48 simulator tests and `make check-cfa` covers the
+Messaging view-model boundaries.

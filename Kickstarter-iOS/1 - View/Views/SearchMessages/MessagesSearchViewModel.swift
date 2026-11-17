@@ -18,7 +18,6 @@ public final class MessagesSearchViewModel {
   private var searchTask: Task<Void, Never>?
   private var revision = 0
 
-  public convenience init() { self.init(messagingFeature: AppModel.shared.messagingFeature) }
   public init(messagingFeature: MessagingFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {

@@ -6,7 +6,9 @@ import Prelude
 import UIKit
 
 internal final class MessageThreadsViewController: UITableViewController {
-  fileprivate let viewModel = MessageThreadsViewModel()
+  fileprivate let viewModel = MessageThreadsViewModel(
+    messagingFeature: AppModel.shared.messagingFeature
+  )
   fileprivate let dataSource = MessageThreadsDataSource()
 
   @IBOutlet fileprivate var footerView: UIView!

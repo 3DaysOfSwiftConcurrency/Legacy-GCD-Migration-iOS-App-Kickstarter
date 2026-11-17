@@ -63,6 +63,9 @@ reject_matches 'Activity view models must receive their dependencies explicitly.
   'AppModel[.]shared' "$app_view/Views/Activities/*ViewModel.swift"
 reject_matches 'Discussion view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/Comments/*ViewModel.swift"
+reject_matches 'Messaging view models must receive their dependencies explicitly.' \
+  'AppModel[.]shared' "$app_view/Views/MessageDialog/*ViewModel.swift" "$app_view/Views/MessageThreads/*ViewModel.swift" \
+  "$app_view/Views/Messages/*ViewModel.swift" "$app_view/Views/SearchMessages/*ViewModel.swift"
 reject_matches 'Features must receive their application dependencies explicitly.' \
   'AppModel[.]shared' "$app_model/Features"
 reject_matches 'View models must receive API and current-user dependencies from composition.' \

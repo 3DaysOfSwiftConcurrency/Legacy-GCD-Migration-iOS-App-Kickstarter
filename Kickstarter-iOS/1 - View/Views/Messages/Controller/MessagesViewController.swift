@@ -8,7 +8,10 @@ import UIKit
 internal final class MessagesViewController: UITableViewController, MessageBannerViewControllerPresenting {
   @IBOutlet fileprivate var replyBarButtonItem: UIBarButtonItem!
 
-  fileprivate let viewModel: MessagesViewModel = MessagesViewModel()
+  fileprivate let viewModel: MessagesViewModel = MessagesViewModel(
+    messagingFeature: AppModel.shared.messagingFeature,
+    discussionFeature: AppModel.shared.discussionFeature
+  )
   fileprivate let dataSource = MessagesDataSource()
 
   public var messageBannerViewController: MessageBannerViewController?
