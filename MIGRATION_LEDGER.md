@@ -3202,3 +3202,20 @@ dependencies to its view model. Tracking reads use injected advertising
 identifier and platform version functions. The focused Project Page, tracking
 and media suites passed 105 simulator tests. `make check-cfa` now checks the
 Project Page view model for direct singleton access.
+
+### Bounded cross-feature regression — Matthew Thomas
+
+At `4afce67d3`, `make check-cfa` passed. The focused iOS Simulator
+regression runs on DBCFB059-D349-4803-811E-04B0CD06C8FE passed:
+
+- `Library-iOS`: 293 tests across standard and post-campaign checkout, manage
+  and cancel pledge, PledgeFeature, Project Page, tracking and Project Media.
+- `PresentationTests`: 152 tests across AppDelegate and Root Tabs.
+
+A source scan found 69 tracked view-model files with direct
+`AppModel.shared` text and three with direct
+`AppEnvironment.current.currentUser` or `AppEnvironment.current.apiService`
+text. These are review candidates, with no judgment about individual call
+sites from the scan alone. Seven source files under AppModel Features also
+reference `AppModel.shared`. The legacy delegate handler still needs further
+decomposition, and app-wide conformance remains open.
