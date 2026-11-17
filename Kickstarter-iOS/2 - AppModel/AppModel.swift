@@ -328,7 +328,10 @@ public final class AppModel {
       paymentsFeature: PaymentsFeature(
         sessionFeature: sessionFeature,
         makeProvider: { AsyncPaymentsProvider(service: AppEnvironment.current.apiService) },
-        trackThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) }
+        trackThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) },
+        supportedApplePayNetworks: {
+          AppEnvironment.current.applePayCapabilities.supportedNetworks(for: $0)
+        }
       ),
       messagingFeature: messagingFeature,
       sessionFeature: sessionFeature,

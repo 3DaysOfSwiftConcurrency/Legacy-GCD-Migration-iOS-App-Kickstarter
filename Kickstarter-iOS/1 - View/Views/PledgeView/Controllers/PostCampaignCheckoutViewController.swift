@@ -89,11 +89,12 @@ final class PostCampaignCheckoutViewController: UIViewController,
   private var sessionStartedObserver: MainActorNotificationObservation?
 
   private let pledgeFeature = AppModel.shared.pledgeFeature
+  private let paymentsFeature = AppModel.shared.paymentsFeature
   private lazy var viewModel =
     PostCampaignCheckoutViewModel(
       pledgeFeature: self.pledgeFeature,
       authenticationFeature: AppModel.shared.authenticationFeature,
-      paymentsFeature: AppModel.shared.paymentsFeature,
+      paymentsFeature: self.paymentsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       currencyContext: { .live() },
       hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
@@ -397,7 +398,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
   private func goToPaymentAuthorization(_ paymentAuthorizationData: PostCampaignPaymentAuthorizationData) {
     guard self.applePayAuthorization == nil, let presentation = self.viewModel.paymentPresentation else { return }
-    let request = PKPaymentRequest.paymentRequest(for: paymentAuthorizationData)
+    let request = self.paymentsFeature.paymentRequest(for: paymentAuthorizationData)
     guard let applePayContext = STPApplePayContext(paymentRequest: request, delegate: self) else {
       self.viewModel.inputs.checkoutTerminated()
       return

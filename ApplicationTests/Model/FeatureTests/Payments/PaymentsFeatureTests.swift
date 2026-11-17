@@ -1,6 +1,7 @@
 @testable import Kickstarter_iOS
 import Foundation
 import GraphAPI
+import PassKit
 import Prelude
 @testable import KsApi
 
@@ -14,6 +15,26 @@ final class PaymentsFeatureTests: TestCase {
   private let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) },
                                        currentUser: { .template }, updateUser: { _ in })
   private lazy var feature = PaymentsFeature(sessionFeature: self.session, makeProvider: { self.provider })
+
+  func testApplePayRequestUsesComposedNetworkPolicy() {
+    let feature = PaymentsFeature(
+      sessionFeature: self.session,
+      makeProvider: { self.provider },
+      supportedApplePayNetworks: { _ in [.visa, .masterCard] }
+    )
+
+    let request = feature.paymentRequest(
+      for: Project.template,
+      reward: .noReward,
+      allRewardsTotal: 0,
+      additionalPledgeAmount: 25,
+      allRewardsShippingTotal: 0,
+      merchantIdentifier: "merchant.fixture"
+    )
+
+    XCTAssertEqual(request.supportedNetworks, [.visa, .masterCard])
+  }
+
   override func tearDown() async throws {
     self.session.sessionChanged()
     self.provider.releaseAll()

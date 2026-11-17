@@ -1897,3 +1897,13 @@ safe for arbitrary concurrent environment mutation.
 - Controlled coverage verifies eligible, already-identified and unavailable-adapter
   cases. Live system consent UI, visual behavior and the whole Library suite remain
   outside this checkpoint.
+
+## Apple Pay request policy composition — 17 November 2026
+
+- PaymentsFeature receives supported Apple Pay networks from AppModel and supplies
+  them to the request formatter for crowdfunding and post-campaign checkout.
+- Merchant identifier, 3DS capability, project country/currency, shipping type,
+  reward, bonus, shipping and total summary-item behavior are unchanged.
+- Checkout controllers use the same PaymentsFeature instance as their view models.
+  Live Apple Pay presentation, authorization, Stripe confirmation and physical-device
+  wallet behavior remain outside this checkpoint.

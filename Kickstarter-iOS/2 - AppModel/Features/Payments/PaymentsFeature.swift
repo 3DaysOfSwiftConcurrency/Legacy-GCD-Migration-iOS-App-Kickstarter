@@ -1,6 +1,7 @@
 import Foundation
 import GraphAPI
 import KsApi
+import PassKit
 
 @MainActor
 public protocol PaymentsProvider {
@@ -38,15 +39,44 @@ public final class PaymentsFeature {
   private let sessionFeature: SessionFeature
   private let makeProvider: () -> any PaymentsProvider
   private let trackThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
+  private let supportedApplePayNetworks: @MainActor (Project) -> [PKPaymentNetwork]
 
   public init(
     sessionFeature: SessionFeature,
     makeProvider: @escaping () -> any PaymentsProvider,
-    trackThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void = { _ in }
+    trackThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void = { _ in },
+    supportedApplePayNetworks: @escaping @MainActor (Project) -> [PKPaymentNetwork] = { _ in [] }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
     self.trackThirdPartyEvent = trackThirdPartyEvent
+    self.supportedApplePayNetworks = supportedApplePayNetworks
+  }
+
+  public func paymentRequest(
+    for project: Project,
+    reward: Reward,
+    allRewardsTotal: Double,
+    additionalPledgeAmount: Double,
+    allRewardsShippingTotal: Double,
+    merchantIdentifier: String
+  ) -> PKPaymentRequest {
+    PKPaymentRequest.paymentRequest(
+      for: project,
+      reward: reward,
+      allRewardsTotal: allRewardsTotal,
+      additionalPledgeAmount: additionalPledgeAmount,
+      allRewardsShippingTotal: allRewardsShippingTotal,
+      merchantIdentifier: merchantIdentifier,
+      supportedNetworks: self.supportedApplePayNetworks(project)
+    )
+  }
+
+  public func paymentRequest(for data: PostCampaignPaymentAuthorizationData) -> PKPaymentRequest {
+    PKPaymentRequest.paymentRequest(
+      for: data,
+      supportedNetworks: self.supportedApplePayNetworks(data.project)
+    )
   }
 
   func billingEmail(for session: SessionIdentity) -> String? {

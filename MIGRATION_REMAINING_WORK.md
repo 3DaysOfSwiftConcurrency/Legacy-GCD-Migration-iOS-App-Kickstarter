@@ -86,6 +86,9 @@ Swift packages are excluded.
 - OnboardingFeature now owns tracking-authorization eligibility through its composed
   tracking adapter. The onboarding content source no longer reads AppEnvironment or
   decides whether the application-scoped permission prompt is needed.
+- PaymentsFeature now owns Apple Pay network policy and constructs both crowdfunding
+  and post-campaign requests from that composed dependency. The request formatter no
+  longer reads the global environment.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

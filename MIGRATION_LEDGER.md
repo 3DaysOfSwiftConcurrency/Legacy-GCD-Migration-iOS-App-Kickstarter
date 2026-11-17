@@ -4882,3 +4882,26 @@ The CFA gate rejects restored global permission policy or button behavior in the
 content source. Live system consent UI and the whole Library suite remain unverified.
 This is not full CFA compliance. Swift packages, target identifiers and existing
 history are unchanged. No push.
+
+### Apple Pay network policy joins Payments composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+PaymentsFeature now receives supported Apple Pay networks through AppModel
+composition and constructs both crowdfunding and post-campaign payment requests.
+PKPaymentRequest formatting receives those networks explicitly and no longer reads
+AppEnvironment. Each checkout controller uses the same PaymentsFeature instance for
+its view model and native Apple Pay request. Merchant, country, currency, 3DS,
+shipping and summary-item behavior are preserved.
+
+A Feature test proves the composed network policy reaches the request. Focused
+Payments Feature and request-formatter validation passed all 22 tests. The bounded
+Payments, AppModel, crowdfunding and post-campaign checkout selection passed all 132
+tests. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-payments-apple-pay-focused.xcresult` and
+`/private/tmp/kickstarter-payments-apple-pay-bounded.xcresult`.
+
+The CFA gate rejects restored global environment access in the request formatter.
+Live wallet authorization, Stripe confirmation, device behavior and the whole
+Library suite remain unverified. This is not full CFA compliance. Swift packages,
+target identifiers and existing history are unchanged. No push.

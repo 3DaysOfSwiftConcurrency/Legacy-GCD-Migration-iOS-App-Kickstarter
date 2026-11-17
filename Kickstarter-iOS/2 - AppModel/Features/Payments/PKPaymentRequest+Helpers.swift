@@ -4,10 +4,14 @@ import PassKit
 
 @MainActor
 extension PKPaymentRequest {
-  private static func paymentRequest(for project: Project, merchantIdentifier: String) -> PKPaymentRequest {
+  private static func paymentRequest(
+    for project: Project,
+    merchantIdentifier: String,
+    supportedNetworks: [PKPaymentNetwork]
+  ) -> PKPaymentRequest {
     let request = PKPaymentRequest()
     request.merchantIdentifier = merchantIdentifier
-    request.supportedNetworks = AppEnvironment.current.applePayCapabilities.supportedNetworks(for: project)
+    request.supportedNetworks = supportedNetworks
     request.merchantCapabilities = .capability3DS
     request.countryCode = project.country.countryCode
     request.currencyCode = projectCountry(forCurrency: project.stats.projectCurrency)?.currencyCode ?? project
@@ -22,9 +26,14 @@ extension PKPaymentRequest {
     allRewardsTotal: Double,
     additionalPledgeAmount: Double,
     allRewardsShippingTotal: Double,
-    merchantIdentifier: String
+    merchantIdentifier: String,
+    supportedNetworks: [PKPaymentNetwork]
   ) -> PKPaymentRequest {
-    let request = self.paymentRequest(for: project, merchantIdentifier: merchantIdentifier)
+    let request = self.paymentRequest(
+      for: project,
+      merchantIdentifier: merchantIdentifier,
+      supportedNetworks: supportedNetworks
+    )
 
     request.paymentSummaryItems = self.paymentSummaryItems(
       reward: reward,
@@ -37,9 +46,14 @@ extension PKPaymentRequest {
   }
 
   public static func paymentRequest(
-    for data: PostCampaignPaymentAuthorizationData
+    for data: PostCampaignPaymentAuthorizationData,
+    supportedNetworks: [PKPaymentNetwork]
   ) -> PKPaymentRequest {
-    let request = self.paymentRequest(for: data.project, merchantIdentifier: data.merchantIdentifier)
+    let request = self.paymentRequest(
+      for: data.project,
+      merchantIdentifier: data.merchantIdentifier,
+      supportedNetworks: supportedNetworks
+    )
     request.paymentSummaryItems = self.paymentSummaryItems(for: data)
     return request
   }

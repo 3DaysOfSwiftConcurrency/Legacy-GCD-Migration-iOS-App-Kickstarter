@@ -131,10 +131,11 @@ final class PledgeViewController: UIViewController,
 
   private var sessionStartedObserver: MainActorNotificationObservation?
   private let pledgeFeature = AppModel.shared.pledgeFeature
+  private let paymentsFeature = AppModel.shared.paymentsFeature
   private lazy var viewModel = PledgeViewModel(
     pledgeFeature: self.pledgeFeature,
     authenticationFeature: AppModel.shared.authenticationFeature,
-    paymentsFeature: AppModel.shared.paymentsFeature,
+    paymentsFeature: self.paymentsFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
     currencyContext: { .live() },
     hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
@@ -387,15 +388,14 @@ final class PledgeViewController: UIViewController,
 
   private func goToPaymentAuthorization(_ paymentAuthorizationData: PaymentAuthorizationData) {
     guard let presentation = self.viewModel.paymentPresentation else { return }
-    let request = PKPaymentRequest
-      .paymentRequest(
-        for: paymentAuthorizationData.project,
-        reward: paymentAuthorizationData.reward,
-        allRewardsTotal: paymentAuthorizationData.allRewardsTotal,
-        additionalPledgeAmount: paymentAuthorizationData.additionalPledgeAmount,
-        allRewardsShippingTotal: paymentAuthorizationData.allRewardsShippingTotal,
-        merchantIdentifier: paymentAuthorizationData.merchantIdentifier
-      )
+    let request = self.paymentsFeature.paymentRequest(
+      for: paymentAuthorizationData.project,
+      reward: paymentAuthorizationData.reward,
+      allRewardsTotal: paymentAuthorizationData.allRewardsTotal,
+      additionalPledgeAmount: paymentAuthorizationData.additionalPledgeAmount,
+      allRewardsShippingTotal: paymentAuthorizationData.allRewardsShippingTotal,
+      merchantIdentifier: paymentAuthorizationData.merchantIdentifier
+    )
 
     guard
       let paymentAuthorizationViewController = PKPaymentAuthorizationViewController(paymentRequest: request)
