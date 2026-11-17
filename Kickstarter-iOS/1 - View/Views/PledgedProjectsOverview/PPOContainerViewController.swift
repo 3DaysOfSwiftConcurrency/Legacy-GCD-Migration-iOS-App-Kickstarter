@@ -10,11 +10,25 @@ import SwiftUI
 public class PPOContainerViewController: PagedContainerViewController<PPOContainerViewController.Page>,
   MessageBannerViewControllerPresenting {
   private let confirmation = StripeConfirmationOperation()
-  private let viewModel = PPOContainerViewModel(
-    pledgeFeature: AppModel.shared.pledgeFeature,
-    activityFeature: AppModel.shared.activityFeature,
-    paymentsFeature: AppModel.shared.paymentsFeature
-  )
+  private let paymentsFeature: PaymentsFeature
+  private let pledgedProjectsFeature: PledgedProjectsFeature
+  private let viewModel: PPOContainerViewModel
+
+  public init(composition: PledgedProjectsComposition) {
+    self.paymentsFeature = composition.paymentsFeature
+    self.pledgedProjectsFeature = composition.pledgedProjectsFeature
+    self.viewModel = PPOContainerViewModel(
+      pledgeFeature: composition.pledgeFeature,
+      activityFeature: composition.activityFeature,
+      paymentsFeature: composition.paymentsFeature
+    )
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  public required init?(coder: NSCoder) {
+    fatalError("init(coder:) is unavailable")
+  }
 
   public override func viewWillDisappear(_ animated: Bool) {
     super.viewWillDisappear(animated)
@@ -30,7 +44,7 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
     self.title = Strings.tabbar_activity()
 
     let ppoView = PPOView(
-      viewModel: PPOViewModel(pledgedProjectsFeature: AppModel.shared.pledgedProjectsFeature),
+      viewModel: PPOViewModel(pledgedProjectsFeature: self.pledgedProjectsFeature),
       shouldRefresh: self.viewModel.shouldRefresh,
       onCountChange: { [weak self] count in
         self?.viewModel.projectAlertsCountChanged(count)
@@ -283,9 +297,8 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
     confirmParams: STPSetupIntentConfirmParams,
     onProgress: @escaping (PPOActionState) -> Void
   ) {
-    let session = AppModel.shared.sessionFeature
-    let generation = session.generation
-    self.confirmation.start(identity: .init(kind: .setup, clientSecret: confirmParams.clientSecret), isCurrent: { session.generation == generation }, begin: { completion in
+    let isCurrent = self.paymentsFeature.makeSessionValidityCheck()
+    self.confirmation.start(identity: .init(kind: .setup, clientSecret: confirmParams.clientSecret), isCurrent: isCurrent, begin: { completion in
       STPPaymentHandler.shared().confirmSetupIntent(confirmParams, with: self) { status, _, error in
         completion(.init(status: status, error: error))
       }
@@ -298,12 +311,11 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
     paymentParams: STPPaymentIntentParams,
     onProgress: @escaping (PPOActionState) -> Void
   ) {
-    let session = AppModel.shared.sessionFeature
-    let generation = session.generation
+    let isCurrent = self.paymentsFeature.makeSessionValidityCheck()
     self.confirmation.start(
       identity: .init(kind: .payment, clientSecret: paymentParams.clientSecret,
                       paymentMethodID: paymentParams.paymentMethodId),
-      isCurrent: { session.generation == generation },
+      isCurrent: isCurrent,
       begin: { completion in
         STPPaymentHandler.shared().confirmPayment(paymentParams, with: self) { status, _, error in
           completion(.init(status: status, error: error))

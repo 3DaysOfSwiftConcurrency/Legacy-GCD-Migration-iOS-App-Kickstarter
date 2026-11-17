@@ -120,7 +120,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
 
     self.viewModel.outputs.onSetViewControllers = { [weak self] data in
       self?.enqueuePresentation { controller in
-        let tabs = data.compactMap(RootTabBarViewController.viewController(from:))
+        let tabs = data.compactMap { controller.viewController(from: $0) }
         controller.setViewControllers(tabs.map(UINavigationController.init(rootViewController:)), animated: false)
       }
     }
@@ -355,14 +355,14 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     return items[index]
   }
 
-  static func viewController(from data: RootViewControllerData) -> UIViewController? {
+  func viewController(from data: RootViewControllerData) -> UIViewController? {
     switch data {
     case .discovery:
       return DiscoveryViewController.instantiate()
     case .activities:
       return ActivitiesViewController.instantiate()
     case .pledgedProjectsAndActivities:
-      return PPOContainerViewController.instantiate()
+      return PPOContainerViewController(composition: self.composition.pledgedProjects)
     case .search:
       return SearchViewController.instantiate()
     case let .profile(isLoggedIn):

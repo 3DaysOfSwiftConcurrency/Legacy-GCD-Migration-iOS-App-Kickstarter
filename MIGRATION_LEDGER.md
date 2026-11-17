@@ -5538,3 +5538,28 @@ The whole Library and Presentation suites remain unverified. The CFA gate reject
 restored ambient composition or analytics access in PPOViewModel. This is not full CFA
 compliance. Swift packages, target identifiers and existing history are unchanged. No
 push.
+
+### Pledged Projects feature graph — 17 November 2026
+
+Author: Matthew Thomas.
+
+Root tabs now supply PPOContainerViewController with one PledgedProjectsComposition
+containing the Pledged Projects, Pledge, Activity and Payments features from the same
+AppModel graph. The controller no longer resolves AppModel or reads SessionFeature
+generation. PaymentsFeature instead creates a session-validity check that the
+presentation-owned Stripe operation uses to reject stale completions.
+
+Focused AppModel and Payments validation passed all 27 tests, and focused PPO container
+and root navigation validation passed all 12 tests. The bounded AppModel, Payments and
+Pledged Projects selection passed all 35 tests; the bounded PPO and root navigation
+selection passed all 39 tests. All runs had zero failures and skips on iPhone 17 Pro Max,
+iOS 26.2. Evidence:
+`/private/tmp/kickstarter-ppo-composition-focused-library-2.xcresult`,
+`/private/tmp/kickstarter-ppo-composition-focused-presentation-3.xcresult`,
+`/private/tmp/kickstarter-ppo-composition-bounded-library.xcresult` and
+`/private/tmp/kickstarter-ppo-composition-bounded-presentation.xcresult`.
+
+The whole Library and Presentation suites remain unverified. The CFA gate rejects
+restored ambient composition or raw session access in PPOContainerViewController. This
+is not full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.

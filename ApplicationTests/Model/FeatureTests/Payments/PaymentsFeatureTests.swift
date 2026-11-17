@@ -26,6 +26,16 @@ final class PaymentsFeatureTests: TestCase {
     XCTAssertEqual(feature.stripePublishableKey, "pk_test_composed")
   }
 
+  func testSessionValidityCheckRejectsAReplacementSession() {
+    let originalSession = self.feature.makeSessionValidityCheck()
+    XCTAssertTrue(originalSession())
+
+    self.session.sessionChanged()
+
+    XCTAssertFalse(originalSession())
+    XCTAssertTrue(self.feature.makeSessionValidityCheck()())
+  }
+
   func testCheckoutPresentationPoliciesUseComposedValues() throws {
     let currency = PledgeCurrencyContext(
       launchedCountries: .init(countries: []),

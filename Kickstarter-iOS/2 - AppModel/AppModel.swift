@@ -166,6 +166,7 @@ public struct RootTabComposition {
   public let analytics: () -> KSRAnalytics
   public let badgePresentationDelay: () -> TimeInterval
   public let isVoiceOverRunning: () -> Bool
+  public let pledgedProjects: PledgedProjectsComposition
 
   public init(
     sessionFeature: SessionFeature,
@@ -174,7 +175,8 @@ public struct RootTabComposition {
     settingsFeature: SettingsFeature,
     analytics: @escaping () -> KSRAnalytics,
     badgePresentationDelay: @escaping () -> TimeInterval,
-    isVoiceOverRunning: @escaping () -> Bool
+    isVoiceOverRunning: @escaping () -> Bool,
+    pledgedProjects: PledgedProjectsComposition
   ) {
     self.sessionFeature = sessionFeature
     self.profileFeature = profileFeature
@@ -183,6 +185,7 @@ public struct RootTabComposition {
     self.analytics = analytics
     self.badgePresentationDelay = badgePresentationDelay
     self.isVoiceOverRunning = isVoiceOverRunning
+    self.pledgedProjects = pledgedProjects
   }
 }
 
@@ -202,6 +205,25 @@ public struct ManagePledgeComposition {
     self.paymentsFeature = paymentsFeature
     self.rewardsFeature = rewardsFeature
     self.checkout = checkout
+  }
+}
+
+public struct PledgedProjectsComposition {
+  public let pledgedProjectsFeature: PledgedProjectsFeature
+  public let pledgeFeature: PledgeFeature
+  public let activityFeature: ActivityFeature
+  public let paymentsFeature: PaymentsFeature
+
+  public init(
+    pledgedProjectsFeature: PledgedProjectsFeature,
+    pledgeFeature: PledgeFeature,
+    activityFeature: ActivityFeature,
+    paymentsFeature: PaymentsFeature
+  ) {
+    self.pledgedProjectsFeature = pledgedProjectsFeature
+    self.pledgeFeature = pledgeFeature
+    self.activityFeature = activityFeature
+    self.paymentsFeature = paymentsFeature
   }
 }
 
@@ -267,7 +289,8 @@ public final class AppModel {
       settingsFeature: self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
+      isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() },
+      pledgedProjects: self.pledgedProjectsComposition
     )
   }
 
@@ -277,6 +300,15 @@ public final class AppModel {
       paymentsFeature: self.paymentsFeature,
       rewardsFeature: self.rewardsFeature,
       checkout: self.pledgeCheckoutComposition
+    )
+  }
+
+  public var pledgedProjectsComposition: PledgedProjectsComposition {
+    PledgedProjectsComposition(
+      pledgedProjectsFeature: self.pledgedProjectsFeature,
+      pledgeFeature: self.pledgeFeature,
+      activityFeature: self.activityFeature,
+      paymentsFeature: self.paymentsFeature
     )
   }
 

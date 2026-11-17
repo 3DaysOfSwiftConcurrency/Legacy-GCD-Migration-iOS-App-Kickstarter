@@ -2243,3 +2243,14 @@ safe for arbitrary concurrent environment mutation.
   15 tests. Bounded AppModel/feature coverage passes 16 tests and bounded PPO
   presentation coverage passes 34 tests. The whole Library suite remains outside this
   checkpoint.
+
+## Pledged Projects feature graph — 17 November 2026
+
+- Root tabs now pass one PledgedProjectsComposition into PPOContainerViewController,
+  containing the Pledged Projects, Pledge, Activity and Payments feature instances owned
+  by the same AppModel graph.
+- The controller no longer resolves AppModel or raw session generation. PaymentsFeature
+  supplies a session-validity capability for rejecting stale Stripe completions.
+- Focused AppModel/Payments coverage passes 27 tests and focused container/root
+  presentation coverage passes 12 tests. The bounded affected selections pass 35
+  Library tests and 39 Presentation tests. The whole suites remain outside this checkpoint.

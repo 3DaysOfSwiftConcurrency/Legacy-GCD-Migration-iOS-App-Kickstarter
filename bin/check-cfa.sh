@@ -337,6 +337,9 @@ reject_matches 'Pledged Projects card formatting receives locale from its Featur
 reject_matches 'Pledged Projects analytics belong to PledgedProjectsFeature composition.' \
   'AppModel[.]shared|AppEnvironment[.]current|ksrAnalytics' \
   "$app_view/Views/PledgedProjectsOverview/PPOViewModel.swift"
+reject_matches 'Pledged Projects receives one composed feature graph.' \
+  'AppModel[.]shared|AppEnvironment[.]current|sessionFeature' \
+  "$app_view/Views/PledgedProjectsOverview/PPOContainerViewController.swift"
 reject_matches 'Settings presentation receives application metadata from SettingsFeature.' \
   'AppEnvironment[.]current' "$app_model/Features/Settings/SettingsCellType.swift"
 reject_matches 'Creator Drafts receives response policy from AppModel composition.' \

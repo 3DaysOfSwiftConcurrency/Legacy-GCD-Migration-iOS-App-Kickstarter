@@ -72,6 +72,11 @@ public final class PaymentsFeature {
   public var currencyContext: PledgeCurrencyContext? { self.pledgeCurrencyContext() }
   public var responseDelaySeconds: TimeInterval { self.responseDelay() }
 
+  public func makeSessionValidityCheck() -> @MainActor () -> Bool {
+    let session = self.sessionIdentity
+    return { [weak self] in self?.sessionIdentity == session }
+  }
+
   public func hasEligibleApplePayCard(for project: Project) -> Bool {
     self.applePayEligibility(project)
   }

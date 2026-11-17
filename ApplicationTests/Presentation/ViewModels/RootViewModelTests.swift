@@ -1000,9 +1000,11 @@ final class RootTabsNavigationTests: TestCase {
   }
 }
 
+@MainActor
 private func extractRootNames(_ vcs: [RootViewControllerData]) -> [String] {
+  let root = RootTabBarViewController.instantiate()
   return vcs
-    .map(RootTabBarViewController.viewController(from:))
+    .map { root.viewController(from: $0) }
     .compact()
     .map(UINavigationController.init(rootViewController:))
     .compactMap(extractRootName)
