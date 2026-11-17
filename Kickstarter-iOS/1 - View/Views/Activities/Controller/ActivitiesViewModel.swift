@@ -31,8 +31,8 @@ final class ActivitiesViewModel {
   private var lastLoggedInEmpty: [Activity]?
   private var lastNearBottom: Bool?
 
-  init(activityFeature: ActivityFeature? = nil) {
-    let feature = activityFeature ?? AppModel.shared.activityFeature
+  init(activityFeature: ActivityFeature) {
+    let feature = activityFeature
     self.activityFeature = feature
     self.observation = feature.observe { [weak self] event in self?.receive(event) }
   }

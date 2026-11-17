@@ -3271,3 +3271,8 @@ suites passed 61 focused simulator tests, and `make check-cfa` covers these scre
 Both Backer Dashboard controllers now supply Profile explicitly. The dashboard
 and Profile suites passed 25 focused simulator tests, and `make check-cfa`
 guards the dashboard view-model boundaries.
+
+Activity now composes Activity, Friends and Settings at its controller and
+cell boundaries. The project-status cell supplies a current-user lookup
+for creator labels. The focused Activity feature and view-model suites passed
+37 simulator tests, and `make check-cfa` guards Activity view models.

@@ -6,10 +6,10 @@ import UIKit
 
 @MainActor @Observable
 public final class ActivityProjectStatusViewModel {
-  private let activityFeature: ActivityFeature
+  private let currentUser: () -> User?
 
-  public init(activityFeature: ActivityFeature = AppModel.shared.activityFeature) {
-    self.activityFeature = activityFeature
+  public init(currentUser: @escaping () -> User?) {
+    self.currentUser = currentUser
   }
   public private(set) var fundingBarColor = UIColor.clear
   public private(set) var fundingProgressPercentage: Float?
@@ -25,7 +25,7 @@ public final class ActivityProjectStatusViewModel {
     let creator = activity.project?.creator
     self.metadataText = activityProjectStatusViewModelMetadataString(
       forActivityCategory: activity.category,
-      isCreatorUser: self.activityFeature.sessionFeature.currentUser == creator,
+      isCreatorUser: self.currentUser() == creator,
       friendName: creator?.name ?? ""
     )
     self.percentFundedText = activityProjectStatusViewModelPercentFundedString(forActivity: activity)

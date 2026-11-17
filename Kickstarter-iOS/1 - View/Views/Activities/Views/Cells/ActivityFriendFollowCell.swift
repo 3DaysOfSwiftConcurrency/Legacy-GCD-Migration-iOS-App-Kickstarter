@@ -5,7 +5,7 @@ import Prelude
 import UIKit
 
 internal final class ActivityFriendFollowCell: UITableViewCell, ValueCell {
-  fileprivate let viewModel: ActivityFriendFollowCellViewModel = ActivityFriendFollowCellViewModel()
+  fileprivate let viewModel: ActivityFriendFollowCellViewModel = ActivityFriendFollowCellViewModel(friendsFeature: AppModel.shared.friendsFeature)
 
   @IBOutlet fileprivate var cardView: UIView!
   @IBOutlet fileprivate var containerView: UIView!

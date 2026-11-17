@@ -4,7 +4,7 @@ import Prelude
 import UIKit
 
 internal final class ActivitiesViewController: UITableViewController {
-  fileprivate let viewModel = ActivitiesViewModel()
+  fileprivate let viewModel = ActivitiesViewModel(activityFeature: AppModel.shared.activityFeature)
   fileprivate let dataSource = ActivitiesDataSource()
   private var sessionEndedObserver: MainActorNotificationObservation?
   private var sessionStartedObserver: MainActorNotificationObservation?

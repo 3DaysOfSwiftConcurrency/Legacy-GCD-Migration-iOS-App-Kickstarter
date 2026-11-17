@@ -23,7 +23,7 @@ internal final class FindFriendsFacebookConnectCell: UITableViewCell, ValueCell 
   internal weak var delegate: FindFriendsFacebookConnectCellDelegate?
 
   fileprivate let viewModel =
-    FindFriendsFacebookConnectCellViewModel()
+    FindFriendsFacebookConnectCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
 
   internal lazy var fbLoginManager: LoginManager = {
     let manager = LoginManager()

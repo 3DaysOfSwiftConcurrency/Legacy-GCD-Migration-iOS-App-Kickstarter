@@ -7,7 +7,9 @@ import Prelude
 import UIKit
 
 internal final class ActivityProjectStatusCell: UITableViewCell, ValueCell {
-  fileprivate let viewModel = ActivityProjectStatusViewModel()
+  fileprivate let viewModel = ActivityProjectStatusViewModel(
+    currentUser: { AppModel.shared.sessionFeature.currentUser }
+  )
 
   @IBOutlet fileprivate var cardView: UIView!
   @IBOutlet fileprivate var containerView: UIView!

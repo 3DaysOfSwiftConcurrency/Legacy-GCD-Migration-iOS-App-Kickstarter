@@ -8,7 +8,7 @@ import XCTest
 @MainActor
 internal final class ActivityProjectStatusViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  fileprivate let vm = ActivityProjectStatusViewModel()
+  fileprivate let vm = ActivityProjectStatusViewModel(currentUser: { AppEnvironment.current.currentUser })
   func testProject_Launched() {
     let project = .cosmicSurgery
       |> Project.lens.name .~ "A Very Important Project About Kittens and Puppies"
