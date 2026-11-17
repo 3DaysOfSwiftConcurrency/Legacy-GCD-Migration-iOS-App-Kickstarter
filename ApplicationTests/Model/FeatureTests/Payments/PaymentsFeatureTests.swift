@@ -173,18 +173,74 @@ final class PaymentsFeatureTests: TestCase {
     XCTAssertEqual(self.provider.removals.count, 2)
   }
 
-  func testReadOvertakenByWriteReloadsBeforePublishing() async throws {
-    let read = Task { try await self.feature.cards() }
+  func testConcurrentCardWaitersShareAndCancellationLeavesTheOtherReadAlive() async throws {
+    let first = try await self.startCardRead()
+    await self.provider.cardReads.waitFor(1)
+    let second = try await self.startCardRead()
+    defer { self.provider.cardReads.releaseAll() }
+    XCTAssertEqual(self.provider.cardReads.count, 1)
+
+    first.cancel()
+    let cancelled = XCTestExpectation(description: "Canceled card waiter completes before transport")
+    let cancellationCheck = Task {
+      if case let .failure(error) = await first.result { XCTAssertTrue(error is CancellationError) }
+      else { XCTFail("Canceled caller received cards") }
+      cancelled.fulfill()
+    }
+    let completion = await XCTWaiter().fulfillment(of: [cancelled], timeout: 2)
+    XCTAssertEqual(completion, .completed)
+    guard completion == .completed, self.provider.cardReads.count == 1 else { return }
+
+    try self.provider.cardReads.finish(0, .success(UserEnvelope(me: .template)))
+    _ = try await second.value
+    await cancellationCheck.value
+    XCTAssertEqual(self.provider.cardReads.count, 1)
+  }
+
+  func testReadOvertakenByWriteReloadsBeforePublishingToEitherWaiter() async throws {
+    let first = try await self.startCardRead()
     await self.provider.cardReads.waitFor(1)
     let write = Task { try await self.feature.remove(id: "card") }
     await self.provider.removals.waitFor(1)
+    let second = try await self.startCardRead()
     try self.provider.cardReads.finish(0, .success(UserEnvelope(me: .template)))
     try self.provider.removals.finish(0, .success(DeletePaymentMethodEnvelope(storedCards: [])))
     await self.provider.cardReads.waitFor(2)
-    try self.provider.cardReads.finish(1, .success(UserEnvelope(me: .template)))
-    _ = try await read.value
+    let refreshedUser = GraphUser.template |> \.storedCards .~ UserCreditCards.withCards([])
+    try self.provider.cardReads.finish(1, .success(UserEnvelope(me: refreshedUser)))
+    let firstResult = try await first.value
+    let secondResult = try await second.value
+    XCTAssertEqual(firstResult.me.storedCards.storedCards, [])
+    XCTAssertEqual(secondResult.me.storedCards.storedCards, [])
     _ = try await write.value
     XCTAssertEqual(self.provider.cardReads.count, 2)
+  }
+
+  func testSessionReplacementReleasesOldCardWaitersAndStartsAnIndependentRead() async throws {
+    let old = try await self.startCardRead()
+    await self.provider.cardReads.waitFor(1)
+    self.session.sessionChanged()
+    self.feature.sessionChanged()
+
+    let fresh = try await self.startCardRead()
+    await self.provider.cardReads.waitFor(2)
+    try self.provider.cardReads.finish(1, .success(UserEnvelope(me: .template)))
+    _ = try await fresh.value
+    if case let .failure(error) = await old.result { XCTAssertTrue(error is CancellationError) }
+    else { XCTFail("Previous session received cards") }
+    try self.provider.cardReads.finish(0, .success(UserEnvelope(me: .template)))
+    XCTAssertEqual(self.provider.cardReads.count, 2)
+  }
+
+  private func startCardRead() async throws -> Task<UserEnvelope<GraphUser>, Error> {
+    var read: Task<UserEnvelope<GraphUser>, Error>?
+    await withCheckedContinuation { (started: CheckedContinuation<Void, Never>) in
+      read = Task {
+        started.resume()
+        return try await self.feature.cards()
+      }
+    }
+    return try XCTUnwrap(read)
   }
 
   func testSessionChangeSuppressesOldIntentValueAndQueuedCardWrite() async throws {

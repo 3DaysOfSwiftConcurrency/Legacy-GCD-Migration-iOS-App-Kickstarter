@@ -118,6 +118,20 @@ public final class PaymentsFeature {
   private var cardTail: [SessionIdentity: Pending] = [:]
   private var cardRevision = 0
 
+  private struct CardReadResult: Sendable {
+    let revision: Int
+    let cards: Result<UserEnvelope<GraphUser>, Error>
+  }
+
+  private struct CardRead {
+    let id: UUID
+    let task: Task<Void, Never>
+    var waiters: [UUID: CheckedContinuation<CardReadResult, Error>]
+  }
+
+  private var cardReads: [SessionIdentity: CardRead] = [:]
+
+
   private func request(_ command: Command, operation: @escaping @MainActor (any PaymentsProvider) async throws -> Value)
     -> Task<Value, Error> {
     let identity = Identity(session: self.sessionIdentity, command: command)
@@ -151,22 +165,75 @@ public final class PaymentsFeature {
     return task
   }
 
+  /// Equivalent reads within one session share a fetch and any reload required by a
+  /// card write. A canceled waiter leaves the fetch alive while anyone still needs it.
   public func cards() async throws -> UserEnvelope<GraphUser> {
     let session = self.sessionIdentity
-    // A reload waits for admitted card writes. If another write overtakes a
-    // read, fetch again after that write rather than publishing an old list.
     while true {
-      while let previous = self.cardTail[session] { _ = await previous.task.result }
+      let result = try await self.waitForCardRead(in: session)
       try self.requireCurrent(session)
-      let revision = self.cardRevision
-      do {
-        let value = try await self.makeProvider().cards()
-        try self.requireCurrent(session)
-        if revision == self.cardRevision { return value }
-      } catch {
-        try self.requireCurrent(session)
-        if revision == self.cardRevision { throw error }
+      if result.revision == self.cardRevision { return try result.cards.get() }
+    }
+  }
+
+  private func waitForCardRead(in session: SessionIdentity) async throws -> CardReadResult {
+    try self.requireCurrent(session)
+    let waiter = UUID()
+    return try await withTaskCancellationHandler {
+      try await withCheckedThrowingContinuation { continuation in
+        guard !Task.isCancelled else {
+          continuation.resume(throwing: CancellationError())
+          return
+        }
+        if self.cardReads[session] != nil {
+          self.cardReads[session]?.waiters[waiter] = continuation
+          return
+        }
+        let readID = UUID()
+        let task = Task { [self] in
+          let result: Result<CardReadResult, Error>
+          do { result = .success(try await self.readCardsAfterWrites(in: session)) }
+          catch { result = .failure(error) }
+          guard self.cardReads[session]?.id == readID,
+                let finished = self.cardReads.removeValue(forKey: session) else { return }
+          for waiter in finished.waiters.values { waiter.resume(with: result) }
+        }
+        self.cardReads[session] = CardRead(id: readID, task: task, waiters: [waiter: continuation])
       }
+    } onCancel: {
+      Task { @MainActor [weak self] in
+        guard let self, let continuation = self.cardReads[session]?.waiters.removeValue(forKey: waiter)
+        else { return }
+        if self.cardReads[session]?.waiters.isEmpty == true {
+          self.cardReads.removeValue(forKey: session)?.task.cancel()
+        }
+        continuation.resume(throwing: CancellationError())
+      }
+    }
+  }
+
+  private func readCardsAfterWrites(in session: SessionIdentity) async throws -> CardReadResult {
+    while true {
+      try self.requireCurrent(session)
+      if let previous = self.cardTail[session] {
+        _ = await previous.task.result
+        continue
+      }
+      let revision = self.cardRevision
+      let result: Result<UserEnvelope<GraphUser>, Error>
+      do { result = .success(try await self.makeProvider().cards()) }
+      catch { result = .failure(error) }
+      try self.requireCurrent(session)
+      if revision == self.cardRevision { return CardReadResult(revision: revision, cards: result) }
+    }
+  }
+
+  func sessionChanged() {
+    let current = self.sessionIdentity
+    for session in Array(self.cardReads.keys) where session != current {
+      guard let read = self.cardReads.removeValue(forKey: session) else { continue }
+      read.task.cancel()
+      for waiter in read.waiters.values { waiter.resume(throwing: CancellationError()) }
     }
   }
 
@@ -223,8 +290,9 @@ public final class PaymentsFeature {
   }
 
   public func waitForOperations() async {
-    while !self.commands.isEmpty {
+    while !self.commands.isEmpty || !self.cardReads.isEmpty {
       for task in Array(self.commands.values) { _ = await task.result }
+      for read in Array(self.cardReads.values) { await read.task.value }
     }
   }
 }

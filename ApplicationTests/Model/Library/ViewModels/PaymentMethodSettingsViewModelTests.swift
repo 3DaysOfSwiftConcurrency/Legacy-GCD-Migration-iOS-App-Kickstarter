@@ -249,7 +249,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     self.editButtonIsEnabled.assertDidNotEmitValue()
     self.vm.viewDidLoad()
     self.editButtonIsEnabled.assertValue(false)
-    await self.paymentsFeature.waitForOperations()
+    await self.advancePayments()
   }
 
   func testEditButtonIsEnabledAndTitle_HasPaymentMethods() async {
@@ -420,7 +420,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     self.vm.addNewCardSucceeded(with: Strings.Got_it_your_changes_have_been_saved())
 
     self.presentBanner.assertValues([Strings.Got_it_your_changes_have_been_saved()])
-    await self.paymentsFeature.waitForOperations()
+    await self.advancePayments()
   }
 
   func testDeletePaymentMethod() async {

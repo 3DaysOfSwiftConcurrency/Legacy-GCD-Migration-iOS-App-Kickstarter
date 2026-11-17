@@ -490,6 +490,7 @@ public final class AppModel {
 
   public func sessionChanged() {
     self.sessionFeature.sessionChanged()
+    self.paymentsFeature.sessionChanged()
     self.applicationShortcuts.cancel()
     self.settingsFeature.cancelScheduledAccountRefresh()
     self.authenticationFeature.resetEmailRedirects()

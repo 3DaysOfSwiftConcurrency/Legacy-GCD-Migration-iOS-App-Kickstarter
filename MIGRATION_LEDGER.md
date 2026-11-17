@@ -3968,3 +3968,24 @@ The iPhone 17 Pro Max simulator on iOS 26.2 passed 54 focused tests
 and 125 bounded payment settings and checkout regressions. Live
 payments and visual parity remain unverified. Concurrent card reads
 still issue independent provider requests.
+
+### Shared saved-card reads — Matthew Thomas
+
+Payments owns one in-flight saved-card read per session. Concurrent
+callers await the same provider fetch and any reload required by a
+card write. A result overtaken by a write is discarded. Canceling a
+waiter returns cancellation immediately and preserves the fetch for
+remaining callers. Removing the last waiter or replacing the session
+cancels the fetch. AppModel signals the session boundary.
+
+Controlled tests verify that two callers share the fetch, that one
+can cancel before transport completes, that both receive the
+post-write cards, and that a replacement session can read while the
+obsolete provider request finishes.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 19 focused
+Payments and AppModel tests and 76 checkout and settings regressions.
+The first regression run exposed two Settings tests that released
+their mock environment before the ViewModel finished its read.
+Awaiting the ViewModel resolved both. Live Stripe and visual parity
+remain unverified.
