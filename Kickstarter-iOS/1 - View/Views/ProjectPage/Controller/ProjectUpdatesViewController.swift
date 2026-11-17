@@ -8,7 +8,8 @@ import WebKit
 
 internal final class ProjectUpdatesViewController: WebViewController {
   fileprivate let viewModel = ProjectUpdatesViewModel(
-    discussionFeature: AppModel.shared.discussionFeature
+    discussionFeature: AppModel.shared.discussionFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
   fileprivate let activityIndicator = UIActivityIndicatorView()
   internal static func configuredWith(project: Project) -> ProjectUpdatesViewController {

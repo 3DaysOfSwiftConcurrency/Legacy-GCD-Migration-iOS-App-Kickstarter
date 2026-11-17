@@ -11,7 +11,7 @@ internal final class VideoViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   internal let vm = VideoViewModel(projectMediaFeature: ProjectMediaFeature(sessionFeature: .live(), makeProvider: {
     AsyncProjectMediaProvider(service: AppEnvironment.current.apiService)
-  }))
+  }), analytics: { AppEnvironment.current.ksrAnalytics })
   internal let addCompletionObserver = VideoRecorder<CMTime>()
   internal let configurePlayerWithURL = VideoRecorder<String>()
   internal let incrementVideoCompletion = VideoRecorder<VoidEnvelope>()

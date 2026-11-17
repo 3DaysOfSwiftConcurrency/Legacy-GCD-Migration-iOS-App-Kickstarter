@@ -13,6 +13,7 @@ public final class ProjectUpdatesViewModel {
   public var onNoEmail: ((UIAlertController) -> Void)?
   public var onLoadRequest: ((URLRequest) -> Void)?
   private let discussionFeature: DiscussionFeature
+  private let analytics: () -> KSRAnalytics
   private let route = UUID()
   private let commentsRoute = UUID()
   private var project: Project?
@@ -25,8 +26,9 @@ public final class ProjectUpdatesViewModel {
   private(set) var loadingTask: Task<Void, Never>?
   private(set) var contextTask: Task<Void, Never>?
 
-  public init(discussionFeature: DiscussionFeature) {
+  public init(discussionFeature: DiscussionFeature, analytics: @escaping () -> KSRAnalytics) {
     self.discussionFeature = discussionFeature
+    self.analytics = analytics
   }
 
   public func configureWith(project: Project) {
@@ -44,7 +46,7 @@ public final class ProjectUpdatesViewModel {
     if let url = URL(string: project.urls.web.updates ?? "") {
       self.onLoadRequest?(self.discussionFeature.preparedWebRequest(from: URLRequest(url: url)))
     }
-    AppEnvironment.current.ksrAnalytics.trackProjectViewed(project, sectionContext: .updates)
+    self.analytics().trackProjectViewed(project, sectionContext: .updates)
   }
 
   public func canSendEmail(_ canSend: Bool) { self.canSend = canSend; self.hasMailCapability = true }

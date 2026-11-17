@@ -260,6 +260,8 @@ public final class ProjectDetailsFeature {
     for observer in self.observers { observer.callback(update) }
   }
 
+  var includesRichTextStory: Bool { self.includeRichText() }
+
   public init(
     platform: Platform,
     sessionFeature: SessionFeature,

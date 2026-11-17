@@ -31,8 +31,13 @@ public final class ProjectNavigationSelectorViewModel {
   private var appeared = false
   private var hasTappedNonzero = false
   private var lastTrackedIndex: Int?
+  private let includesRichTextStory: () -> Bool
+  private let analytics: () -> KSRAnalytics
 
-  public init() {}
+  public init(includesRichTextStory: @escaping () -> Bool, analytics: @escaping () -> KSRAnalytics) {
+    self.includesRichTextStory = includesRichTextStory
+    self.analytics = analytics
+  }
 
   public func didMoveToSuperview() {
     guard !self.appeared else { return }
@@ -43,7 +48,7 @@ public final class ProjectNavigationSelectorViewModel {
 
   public func configureNavigationSelector(with properties: (Project, RefTag?)) {
     self.project = properties
-    self.onSections?(Self.displayableTabs(for: properties.0))
+    self.onSections?(self.displayableTabs(for: properties.0))
     self.onSelect?(0)
   }
 
@@ -57,13 +62,13 @@ public final class ProjectNavigationSelectorViewModel {
     guard self.lastTrackedIndex != index else { return }
     self.lastTrackedIndex = index
     guard let (project, refTag) = self.project, let context = self.navigationTabContext(index: index) else { return }
-    AppEnvironment.current.ksrAnalytics.trackProjectViewed(project, refTag: refTag, sectionContext: context)
+    self.analytics().trackProjectViewed(project, refTag: refTag, sectionContext: context)
   }
 
-  private static func displayableTabs(for project: Project) -> [NavigationSection] {
+  private func displayableTabs(for project: Project) -> [NavigationSection] {
     let base: [NavigationSection] = [.overview]
     guard let properties = project.extendedProjectProperties, let prelaunch = project.displayPrelaunch,
-          !prelaunch else { return featureProjectStoryRichTextEnabled() ? base + [.campaign] : base }
+          !prelaunch else { return self.includesRichTextStory() ? base + [.campaign] : base }
     var sections = base + [.campaign, .faq, .risks]
     if properties.aiDisclosure?.involvesAi == true { sections.append(.aiDisclosure) }
     if !properties.environmentalCommitments.isEmpty { sections.append(.environmentalCommitments) }

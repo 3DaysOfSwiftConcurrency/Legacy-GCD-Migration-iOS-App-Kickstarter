@@ -10,7 +10,9 @@ import XCTest
 final class ProjectPamphletMainCellViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let vm = ProjectPamphletMainCellViewModel(
-    preferredCurrency: { AppEnvironment.current.currentUser?.chosenCurrency }
+    preferredCurrency: { AppEnvironment.current.currentUser?.chosenCurrency },
+    formatting: { .init(environment: AppEnvironment.current) },
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
 
   private let backingLabelHidden = PamphletRecorder<Bool>()
@@ -82,7 +84,11 @@ final class ProjectPamphletMainCellViewModelTests: TestCase {
   }
 
   func testVideoPlayerConfiguredOnceAfterProjectAndDelegateAreReady() {
-    let vm = ProjectPamphletMainCellViewModel(preferredCurrency: { nil })
+    let vm = ProjectPamphletMainCellViewModel(
+      preferredCurrency: { nil },
+      formatting: { .init(environment: AppEnvironment.current) },
+      analytics: { AppEnvironment.current.ksrAnalytics }
+    )
     var configurations = 0
     vm.onEvent = { if case .configureVideoPlayerController = $0 { configurations += 1 } }
     vm.delegateDidSet()
@@ -360,6 +366,31 @@ final class ProjectPamphletMainCellViewModelTests: TestCase {
 
     self.deadlineTitleLabelText.assertValues(["4"])
     self.deadlineSubtitleLabelText.assertValues(["days to go"])
+  }
+
+  func testDeadlineAndAccessibilityUseTheSuppliedClock() {
+    let formatting = ProjectPamphletMainCellViewModel.Formatting(environment: AppEnvironment.current)
+    let vm = ProjectPamphletMainCellViewModel(
+      preferredCurrency: { nil }, formatting: { formatting }, analytics: { AppEnvironment.current.ksrAnalytics }
+    )
+    let project = .template
+      |> Project.lens.dates.deadline .~ (self.dateType.init().timeIntervalSince1970 + 60 * 60 * 24 * 4)
+    var deadline: String?
+    var accessibility: String?
+    vm.onEvent = { event in
+      switch event {
+      case let .deadlineTitleLabelText(value): deadline = value
+      case let .statsStackViewAccessibilityLabel(value): accessibility = value
+      default: break
+      }
+    }
+    withEnvironment(dateType: Date.self) {
+      vm.configureWith(value: (project, nil))
+      vm.awakeFromNib()
+    }
+
+    XCTAssertEqual(deadline, "4")
+    XCTAssertTrue(accessibility?.contains("4 days to go") == true)
   }
 
   func testFundingProgressBarViewBackgroundColor_UnsuccessfulProject() {

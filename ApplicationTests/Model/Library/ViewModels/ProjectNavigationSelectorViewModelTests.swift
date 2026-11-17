@@ -7,7 +7,9 @@ final class ProjectNavigationSelectorViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
   func testSectionsAndSelection() {
-    let vm = ProjectNavigationSelectorViewModel()
+    let vm = ProjectNavigationSelectorViewModel(
+      includesRichTextStory: { false }, analytics: { AppEnvironment.current.ksrAnalytics }
+    )
     var sections: [[NavigationSection]] = []
     var selected: [Int] = []
     var animated: [Int] = []
@@ -31,7 +33,9 @@ final class ProjectNavigationSelectorViewModelTests: TestCase {
   }
 
   func testAnalyticsSkipsInitialOverviewAndRepeatedTabs() {
-    let vm = ProjectNavigationSelectorViewModel()
+    let vm = ProjectNavigationSelectorViewModel(
+      includesRichTextStory: { false }, analytics: { AppEnvironment.current.ksrAnalytics }
+    )
     vm.configureNavigationSelector(with: (.template, nil))
     vm.buttonTapped(index: 0)
     vm.buttonTapped(index: 1)
@@ -43,7 +47,9 @@ final class ProjectNavigationSelectorViewModelTests: TestCase {
   }
 
   func testPrelaunchAndEnvironmentalCommitments() {
-    let vm = ProjectNavigationSelectorViewModel()
+    let vm = ProjectNavigationSelectorViewModel(
+      includesRichTextStory: { false }, analytics: { AppEnvironment.current.ksrAnalytics }
+    )
     var sections: [NavigationSection] = []
     vm.onSections = { sections = $0 }
     var project = Project.template
@@ -59,5 +65,23 @@ final class ProjectNavigationSelectorViewModelTests: TestCase {
     project.displayPrelaunch = false
     vm.configureNavigationSelector(with: (project, nil))
     XCTAssertEqual(sections, [.overview, .campaign, .faq, .risks, .environmentalCommitments])
+  }
+
+  func testPrelaunchCampaignTabUsesTheSuppliedStoryPolicy() {
+    var includesRichText = false
+    let vm = ProjectNavigationSelectorViewModel(
+      includesRichTextStory: { includesRichText }, analytics: { AppEnvironment.current.ksrAnalytics }
+    )
+    var sections: [NavigationSection] = []
+    vm.onSections = { sections = $0 }
+    var project = Project.template
+    project.displayPrelaunch = true
+
+    vm.configureNavigationSelector(with: (project, nil))
+    XCTAssertEqual(sections, [.overview])
+
+    includesRichText = true
+    vm.configureNavigationSelector(with: (project, nil))
+    XCTAssertEqual(sections, [.overview, .campaign])
   }
 }

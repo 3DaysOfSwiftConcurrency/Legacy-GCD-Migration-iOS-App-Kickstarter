@@ -44,6 +44,31 @@ final class ProjectPamphletMainCellViewModel {
     case backingLabelHidden(Bool)
     case projectNoticeBannerHidden(Bool)
   }
+  struct Formatting {
+    let dateType: DateProtocol.Type
+    let calendar: Calendar
+    let currency: PledgeCurrencyContext
+
+    init(environment: Environment) {
+      self.dateType = environment.dateType
+      self.calendar = environment.calendar
+      self.currency = PledgeCurrencyContext(
+        launchedCountries: environment.launchedCountries,
+        viewerCountryCode: environment.countryCode,
+        locale: environment.locale
+      )
+    }
+
+    func remainingTime(until deadline: TimeInterval) -> (String, String) {
+      Format.duration(
+        from: self.dateType.init().date,
+        to: self.dateType.init(timeIntervalSince1970: deadline).date,
+        calendar: self.calendar,
+        useToGo: true
+      )
+    }
+  }
+
   var onEvent: ((Event) -> Void)?
   private var data: ProjectPamphletMainCellData?
   private var awake = false
@@ -54,8 +79,17 @@ final class ProjectPamphletMainCellViewModel {
   private var lastBackingHidden: Bool?
   private let preferredCurrency: () -> String?
 
-  init(preferredCurrency: @escaping () -> String?) {
+  private let formatting: () -> Formatting
+  private let analytics: () -> KSRAnalytics
+
+  init(
+    preferredCurrency: @escaping () -> String?,
+    formatting: @escaping () -> Formatting,
+    analytics: @escaping () -> KSRAnalytics
+  ) {
     self.preferredCurrency = preferredCurrency
+    self.formatting = formatting
+    self.analytics = analytics
   }
 
   func awakeFromNib() {
@@ -72,7 +106,7 @@ final class ProjectPamphletMainCellViewModel {
   func creatorButtonTapped() {
     guard self.awake, let project = self.data?.project else { return }
     self.onEvent?(.notifyDelegateToGoToCreator(project))
-    AppEnvironment.current.ksrAnalytics.trackGotoCreatorDetailsClicked(project: project)
+    self.analytics().trackGotoCreatorDetailsClicked(project: project)
   }
   func projectNoticeLearnMoreTapped() { self.onEvent?(.notifyDelegateToGoToProjectNotice) }
   func videoDidStart() { self.videoPlaying = true; self.publishBackingHidden() }
@@ -95,13 +129,14 @@ final class ProjectPamphletMainCellViewModel {
   private func publishProject() {
     guard self.awake, let project = self.data?.project else { return }
     let properties = project.projectPamphletMainCellProperties
+    let formatting = self.formatting()
     self.onEvent?(.projectNameLabelText(properties.name))
     self.onEvent?(.projectBlurbLabelText(properties.blurb))
     self.onEvent?(.creatorLabelText(Strings.project_creator_by_creator(creator_name: properties.creatorName)))
     self.onEvent?(.creatorImageUrl(URL(string: properties.creatorAvatarURL)))
     self.onEvent?(.stateLabelHidden(properties.state == .live))
     if properties.state != .live {
-      self.onEvent?(.projectStateLabelText(fundingStatus(forProperties: properties)))
+      self.onEvent?(.projectStateLabelText(fundingStatus(forProperties: properties, formatting: formatting)))
       self.onEvent?(.projectStateLabelTextColor(properties.state == .successful ? LegacyColors.ksr_create_700.uiColor() : LegacyColors.ksr_support_400.uiColor()))
     }
     self.onEvent?(.fundingProgressBarViewBackgroundColor(progressColor(forProperties: properties)))
@@ -116,13 +151,7 @@ final class ProjectPamphletMainCellViewModel {
     self.onEvent?(.backersTitleLabelText(backers.first ?? ""))
     self.onEvent?(.backersSubtitleLabelText(backers.last ?? ""))
     self.onEvent?(.categoryNameLabelText(properties.categoryName ?? ""))
-    var duration = ("", "")
-    if let deadline = properties.deadline {
-      let environment: Environment = AppEnvironment.current
-      duration = Format.duration(from: environment.dateType.init().date,
-        to: environment.dateType.init(timeIntervalSince1970: deadline).date,
-        calendar: environment.calendar, useToGo: true)
-    }
+    let duration = properties.deadline.map(formatting.remainingTime) ?? ("", "")
     self.onEvent?(.deadlineTitleLabelText(duration.0))
     self.onEvent?(.deadlineSubtitleLabelText(duration.1))
     let currency = properties.currentCurrency(fallback: self.preferredCurrency())
@@ -131,11 +160,20 @@ final class ProjectPamphletMainCellViewModel {
     self.onEvent?(.conversionLabelHidden(!conversion))
     self.onEvent?(.locationNameLabelText(properties.locationName))
     self.onEvent?(.locationStackViewHidden(properties.locationName.isEmpty))
-    self.onEvent?(.pledgedTitleLabelText(pledgedText(for: properties, conversion, omitCode: omitCode)))
-    self.onEvent?(.pledgedSubtitleLabelText(goalText(for: properties, conversion, omitCode: omitCode)))
-    if conversion { self.onEvent?(.conversionLabelText(conversionText(for: properties, omitCode: omitCode))) }
+    let amounts = pledgeAmountAndGoalAndCountry(forProperties: properties, needsConversion: conversion)
+    let pledged = formatting.currency.format(
+      amounts.pledgedAmount, currencyCode: amounts.currency, omitCurrencyCode: omitCode
+    )
+    let goal = formatting.currency.format(
+      amounts.goalAmount, currencyCode: amounts.currency, omitCurrencyCode: omitCode
+    )
+    self.onEvent?(.pledgedTitleLabelText(pledged))
+    self.onEvent?(.pledgedSubtitleLabelText(Strings.activity_project_state_change_pledged_of_goal(goal: goal)))
+    if conversion {
+      self.onEvent?(.conversionLabelText(conversionText(for: properties, omitCode: omitCode, currency: formatting.currency)))
+    }
     self.onEvent?(.statsStackViewAccessibilityLabel(statsStackViewAccessibilityLabelForProperties(
-      properties, needsConversion: conversion, omitCode: omitCode
+      properties, pledged: pledged, goal: goal, duration: duration
     )))
     if let prelaunch = properties.displayPrelaunch { self.onEvent?(.isPrelaunchProject(prelaunch)) }
     self.onEvent?(.progressPercentage(clamp(0, 1)(properties.fundingProgress)))
@@ -146,37 +184,12 @@ final class ProjectPamphletMainCellViewModel {
 @MainActor
 private func statsStackViewAccessibilityLabelForProperties(
   _ properties: ProjectPamphletMainCellProperties,
-  needsConversion: Bool,
-  omitCode: Bool
+  pledged: String,
+  goal: String,
+  duration: (String, String)
 ) -> String {
-  let projectCurrencyData = pledgeAmountAndGoalAndCountry(
-    forProperties: properties,
-    needsConversion: needsConversion
-  )
-
-  let pledged = Format.currency(
-    projectCurrencyData.pledgedAmount,
-    currencyCode: projectCurrencyData.currency,
-    omitCurrencyCode: omitCode
-  )
-  let goal = Format.currency(
-    projectCurrencyData.goalAmount,
-    currencyCode: projectCurrencyData.currency,
-    omitCurrencyCode: omitCode
-  )
-
   let backersCount = properties.backersCount
-  var (time, unit) = ("", "")
-
-  if let deadline = properties.deadline {
-    let environment: Environment = AppEnvironment.current
-    (time, unit) = Format.duration(
-      from: environment.dateType.init().date,
-      to: environment.dateType.init(timeIntervalSince1970: deadline).date,
-      calendar: environment.calendar, useToGo: true
-    )
-  }
-
+  let (time, unit) = duration
   let timeLeft = time + " " + unit
 
   return properties.state == .live
@@ -189,11 +202,16 @@ private func statsStackViewAccessibilityLabelForProperties(
 }
 
 @MainActor
-private func fundingStatus(forProperties properties: ProjectPamphletMainCellProperties) -> String {
+private func fundingStatus(
+  forProperties properties: ProjectPamphletMainCellProperties,
+  formatting: ProjectPamphletMainCellViewModel.Formatting
+) -> String {
   let date = Format.date(
-    secondsInUTC: properties.stateChangedAt,
+    formatting.dateType.init(timeIntervalSince1970: properties.stateChangedAt).date,
     dateStyle: .medium,
-    timeStyle: .none
+    timeStyle: .none,
+    locale: formatting.currency.locale,
+    timeZone: formatting.calendar.timeZone
   )
 
   switch properties.state {
@@ -230,50 +248,18 @@ private func pledgeAmountAndGoalAndCountry(
 }
 
 @MainActor
-private func goalText(
-  for properties: ProjectPamphletMainCellProperties, _ needsConversion: Bool, omitCode: Bool
-) -> String {
-  let projectCurrencyData = pledgeAmountAndGoalAndCountry(
-    forProperties: properties,
-    needsConversion: needsConversion
-  )
-
-  return Strings.activity_project_state_change_pledged_of_goal(
-    goal: Format.currency(
-      projectCurrencyData.goalAmount,
-      currencyCode: projectCurrencyData.currency,
-      omitCurrencyCode: omitCode
-    )
-  )
-}
-
-@MainActor
-private func pledgedText(
+private func conversionText(
   for properties: ProjectPamphletMainCellProperties,
-  _ needsConversion: Bool,
-  omitCode: Bool
+  omitCode: Bool,
+  currency: PledgeCurrencyContext
 ) -> String {
-  let projectCurrencyData = pledgeAmountAndGoalAndCountry(
-    forProperties: properties,
-    needsConversion: needsConversion
-  )
-
-  return Format.currency(
-    projectCurrencyData.pledgedAmount,
-    currencyCode: projectCurrencyData.currency,
-    omitCurrencyCode: omitCode
-  )
-}
-
-@MainActor
-private func conversionText(for properties: ProjectPamphletMainCellProperties, omitCode: Bool) -> String {
   return Strings.discovery_baseball_card_stats_convert_from_pledged_of_goal(
-    pledged: Format.currency(
+    pledged: currency.format(
       properties.pledged.amount,
       currencyCode: properties.currency,
       omitCurrencyCode: omitCode
     ),
-    goal: Format.currency(
+    goal: currency.format(
       properties.goal.amount,
       currencyCode: properties.currency,
       omitCurrencyCode: omitCode

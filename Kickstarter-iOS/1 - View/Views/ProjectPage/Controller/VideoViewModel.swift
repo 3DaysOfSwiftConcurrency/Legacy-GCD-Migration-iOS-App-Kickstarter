@@ -19,6 +19,7 @@ public final class VideoViewModel {
   public var onVideoHidden: ((Bool) -> Void)?
 
   private let projectMediaFeature: ProjectMediaFeature
+  private let analytics: () -> KSRAnalytics
   private let route = UUID()
   private var project: (any VideoViewConfiguration)?
   private var loaded = false
@@ -36,8 +37,9 @@ public final class VideoViewModel {
   private var startTask: Task<Void, Never>?
   private var completionTask: Task<Void, Never>?
 
-  public init(projectMediaFeature: ProjectMediaFeature) {
+  public init(projectMediaFeature: ProjectMediaFeature, analytics: @escaping () -> KSRAnalytics) {
     self.projectMediaFeature = projectMediaFeature
+    self.analytics = analytics
   }
 
   public func configureWith(project: any VideoViewConfiguration) {
@@ -129,7 +131,7 @@ public final class VideoViewModel {
   private func trackPlaybackIfReady() {
     guard self.loaded, let project = self.project, let duration = self.duration,
           let time = self.lastPlayingTime else { return }
-    AppEnvironment.current.ksrAnalytics.trackProjectVideoPlaybackStarted(
+    self.analytics().trackProjectVideoPlaybackStarted(
       project: project, videoLength: lround(duration.seconds), videoPosition: lround(time.seconds)
     )
   }

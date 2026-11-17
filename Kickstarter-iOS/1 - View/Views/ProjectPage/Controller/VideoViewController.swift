@@ -16,7 +16,8 @@ public final class VideoViewController: UIViewController {
   internal weak var delegate: VideoViewControllerDelegate?
   internal weak var playbackDelegate: AudioVideoViewControllerPlaybackDelegate?
   fileprivate let viewModel = VideoViewModel(
-    projectMediaFeature: AppModel.shared.projectMediaFeature
+    projectMediaFeature: AppModel.shared.projectMediaFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
   fileprivate var playerController: AVPlayerViewController!
   private var videoObservation: ProjectVideoObservation?

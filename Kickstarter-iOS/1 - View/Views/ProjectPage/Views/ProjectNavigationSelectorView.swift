@@ -23,7 +23,10 @@ final class ProjectNavigationSelectorView: UIView {
   internal weak var delegate: ProjectNavigationSelectorViewDelegate?
   private var selectedButtonBorderViewLeadingConstraint: NSLayoutConstraint?
   private var selectedButtonBorderViewWidthConstraint: NSLayoutConstraint?
-  private let viewModel = ProjectNavigationSelectorViewModel()
+  private let viewModel = ProjectNavigationSelectorViewModel(
+    includesRichTextStory: { AppModel.shared.projectDetailsFeature.includesRichTextStory },
+    analytics: { AppEnvironment.current.ksrAnalytics }
+  )
 
   private lazy var buttonsStackView: UIStackView = {
     UIStackView(frame: .zero)

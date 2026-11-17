@@ -22,7 +22,9 @@ internal final class ProjectPamphletMainCell: UITableViewCell, ValueCell {
   }
 
   fileprivate let viewModel = ProjectPamphletMainCellViewModel(
-    preferredCurrency: { AppModel.shared.sessionFeature.currentUser?.chosenCurrency }
+    preferredCurrency: { AppModel.shared.sessionFeature.currentUser?.chosenCurrency },
+    formatting: { .init(environment: AppEnvironment.current) },
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
 
   fileprivate weak var videoController: VideoViewController?

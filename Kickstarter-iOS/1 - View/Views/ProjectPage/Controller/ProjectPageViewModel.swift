@@ -652,7 +652,8 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     var urls: [URL] = []
     var contentView: ProjectPageContentView = .tableView
     if section == .campaign {
-      if featureProjectStoryRichTextEnabled(), let richText = project.extendedProjectProperties?.story.richText {
+      if self.projectDetailsFeature.includesRichTextStory,
+         let richText = project.extendedProjectProperties?.story.richText {
         contentView = .richTextView(richText)
       }
       urls = (project.extendedProjectProperties?.story.htmlViewElements ?? [])

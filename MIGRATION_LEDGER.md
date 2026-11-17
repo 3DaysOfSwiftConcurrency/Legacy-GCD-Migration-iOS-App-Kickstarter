@@ -3704,3 +3704,17 @@ The simulator passed 61 focused Navigation, AppModel, and Settings tests
 and 141 bounded application routing, analytics, alert presenter, and Root
 Tabs tests. The routing suite exercises the concrete router and account
 coordinator with controlled inputs. Live SDK delivery remains unverified.
+
+### Project Page presentation dependencies — Matthew Thomas
+
+Project Page media, updates, header, and section selector view models
+receive analytics from their UIKit views or controllers. Project Details
+supplies the story policy used by the selector and main page. The header
+uses a single formatting snapshot for funding, dates, countdown, and
+VoiceOver. The source check rejects direct application globals and
+story-flag reads in Project Page view models.
+
+The simulator passed 64 focused header, selector, updates, and video
+tests and 119 bounded Project Page, Project Details, and Project Media
+tests. The new tests exercise the supplied countdown clock and the
+prelaunch campaign tab's story policy.
