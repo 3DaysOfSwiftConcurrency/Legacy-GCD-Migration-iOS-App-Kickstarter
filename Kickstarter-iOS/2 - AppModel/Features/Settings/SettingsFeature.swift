@@ -201,6 +201,9 @@ public final class SettingsFeature {
 
   private let session: SessionFeature
   private let makeProvider: () -> any AccountPreferencesProvider
+  private let refreshDebounce: @MainActor () async throws -> Void
+  private var scheduledRefresh: Task<Void, Never>?
+  private var lifecycleRefresh: Task<Void, Never>?
   private var account: Account?
   private var tail: Pending?
   private var writes: [UUID: Task<User, Error>] = [:]
@@ -227,9 +230,62 @@ public final class SettingsFeature {
   public var sessionFeature: SessionFeature { self.session }
   public private(set) var lastError: Error?
 
-  public init(sessionFeature: SessionFeature, makeProvider: @escaping () -> any AccountPreferencesProvider) {
+  public init(
+    sessionFeature: SessionFeature,
+    refreshDebounce: @escaping @MainActor () async throws -> Void = {
+      try await Task.sleep(for: .seconds(5))
+    },
+    makeProvider: @escaping () -> any AccountPreferencesProvider
+  ) {
     self.session = sessionFeature
+    self.refreshDebounce = refreshDebounce
     self.makeProvider = makeProvider
+  }
+
+  func scheduleAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
+    self.scheduledRefresh?.cancel()
+    let debounce = self.refreshDebounce
+    self.scheduledRefresh = Task { [weak self] in
+      do {
+        try await debounce()
+        try Task.checkCancellation()
+        self?.beginAccountRefresh(onResult: onResult)
+      } catch { /* A newer event superseded this debounce. */ }
+    }
+  }
+
+  private func beginAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
+    self.lifecycleRefresh?.cancel()
+    let authenticated = AppEnvironment.current.apiService.isAuthenticated
+    let userID = self.session.currentUser?.id
+    guard authenticated || userID != nil else {
+      onResult(.success(nil))
+      return
+    }
+    let generation = self.session.generation
+    self.lifecycleRefresh = Task { [weak self] in
+      guard let self else { return }
+      do {
+        let user = try await self.refresh(
+          userID: userID, generation: generation, allowSessionRestore: authenticated
+        )
+        try Task.checkCancellation()
+        onResult(.success(user))
+      } catch {
+        guard !Task.isCancelled, !(error is CancellationError) else { return }
+        onResult(.failure(error))
+      }
+    }
+  }
+
+  func cancelScheduledAccountRefresh() {
+    self.scheduledRefresh?.cancel()
+    self.lifecycleRefresh?.cancel()
+  }
+
+  func waitForScheduledAccountRefresh() async {
+    await self.scheduledRefresh?.value
+    await self.lifecycleRefresh?.value
   }
 
   public func save(_ changes: [Change], from user: User) async throws -> User {

@@ -223,15 +223,11 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     func cancel() { self.task?.cancel(); self.task = nil; self.input = nil; self.id = nil }
   }
   private let redirectObservation = RedirectObservation()
-  private let userDebounce: @MainActor () async throws -> Void
   private let trackingDelay: @MainActor () async throws -> Void
   private var trackingDelayTasks: [UUID: Task<Void, Never>] = [:]
   private var hasLaunchEvent = false
   private var latestActiveState: Bool?
   private var lastScheduledActiveState: Bool?
-  private var userDebounceTask: Task<Void, Never>?
-  private var userReadTask: Task<Void, Never>?
-  private var userRequest: Task<User, Error>?
   private var configurationTask: Task<Void, Never>?
   private var shortcutTask: Task<Void, Never>?
   private var setupRequest: Task<GraphUserSetup, Error>?
@@ -250,10 +246,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
     onboardingFeature: OnboardingFeature,
-    userDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
     trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
   ) {
-    self.userDebounce = userDebounce
     self.trackingDelay = trackingDelay
     self.authenticationFeature = authenticationFeature
     self.deepLinkRouter = deepLinkRouter
@@ -270,9 +264,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.notificationTasks.values.forEach { $0.cancel() }
     self.verificationTask?.cancel()
     let devicePushRegistration = self.devicePushRegistration
-    self.userDebounceTask?.cancel()
-    self.userReadTask?.cancel()
-    self.userRequest?.cancel()
+    let settingsFeature = self.settingsFeature
     self.pushTasks.values.forEach { $0.cancel() }
     self.trackingDelayTasks.values.forEach { $0.cancel() }
     self.configurationTask?.cancel()
@@ -286,6 +278,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     let route = self.navigationRoute
     Task { @MainActor in
       devicePushRegistration.cancelScheduledDelivery()
+      settingsFeature.cancelScheduledAccountRefresh()
       redirectObservation.cancel()
       if let (tracking, id) = trackingObserver { tracking.removeAuthorizationObserver(id) }
       authenticationFeature.releaseEmailRedirect(route: route)
@@ -413,45 +406,20 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func scheduleUserRefresh() {
-    self.userDebounceTask?.cancel()
-    let debounce = self.userDebounce
-    self.userDebounceTask = Task { [weak self] in
-      do {
-        try await debounce()
-        try Task.checkCancellation()
-        self?.beginUserRefresh()
-      } catch { /* A newer lifecycle event superseded this debounce. */ }
-    }
-  }
-
-  private func beginUserRefresh() {
-    self.userReadTask?.cancel()
-    self.userRequest?.cancel()
-    let authenticated = AppEnvironment.current.apiService.isAuthenticated
-    guard authenticated || self.sessionFeature.currentUser != nil else {
-      self.refreshShortcutItems(for: nil)
-      return
-    }
-    let request = self.settingsFeature.requestRefresh(
-      allowSessionRestore: authenticated
-    )
-    self.userRequest = request
-    self.userReadTask = Task { [weak self] in
-      do {
-        let user = try await request.value
-        try Task.checkCancellation()
-        self?.onUpdateCurrentUser?(user)
-        self?.refreshShortcutItems(for: user)
-      } catch {
-        guard !Task.isCancelled, !(error is CancellationError) else { return }
-        if (error as? ErrorEnvelope)?.ksrCode == .AccessTokenInvalid { self?.onForceLogout?() }
+    self.settingsFeature.scheduleAccountRefresh { [weak self] result in
+      guard let self else { return }
+      switch result {
+      case .success(let user):
+        if let user { self.onUpdateCurrentUser?(user) }
+        self.refreshShortcutItems(for: user)
+      case .failure(let error):
+        if (error as? ErrorEnvelope)?.ksrCode == .AccessTokenInvalid { self.onForceLogout?() }
       }
     }
   }
 
   func waitForUserRefresh() async {
-    await self.userDebounceTask?.value
-    await self.userReadTask?.value
+    await self.settingsFeature.waitForScheduledAccountRefresh()
   }
 
   private func refreshShortcutItems(for user: User?) {

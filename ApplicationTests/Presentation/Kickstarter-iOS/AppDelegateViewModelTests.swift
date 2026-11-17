@@ -17,6 +17,7 @@ final class AppDelegateViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: {
       AsyncSessionProvider(service: AppEnvironment.current.apiService)
     }),
+    refreshDebounce: { try Task.checkCancellation() },
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var messagingFeature = MessagingFeature(
@@ -137,7 +138,6 @@ final class AppDelegateViewModelTests: TestCase {
       sessionFeature: session,
       settingsFeature: self.settingsFeature,
       onboardingFeature: OnboardingFeature(),
-      userDebounce: { try Task.checkCancellation() },
       trackingDelay: { try Task.checkCancellation() }
     )
   }
