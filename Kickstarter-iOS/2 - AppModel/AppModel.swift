@@ -211,16 +211,16 @@ public struct ManagePledgeComposition {
 public struct PledgedProjectsComposition {
   public let pledgedProjectsFeature: PledgedProjectsFeature
   public let activityFeature: ActivityFeature
-  public let managePledge: ManagePledgeComposition
+  public let projectPage: ProjectPageComposition
 
   public init(
     pledgedProjectsFeature: PledgedProjectsFeature,
     activityFeature: ActivityFeature,
-    managePledge: ManagePledgeComposition
+    projectPage: ProjectPageComposition
   ) {
     self.pledgedProjectsFeature = pledgedProjectsFeature
     self.activityFeature = activityFeature
-    self.managePledge = managePledge
+    self.projectPage = projectPage
   }
 }
 
@@ -304,7 +304,7 @@ public final class AppModel {
     PledgedProjectsComposition(
       pledgedProjectsFeature: self.pledgedProjectsFeature,
       activityFeature: self.activityFeature,
-      managePledge: self.managePledgeComposition
+      projectPage: self.projectPageComposition
     )
   }
 

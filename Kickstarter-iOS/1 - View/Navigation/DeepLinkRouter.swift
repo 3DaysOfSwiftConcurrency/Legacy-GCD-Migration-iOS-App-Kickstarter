@@ -357,7 +357,10 @@ extension DeepLinkDestination {
   ) -> UINavigationController? {
     switch self {
     case let .survey(url):
-      let controller = PledgeManagerWebViewController.configuredWith(url: url)
+      let controller = PledgeManagerWebViewController.configuredWith(
+        url: url,
+        composition: projectPageComposition
+      )
       let navigation = UINavigationController(rootViewController: controller)
       navigation.modalPresentationStyle = .pageSheet
       return navigation

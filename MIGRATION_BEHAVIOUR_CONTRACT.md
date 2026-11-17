@@ -2291,3 +2291,14 @@ safe for arbitrary concurrent environment mutation.
   passes 5 tests, and the bounded router/AppModel/Project Page selection passes 88 tests.
 - The broader ApplicationRoutingTests attempt is not counted as passing: 8 of 107 tests
   failed in pre-existing discovery-category delivery expectations.
+
+## Pledge Manager composition — 17 November 2026
+
+- PledgeManagerWebViewController now receives ProjectPageComposition and constructs its
+  model from the nested PledgeFeature.
+- Its Project Page and Manage Pledge destinations retain that same graph. Deep Links,
+  Project Page and Pledged Projects now pass composition explicitly.
+- Focused AppModel/Pledge Manager coverage passes 22 tests and focused survey/Pledged
+  Projects/root presentation coverage passes 13 tests.
+- Activities and Messages still use the legacy default factory and remain explicit
+  follow-up work.

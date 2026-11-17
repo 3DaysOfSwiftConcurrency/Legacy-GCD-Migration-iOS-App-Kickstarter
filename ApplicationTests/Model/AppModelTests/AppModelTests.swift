@@ -364,13 +364,16 @@ final class AppModelTests: XCTestCase {
     )
     XCTAssertTrue(first.pledgedProjectsComposition.activityFeature === first.activityFeature)
     XCTAssertTrue(
-      first.pledgedProjectsComposition.managePledge.pledgeFeature === first.pledgeFeature
+      first.pledgedProjectsComposition.projectPage.managePledge.pledgeFeature
+        === first.pledgeFeature
     )
     XCTAssertTrue(
-      first.pledgedProjectsComposition.managePledge.paymentsFeature === first.paymentsFeature
+      first.pledgedProjectsComposition.projectPage.managePledge.paymentsFeature
+        === first.paymentsFeature
     )
     XCTAssertTrue(
-      first.pledgedProjectsComposition.managePledge.rewardsFeature === first.rewardsFeature
+      first.pledgedProjectsComposition.projectPage.managePledge.rewardsFeature
+        === first.rewardsFeature
     )
     XCTAssertTrue(
       first.rootTabComposition.pledgedProjects.pledgedProjectsFeature

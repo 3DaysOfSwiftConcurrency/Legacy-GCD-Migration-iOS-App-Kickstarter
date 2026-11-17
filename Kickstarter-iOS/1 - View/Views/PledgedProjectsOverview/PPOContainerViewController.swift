@@ -12,17 +12,19 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
   private let confirmation = StripeConfirmationOperation()
   private let managePledgeComposition: ManagePledgeComposition
   private let paymentsFeature: PaymentsFeature
+  private let projectPageComposition: ProjectPageComposition
   private let pledgedProjectsFeature: PledgedProjectsFeature
   private let viewModel: PPOContainerViewModel
 
   public init(composition: PledgedProjectsComposition) {
-    self.managePledgeComposition = composition.managePledge
-    self.paymentsFeature = composition.managePledge.paymentsFeature
+    self.managePledgeComposition = composition.projectPage.managePledge
+    self.paymentsFeature = composition.projectPage.managePledge.paymentsFeature
+    self.projectPageComposition = composition.projectPage
     self.pledgedProjectsFeature = composition.pledgedProjectsFeature
     self.viewModel = PPOContainerViewModel(
-      pledgeFeature: composition.managePledge.pledgeFeature,
+      pledgeFeature: composition.projectPage.managePledge.pledgeFeature,
       activityFeature: composition.activityFeature,
-      paymentsFeature: composition.managePledge.paymentsFeature
+      paymentsFeature: composition.projectPage.managePledge.paymentsFeature
     )
     super.init(nibName: nil, bundle: nil)
   }
@@ -214,7 +216,10 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
   }
 
   private func openSurvey(_ url: String) {
-    let vc = PledgeManagerWebViewController.configuredWith(url: url)
+    let vc = PledgeManagerWebViewController.configuredWith(
+      url: url,
+      composition: self.projectPageComposition
+    )
     vc.delegate = self
     let nav = UINavigationController(rootViewController: vc)
     nav.modalPresentationStyle = .pageSheet

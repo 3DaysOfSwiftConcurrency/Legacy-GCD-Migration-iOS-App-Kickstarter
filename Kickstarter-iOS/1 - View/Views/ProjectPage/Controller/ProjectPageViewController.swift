@@ -788,7 +788,10 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   }
 
   private func goToPledgeManagementWebViewController(with backingDetailsURL: String) {
-    let vc = PledgeManagerWebViewController.configuredWith(url: backingDetailsURL)
+    let vc = PledgeManagerWebViewController.configuredWith(
+      url: backingDetailsURL,
+      composition: self.composition
+    )
 
     let nc = RewardPledgeNavigationController(rootViewController: vc)
 

@@ -88,6 +88,14 @@ reject_matches 'Pledged Projects Views receive presentation-ready policy from PP
 reject_matches 'PledgeFeature owns the Pledge Manager bypass decision.' \
   'featureBypassPledgeManagerDecisionPolicyEnabled|featureEnabled[[:space:]]*[(]|remoteConfigClient|AppEnvironment' \
   "$pledge_feature" "$pledge_manager_view_model"
+reject_matches 'Pledge Manager child navigation receives its composed feature graph.' \
+  'AppModel[.]shared[.]pledgeFeature|ManagePledgeViewController[.]instantiate[(][)]' \
+  "$app_view/Views/SurveyResponse/Controller/PledgeManagerWebViewController.swift"
+reject_matches 'Migrated Pledge Manager callers forward Project Page composition.' \
+  'PledgeManagerWebViewController[.]configuredWith[(]url: (url|backingDetailsURL)[)]' \
+  "$app_view/Navigation/DeepLinkRouter.swift" \
+  "$app_view/Views/ProjectPage/Controller/ProjectPageViewController.swift" \
+  "$app_view/Views/PledgedProjectsOverview/PPOContainerViewController.swift"
 
 test -f "$root_view_model"
 test -f "$root_tabs"

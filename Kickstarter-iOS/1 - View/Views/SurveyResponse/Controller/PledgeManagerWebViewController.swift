@@ -12,16 +12,31 @@ internal protocol PledgeManagerWebViewControllerDelegate: AnyObject {
 
 internal final class PledgeManagerWebViewController: WebViewController {
   internal weak var delegate: PledgeManagerWebViewControllerDelegate?
+  private let composition: ProjectPageComposition
   private var sessionStartedObserver: MainActorNotificationObservation?
-  fileprivate let viewModel = PledgeManagerWebViewModel(
-    pledgeFeature: AppModel.shared.pledgeFeature
-  )
+  fileprivate let viewModel: PledgeManagerWebViewModel
 
-  internal static func configuredWith(url: String)
+  internal static func configuredWith(
+    url: String,
+    composition: ProjectPageComposition = AppModel.shared.projectPageComposition
+  )
     -> PledgeManagerWebViewController {
-    let vc = PledgeManagerWebViewController()
+    let vc = PledgeManagerWebViewController(composition: composition)
     vc.viewModel.configureWith(url: url)
     return vc
+  }
+
+  private init(composition: ProjectPageComposition) {
+    self.composition = composition
+    self.viewModel = PledgeManagerWebViewModel(
+      pledgeFeature: composition.managePledge.pledgeFeature
+    )
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is unavailable")
   }
 
   internal override func viewDidLoad() {
@@ -95,7 +110,8 @@ internal final class PledgeManagerWebViewController: WebViewController {
     /// Instead of using the helper `self.presentViewController`, use the project page's preferred navigation wrapper.
     let nav = ProjectPageViewController.navigationController(
       withProjectOrParam: .right(param),
-      refInfo: RefInfo(refTag)
+      refInfo: RefInfo(refTag),
+      composition: self.composition
     )
 
     self.present(nav, animated: true, completion: nil)
@@ -111,7 +127,9 @@ internal final class PledgeManagerWebViewController: WebViewController {
   }
 
   fileprivate func goToPledge(param: Param) {
-    let vc = ManagePledgeViewController.instantiate()
+    let vc = ManagePledgeViewController.instantiate(
+      composition: self.composition.managePledge
+    )
     vc.configureWith(params: (param, nil))
     self.presentViewController(vc)
   }

@@ -5655,3 +5655,27 @@ passed. Evidence: `/private/tmp/kickstarter-deeplink-project-composition-present
 The whole suites remain unverified. The CFA gate rejects restored parameterless Manage
 Pledge construction in DeepLinkRouter. This is not full CFA compliance. Swift packages,
 target identifiers and existing history are unchanged. No push.
+
+### Pledge Manager composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgeManagerWebViewController now receives ProjectPageComposition, constructs its model
+from the nested PledgeFeature and forwards the graph when navigating to Project Page or
+native Manage Pledge. Deep-link survey delivery, Project Page pledge-management web
+presentation and Pledged Projects surveys now pass composition explicitly. To avoid
+parallel feature references, PledgedProjectsComposition now nests ProjectPageComposition,
+which in turn owns ManagePledgeComposition.
+
+Focused AppModelTests and PledgeManagerWebViewModelTests passed all 22 tests. The focused
+survey deep link, PPOContainerViewModel and RootTabsNavigation selection passed all 13
+Presentation tests. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2.
+Evidence: `/private/tmp/kickstarter-pledge-manager-composition-library.xcresult` and
+`/private/tmp/kickstarter-pledge-manager-composition-presentation.xcresult`.
+
+ActivitiesViewController and MessagesViewController still call the legacy default Pledge
+Manager factory and remain follow-up migration work. The whole suites remain unverified.
+The CFA gate rejects direct PledgeFeature resolution inside Pledge Manager, parameterless
+native Manage Pledge construction there, and default factory calls in the three migrated
+callers. This is not full CFA compliance. Swift packages, target identifiers and existing
+history are unchanged. No push.
