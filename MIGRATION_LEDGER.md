@@ -4384,3 +4384,11 @@ Swift packages and target identifiers are unchanged. Native network transitions 
 hardware, banner snapshots/visual parity and the full suite remain unverified.
 AppModel's two configuration services and the live global flag reader remain for
 the next settings ownership checkpoint. This is not full CFA compliance. No push.
+
+Follow-up validation used the actual persistence target,
+`Library-Keychain-iOSTests/AppEnvironmentTests`: 14 tests passed with zero failures
+and skips under normal simulator signing on the same runtime. Evidence:
+`/private/tmp/kickstarter-video-availability-environment-storage.xcresult`.
+This covers the separate Environment storage target; the similarly named selector
+under LibraryTests does not select those tests. Configuration review notes and
+that target distinction are recorded in the remaining-work document.

@@ -32,6 +32,14 @@ Swift packages are excluded.
   and override mutations, not merely conceal the existing configuration services.
   Preserve shared activation, client replacement, debug overrides, publication
   and visitor-cookie behavior; review downstream settings consumers together.
+  Keep one authoritative Config in the existing storage boundary while migrating
+  its commands. Preserve DebugData's whole-config precedence and non-release
+  refresh override behavior. Verify rapid toggles against current stored values,
+  rather than the tools screen's delayed snapshot. Bootstrap/keychain flag reads
+  must remain independent of AppModel construction. Correct or bypass the
+  Statsig client helper that currently reads the global client instead of `self`.
+  The signed Environment persistence suite is
+  `Library-Keychain-iOSTests/AppEnvironmentTests` in the Library-iOS scheme.
 - Discovery recommendation reads check session generation. Feed pagination and
   activity sampling still use user-ID checks; review same-user session replacement
   and related task lifetimes separately.

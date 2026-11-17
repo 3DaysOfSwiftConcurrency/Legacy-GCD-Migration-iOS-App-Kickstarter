@@ -46,8 +46,8 @@ construct its defaults. Tests inject their own connectivity state directly.
   Keep the platform callback bridge separate from domain eligibility and tests.
 
 Final validation passed 144 focused LibraryTests, the separate Environment
-initialization test and 146 bounded PresentationTests on iPhone 17 Pro Max,
-iOS 26.2, with no failures/skips. Hardware network transitions and banner
+initialization test, 146 bounded PresentationTests and 14 signed Environment
+persistence tests on iPhone 17 Pro Max, iOS 26.2, with no failures/skips. Hardware network transitions and banner
 snapshot/visual comparisons remain unverified.
 
 ## Account device registration — 17 November 2026
