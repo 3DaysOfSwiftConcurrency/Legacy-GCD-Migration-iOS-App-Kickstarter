@@ -11,22 +11,24 @@ private struct PPOParsedAction {
 extension PPOProjectCardModel {
   public init?(
     node: GraphAPI.FetchPledgedProjectsQuery.Data.PledgeProjectsOverview.Pledges.Edge.Node,
-    showRewardReceivedToggle: Bool
+    showRewardReceivedToggle: Bool,
+    locale: Locale
   ) {
     self.init(
       card: PledgedProjectsResponse.Card(node.fragments.pPOCardFragment),
-      showRewardReceivedToggle: showRewardReceivedToggle
+      showRewardReceivedToggle: showRewardReceivedToggle,
+      locale: locale
     )
   }
 
-  public init?(card: PledgedProjectsResponse.Card, showRewardReceivedToggle: Bool) {
+  public init?(card: PledgedProjectsResponse.Card, showRewardReceivedToggle: Bool, locale: Locale) {
     let image = card.imageURL
     let projectName = card.projectName
     let projectId = card.projectId
     let formattedPledge: String?
     if let amount = card.amount, let currency = card.currency,
        let decimal = try? Decimal(amount, format: .number) {
-      formattedPledge = decimal.formatted(.currency(code: currency).locale(AppEnvironment.current.locale))
+      formattedPledge = decimal.formatted(.currency(code: currency).locale(locale))
     } else {
       formattedPledge = nil
     }

@@ -33,15 +33,18 @@ public final class PledgedProjectsFeature {
   private let sessionFeature: SessionFeature
   private let settingsFeature: SettingsFeature
   private let makeProvider: () -> any PledgedProjectsProvider
+  private let locale: () -> Locale
 
   public init(
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
-    makeProvider: @escaping () -> any PledgedProjectsProvider
+    makeProvider: @escaping () -> any PledgedProjectsProvider,
+    locale: @escaping () -> Locale
   ) {
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
     self.makeProvider = makeProvider
+    self.locale = locale
   }
 
   public var overviewVersion: OverviewVersion {
@@ -137,6 +140,7 @@ public final class PledgedProjectsFeature {
       previous = route.snapshots.value
     }
     let provider = self.makeProvider()
+    let locale = self.locale()
     let requestID = UUID()
     let task = Task { [self] in
       defer {
@@ -149,7 +153,11 @@ public final class PledgedProjectsFeature {
         try Task.checkCancellation()
         guard route.pending?.id == requestID, self.session == session else { return }
         let newCards = data.cards.compactMap {
-          PPOProjectCardModel(card: $0, showRewardReceivedToggle: self.isOverviewV2Enabled)
+          PPOProjectCardModel(
+            card: $0,
+            showRewardReceivedToggle: self.isOverviewV2Enabled,
+            locale: locale
+          )
         }
         let cards = (cursor == nil ? [] : previous.values) + newCards
         let page =

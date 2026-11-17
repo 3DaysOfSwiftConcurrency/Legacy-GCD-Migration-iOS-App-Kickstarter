@@ -56,7 +56,7 @@ func makeTestAppModel(
     pledgedProjectsFeature: PledgedProjectsFeature(
       sessionFeature: sessionFeature, settingsFeature: settingsFeature, makeProvider: {
         AsyncPledgedProjectsProvider(service: MockService())
-      }
+      }, locale: { Locale(identifier: "en_US") }
     ),
     pledgeFeature: PledgeFeature(platform: .live(), sessionFeature: sessionFeature, makeProvider: {
       AsyncPledgeProvider(service: MockService())

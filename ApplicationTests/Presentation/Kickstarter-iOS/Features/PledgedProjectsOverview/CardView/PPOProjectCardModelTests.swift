@@ -2,6 +2,7 @@
 
 import ApolloTestSupport
 import Combine
+import Foundation
 import GraphAPI
 import GraphAPITestMocks
 
@@ -10,6 +11,26 @@ import XCTest
 
 @MainActor
 final class PPOProjectCardModelTests: XCTestCase {
+  func testPledgeFormattingUsesSuppliedLocale() throws {
+    let edge = GraphAPI.FetchPledgedProjectsQuery.mockEdge(addressMock: nil)
+    let node = GraphAPI.FetchPledgedProjectsQuery.Data.PledgeProjectsOverview.Pledges.Edge.Node
+      .from(try XCTUnwrap(edge.node))
+    let response = PledgedProjectsResponse.Card(node.fragments.pPOCardFragment)
+
+    let us = try XCTUnwrap(PPOProjectCardModel(
+      card: response,
+      showRewardReceivedToggle: false,
+      locale: Locale(identifier: "en_US")
+    ))
+    let germany = try XCTUnwrap(PPOProjectCardModel(
+      card: response,
+      showRewardReceivedToggle: false,
+      locale: Locale(identifier: "de_DE")
+    ))
+
+    XCTAssertNotEqual(us.pledge, germany.pledge)
+  }
+
   func testParsingNoAddress() throws {
     let model = try XCTUnwrap(self.mockModel(address: nil))
     XCTAssertNil(model.address.rawAddress)
@@ -105,7 +126,11 @@ final class PPOProjectCardModelTests: XCTestCase {
     let fragment = node.fragments.pPOCardFragment
     let project = try XCTUnwrap(fragment.backing?.fragments.pPOBackingFragment.project)
     let response = PledgedProjectsResponse.Card(fragment)
-    let card = try XCTUnwrap(PPOProjectCardModel(card: response, showRewardReceivedToggle: false))
+    let card = try XCTUnwrap(PPOProjectCardModel(
+      card: response,
+      showRewardReceivedToggle: false,
+      locale: Locale(identifier: "en_US")
+    ))
     XCTAssertEqual(card.image.absoluteString, project.fragments.pPOProjectFragment.image?.url)
     XCTAssertEqual(card.projectAnalytics.id, project.fragments.projectAnalyticsFragment.id)
     XCTAssertEqual(card.projectAnalytics.name, project.fragments.projectAnalyticsFragment.name)
@@ -133,6 +158,10 @@ final class PPOProjectCardModelTests: XCTestCase {
     let mockEdge = GraphAPI.FetchPledgedProjectsQuery.mockEdge(addressMock: address)
     let node = GraphAPI.FetchPledgedProjectsQuery.Data.PledgeProjectsOverview.Pledges.Edge.Node
       .from(mockEdge.node!)
-    return PPOProjectCardModel(node: node, showRewardReceivedToggle: false)
+    return PPOProjectCardModel(
+      node: node,
+      showRewardReceivedToggle: false,
+      locale: Locale(identifier: "en_US")
+    )
   }
 }

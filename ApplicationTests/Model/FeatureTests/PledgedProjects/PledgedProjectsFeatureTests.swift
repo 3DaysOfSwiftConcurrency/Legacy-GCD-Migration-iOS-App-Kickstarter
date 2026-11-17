@@ -21,7 +21,8 @@ final class PledgedProjectsFeatureTests: TestCase {
     makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
   )
   private lazy var feature = PledgedProjectsFeature(
-    sessionFeature: self.session, settingsFeature: self.settings, makeProvider: { self.provider }
+    sessionFeature: self.session, settingsFeature: self.settings, makeProvider: { self.provider },
+    locale: { Locale(identifier: "en_US") }
   )
   private let route = UUID()
   private var snapshots: [PledgedProjectsFeature.Snapshot] = []

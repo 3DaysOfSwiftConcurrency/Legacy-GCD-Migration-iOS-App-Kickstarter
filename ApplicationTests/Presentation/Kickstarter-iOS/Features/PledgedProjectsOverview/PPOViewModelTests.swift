@@ -20,7 +20,7 @@ class PPOViewModelTests: XCTestCase {
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
-    })
+    }, locale: { AppEnvironment.current.locale })
   var viewModel: PPOViewModel!
   var cancellables: Set<AnyCancellable>!
 

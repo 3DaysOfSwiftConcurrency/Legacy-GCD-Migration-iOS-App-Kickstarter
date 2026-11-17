@@ -254,7 +254,8 @@ final class AppModelTests: XCTestCase {
       friendsFeature: FriendsFeature(sessionFeature: firstSession, makeProvider: { AsyncFriendsProvider(service: MockService()) }),
       pledgedProjectsFeature: PledgedProjectsFeature(
         sessionFeature: firstSession, settingsFeature: firstSettings,
-        makeProvider: { AsyncPledgedProjectsProvider(service: MockService()) }
+        makeProvider: { AsyncPledgedProjectsProvider(service: MockService()) },
+        locale: { Locale(identifier: "en_US") }
       ),
       pledgeFeature: PledgeFeature(platform: .live(), sessionFeature: firstSession, makeProvider: { AsyncPledgeProvider(service: MockService()) }),
       paymentsFeature: PaymentsFeature(sessionFeature: firstSession, makeProvider: { AsyncPaymentsProvider(service: MockService()) }),
@@ -310,7 +311,8 @@ final class AppModelTests: XCTestCase {
       friendsFeature: FriendsFeature(sessionFeature: secondSession, makeProvider: { AsyncFriendsProvider(service: MockService()) }),
       pledgedProjectsFeature: PledgedProjectsFeature(
         sessionFeature: secondSession, settingsFeature: secondSettings,
-        makeProvider: { AsyncPledgedProjectsProvider(service: MockService()) }
+        makeProvider: { AsyncPledgedProjectsProvider(service: MockService()) },
+        locale: { Locale(identifier: "en_US") }
       ),
       pledgeFeature: PledgeFeature(platform: .live(), sessionFeature: secondSession, makeProvider: { AsyncPledgeProvider(service: MockService()) }),
       paymentsFeature: PaymentsFeature(sessionFeature: secondSession, makeProvider: { AsyncPaymentsProvider(service: MockService()) }),

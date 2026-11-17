@@ -317,7 +317,7 @@ public final class AppModel {
       pledgedProjectsFeature: PledgedProjectsFeature(
         sessionFeature: sessionFeature, settingsFeature: settingsFeature, makeProvider: {
           AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
-        }
+        }, locale: { AppEnvironment.current.locale }
       ),
       pledgeFeature: PledgeFeature(
         platform: .live(),

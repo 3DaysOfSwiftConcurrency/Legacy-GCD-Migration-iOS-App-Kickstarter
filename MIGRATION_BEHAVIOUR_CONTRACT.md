@@ -1907,3 +1907,15 @@ safe for arbitrary concurrent environment mutation.
 - Checkout controllers use the same PaymentsFeature instance as their view models.
   Live Apple Pay presentation, authorization, Stripe confirmation and physical-device
   wallet behavior remain outside this checkpoint.
+
+## Pledged Projects formatting-locale composition — 17 November 2026
+
+- PledgedProjectsFeature receives locale through AppModel composition and captures it
+  when admitting each page request. Every card produced by that response uses the same
+  captured locale; card parsing no longer reads AppEnvironment.
+- Existing pledge amount, currency-code disambiguation, address, image, analytics and
+  navigation behavior is preserved. Pagination, refresh, request sharing, account
+  replacement and late-result rejection retain their existing Feature ownership.
+- Controlled coverage proves two supplied locales produce their corresponding currency
+  presentations. Live account data, visual parity and the whole Library suite remain
+  outside this checkpoint.

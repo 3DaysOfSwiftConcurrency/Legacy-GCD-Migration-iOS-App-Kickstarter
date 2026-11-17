@@ -89,6 +89,8 @@ Swift packages are excluded.
 - PaymentsFeature now owns Apple Pay network policy and constructs both crowdfunding
   and post-campaign requests from that composed dependency. The request formatter no
   longer reads the global environment.
+- PledgedProjectsFeature now captures locale at request admission and supplies it to
+  pledged-card parsing. Card currency formatting no longer reads AppEnvironment.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

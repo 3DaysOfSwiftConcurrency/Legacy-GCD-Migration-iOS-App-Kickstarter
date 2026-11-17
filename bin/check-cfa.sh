@@ -238,6 +238,8 @@ reject_matches 'Onboarding permission policy belongs to OnboardingFeature.' \
   'AppEnvironment[.]current|allowTrackingTapped' "$app_model/Features/Onboarding/OnboardingUseCase.swift"
 reject_matches 'Apple Pay request policy belongs to PaymentsFeature composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Payments/PKPaymentRequest+Helpers.swift"
+reject_matches 'Pledged Projects card formatting receives locale from its Feature.' \
+  'AppEnvironment[.]current' "$app_model/Features/PledgedProjects/PPOProjectCardModel+Parsing.swift"
 reject_matches 'Creator Drafts receives response policy from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/CreatorDrafts/CreatorDraftsFeature.swift"
 reject_matches 'Pledge receives environment dependencies from composition.' \

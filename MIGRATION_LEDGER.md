@@ -4905,3 +4905,28 @@ The CFA gate rejects restored global environment access in the request formatter
 Live wallet authorization, Stripe confirmation, device behavior and the whole
 Library suite remain unverified. This is not full CFA compliance. Swift packages,
 target identifiers and existing history are unchanged. No push.
+
+### Pledged Projects receives formatting locale from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgedProjectsFeature now receives locale through AppModel composition, captures it
+at request admission and supplies it to every pledged-card model parsed from that
+response. PPOProjectCardModel parsing no longer reads AppEnvironment. Existing pledge
+currency, address, image, analytics and navigation behavior is preserved, along with
+pagination, refresh, request sharing, account replacement and late-result rejection.
+
+Focused validation passed all 8 PledgedProjectsFeature tests and all 7 card-model
+tests, including a supplied-locale formatting assertion. The bounded Library selection
+passed all 16 PledgedProjectsFeature and AppModel tests; the bounded presentation
+selection passed all 27 card-model, card-view-model and PPO view-model tests. All runs
+had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-ppo-locale-feature-2.xcresult`,
+`/private/tmp/kickstarter-ppo-locale-model.xcresult`,
+`/private/tmp/kickstarter-ppo-locale-library-regression.xcresult` and
+`/private/tmp/kickstarter-ppo-locale-presentation-regression.xcresult`.
+
+The CFA gate rejects restored AppEnvironment access in pledged-card parsing. Live
+account data, visual parity and the whole Library suite remain unverified. This is not
+full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.
