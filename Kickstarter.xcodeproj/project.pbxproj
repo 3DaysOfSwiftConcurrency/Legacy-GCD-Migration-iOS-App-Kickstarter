@@ -3821,7 +3821,7 @@
 		};
 		"8C1E75391FE1CD75791DF304" = {
 			"name" = "PaymentSourceSelected.swift";
-			"path" = "Kickstarter-iOS/1 - View/Shared Views/PaymentSourceSelected.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Payments/PaymentSourceSelected.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -9654,7 +9654,6 @@
 				"FF5EA6799E88F9DA6681B807",
 				"82E01898D8F17B1DF16C6D6E",
 				"E62F8157B4FE35D0D8542A18",
-				"8C1E75391FE1CD75791DF304",
 				"0AB95B4CB24E3B2F5A94BDCA",
 				"20A8F48909DE8104BC32728E",
 				"94C1C8EFACC0EB8F15175104",
@@ -12821,8 +12820,8 @@
 			"fileRef" = "8238744707901DFB55125EB0";
 		};
 		"F370BD767E45A7F89D8B58CE" = {
-			"name" = "PledgePaymentPlansAndSelectionData+GraphAPI.swift";
-			"path" = "Kickstarter-iOS/1 - View/Views/PledgeOverTime/Controller/PledgePaymentPlansAndSelectionData+GraphAPI.swift";
+			"name" = "PledgePaymentPlansAndSelectionData.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Pledge/PledgePaymentPlansAndSelectionData.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -17601,7 +17600,6 @@
 			"name" = "Controller";
 			"sourceTree" = "<group>";
 			"children" = (
-				"F370BD767E45A7F89D8B58CE",
 				"5936C3C05D5C92876DBAA237",
 				"DC54D47F8119A4E2E8B05437",
 			);
@@ -20131,6 +20129,7 @@
 				"B1D9B949DA98FE1AA0A17026",
 				"8BFED3C072AB8A56DAB63211",
 				"7E356C535F1A42D699D4BB08",
+				"F370BD767E45A7F89D8B58CE",
 				"EA78550649511EF73EC5E102",
 				"61669C6F20F8AF309A2D9AA4",
 			);
@@ -21010,6 +21009,7 @@
 				"6043D85A5B75F4C4C09CD37C",
 				"C374749FD04EA08C49438BBB",
 				"717CE1DAD330BA48623425F8",
+				"8C1E75391FE1CD75791DF304",
 				"3A4D227605735A10A87D64EC",
 				"A9726F96D31576C631644710",
 			);

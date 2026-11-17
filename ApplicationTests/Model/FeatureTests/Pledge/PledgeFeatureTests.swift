@@ -1,6 +1,7 @@
 @testable import Kickstarter_iOS
 import Foundation
 import GraphAPI
+import Prelude
 import XCTest
 
 @testable import KsApi
@@ -270,6 +271,48 @@ final class PledgeFeatureTests: TestCase {
       _ = try await provider.received(projectID: 1, userID: 2, received: true)
       XCTFail("Demo received")
     } catch {}
+  }
+
+  func testFixPaymentMethodUsesSavedCardIDForRetryLabel() throws {
+    let paymentSource = Backing.PaymentSource.template
+    let existingCardID = try XCTUnwrap(paymentSource.id)
+    let backing = Backing.template |> Backing.lens.paymentSource .~ paymentSource
+    let project = Project.template |> Project.lens.personalization.backing .~ backing
+    let reward = Reward.template
+
+    func selection(_ context: PledgeViewContext) -> PledgeViewData {
+      PledgeViewData(
+        project: project, rewards: [reward], bonusSupport: nil, selectedShippingRule: nil,
+        selectedQuantities: [reward.id: 1], selectedLocationId: nil, refTag: nil, context: context
+      )
+    }
+
+    let originalCard = PaymentSourceSelected.savedCreditCard(existingCardID, "new-stripe-id")
+    let differentCard = PaymentSourceSelected.savedCreditCard("different-card", nil)
+    XCTAssertTrue(selection(.fixPaymentMethod).retriesExistingPayment(with: originalCard))
+    XCTAssertFalse(selection(.fixPaymentMethod).retriesExistingPayment(with: differentCard))
+    XCTAssertFalse(selection(.fixPaymentMethod).retriesExistingPayment(with: nil))
+    XCTAssertFalse(selection(.changePaymentMethod).retriesExistingPayment(with: originalCard))
+  }
+
+  func testBackingDraftUsesTheExistingAmountAndSelectedPlanForPaymentRepair() throws {
+    let backing = Backing.template |> Backing.lens.amount .~ 85
+    let project = Project.template |> Project.lens.personalization.backing .~ backing
+    let reward = Reward.template
+    let data = PledgeViewData(
+      project: project, rewards: [reward], bonusSupport: 15, selectedShippingRule: nil,
+      selectedQuantities: [reward.id: 2], selectedLocationId: nil, refTag: .projectPage, context: .fixPaymentMethod
+    )
+    let requests = try XCTUnwrap(data.backingRequests(
+      payment: .savedCreditCard("card", "processor"), plan: .pledgeOverTime, applePay: nil
+    ))
+    let update = try XCTUnwrap(requests.update)
+    XCTAssertEqual(requests.create.pledgeTotal, 85)
+    XCTAssertEqual(update.pledgeTotal, 85)
+    XCTAssertEqual(update.backing, backing)
+    XCTAssertEqual(update.selectedQuantities, [reward.id: 2])
+    XCTAssertEqual(update.paymentSourceId, "card")
+    XCTAssertTrue(update.incremental)
   }
 
   func testPostCampaignSelectionBuildsCheckoutWithQuantityAndBonus() async throws {

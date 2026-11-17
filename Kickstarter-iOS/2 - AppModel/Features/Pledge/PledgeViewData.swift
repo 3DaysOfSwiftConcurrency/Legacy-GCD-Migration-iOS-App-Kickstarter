@@ -13,6 +13,34 @@ public struct PledgeViewData: Equatable {
   public let selectedLocationId: Int?
   public let refTag: RefTag?
   public let context: PledgeViewContext
+
+  func retriesExistingPayment(with payment: PaymentSourceSelected?) -> Bool {
+    self.context == .fixPaymentMethod &&
+      self.project.personalization.backing?.paymentSource?.id == payment?.savedCreditCardId
+  }
+
+  func backingRequests(
+    payment: PaymentSourceSelected?, plan: PledgePaymentPlansType, applePay: ApplePayParams?
+  ) -> (create: CreateBackingData, update: UpdateBackingData?)? {
+    guard let total = PledgeAmounts(self).total else { return nil }
+    let paymentID = payment?.savedCreditCardId
+    let incremental = plan == .pledgeOverTime
+    let create: CreateBackingData = (
+      project: self.project, rewards: self.rewards, pledgeTotal: total,
+      selectedQuantities: self.selectedQuantities, shippingRule: self.selectedShippingRule,
+      paymentSourceId: paymentID, setupIntentClientSecret: nil, applePayParams: applePay,
+      refTag: self.refTag, incremental: incremental
+    )
+    let update: UpdateBackingData? = self.project.personalization.backing.map { backing in
+      (
+        backing: backing, rewards: self.rewards, pledgeTotal: total,
+        selectedQuantities: self.selectedQuantities, shippingRule: self.selectedShippingRule,
+        paymentSourceId: paymentID, setupIntentClientSecret: nil, applePayParams: applePay,
+        pledgeContext: self.context, incremental: incremental
+      )
+    }
+    return (create: create, update: update)
+  }
 }
 
 public typealias CreateBackingData = (

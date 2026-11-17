@@ -637,8 +637,7 @@ private final class PledgeCTAState {
 
   private var retryState: Bool {
     guard let data else { return false }
-    return data.context == .fixPaymentMethod &&
-      data.project.personalization.backing?.paymentSource?.id == payment?.savedCreditCardId
+    return data.retriesExistingPayment(with: payment)
   }
 
   private func publish() {
@@ -708,19 +707,10 @@ final class PledgeRequestState {
   }
 
   private func publish() {
-    guard let data, let plan, hasPaymentSelection, let total = PledgeAmounts(data).total else { return }
-    let paymentID = payment?.savedCreditCardId
-    let incremental = plan == .pledgeOverTime
-    onCreate?((project: data.project, rewards: data.rewards, pledgeTotal: total,
-               selectedQuantities: data.selectedQuantities, shippingRule: data.selectedShippingRule,
-               paymentSourceId: paymentID, setupIntentClientSecret: nil, applePayParams: applePay,
-               refTag: data.refTag, incremental: incremental))
-    if let backing = data.project.personalization.backing {
-      onUpdate?((backing: backing, rewards: data.rewards, pledgeTotal: total,
-                 selectedQuantities: data.selectedQuantities, shippingRule: data.selectedShippingRule,
-                 paymentSourceId: paymentID, setupIntentClientSecret: nil, applePayParams: applePay,
-                 pledgeContext: data.context, incremental: incremental))
-    }
+    guard let data, let plan, hasPaymentSelection,
+          let requests = data.backingRequests(payment: payment, plan: plan, applePay: applePay) else { return }
+    onCreate?(requests.create)
+    if let update = requests.update { onUpdate?(update) }
   }
 }
 

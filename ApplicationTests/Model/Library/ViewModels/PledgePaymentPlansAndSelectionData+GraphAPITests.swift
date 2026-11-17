@@ -6,6 +6,8 @@ import GraphAPI
 import XCTest
 
 final class PledgePaymentPlansAndSelectionDataGraphAPITests: TestCase {
+  override var requiresSnapshotReferenceSimulator: Bool { false }
+
   func testPaymentPlanViewModel_fromValidQuery_isCorrect() {
     let jsonString = """
     {

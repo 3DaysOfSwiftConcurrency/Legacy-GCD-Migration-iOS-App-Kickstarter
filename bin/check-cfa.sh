@@ -60,6 +60,8 @@ reject_matches 'Checkout view models use Authentication and Payments through the
 reject_matches 'Pledge owns checkout amount rules and API input construction.' \
   'struct (PledgeViewData|PledgeAmounts|PostCampaignAmounts)|calculatePledgeTotal[(]|CreateCheckoutInput[(]|CompleteOnSessionCheckoutInput|BackingInput[.]input[(]' \
   "$pledge_view_model" "$post_campaign_view_model"
+reject_matches 'Pledge owns backing draft construction and payment retry eligibility.' \
+  'personalization[.]backing[?][.]paymentSource|savedCreditCardId|incremental = .*pledgeOverTime' "$pledge_view_model"
 reject_matches 'Checkout controllers use the same session identity as Pledge.' \
   'AppModel[.]shared[.]sessionFeature' "$app_view/Views/PledgeView/Controllers/PledgeViewController.swift" \
   "$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewController.swift"

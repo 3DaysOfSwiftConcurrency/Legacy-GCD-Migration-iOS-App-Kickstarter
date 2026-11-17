@@ -3799,3 +3799,19 @@ inspect the admitted inputs at the provider boundary. The CFA check
 guards against recreating the amount rules or API inputs in the
 checkout ViewModels. Live payments and visual parity were outside
 this run. The View layer still determines backing retry eligibility.
+
+### Pledge backing drafts and payment retry — Matthew Thomas
+
+The Pledge selection provides the retry decision and prepares the
+create and update drafts from the selected card, plan, and Apple Pay
+details. The checkout ViewModel retains screen readiness and output
+timing. Payments owns the stored-card selection type. Pledge owns the
+payment-plan values and GraphQL conversion used by Pledge Over Time.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 143 focused Pledge
+and checkout tests and 75 bounded payment, plan, and button
+presentation regressions. The new tests cover matching and changed
+cards and preserve the backing amount for payment repair. The GraphQL
+mapping test exercises fixtures only and opts out of the snapshot
+reference-device check. Live payment and visual parity remain open.
+Manage Pledge still reaches through Pledge into the shared session.

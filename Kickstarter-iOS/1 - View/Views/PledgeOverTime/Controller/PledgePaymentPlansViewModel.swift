@@ -2,34 +2,6 @@ import Foundation
 import KsApi
 import Observation
 
-public enum PledgePaymentPlansType: Equatable {
-  case pledgeInFull
-  case pledgeOverTime
-}
-
-public struct PledgePaymentPlansAndSelectionData {
-  public var ineligible: Bool
-  public var paymentIncrements: [PledgePaymentIncrement]
-  public var project: Project
-  public var selectedPlan: PledgePaymentPlansType
-
-  public init(
-    selectedPlan: PledgePaymentPlansType,
-    increments paymentIncrements: [PledgePaymentIncrement] = [],
-    ineligible: Bool = false,
-    project: Project
-  ) {
-    self.ineligible = ineligible
-    self.paymentIncrements = paymentIncrements
-    self.project = project
-    self.selectedPlan = selectedPlan
-  }
-
-  public var isPledgeOverTime: Bool {
-    self.selectedPlan == .pledgeOverTime
-  }
-}
-
 @MainActor
 @Observable
 public final class PledgePaymentPlansViewModel {
