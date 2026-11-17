@@ -3190,6 +3190,11 @@ view model, including response timing for card and Apple Pay validation.
 `make check-cfa` covers both checkout view models. The focused post-campaign
 checkout and Pledge feature suites passed 61 simulator tests.
 
+Manage Pledge and Cancel Pledge now receive Pledge from their controllers.
+Manage Pledge also receives analytics and response timing explicitly.
+The focused simulator suites passed all 50 tests, and `make check-cfa`
+guards both view models against direct application singleton access.
+
 ### Project Page composition — Matthew Thomas
 
 The Project Page controller supplies project details, media and analytics

@@ -16,7 +16,7 @@ protocol CancelPledgeViewControllerDelegate: AnyObject {
 final class CancelPledgeViewController: UIViewController, MessageBannerViewControllerPresenting {
   private var keyboardObservation: Keyboard.Observation?
   weak var delegate: CancelPledgeViewControllerDelegate?
-  private let viewModel = CancelPledgeViewModel()
+  private let viewModel = CancelPledgeViewModel(pledgeFeature: AppModel.shared.pledgeFeature)
 
   // MARK: - Properties
 

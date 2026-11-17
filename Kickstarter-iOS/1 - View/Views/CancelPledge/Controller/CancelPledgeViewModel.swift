@@ -27,7 +27,7 @@ final class CancelPledgeViewModel {
   private var reason: String?
   private var task: Task<Void, Never>?
 
-  init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature) {
+  init(pledgeFeature: PledgeFeature) {
     self.pledgeFeature = pledgeFeature
   }
 

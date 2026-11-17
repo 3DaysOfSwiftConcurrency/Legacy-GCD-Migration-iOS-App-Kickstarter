@@ -15,7 +15,11 @@ protocol ManagePledgeViewControllerDelegate: AnyObject {
 
 final class ManagePledgeViewController: UIViewController, MessageBannerViewControllerPresenting {
   weak var delegate: ManagePledgeViewControllerDelegate?
-  private let viewModel: ManagePledgeViewModelType = ManagePledgeViewModel()
+  private let viewModel: ManagePledgeViewModelType = ManagePledgeViewModel(
+    pledgeFeature: AppModel.shared.pledgeFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+  )
 
   // MARK: - Properties
 

@@ -87,9 +87,12 @@ internal final class ManagePledgeViewModelTests: TestCase {
     try await super.setUp()
     MainActor.assumeIsolated {
 
-      self.vm = ManagePledgeViewModel(pledgeFeature: self.pledgeFeature, schedule: { [clock] delay, action in
-        clock.schedule(delay, action: action)
-      })
+      self.vm = ManagePledgeViewModel(
+        pledgeFeature: self.pledgeFeature,
+        analytics: { AppEnvironment.current.ksrAnalytics },
+        responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+        schedule: { [clock] delay, action in clock.schedule(delay, action: action) }
+      )
 
       self.vm.outputs.onContactCreator = { [weak self] a, b in self?.goToContactCreatorSubject.record(a); self?.goToContactCreatorContext.record(b) }
       self.vm.outputs.onLoadProjectAndRewards = { [weak self] a, b in self?.loadProjectAndRewardsIntoDataSourceProject.record(a); self?.loadProjectAndRewardsIntoDataSourceReward.record(b) }

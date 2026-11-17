@@ -104,8 +104,13 @@ public final class ManagePledgeViewModel:
       pledgeFeature.releaseRead(route: backingRoute)
     }
   }
+  private let analytics: () -> KSRAnalytics
+  private let responseDelay: () -> TimeInterval
+
   public init(
-    pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature,
+    pledgeFeature: PledgeFeature,
+    analytics: @escaping () -> KSRAnalytics,
+    responseDelay: @escaping () -> TimeInterval,
     schedule: @escaping @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void = { delay, action in
       Task { @MainActor in
         if delay.isInfinite { return }
@@ -116,6 +121,8 @@ public final class ManagePledgeViewModel:
     }
   ) {
     self.pledgeFeature = pledgeFeature
+    self.analytics = analytics
+    self.responseDelay = responseDelay
     self.schedule = schedule
   }
 
@@ -158,7 +165,7 @@ public final class ManagePledgeViewModel:
         pledgeTotal: backing.amount, shippingTotal: Double(backing.shippingAmount ?? 0),
         isApplePay: backing.paymentSource?.paymentType == .applePay
       )
-      AppEnvironment.current.ksrAnalytics.trackManagePledgePageViewed(
+      self.analytics().trackManagePledgePageViewed(
         project: project, reward: reward, checkoutData: checkout
       )
     }
@@ -182,7 +189,7 @@ public final class ManagePledgeViewModel:
   }
 
   private func scheduleReadResult(_ action: @escaping @MainActor () -> Void) {
-    self.schedule(AppEnvironment.current.apiDelayInterval.searchDelaySeconds, action)
+    self.schedule(self.responseDelay(), action)
   }
 
   private func scheduleRefreshEnd() {
