@@ -3389,6 +3389,13 @@ check rejects use of the global cache for this state. All 65 focused tests
 passed after a simulator launch retry, and 103 Project Page and Discovery
 card regression tests passed on the alternate iPhone 17 Pro Max simulator.
 
+Project Media receives its web base URL and feed analytics from live
+composition. VideoFeedViewModel receives its analytics from the controller.
+The CFA check guards both files against direct analytics lookups. All 50
+focused Project Media and Video Feed tests and 21 non-snapshot Video Feed
+presentation tests passed on iPhone 17 Pro Max. Share-sheet composition
+still resolves the share configuration separately.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

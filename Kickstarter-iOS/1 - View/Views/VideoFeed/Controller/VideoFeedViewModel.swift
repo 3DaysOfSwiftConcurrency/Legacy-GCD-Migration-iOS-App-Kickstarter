@@ -73,6 +73,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
   private var pendingSaveItemId: String? = nil
 
   private let projectMediaFeature: ProjectMediaFeature
+  private let analytics: @MainActor () -> KSRAnalytics
   private let route: UUID
   private let feed: ProjectMediaFeature.FeedState
   @ObservationIgnored private var loadingTask: Task<Void, Never>?
@@ -81,10 +82,11 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
 
   // MARK: - Init
 
-  public init(projectMediaFeature: ProjectMediaFeature) {
+  public init(projectMediaFeature: ProjectMediaFeature, analytics: @escaping @MainActor () -> KSRAnalytics) {
     let feature = projectMediaFeature
     let route = UUID()
     self.projectMediaFeature = feature
+    self.analytics = analytics
     self.route = route
     self.feed = feature.feedState(route: route)
   }
@@ -167,7 +169,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
     let incoming = self.items[index]
     let outgoing = self.items[self.lastPageIndex]
 
-    AppEnvironment.current.ksrAnalytics.trackVideoFeedSwipe(
+    self.analytics().trackVideoFeedSwipe(
       videoId: incoming.id,
       projectId: incoming.projectId,
       positionInSession: index,
@@ -176,7 +178,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
       totalVideoDurationMs: totalVideoDurationMs
     )
 
-    AppEnvironment.current.ksrAnalytics.trackVideoFeedImpression(
+    self.analytics().trackVideoFeedImpression(
       videoId: incoming.id,
       projectId: incoming.projectId,
       positionInSession: index
@@ -186,7 +188,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
   }
 
   public func trackCTAClicked(ctaContext: KSRAnalytics.CTAContext, item: VideoFeedItem) {
-    AppEnvironment.current.ksrAnalytics.trackVideoFeedCTAClicked(
+    self.analytics().trackVideoFeedCTAClicked(
       ctaContext: ctaContext,
       videoId: item.id,
       projectId: item.projectId
@@ -194,7 +196,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
   }
 
   public func trackProgressBarTapped(item: VideoFeedItem, positionInSession: Int, percentageWatched: Float) {
-    AppEnvironment.current.ksrAnalytics.trackVideoFeedProgressBarTapped(
+    self.analytics().trackVideoFeedProgressBarTapped(
       videoId: item.id,
       projectId: item.projectId,
       positionInSession: positionInSession,

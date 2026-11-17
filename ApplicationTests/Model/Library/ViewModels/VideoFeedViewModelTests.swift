@@ -10,9 +10,18 @@ import XCTest
 @MainActor
 final class VideoFeedViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = VideoFeedViewModel(projectMediaFeature: ProjectMediaFeature(sessionFeature: .live(), makeProvider: {
-    AsyncProjectMediaProvider(service: AppEnvironment.current.apiService)
-  }))
+  private let vm = VideoFeedViewModelTests.makeViewModel()
+
+  private static func makeViewModel() -> VideoFeedViewModel {
+    VideoFeedViewModel(
+      projectMediaFeature: ProjectMediaFeature(
+        sessionFeature: .live(),
+        analytics: { AppEnvironment.current.ksrAnalytics },
+        makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) }
+      ),
+      analytics: { AppEnvironment.current.ksrAnalytics }
+    )
+  }
 
   func testViewDidLoad_Success_PopulatesItems() async throws {
     let mockData = Self.mockVideoFeedQueryData(itemCount: 3)
@@ -245,9 +254,7 @@ final class VideoFeedViewModelTests: TestCase {
     XCTAssertEqual(self.vm.items.first?.watchesCount, 4, "Count should increment after deferred save fires.")
 
     /// Same flow but staying logged out.
-    let vm2 = VideoFeedViewModel(projectMediaFeature: ProjectMediaFeature(sessionFeature: .live(), makeProvider: {
-      AsyncProjectMediaProvider(service: AppEnvironment.current.apiService)
-    }))
+    let vm2 = Self.makeViewModel()
 
     await withEnvironment(apiService: MockService(fetchGraphQLResponses: [(VideoFeedQuery.self, mockData)])) {
       await vm2.fetchVideoFeed()

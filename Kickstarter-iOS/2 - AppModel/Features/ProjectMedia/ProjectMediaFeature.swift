@@ -32,7 +32,9 @@ public struct AsyncProjectMediaProvider: ProjectMediaProvider {
 /// Start and completion may both be in flight; neither cancels the other.
 @MainActor
 public final class ProjectMediaFeature {
-  public var webBaseURL: URL { AppEnvironment.current.apiService.serverConfig.webBaseUrl }
+  public var webBaseURL: URL { self.readWebBaseURL() }
+  private let readWebBaseURL: @MainActor () -> URL
+  private let analytics: @MainActor () -> KSRAnalytics?
   private struct ImageKey: Hashable { let route: UUID; let url: URL }
   private var images: [ImageKey: (id: UUID, task: Task<UIImage, Error>)] = [:]
   private let loadImage: @MainActor (URL) async throws -> UIImage
@@ -175,7 +177,7 @@ public final class ProjectMediaFeature {
         feed.isInitialLoadComplete = true
         feed.fetchedItems = items
         feed.items = items
-        AppEnvironment.current.ksrAnalytics.trackVideoFeedImpression(
+        self.analytics()?.trackVideoFeedImpression(
           videoId: first.id, projectId: first.projectId, positionInSession: 0
         )
       } catch is CancellationError {
@@ -348,7 +350,7 @@ public final class ProjectMediaFeature {
     let userID = self.sessionFeature.currentUser?.id
     feed.items[index].isSaved = !wasSaved
     feed.items[index].watchesCount = max(0, item.watchesCount + (wasSaved ? -1 : 1))
-    AppEnvironment.current.ksrAnalytics.trackVideoFeedCTAClicked(
+    self.analytics()?.trackVideoFeedCTAClicked(
       ctaContext: .videoFeedSave, videoId: item.id, projectId: item.projectId
     )
     let intent = self.prepareWatch(projectID: item.projectId, watched: !wasSaved, previous: wasSaved)
@@ -413,6 +415,8 @@ public final class ProjectMediaFeature {
   public let sessionFeature: SessionFeature
   public init(
     sessionFeature: SessionFeature,
+    webBaseURL: @escaping @MainActor () -> URL = { ServerConfig.production.webBaseUrl },
+    analytics: @escaping @MainActor () -> KSRAnalytics? = { nil },
     loadImage: (@MainActor (URL) async throws -> UIImage)? = nil,
     preparePlayback: (@MainActor (URL, URL?) async throws -> PreparedProjectMedia)? = nil,
     makeProvider: @escaping () -> any ProjectMediaProvider
@@ -420,6 +424,8 @@ public final class ProjectMediaFeature {
     self.loadImage = loadImage ?? { try await ProjectMediaPreparation.loadImage(url: $0) }
     self.preparePlayback = preparePlayback ?? { try await ProjectMediaPreparation.load(url: $0, thumbnailURL: $1) }
     self.sessionFeature = sessionFeature
+    self.readWebBaseURL = webBaseURL
+    self.analytics = analytics
     self.makeProvider = makeProvider
   }
 

@@ -102,6 +102,9 @@ reject_matches 'Session must receive storage from composition.' \
   'AppEnvironment[.]' "$app_model/Features/Session/SessionFeature.swift"
 reject_matches 'Project Media owns its saved-project cache.' \
   'AppEnvironment[.]current[.]cache' "$app_model/Features/ProjectMedia/ProjectMediaFeature.swift"
+reject_matches 'Video Feed receives analytics from composition.' \
+  'AppEnvironment[.]current[.]ksrAnalytics' "$app_view/Views/VideoFeed/Controller/VideoFeedViewModel.swift" \
+  "$app_model/Features/ProjectMedia/ProjectMediaFeature.swift"
 reject_matches 'View models must receive API and current-user dependencies from composition.' \
   'AppEnvironment[.]current[.](apiService|currentUser)([^[:alnum:]_]|$)' "$app_view/*ViewModel.swift"
 reject_matches 'View models must receive application dependencies from composition.' \

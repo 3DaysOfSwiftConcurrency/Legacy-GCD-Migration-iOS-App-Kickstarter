@@ -469,9 +469,12 @@ public final class AppModel {
         AsyncRewardsProvider(service: AppEnvironment.current.apiService)
       }),
       discussionFeature: discussionFeature,
-      projectMediaFeature: ProjectMediaFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncProjectMediaProvider(service: AppEnvironment.current.apiService)
-      })
+      projectMediaFeature: ProjectMediaFeature(
+        sessionFeature: sessionFeature,
+        webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
+        analytics: { AppEnvironment.current.ksrAnalytics },
+        makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) }
+      )
     )
   }
 }

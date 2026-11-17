@@ -20,7 +20,8 @@ final class VideoFeedViewController: UIViewController {
   }
 
   private let viewModel = VideoFeedViewModel(
-    projectMediaFeature: AppModel.shared.projectMediaFeature
+    projectMediaFeature: AppModel.shared.projectMediaFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
   private let dataSource = VideoFeedDataSource()
   private let audioController = VideoFeedAudioController()
