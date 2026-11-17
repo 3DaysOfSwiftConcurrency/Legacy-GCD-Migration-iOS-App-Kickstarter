@@ -119,7 +119,6 @@ public final class AppModel {
   public let remoteConfigurationService: RemoteConfigurationService
   public let applicationConfigurationService: ApplicationConfigurationService
   public let devicePushRegistrationService: DevicePushRegistrationService
-  public let appLifecycleFeature: AppLifecycleFeature
   public let creatorDraftsFeature: CreatorDraftsFeature
   public let recommendationsFeature: RecommendationsFeature
   public let projectReportingFeature: ProjectReportingFeature
@@ -151,7 +150,6 @@ public final class AppModel {
     devicePushRegistrationService: DevicePushRegistrationService = DevicePushRegistrationService(
       register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
     ),
-    appLifecycleFeature: AppLifecycleFeature,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
     projectReportingFeature: ProjectReportingFeature,
@@ -178,7 +176,6 @@ public final class AppModel {
     self.remoteConfigurationService = remoteConfigurationService
     self.applicationConfigurationService = applicationConfigurationService
     self.devicePushRegistrationService = devicePushRegistrationService
-    self.appLifecycleFeature = appLifecycleFeature
     self.creatorDraftsFeature = creatorDraftsFeature
     self.recommendationsFeature = recommendationsFeature
     self.projectReportingFeature = projectReportingFeature
@@ -229,7 +226,6 @@ public final class AppModel {
     self.applicationConfigurationService.reset()
     self.devicePushRegistrationService.sessionChanged()
     self.developerExamplesFeature.reset()
-    self.appLifecycleFeature.reset()
     self.creatorDraftsFeature.reset()
     self.recommendationsFeature.reset()
     self.friendsFeature.reset()
@@ -286,9 +282,6 @@ public final class AppModel {
       }),
       onboardingFeature: OnboardingFeature(),
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
-      appLifecycleFeature: AppLifecycleFeature(sessionFeature: sessionFeature,
-        messagingFeature: messagingFeature, discussionFeature: discussionFeature,
-        discoveryFeature: discoveryFeature, activityFeature: activityFeature),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
       }),

@@ -1,12 +1,11 @@
 import Foundation
-import Experimentation
 import KsApi
 import Prelude
 
 /// Resolves deep-link destinations before UIKit presents them.
 /// Project links publish only after the complete project, update and reply chain loads.
 @MainActor
-public final class AppLifecycleFeature {
+public final class DeepLinkRouter {
   public let sessionFeature: SessionFeature
   public let messagingFeature: MessagingFeature
   public struct ProjectDestination: Sendable {
@@ -60,10 +59,6 @@ public final class AppLifecycleFeature {
   private func requireCurrent(_ session: Session) throws {
     try Task.checkCancellation()
     guard self.session == session else { throw CancellationError() }
-  }
-
-  public func synchronizePreferences() {
-    _ = AppEnvironment.current.ubiquitousStore.synchronize()
   }
 
   public func resolve(_ navigation: Navigation, route: UUID) async throws -> Destination? {

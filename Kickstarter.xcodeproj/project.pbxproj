@@ -11134,7 +11134,7 @@
 			"fileRef" = "3E906FE9CC00FA0873621E2B";
 		};
 		"CFA031200000000000000002" = {
-			"path" = "AppLifecycleFeatureTests.swift";
+			"path" = "DeepLinkRouterTests.swift";
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
 			"sourceTree" = "<group>";
@@ -15479,8 +15479,8 @@
 			"sourceTree" = "<group>";
 		};
 		"984AAE5C2E31702B7EF6DF51" = {
-			"name" = "AppLifecycleFeature+Categories.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/AppLifecycle/AppLifecycleFeature+Categories.swift";
+			"name" = "DeepLinkRouter+Categories.swift";
+			"path" = "Kickstarter-iOS/1 - View/DeepLinkRouter+Categories.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -24243,8 +24243,8 @@
 			"fileRef" = "F6E3C9AC6960D89C29D39B11";
 		};
 		"C79F9AA290B4147C1C26B922" = {
-			"name" = "AppLifecycleFeature.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/AppLifecycle/AppLifecycleFeature.swift";
+			"name" = "DeepLinkRouter.swift";
+			"path" = "Kickstarter-iOS/1 - View/DeepLinkRouter.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";

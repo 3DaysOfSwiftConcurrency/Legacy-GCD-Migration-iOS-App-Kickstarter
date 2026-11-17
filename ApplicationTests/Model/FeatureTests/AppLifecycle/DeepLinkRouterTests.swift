@@ -8,9 +8,9 @@ import SystemConfiguration
 @testable import KsApi
 
 @MainActor
-final class AppLifecycleFeatureTests: XCTestCase {
+final class DeepLinkRouterTests: XCTestCase {
   private var provider: ControlledLifecycleProvider!
-  private var feature: AppLifecycleFeature!
+  private var feature: DeepLinkRouter!
   private var connectivityService: ConnectivityService!
   private let route = UUID()
   private var connectivityMonitor: ControlledReachabilityMonitor!
@@ -29,7 +29,7 @@ final class AppLifecycleFeatureTests: XCTestCase {
       self?.monitorStarts += 1
       return self?.connectivityMonitor
     })
-    self.feature = AppLifecycleFeature(
+    self.feature = DeepLinkRouter(
       sessionFeature: session, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(sessionFeature: session, makeProvider: { provider }),
       discoveryFeature: DiscoveryFeature(

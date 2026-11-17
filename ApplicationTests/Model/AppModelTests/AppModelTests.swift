@@ -41,9 +41,6 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: OnboardingFeature(),
-      appLifecycleFeature: AppLifecycleFeature(sessionFeature: firstSession,
-        messagingFeature: firstMessaging, discussionFeature: firstDiscussion,
-        discoveryFeature: firstDiscovery, activityFeature: firstActivity),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -78,8 +75,6 @@ final class AppModelTests: XCTestCase {
       })
     )
     XCTAssertTrue(first.projectDetailsFeature.discussionFeature === first.discussionFeature)
-    XCTAssertTrue(first.appLifecycleFeature.messagingFeature === first.messagingFeature)
-    XCTAssertTrue(first.appLifecycleFeature.sessionFeature === first.sessionFeature)
     let secondSettings = SettingsFeature(sessionFeature: secondSession, makeProvider: {
         AsyncAccountPreferencesProvider(service: MockService())
       })
@@ -98,9 +93,6 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: OnboardingFeature(),
-      appLifecycleFeature: AppLifecycleFeature(sessionFeature: secondSession,
-        messagingFeature: secondMessaging, discussionFeature: secondDiscussion,
-        discoveryFeature: secondDiscovery, activityFeature: secondActivity),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())

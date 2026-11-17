@@ -23,7 +23,7 @@ final class AppDelegateViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var lifecycleFeature = AppLifecycleFeature(
+  private lazy var deepLinkRouter = DeepLinkRouter(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     messagingFeature: self.messagingFeature,
     discussionFeature: DiscussionFeature(
@@ -89,9 +89,9 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   override func tearDown() async throws {
-    self.lifecycleFeature.reset()
+    self.deepLinkRouter.reset()
     self.applicationConfigurationService.reset()
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     await self.settingsFeature.waitForOperations()
     self.messagingFeature.reset()
     await self.messagingFeature.waitForOperations()
@@ -108,7 +108,7 @@ final class AppDelegateViewModelTests: TestCase {
       url: try XCTUnwrap(URL(string: "https://www.kickstarter.com/messages/42")), options: [:]
     )
     XCTAssertTrue(accepted)
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     await self.messagingFeature.waitForOperations()
     XCTAssertEqual(threads.count, 1)
     XCTAssertEqual(threads.first?.id, MessageThread.template.id)
@@ -117,12 +117,12 @@ final class AppDelegateViewModelTests: TestCase {
 
   private func bindOutputs() {
     self.vm = AppDelegateViewModel(
-      lifecycleFeature: self.lifecycleFeature,
+      deepLinkRouter: self.deepLinkRouter,
       discoveryFeature: self.discoveryFeature,
       requestApplicationConfiguration: { [self] in
         self.applicationConfigurationService.requestConfiguration()
       },
-      sessionFeature: self.lifecycleFeature.sessionFeature,
+      sessionFeature: self.deepLinkRouter.sessionFeature,
       settingsFeature: self.settingsFeature,
       pushDebounce: { try Task.checkCancellation() },
       userDebounce: { try Task.checkCancellation() },
@@ -341,7 +341,7 @@ final class AppDelegateViewModelTests: TestCase {
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
       self.updateConfigInEnvironment.assertValues([config1])
 
@@ -352,7 +352,7 @@ final class AppDelegateViewModelTests: TestCase {
     let config2 = Config.template |> Config.lens.countryCode .~ "GB"
     await withEnvironment(apiService: MockService(fetchConfigResponse: config2)) {
       self.vm.inputs.applicationWillEnterForeground()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
       self.updateConfigInEnvironment.assertValues([config1, config2])
 
@@ -363,7 +363,7 @@ final class AppDelegateViewModelTests: TestCase {
     let config3 = Config.template |> Config.lens.countryCode .~ "CZ"
     await withEnvironment(apiService: MockService(fetchConfigResponse: config3)) {
       self.vm.inputs.userSessionEnded()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
       self.updateConfigInEnvironment.assertValues([config1, config2, config3])
 
@@ -374,7 +374,7 @@ final class AppDelegateViewModelTests: TestCase {
     let config4 = Config.template |> Config.lens.countryCode .~ "CA"
     await withEnvironment(apiService: MockService(fetchConfigResponse: config4)) {
       self.vm.inputs.userSessionStarted()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
       self.updateConfigInEnvironment.assertValues([config1, config2, config3, config4])
 
@@ -411,7 +411,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1])
 
       let commentsUrl = projectUrl + "/comments"
@@ -422,7 +422,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1, 2])
 
       let updatesUrl = projectUrl + "/posts"
@@ -433,7 +433,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1, 2, 2])
 
       let updateUrl = projectUrl + "/posts/1399396"
@@ -444,7 +444,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1, 2, 2, 2])
 
       let updateCommentsUrl = updateUrl + "/comments"
@@ -455,7 +455,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1, 2, 2, 2, 3])
 
       let faqUrl = projectUrl + "/faqs"
@@ -466,7 +466,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1, 2, 2, 2, 3, 1])
     }
   }
@@ -494,7 +494,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1])
       self.goToMobileSafari.assertValues([])
     }
@@ -523,7 +523,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1])
       self.goToMobileSafari.assertValues([])
     }
@@ -552,7 +552,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1])
       self.goToMobileSafari.assertValues([])
     }
@@ -578,7 +578,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([3])
     }
   }
@@ -603,7 +603,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([3])
     }
   }
@@ -628,7 +628,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([4])
     }
   }
@@ -653,7 +653,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       XCTAssertTrue(result)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([4])
     }
   }
@@ -693,7 +693,7 @@ final class AppDelegateViewModelTests: TestCase {
 
     let params = .defaults
       |> DiscoveryParams.lens.sort .~ .newest
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.goToDiscovery.assertValues([params])
   }
 
@@ -712,7 +712,7 @@ final class AppDelegateViewModelTests: TestCase {
     )
     XCTAssertTrue(result)
 
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.goToDiscovery.assertValues([nil])
   }
 
@@ -737,7 +737,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .art
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.goToDiscovery.assertValues([params])
     }
   }
@@ -763,7 +763,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .none
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.goToDiscovery.assertValues([params])
     }
   }
@@ -798,7 +798,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .tabletopGames
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.goToDiscovery.assertValues([params])
     }
   }
@@ -833,7 +833,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .games
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.goToDiscovery.assertValues([params])
     }
   }
@@ -872,7 +872,7 @@ final class AppDelegateViewModelTests: TestCase {
         |> DiscoveryParams.lens.sort .~ .magic
         |> DiscoveryParams.lens.seed .~ 2_714_369
         |> DiscoveryParams.lens.page .~ 1
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await fulfillment(of: [routed], timeout: 2)
       self.goToDiscovery.assertValues([params])
     }
@@ -905,7 +905,7 @@ final class AppDelegateViewModelTests: TestCase {
         |> DiscoveryParams.lens.sort .~ .magic
         |> DiscoveryParams.lens.seed .~ 2_714_369
         |> DiscoveryParams.lens.page .~ 1
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.goToDiscovery.assertValues([params])
     }
   }
@@ -946,7 +946,7 @@ final class AppDelegateViewModelTests: TestCase {
         |> DiscoveryParams.lens.sort .~ .magic
         |> DiscoveryParams.lens.seed .~ 2_714_369
         |> DiscoveryParams.lens.page .~ 1
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.goToDiscovery.assertValues([params])
     }
   }
@@ -1050,7 +1050,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       await (self.vm as? AppDelegateViewModel)?.waitForPushRegistration()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
       XCTAssertEqual([], segmentClient.events)
@@ -1082,7 +1082,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       await (self.vm as? AppDelegateViewModel)?.waitForPushRegistration()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
       XCTAssertEqual([], segmentClient.events)
@@ -1113,7 +1113,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       await (self.vm as? AppDelegateViewModel)?.waitForPushRegistration()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
       XCTAssertEqual([], segmentClient.events)
@@ -1151,7 +1151,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       await (self.vm as? AppDelegateViewModel)?.waitForPushRegistration()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
     }
   }
@@ -1159,8 +1159,8 @@ final class AppDelegateViewModelTests: TestCase {
   func testPushRegistrationDebounceAdmitsLatestToken() async {
     await withEnvironment(currentUser: .template) {
       let model = AppDelegateViewModel(
-        lifecycleFeature: self.lifecycleFeature,
-        sessionFeature: self.lifecycleFeature.sessionFeature,
+        deepLinkRouter: self.deepLinkRouter,
+        sessionFeature: self.deepLinkRouter.sessionFeature,
         settingsFeature: self.settingsFeature,
         pushDebounce: {
         try Task.checkCancellation()
@@ -1201,7 +1201,7 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.vm.inputs.didReceive(remoteNotification: friendBackingPushData)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
     }
   }
@@ -1216,7 +1216,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       self.presentViewController.assertValueCount(0)
       self.vm.inputs.didReceive(pushEnvelope: envelope)
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
     }
   }
@@ -1233,7 +1233,7 @@ final class AppDelegateViewModelTests: TestCase {
   func testOpenNotification_Order() async {
     self.vm.inputs.didReceive(remoteNotification: orderPushData)
 
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValueCount(1)
   }
 
@@ -1250,7 +1250,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
       self.vm.inputs.didReceive(remoteNotification: updatePushData)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
     }
   }
@@ -1267,7 +1267,7 @@ final class AppDelegateViewModelTests: TestCase {
   func testOpenNotification_SurveyResponse() async {
     self.vm.inputs.didReceive(remoteNotification: surveyResponsePushData)
 
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValueCount(1)
   }
 
@@ -1284,7 +1284,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
       self.vm.inputs.didReceive(remoteNotification: updateCommentPushData)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
     }
   }
@@ -1302,7 +1302,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
       self.vm.inputs.didReceive(remoteNotification: projectCommentPushData)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
     }
   }
@@ -1322,7 +1322,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
       self.vm.inputs.didReceive(remoteNotification: genericProjectPushData)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
     }
   }
@@ -1342,7 +1342,7 @@ final class AppDelegateViewModelTests: TestCase {
 
         self.vm.inputs.didReceive(remoteNotification: pushData)
 
-        await self.lifecycleFeature.waitForOperations()
+        await self.deepLinkRouter.waitForOperations()
         self.presentViewController.assertValueCount(
           idx + 1, "Presents controller for \(state.rawValue) state change."
         )
@@ -1364,7 +1364,7 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.vm.inputs.didReceive(remoteNotification: pushData)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([2])
     }
   }
@@ -1441,7 +1441,7 @@ final class AppDelegateViewModelTests: TestCase {
     await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
     await self.settingsFeature.waitForOperations()
 
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
     self.setApplicationShortcutItems.assertValues([[.projectsWeLove, .search]])
 
@@ -1450,7 +1450,7 @@ final class AppDelegateViewModelTests: TestCase {
     await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
     await self.settingsFeature.waitForOperations()
 
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
     self.setApplicationShortcutItems.assertValues(
       [
@@ -1476,7 +1476,7 @@ final class AppDelegateViewModelTests: TestCase {
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
       self.setApplicationShortcutItems.assertValues([
         [.recommendedForYou, .projectsWeLove, .search]
@@ -1500,7 +1500,7 @@ final class AppDelegateViewModelTests: TestCase {
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
       self.setApplicationShortcutItems.assertValues([
         [.recommendedForYou, .projectsWeLove, .search]
@@ -1523,7 +1523,7 @@ final class AppDelegateViewModelTests: TestCase {
     let params = .defaults
       |> DiscoveryParams.lens.staffPicks .~ true
       |> DiscoveryParams.lens.sort .~ .magic
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.goToDiscovery.assertValues([params])
   }
 
@@ -1538,7 +1538,7 @@ final class AppDelegateViewModelTests: TestCase {
     let params = .defaults
       |> DiscoveryParams.lens.staffPicks .~ true
       |> DiscoveryParams.lens.sort .~ .magic
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.goToDiscovery.assertValues([params])
     XCTAssertFalse(self.vm.outputs.applicationDidFinishLaunchingReturnValue)
   }
@@ -1558,7 +1558,7 @@ final class AppDelegateViewModelTests: TestCase {
     let params = .defaults
       |> DiscoveryParams.lens.recommended .~ true
       |> DiscoveryParams.lens.sort .~ .magic
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.goToDiscovery.assertValues([params])
   }
 
@@ -1573,7 +1573,7 @@ final class AppDelegateViewModelTests: TestCase {
     let params = .defaults
       |> DiscoveryParams.lens.recommended .~ true
       |> DiscoveryParams.lens.sort .~ .magic
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.goToDiscovery.assertValues([params])
     XCTAssertFalse(self.vm.outputs.applicationDidFinishLaunchingReturnValue)
   }
@@ -1795,7 +1795,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertTrue(result)
 
       self.findRedirectUrl.assertValues([emailUrl], "Ask to find the redirect after open the email url.")
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([], "No view controller is presented yet.")
       self.goToMobileSafari.assertValues([])
 
@@ -1803,7 +1803,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.vm.inputs.foundRedirectUrl(URL(string: "https://www.kickstarter.com/projects/creator/project")!)
 
       self.findRedirectUrl.assertValues([emailUrl], "Nothing new is emitted.")
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1, "Present the project view controller.")
       self.goToMobileSafari.assertValues([])
     }
@@ -1832,7 +1832,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertTrue(result)
 
       self.findRedirectUrl.assertValues([emailUrl], "Ask to find the redirect after open the email url.")
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([], "No view controller is presented yet.")
       self.goToMobileSafari.assertValues([])
 
@@ -1840,7 +1840,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.vm.inputs.foundRedirectUrl(URL(string: "https://www.kickstarter.com/projects/creator/project")!)
 
       self.findRedirectUrl.assertValues([emailUrl], "Nothing new is emitted.")
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1, "Present the project view controller.")
       self.goToMobileSafari.assertValues([])
     }
@@ -1870,7 +1870,7 @@ final class AppDelegateViewModelTests: TestCase {
     XCTAssertTrue(result)
 
     self.findRedirectUrl.assertValues([emailUrl], "Ask to find the redirect after open the email url.")
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValues([], "No view controller is presented.")
     self.goToMobileSafari.assertValues([], "Do not go to mobile safari")
 
@@ -1879,7 +1879,7 @@ final class AppDelegateViewModelTests: TestCase {
     self.vm.inputs.foundRedirectUrl(unrecognizedUrl)
 
     self.findRedirectUrl.assertValues([emailUrl], "Nothing new is emitted.")
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValues([], "Do not present controller since the url was unrecognizable.")
     self.goToMobileSafari.assertValues([unrecognizedUrl], "Go to mobile safari for the unrecognized url.")
   }
@@ -1908,7 +1908,7 @@ final class AppDelegateViewModelTests: TestCase {
     XCTAssertTrue(result)
 
     self.findRedirectUrl.assertValues([emailUrl], "Ask to find the redirect after open the email url.")
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValues([], "No view controller is presented.")
     self.goToMobileSafari.assertValues([], "Do not go to mobile safari")
 
@@ -1917,7 +1917,7 @@ final class AppDelegateViewModelTests: TestCase {
     self.vm.inputs.foundRedirectUrl(unrecognizedUrl)
 
     self.findRedirectUrl.assertValues([emailUrl], "Nothing new is emitted.")
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValues([], "Do not present controller since the url was unrecognizable.")
     self.goToMobileSafari.assertValues([unrecognizedUrl], "Go to mobile safari for the unrecognized url.")
   }
@@ -1939,7 +1939,7 @@ final class AppDelegateViewModelTests: TestCase {
     )
     XCTAssertTrue(result)
 
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValues([1])
   }
 
@@ -1969,7 +1969,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertTrue(result)
 
       self.goToLoginWithIntent.assertDidNotEmitValue()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([2])
     }
   }
@@ -2024,7 +2024,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.vm.inputs.didReceive(remoteNotification: pushData)
 
       self.goToLoginWithIntent.assertDidNotEmitValue()
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([2])
     }
   }
@@ -2078,7 +2078,7 @@ final class AppDelegateViewModelTests: TestCase {
     )
     XCTAssertTrue(result)
 
-    await self.lifecycleFeature.waitForOperations()
+    await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValues([1])
   }
 
@@ -2250,7 +2250,7 @@ final class AppDelegateViewModelTests: TestCase {
         launchOptions: [:]
       )
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
       self.updateConfigInEnvironment.assertValueCount(1)
 
@@ -2290,7 +2290,7 @@ final class AppDelegateViewModelTests: TestCase {
         launchOptions: [:]
       )
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
       self.updateConfigInEnvironment.assertValueCount(1)
 
@@ -2815,7 +2815,7 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.vm.inputs.urlFromBrazeNotification(URL(string: url)!)
 
-      await self.lifecycleFeature.waitForOperations()
+      await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1])
     }
   }

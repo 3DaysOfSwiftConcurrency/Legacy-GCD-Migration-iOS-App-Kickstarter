@@ -209,7 +209,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var notificationTasks: [UUID: Task<Void, Never>] = [:]
   private var verificationTask: Task<Void, Never>?
   private let authenticationFeature: AuthenticationFeature
-  private let lifecycleFeature: AppLifecycleFeature
+  private let deepLinkRouter: DeepLinkRouter
   private let discoveryFeature: DiscoveryFeature
   private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
   private let requestDevicePushRegistration: @MainActor (String) -> Task<String, Error>
@@ -247,7 +247,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var trackingObserver: ((any AppTrackingTransparencyType), UUID)?
 
   public init(
-    lifecycleFeature: AppLifecycleFeature? = nil,
+    deepLinkRouter: DeepLinkRouter? = nil,
     authenticationFeature: AuthenticationFeature? = nil,
     discoveryFeature: DiscoveryFeature? = nil,
     requestApplicationConfiguration: (@MainActor () -> Task<Config, Error>)? = nil,
@@ -262,9 +262,15 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.pushDebounce = pushDebounce
     self.userDebounce = userDebounce
     self.trackingDelay = trackingDelay
-    let lifecycleFeature = lifecycleFeature ?? AppModel.shared.appLifecycleFeature
+    let deepLinkRouter = deepLinkRouter ?? DeepLinkRouter(
+      sessionFeature: sessionFeature ?? AppModel.shared.sessionFeature,
+      messagingFeature: AppModel.shared.messagingFeature,
+      discussionFeature: AppModel.shared.discussionFeature,
+      discoveryFeature: discoveryFeature ?? AppModel.shared.discoveryFeature,
+      activityFeature: AppModel.shared.activityFeature
+    )
     self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
-    self.lifecycleFeature = lifecycleFeature
+    self.deepLinkRouter = deepLinkRouter
     self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
     self.requestApplicationConfiguration = requestApplicationConfiguration
       ?? { AppModel.shared.requestApplicationConfiguration() }
@@ -294,7 +300,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     let redirectObservation = self.redirectObservation
     let authenticationFeature = self.authenticationFeature
     let trackingObserver = self.trackingObserver
-    let feature = self.lifecycleFeature
+    let feature = self.deepLinkRouter
     let route = self.navigationRoute
     Task { @MainActor in
       redirectObservation.cancel()
@@ -312,7 +318,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     guard navigation != .emailClick else { return }
     self.redirectObservation.cancel()
     self.authenticationFeature.releaseEmailRedirect(route: self.navigationRoute)
-    let request = self.lifecycleFeature.requestDestination(navigation, route: self.navigationRoute)
+    let request = self.deepLinkRouter.requestDestination(navigation, route: self.navigationRoute)
     self.destinationTask = Task { [weak self] in
       do {
         let destination = try await request.value
@@ -520,7 +526,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.redirectObservation.input = url
     let id = UUID()
     self.redirectObservation.id = id
-    self.lifecycleFeature.release(route: self.navigationRoute)
+    self.deepLinkRouter.release(route: self.navigationRoute)
     let feature = self.authenticationFeature, route = self.navigationRoute
     self.redirectObservation.task = Task { [weak self] in
       defer {
@@ -692,12 +698,14 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public func userSessionEnded() {
+    self.deepLinkRouter.release(route: self.navigationRoute)
     self.scheduleUserRefresh()
     self.refreshConfiguration()
     self.onUnregisterForRemoteNotifications?()
   }
 
   public func userSessionStarted() {
+    self.deepLinkRouter.release(route: self.navigationRoute)
     self.scheduleUserRefresh()
     self.refreshUserSetup()
     self.refreshConfiguration()
@@ -1034,7 +1042,7 @@ private func configRetainingDebugFeatureFlags(_ config: Config) -> Config {
 @MainActor
 private enum ProjectDeepLink {
   static func viewController(
-    _ destination: AppLifecycleFeature.ProjectDestination, isLoggedIn: Bool
+    _ destination: DeepLinkRouter.ProjectDestination, isLoggedIn: Bool
   ) -> UINavigationController? {
     let project = destination.project
     let page = ProjectPageViewController.configuredWith(
