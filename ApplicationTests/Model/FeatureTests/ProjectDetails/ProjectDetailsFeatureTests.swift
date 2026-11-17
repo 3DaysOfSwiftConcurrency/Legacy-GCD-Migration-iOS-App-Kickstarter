@@ -3,6 +3,7 @@ import Experimentation
 import Foundation
 import GraphAPI
 @testable import KsApi
+import Prelude
 
 
 import XCTest
@@ -215,11 +216,58 @@ final class ProjectDetailsFeatureTests: TestCase {
     XCTAssertTrue(provider.attributions.isEmpty)
   }
 
+  func testProjectPageAnalyticsAndThirdPartyEventUseComposedPolicy() throws {
+    var analytics: [String] = []
+    var events: [KsApi.TriggerThirdPartyEventInput] = []
+    let user = User.template |> User.lens.id .~ 99
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { user }
+    )
+    let feature = ProjectDetailsFeature(
+      platform: .init(
+        serverConfig: { ServerConfig.staging },
+        prepareWebRequest: { URLRequest(url: $0) },
+        cookieStorage: { MockCookieStorage() },
+        dateType: { MockDate.self },
+        responseDelaySeconds: { 0 },
+        recordThirdPartyEvent: { events.append($0) }
+      ),
+      sessionFeature: session,
+      discussionFeature: DiscussionFeature(
+        platform: .live(), sessionFeature: session,
+        makeProvider: { AsyncDiscussionProvider(service: MockService()) }
+      ),
+      makeProvider: { ControlledProjectDetailsProvider() },
+      useFastLoading: { false },
+      includeRichText: { false },
+      analytics: .init(
+        projectViewed: { _, _ in analytics.append("viewed") },
+        blockInitiated: { _, _ in analytics.append("initiated") },
+        blockConfirmed: { _, _ in analytics.append("confirmed") }
+      ),
+      projectViewContext: { ("advertising-id", "platform-version") }
+    )
+    let project = Project.template |> Project.lens.id .~ 42
+
+    feature.recordProjectViewed(project, refTag: .search)
+    feature.trackBlockInitiated(project: project, targetUserID: "7")
+    feature.trackBlockConfirmed(project: project, targetUserID: "7")
+
+    XCTAssertEqual(analytics, ["viewed", "initiated", "confirmed"])
+    let event = try XCTUnwrap(events.first)
+    XCTAssertEqual(event.deviceId, "advertising-id")
+    XCTAssertEqual(event.projectId, "42")
+    XCTAssertEqual(event.userId, "99")
+    XCTAssertEqual(try XCTUnwrap(event.appData).extinfo[4], "platform-version")
+  }
+
   private func feature(
     _ provider: ControlledProjectDetailsProvider,
     fast: Bool = false,
     includeRichText: @escaping @MainActor () -> Bool = { true },
-    platform: ProjectDetailsFeature.Platform = .live()
+    platform: ProjectDetailsFeature.Platform = .live(),
+    analytics: ProjectDetailsFeature.Analytics = .init(),
+    projectViewContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil }
   ) -> ProjectDetailsFeature {
     ProjectDetailsFeature(
       platform: platform,
@@ -228,6 +276,8 @@ final class ProjectDetailsFeatureTests: TestCase {
       makeProvider: { provider },
       useFastLoading: { fast },
       includeRichText: includeRichText,
+      analytics: analytics,
+      projectViewContext: projectViewContext,
       sleep: { _ in try Task.checkCancellation() }
     )
   }

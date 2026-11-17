@@ -319,21 +319,11 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   private var didInspectFirstCookie = false
   internal private(set) var loadingTask: Task<Void, Never>?
 
-  private let analytics: () -> KSRAnalytics
-  private let advertisingIdentifier: () -> String?
-  private let platformVersion: () -> String
-
   public init(
     projectDetailsFeature: ProjectDetailsFeature,
-    projectMediaFeature: ProjectMediaFeature,
-    analytics: @escaping () -> KSRAnalytics,
-    advertisingIdentifier: @escaping () -> String?,
-    platformVersion: @escaping () -> String
+    projectMediaFeature: ProjectMediaFeature
   ) {
     self.projectMediaFeature = projectMediaFeature
-    self.analytics = analytics
-    self.advertisingIdentifier = advertisingIdentifier
-    self.platformVersion = platformVersion
     self.projectDetailsFeature = projectDetailsFeature
 
 
@@ -346,15 +336,9 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
 
     let blockAnalytics = self.blockAnalytics
     blockAnalytics.onInitiate = { project, blockedUserId in
-        analytics()
-          .trackBlockedUser(
-            project,
-            page: .project,
-            sectionContext: .overview,
-            locationContext: .creatorDetailsMenu,
-            typeContext: .initiate,
-            targetUserId: "\(blockedUserId)"
-          )
+      projectDetailsFeature.trackBlockInitiated(
+        project: project, targetUserID: String(blockedUserId)
+      )
     }
 
 
@@ -439,27 +423,8 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     while self.pendingAppearances > 0, !self.pendingViewedProjects.isEmpty {
       self.pendingAppearances -= 1
       let (project, refTag) = self.pendingViewedProjects.removeFirst()
-      self.analytics().trackProjectViewed(project, refTag: refTag, sectionContext: .overview)
-      self.recordThirdPartyProjectView(project)
+      self.projectDetailsFeature.recordProjectViewed(project, refTag: refTag)
     }
-  }
-
-  private func recordThirdPartyProjectView(_ project: Project) {
-    guard let externalID = self.advertisingIdentifier() else { return }
-    let userID = self.projectDetailsFeature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
-    var extInfo = Array(repeating: "", count: 16)
-    extInfo[0] = "i2"
-    extInfo[4] = self.platformVersion()
-    self.projectDetailsFeature.recordThirdPartyEvent(
-      .init(
-        deviceId: externalID,
-        eventName: ThirdPartyEventInputName.ProjectPageViewed.rawValue,
-        projectId: "\(project.id)", pledgeAmount: nil, shipping: nil, transactionId: nil,
-        userId: userID,
-        appData: .init(advertiserTrackingEnabled: true, applicationTrackingEnabled: true, extinfo: extInfo),
-        clientMutationId: ""
-      )
-    )
   }
 
   private func loadProject(force: Bool) {
@@ -515,13 +480,8 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
         NotificationCenter.default.post(.init(name: .ksr_blockedUser))
         self.onDidBlockUser?()
         if let (project, blockedUserId) = self.blockAnalytics.latest {
-          self.analytics().trackBlockedUser(
-            project,
-            page: .project,
-            sectionContext: .overview,
-            locationContext: .creatorDetailsMenu,
-            typeContext: .confirm,
-            targetUserId: blockedUserId
+          self.projectDetailsFeature.trackBlockConfirmed(
+            project: project, targetUserID: blockedUserId
           )
         }
       case .failure:

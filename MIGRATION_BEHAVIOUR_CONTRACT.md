@@ -2125,3 +2125,15 @@ safe for arbitrary concurrent environment mutation.
 - Focused Project Page coverage passes 64 tests. The bounded AppModel, Rewards, Manage
   Pledge and checkout selection passes 214 tests. Visual snapshots and the whole Library
   suite remain outside this checkpoint.
+
+## Project Page analytics composition — 17 November 2026
+
+- AppModel supplies ProjectDetailsFeature with project-view and block-user analytics plus
+  the advertising identifier/platform-version context for the third-party page-view event.
+- ProjectPageViewModel now sends semantic project-view and block-user commands to its
+  owning Feature. It no longer receives analytics, tracking or bundle closures and uses
+  the Feature's SessionFeature identity when the third-party payload is constructed.
+- Focused ProjectDetailsFeature and Project Page coverage passes 95 tests, including a
+  direct composed-payload proof. The bounded AppModel, Rewards, Manage Pledge and checkout
+  selection passes 214 tests. Live analytics delivery, visual snapshots and the whole
+  Library suite remain outside this checkpoint.

@@ -243,6 +243,8 @@ extension ProjectDetailsFeature {
     makeProvider: @escaping @MainActor () -> any ProjectDetailsProvider,
     useFastLoading: @escaping @MainActor () -> Bool,
     includeRichText: @escaping @MainActor () -> Bool,
+    analytics: Analytics = Analytics(),
+    projectViewContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil },
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -265,6 +267,8 @@ extension ProjectDetailsFeature {
       discussionFeature: discussionFeature,
       makeProvider: makeProvider,
       useFastLoading: useFastLoading,
+      analytics: analytics,
+      projectViewContext: projectViewContext,
       sleep: sleep
     )
   }

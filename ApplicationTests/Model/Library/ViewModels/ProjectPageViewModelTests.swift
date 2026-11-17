@@ -2129,14 +2129,7 @@ final class ProjectPageViewModelTests: TestCase {
   static func makeViewModel(details: ProjectDetailsFeature, media: ProjectMediaFeature) -> ProjectPageViewModel {
     ProjectPageViewModel(
       projectDetailsFeature: details,
-      projectMediaFeature: media,
-      analytics: { AppEnvironment.current.ksrAnalytics },
-      advertisingIdentifier: {
-        let tracking = AppEnvironment.current.appTrackingTransparency
-        tracking.updateAdvertisingIdentifier()
-        return tracking.advertisingIdentifier
-      },
-      platformVersion: { AppEnvironment.current.mainBundle.platformVersion }
+      projectMediaFeature: media
     )
   }
 
@@ -2150,6 +2143,33 @@ final class ProjectPageViewModelTests: TestCase {
         InstantPledgeButtonExperiment().boolValue(forKey: .instant_pledge_enabled) == true
       },
       includeRichText: { statsigFeatureEnabled(feature: .projectStoryRichText) },
+      analytics: .init(
+        projectViewed: {
+          AppEnvironment.current.ksrAnalytics.trackProjectViewed(
+            $0, refTag: $1, sectionContext: .overview
+          )
+        },
+        blockInitiated: {
+          AppEnvironment.current.ksrAnalytics.trackBlockedUser(
+            $0, page: .project, sectionContext: .overview,
+            locationContext: .creatorDetailsMenu, typeContext: .initiate,
+            targetUserId: $1
+          )
+        },
+        blockConfirmed: {
+          AppEnvironment.current.ksrAnalytics.trackBlockedUser(
+            $0, page: .project, sectionContext: .overview,
+            locationContext: .creatorDetailsMenu, typeContext: .confirm,
+            targetUserId: $1
+          )
+        }
+      ),
+      projectViewContext: {
+        let tracking = AppEnvironment.current.appTrackingTransparency
+        tracking.updateAdvertisingIdentifier()
+        guard let advertisingID = tracking.advertisingIdentifier else { return nil }
+        return (advertisingID, AppEnvironment.current.mainBundle.platformVersion)
+      },
       sleep: { _ in try Task.checkCancellation() }
     )
   }

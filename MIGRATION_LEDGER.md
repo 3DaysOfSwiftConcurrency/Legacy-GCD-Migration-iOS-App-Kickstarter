@@ -5309,3 +5309,26 @@ Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
 Visual snapshots and the whole Library suite remain unverified. The CFA gate rejects
 restored ambient device policy in ProjectPageViewController. This is not full CFA
 compliance. Swift packages, target identifiers and existing history are unchanged. No push.
+
+### Project Page analytics composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now composes project-view and block-user analytics into ProjectDetailsFeature,
+along with the advertising identifier and platform version needed for the third-party
+page-view payload. ProjectPageViewModel reports semantic events through that Feature and
+no longer receives ambient analytics, tracking or bundle closures. ProjectDetailsFeature
+uses its SessionFeature identity when constructing the payload.
+
+Focused ProjectDetailsFeature and Project Page validation passed all 95 tests, including
+a direct proof of analytics callbacks and third-party advertising, project, user and
+platform fields. The bounded AppModel, Rewards, Manage Pledge, pledge checkout and
+post-campaign checkout selection passed all 214 tests. Both runs had zero failures and
+skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-project-page-analytics-composition-focused-2.xcresult` and
+`/private/tmp/kickstarter-project-page-analytics-composition-bounded.xcresult`.
+
+Live analytics delivery, visual snapshots and the whole Library suite remain unverified.
+The CFA gate rejects restored analytics and tracking globals in Project Page presentation.
+This is not full CFA compliance. Swift packages, target identifiers and existing history
+are unchanged. No push.

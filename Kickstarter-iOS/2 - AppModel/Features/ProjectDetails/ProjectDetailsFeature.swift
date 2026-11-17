@@ -59,6 +59,22 @@ public struct AsyncProjectDetailsProvider: ProjectDetailsProvider {
 /// it. Cancellation invalidates publication even if a provider completes late.
 @MainActor
 public final class ProjectDetailsFeature {
+  public struct Analytics {
+    let projectViewed: @MainActor (Project, RefTag?) -> Void
+    let blockInitiated: @MainActor (Project, String) -> Void
+    let blockConfirmed: @MainActor (Project, String) -> Void
+
+    public init(
+      projectViewed: @escaping @MainActor (Project, RefTag?) -> Void = { _, _ in },
+      blockInitiated: @escaping @MainActor (Project, String) -> Void = { _, _ in },
+      blockConfirmed: @escaping @MainActor (Project, String) -> Void = { _, _ in }
+    ) {
+      self.projectViewed = projectViewed
+      self.blockInitiated = blockInitiated
+      self.blockConfirmed = blockConfirmed
+    }
+  }
+
   public struct Platform {
     let serverConfig: @MainActor () -> any ServerConfigType
     let prepareWebRequest: @MainActor (URL) -> URLRequest
@@ -102,6 +118,8 @@ public final class ProjectDetailsFeature {
   }
   public let discussionFeature: DiscussionFeature
   public let sessionFeature: SessionFeature
+  private let analytics: Analytics
+  private let projectViewContext: @MainActor () -> (advertisingID: String, platformVersion: String)?
   private var attributionRoutes: [UUID: Task<Void, Error>] = [:]
   private var attributionOperations: [UUID: Task<Void, Error>] = [:]
 
@@ -305,6 +323,8 @@ public final class ProjectDetailsFeature {
     discussionFeature: DiscussionFeature,
     makeProvider: @escaping @MainActor () -> any ProjectDetailsProvider,
     useFastLoading: @escaping @MainActor () -> Bool,
+    analytics: Analytics = Analytics(),
+    projectViewContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil },
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -317,7 +337,40 @@ public final class ProjectDetailsFeature {
     self.settingsFeature = settingsFeature
     self.makeProvider = makeProvider
     self.useFastLoading = useFastLoading
+    self.analytics = analytics
+    self.projectViewContext = projectViewContext
     self.sleep = sleep
+  }
+
+  public func recordProjectViewed(_ project: Project, refTag: RefTag?) {
+    self.analytics.projectViewed(project, refTag)
+    guard let context = self.projectViewContext() else { return }
+    var extInfo = Array(repeating: "", count: 16)
+    extInfo[0] = "i2"
+    extInfo[4] = context.platformVersion
+    self.recordThirdPartyEvent(.init(
+      deviceId: context.advertisingID,
+      eventName: ThirdPartyEventInputName.ProjectPageViewed.rawValue,
+      projectId: String(project.id),
+      pledgeAmount: nil,
+      shipping: nil,
+      transactionId: nil,
+      userId: self.sessionFeature.currentUser.map { String($0.id) } ?? "",
+      appData: .init(
+        advertiserTrackingEnabled: true,
+        applicationTrackingEnabled: true,
+        extinfo: extInfo
+      ),
+      clientMutationId: ""
+    ))
+  }
+
+  public func trackBlockInitiated(project: Project, targetUserID: String) {
+    self.analytics.blockInitiated(project, targetUserID)
+  }
+
+  public func trackBlockConfirmed(project: Project, targetUserID: String) {
+    self.analytics.blockConfirmed(project, targetUserID)
   }
 
   public func snapshot(for route: UUID) -> Snapshot {
