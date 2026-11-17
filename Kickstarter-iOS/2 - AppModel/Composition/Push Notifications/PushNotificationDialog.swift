@@ -11,6 +11,12 @@ public struct PushNotificationDialog: PushNotificationDialogType {
 
   private static let maxDeniedContexts: Int = 3
 
+  static func eligibleContext(for notification: Notification) -> Context? {
+    guard let context = notification.userInfo?[UserInfoKeys.context] as? Context,
+          self.canShowDialog(for: context) else { return nil }
+    return context
+  }
+
   public static func canShowDialog(for context: PushNotificationDialog.Context) -> Bool {
     return !AppEnvironment.current.userDefaults.deniedNotificationContexts.contains(context.rawValue) &&
       AppEnvironment.current.userDefaults.deniedNotificationContexts.count < self.maxDeniedContexts

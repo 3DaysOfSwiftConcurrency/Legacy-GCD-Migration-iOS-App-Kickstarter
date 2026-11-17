@@ -291,7 +291,17 @@ public final class DevicePushRegistrationService {
     self.debounce = debounce
   }
 
-  func schedule(token: String, onRegistered: @escaping @MainActor (String) -> Void) {
+  func receive(
+    deviceToken: Data,
+    registerWithMessagingSDK: @MainActor (Data) -> Void,
+    onRegistered: @escaping @MainActor (String) -> Void
+  ) {
+    registerWithMessagingSDK(deviceToken)
+    let token = deviceToken.map { String(format: "%02.2hhx", $0 as CVarArg) }.joined()
+    self.schedule(token: token, onRegistered: onRegistered)
+  }
+
+  private func schedule(token: String, onRegistered: @escaping @MainActor (String) -> Void) {
     self.debounceTask?.cancel()
     let debounce = self.debounce
     let generation = self.generation
@@ -314,7 +324,7 @@ public final class DevicePushRegistrationService {
     }
   }
 
-  func cancelScheduledDelivery() {
+  private func cancelScheduledDelivery() {
     self.debounceTask?.cancel()
     self.deliveryTask?.cancel()
   }
@@ -394,9 +404,7 @@ public final class AppModel {
     connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService,
     applicationConfigurationService: ApplicationConfigurationService,
-    devicePushRegistrationService: DevicePushRegistrationService = DevicePushRegistrationService(
-      register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
-    ),
+    devicePushRegistrationService: DevicePushRegistrationService,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
     projectReportingFeature: ProjectReportingFeature,
@@ -544,6 +552,9 @@ public final class AppModel {
         reportFailure: RemoteConfigClient.reportActivationFailure
       ),
       applicationConfigurationService: .live(),
+      devicePushRegistrationService: DevicePushRegistrationService(
+        register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
+      ),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
       }),

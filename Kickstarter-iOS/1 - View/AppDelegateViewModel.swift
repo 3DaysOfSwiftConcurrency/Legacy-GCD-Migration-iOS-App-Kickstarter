@@ -40,12 +40,6 @@ public protocol AppDelegateViewModelInputs {
   func didReceive(remoteNotification notification: [AnyHashable: Any])
   func didReceive(pushEnvelope: PushEnvelope)
 
-  /// Call when the app delegate gets notice of a successful notification registration.
-  func didRegisterForRemoteNotifications(withDeviceTokenData data: Data)
-
-  /// Call when the contextual PushNotification dialog should be presented.
-  func showNotificationDialog(notification: Notification)
-
   /// Call when Braze in-app notifications send a valid URL.
   func urlFromBrazeNotification(_ url: URL?)
 
@@ -97,20 +91,8 @@ public protocol AppDelegateViewModelOutputs: AnyObject {
   /// Emits when a view controller should be presented.
   var onPresentViewController: ((UIViewController) -> Void)? { get set }
 
-  /// Emits the push token that has been successfully registered on the server.
-  var onPushTokenSuccessfullyRegistered: ((String) -> Void)? { get set }
-
-  /// Emits when we should register the device push token in Braze.
-  var onRegisterPushTokenInBraze: ((Data) -> Void)? { get set }
-
   /// Emits an array of short cut items to put into the shared application.
   var onSetApplicationShortcutItems: (([ShortcutItem]) -> Void)? { get set }
-
-  /// Emits when an alert should be shown.
-  var onShowAlert: ((Notification) -> Void)? { get set }
-
-  /// Emits when we should unregister the user from notifications.
-  var onUnregisterForRemoteNotifications: (() -> Void)? { get set }
 
   /// Emits a fresh user to be updated in the app environment.
   var onUpdateCurrentUser: ((User) -> Void)? { get set }
@@ -130,7 +112,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   AppDelegateViewModelOutputs {
   private let deepLinkRouter: DeepLinkRouter
   private let applicationShortcuts: ApplicationShortcutService
-  private let devicePushRegistration: DevicePushRegistrationService
   private let sessionFeature: SessionFeature
   private let settingsFeature: SettingsFeature
   private let navigationRoute = UUID()
@@ -138,25 +119,21 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   init(
     deepLinkRouter: DeepLinkRouter,
     applicationShortcuts: ApplicationShortcutService,
-    devicePushRegistration: DevicePushRegistrationService,
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature
   ) {
     self.deepLinkRouter = deepLinkRouter
     self.applicationShortcuts = applicationShortcuts
-    self.devicePushRegistration = devicePushRegistration
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
   }
 
 
   deinit {
-    let devicePushRegistration = self.devicePushRegistration
     let settingsFeature = self.settingsFeature
     let feature = self.deepLinkRouter
     let route = self.navigationRoute
     Task { @MainActor in
-      devicePushRegistration.cancelScheduledDelivery()
       settingsFeature.cancelScheduledAccountRefresh()
       settingsFeature.cancelAccountSetupRefresh()
       feature.release(route: route)
@@ -266,17 +243,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.deepLinkRouter.route(push: pushEnvelope, perform: self.navigationActionHandler)
   }
 
-  public func didRegisterForRemoteNotifications(withDeviceTokenData data: Data) {
-    self.onRegisterPushTokenInBraze?(data)
-    self.devicePushRegistration.schedule(token: deviceToken(fromData: data)) { [weak self] token in
-      self?.onPushTokenSuccessfullyRegistered?(token)
-    }
-  }
-
-  func waitForPushRegistration() async {
-    await self.devicePushRegistration.waitForScheduledDelivery()
-  }
-
   public func applicationOpenUrl(
     application: UIApplication?,
     url: URL,
@@ -286,16 +252,9 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     return true
   }
 
-  public func showNotificationDialog(notification: Notification) {
-    guard let context = notification.userInfo?[UserInfoKeys.context] as? PushNotificationDialog.Context,
-          PushNotificationDialog.canShowDialog(for: context) else { return }
-    self.onShowAlert?(notification)
-  }
-
   public func userSessionEnded() {
     self.deepLinkRouter.release(route: self.navigationRoute)
     self.scheduleUserRefresh()
-    self.onUnregisterForRemoteNotifications?()
   }
 
   public func userSessionStarted() {
@@ -340,20 +299,9 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public var onGoToSearch: (() -> Void)?
   public var onPostNotification: ((Notification) -> Void)?
   public var onPresentViewController: ((UIViewController) -> Void)?
-  public var onPushTokenSuccessfullyRegistered: ((String) -> Void)?
-  public var onRegisterPushTokenInBraze: ((Data) -> Void)?
   public var onSetApplicationShortcutItems: (([ShortcutItem]) -> Void)?
-  public var onShowAlert: ((Notification) -> Void)?
-  public var onUnregisterForRemoteNotifications: (() -> Void)?
   public var onUpdateCurrentUser: ((User) -> Void)?
   public var onNotificationSettingsUpdated: (() -> Void)?
-}
-
-/// Handles the deeplink route with both an id and text based name for a deeplink to categories.
-private func deviceToken(fromData data: Data) -> String {
-  return data
-    .map { String(format: "%02.2hhx", $0 as CVarArg) }
-    .joined()
 }
 
 extension ShortcutItem {

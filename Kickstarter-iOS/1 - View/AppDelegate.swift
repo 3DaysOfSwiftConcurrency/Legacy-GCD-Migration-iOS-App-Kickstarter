@@ -40,7 +40,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     return AppDelegateViewModel(
       deepLinkRouter: router,
       applicationShortcuts: model.applicationShortcuts,
-      devicePushRegistration: model.devicePushRegistrationService,
       sessionFeature: model.sessionFeature,
       settingsFeature: model.settingsFeature
     )
@@ -212,14 +211,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { print("📲 [Push Registration] Push token registration started 🚀") }
     }
 
-    self.viewModel.outputs.onPushTokenSuccessfullyRegistered = { token in
-      DispatchQueue.main.async { print("📲 [Push Registration] Push token successfully registered (\(token)) ✨") }
-    }
-
-    self.viewModel.outputs.onRegisterPushTokenInBraze = { [weak self] token in
-      DispatchQueue.main.async { [weak self] in self?.braze?.notifications.register(deviceToken: token) }
-    }
-
     AppModel.shared.pushAuthorization.onOfferOnboarding = { [weak self] in
       DispatchQueue.main.async { [weak self] in
         guard let rootTabBarController = self?.rootTabBarController else { return }
@@ -236,14 +227,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         rootTabBarController.navigationController?.isNavigationBarHidden = true
         rootTabBarController.present(onboardingVC, animated: true, completion: nil)
       }
-    }
-
-    self.viewModel.outputs.onShowAlert = { [weak self] notification in
-      DispatchQueue.main.async { [weak self] in self?.presentContextualPermissionAlert(notification) }
-    }
-
-    self.viewModel.outputs.onUnregisterForRemoteNotifications = {
-      DispatchQueue.main.async { UIApplication.shared.unregisterForRemoteNotifications() }
     }
 
     AppModel.shared.trackingConsent.onAuthorizationStatus = { [weak self] status in
@@ -278,11 +261,15 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         self?.viewModel.inputs.userSessionStarted()
       },
       MainActorNotificationObservation(name: .ksr_showNotificationsDialog) { [weak self] notification in
-        self?.viewModel.inputs.showNotificationDialog(notification: notification)
+        guard let context = PushNotificationDialog.eligibleContext(for: notification) else { return }
+        DispatchQueue.main.async { [weak self] in
+          self?.presentContextualPermissionAlert(notification, context: context)
+        }
       },
       MainActorNotificationObservation(name: .ksr_sessionEnded) { [weak self] _ in
         AppModel.shared.sessionChanged()
         self?.viewModel.inputs.userSessionEnded()
+        DispatchQueue.main.async { UIApplication.shared.unregisterForRemoteNotifications() }
       }
     ]
 
@@ -365,7 +352,15 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     _: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
-    self.viewModel.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: deviceToken)
+    AppModel.shared.devicePushRegistrationService.receive(
+      deviceToken: deviceToken,
+      registerWithMessagingSDK: { [weak self] token in
+        DispatchQueue.main.async { [weak self] in self?.braze?.notifications.register(deviceToken: token) }
+      },
+      onRegistered: { token in
+        DispatchQueue.main.async { print("📲 [Push Registration] Push token successfully registered (\(token)) ✨") }
+      }
+    )
   }
 
   internal func application(
@@ -386,9 +381,10 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
   // MARK: - Functions
 
-  fileprivate func presentContextualPermissionAlert(_ notification: Notification) {
+  private func presentContextualPermissionAlert(
+    _ notification: Notification, context: PushNotificationDialog.Context
+  ) {
     guard UIApplication.shared.applicationState != .background,
-      let context = notification.userInfo?[UserInfoKeys.context] as? PushNotificationDialog.Context,
       let presenter = (notification.userInfo?[UserInfoKeys.viewController] as? UIViewController)
         ?? self.rootTabBarController else { return }
     self.permissionAlertPresenter.schedule(context: context, presenter: presenter) {

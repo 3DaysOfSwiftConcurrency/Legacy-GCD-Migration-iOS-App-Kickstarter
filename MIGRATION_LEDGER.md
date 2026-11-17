@@ -3674,3 +3674,19 @@ bounded delegate and Root Tabs tests. The async permission test
 verified the alert, sound, and badge options and one registration
 after a simulated grant. Live APNs and the native consent dialog
 remain outside this coverage.
+
+### Device-token delivery and contextual alerts — Matthew Thomas
+
+AppDelegate sends APNs token bytes directly to the registration service.
+The service forwards the raw bytes to the messaging SDK adapter and
+debounces hexadecimal server registration. AppModel composes the server
+registration dependency and invalidates pending delivery on session
+changes. UIKit unregisters directly after sign-out. PushNotificationDialog
+provides the eligible context, and the existing alert presenter owns
+UIKit timing. The legacy handler now receives push payloads for navigation
+and has no token, unregistration, or permission-alert callbacks.
+
+The simulator passed 16 focused device registration, composition, and
+dialog policy tests and 138 bounded delegate, alert presenter, and Root
+Tabs tests. Live APNs and Braze delivery were outside the simulator
+coverage.

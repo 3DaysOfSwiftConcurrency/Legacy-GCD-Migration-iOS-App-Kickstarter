@@ -43,6 +43,9 @@ reject_matches 'The delegate handler must receive application dependencies expli
 reject_matches 'AppModel and ApplicationConfigurationService own application configuration refresh and delivery.' \
   'ApplicationConfigurationService|requestApplicationConfiguration|onUpdateConfig|didUpdateConfig\(' \
   "$delegate_handler"
+reject_matches 'Device push registration and contextual notification eligibility bypass the legacy handler.' \
+  'DevicePushRegistrationService|didRegisterForRemoteNotifications|showNotificationDialog|onRegisterPushTokenInBraze|onUnregisterForRemoteNotifications' \
+  "$delegate_handler"
 reject_matches 'The app delegate owns startup analytics wiring and preference synchronization.' \
   'onConfigure(Firebase|SegmentWithBraze|Statsig)|onSegmentEnabled|onSynchronizeUbiquitousStore|statsigSDKKey' \
   "$delegate_handler"

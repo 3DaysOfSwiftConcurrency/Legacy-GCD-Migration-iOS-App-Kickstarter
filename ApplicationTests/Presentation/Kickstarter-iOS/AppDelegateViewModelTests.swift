@@ -71,6 +71,10 @@ final class AppDelegateViewModelTests: TestCase {
     sessionFeature: self.settingsFeature.sessionFeature,
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
+  private let devicePushRegistration = DevicePushRegistrationService(
+    register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) },
+    debounce: { try Task.checkCancellation() }
+  )
   private let pushAuthorization = PushAuthorization(
     pushRegistration: { AppEnvironment.current.pushRegistrationType },
     onboardingFeature: .live()
@@ -121,7 +125,6 @@ final class AppDelegateViewModelTests: TestCase {
   var vm: AppDelegateViewModelType!
 
   private let applicationIconBadgeNumber = ValueRecorder<Int>()
-  private let didAcceptReceivingRemoteNotifications = ValueRecorder<()>()
   private let emailVerificationCompletedMessage = ValueRecorder<String>()
   private let emailVerificationCompletedSuccess = ValueRecorder<Bool>()
   private let findRedirectUrl = ValueRecorder<URL>()
@@ -139,10 +142,8 @@ final class AppDelegateViewModelTests: TestCase {
   private let pushTokenSuccessfullyRegistered = ValueRecorder<String>()
   private let registerPushTokenInBraze = ValueRecorder<Data>()
   private let setApplicationShortcutItems = ValueRecorder<[ShortcutItem]>()
-  private let showAlert = ValueRecorder<Notification>()
   private let trackingAuthorizationStatus = ValueRecorder<AppTrackingAuthorization>()
   private let triggerOnboardingFlow = ValueRecorder<()>()
-  private let unregisterForRemoteNotifications = ValueRecorder<()>()
   private let updateCurrentUserInEnvironment = ValueRecorder<User>()
   private let notificationSettingsUpdated = ValueRecorder<Void>()
 
@@ -189,10 +190,6 @@ final class AppDelegateViewModelTests: TestCase {
 
   private func makeDelegateHandler() -> AppDelegateViewModel {
     let session = self.settingsFeature.sessionFeature
-    let registration = DevicePushRegistrationService(
-      register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) },
-      debounce: { try Task.checkCancellation() }
-    )
     return AppDelegateViewModel(
       deepLinkRouter: self.deepLinkRouter,
       applicationShortcuts: ApplicationShortcutService(
@@ -201,7 +198,6 @@ final class AppDelegateViewModelTests: TestCase {
           try await discoveryFeature.hasRecommendations(for: $0)
         }
       ),
-      devicePushRegistration: registration,
       sessionFeature: session,
       settingsFeature: self.settingsFeature
     )
@@ -229,15 +225,11 @@ final class AppDelegateViewModelTests: TestCase {
       self?.presentViewController.record(navigation.viewControllers.count)
     }
     self.pushAuthorization.onRegistrationAttempted = { [weak self] in self?.pushRegistrationStarted.record(()) }
-    self.vm.outputs.onPushTokenSuccessfullyRegistered = { [weak self] in self?.pushTokenSuccessfullyRegistered.record($0) }
-    self.vm.outputs.onRegisterPushTokenInBraze = { [weak self] in self?.registerPushTokenInBraze.record($0) }
     self.vm.outputs.onSetApplicationShortcutItems = { [weak self] in self?.setApplicationShortcutItems.record($0) }
-    self.vm.outputs.onShowAlert = { [weak self] in self?.showAlert.record($0) }
     self.trackingConsent.onAuthorizationStatus = { [weak self] in
       self?.trackingAuthorizationStatus.record($0)
     }
     self.pushAuthorization.onOfferOnboarding = { [weak self] in self?.triggerOnboardingFlow.record(()) }
-    self.vm.outputs.onUnregisterForRemoteNotifications = { [weak self] in self?.unregisterForRemoteNotifications.record(()) }
     self.vm.outputs.onUpdateCurrentUser = { [weak self] in self?.updateCurrentUserInEnvironment.record($0) }
   }
 
@@ -1024,6 +1016,14 @@ final class AppDelegateViewModelTests: TestCase {
     }
   }
 
+  private func receiveDeviceToken(_ data: Data) {
+    self.devicePushRegistration.receive(
+      deviceToken: data,
+      registerWithMessagingSDK: { self.registerPushTokenInBraze.record($0) },
+      onRegistered: { [weak self] in self?.pushTokenSuccessfullyRegistered.record($0) }
+    )
+  }
+
   func testRegisterPushNotifications_Prompted() async {
     let segmentClient = MockTrackingClient()
 
@@ -1045,11 +1045,11 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.pushRegistrationStarted.assertValueCount(1)
 
-      self.vm.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: "token".data(using: .utf8)!)
+      self.receiveDeviceToken("token".data(using: .utf8)!)
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await (self.vm as? AppDelegateViewModel)?.waitForPushRegistration()
+      await self.devicePushRegistration.waitForScheduledDelivery()
       await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
@@ -1077,11 +1077,11 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.pushRegistrationStarted.assertValueCount(1)
 
-      self.vm.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: "token".data(using: .utf8)!)
+      self.receiveDeviceToken("token".data(using: .utf8)!)
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await (self.vm as? AppDelegateViewModel)?.waitForPushRegistration()
+      await self.devicePushRegistration.waitForScheduledDelivery()
       await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
@@ -1108,11 +1108,11 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.pushRegistrationStarted.assertValueCount(1)
 
-      self.vm.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: "token".data(using: .utf8)!)
+      self.receiveDeviceToken("token".data(using: .utf8)!)
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await (self.vm as? AppDelegateViewModel)?.waitForPushRegistration()
+      await self.devicePushRegistration.waitForScheduledDelivery()
       await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
@@ -1146,25 +1146,13 @@ final class AppDelegateViewModelTests: TestCase {
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      self.vm.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: "deadbeef".data(using: .utf8)!)
+      self.receiveDeviceToken("deadbeef".data(using: .utf8)!)
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await (self.vm as? AppDelegateViewModel)?.waitForPushRegistration()
+      await self.devicePushRegistration.waitForScheduledDelivery()
       await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
-    }
-  }
-
-  func testPushRegistrationDebounceAdmitsLatestToken() async {
-    await withEnvironment(currentUser: .template) {
-      let model = self.makeDelegateHandler()
-      var registered: [String] = []
-      model.outputs.onPushTokenSuccessfullyRegistered = { registered.append($0) }
-      model.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: Data([0x01]))
-      model.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: Data([0x02]))
-      await model.waitForPushRegistration()
-      XCTAssertEqual(registered, ["02"])
     }
   }
 
@@ -1178,9 +1166,10 @@ final class AppDelegateViewModelTests: TestCase {
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      self.vm.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: data)
+      self.receiveDeviceToken(data)
 
-      self.registerPushTokenInBraze.assertValueCount(1)
+      self.registerPushTokenInBraze.assertValues([data])
+      await self.devicePushRegistration.waitForScheduledDelivery()
     }
   }
 
@@ -1833,47 +1822,6 @@ final class AppDelegateViewModelTests: TestCase {
 
     await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValues([1])
-  }
-
-  func testShowAlertEmitsIf_CanShowDialog() async {
-    let notification = Notification(
-      name: Notification.Name(rawValue: "deadbeef"),
-      userInfo: [UserInfoKeys.context: PushNotificationDialog.Context.login,
-        UserInfoKeys.viewController: UIViewController()]
-    )
-
-    userDefaults.set(["message"], forKey: "com.kickstarter.KeyValueStoreType.deniedNotificationContexts")
-    MockPushRegistration.authorizedValue = false
-
-    await withEnvironment(
-      currentUser: .template,
-      pushRegistrationType: MockPushRegistration.self,
-      userDefaults: userDefaults
-    ) {
-      self.enterForeground()
-      self.vm.inputs.didReceive(remoteNotification: updatePushData)
-      self.vm.inputs.showNotificationDialog(notification: notification)
-
-      self.showAlert.assertValue(notification)
-    }
-  }
-
-  func testShowAlertDoesNotEmitIf_CanNotShowDialog() async {
-    let notification = Notification(
-      name: Notification.Name(rawValue: "deadbeef"),
-      userInfo: [UserInfoKeys.context: PushNotificationDialog.Context.login,
-        UserInfoKeys.viewController: UIViewController()]
-    )
-
-    userDefaults.set(["login"], forKey: "com.kickstarter.KeyValueStoreType.deniedNotificationContexts")
-
-    await withEnvironment(currentUser: .template, userDefaults: userDefaults) {
-      self.vm.inputs.applicationWillEnterForeground()
-      self.vm.inputs.didReceive(remoteNotification: updatePushData)
-      self.vm.inputs.showNotificationDialog(notification: notification)
-
-      self.showAlert.assertDidNotEmitValue()
-    }
   }
 
   func testVerifyEmail_Success() async {

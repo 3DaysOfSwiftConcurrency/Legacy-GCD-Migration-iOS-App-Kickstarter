@@ -8,6 +8,20 @@ import XCTest
 class PushNotificationDialogTests: XCTestCase {
   let userDefaults = MockKeyValueStore()
 
+  func testIncomingDialogContextMustBePresentAndEligible() {
+    let notification = Notification(
+      name: .ksr_showNotificationsDialog,
+      userInfo: [UserInfoKeys.context: PushNotificationDialog.Context.login]
+    )
+    withEnvironment(userDefaults: self.userDefaults) {
+      PushNotificationDialog.didDenyAccess(for: .message)
+      XCTAssertEqual(PushNotificationDialog.eligibleContext(for: notification), .login)
+      PushNotificationDialog.didDenyAccess(for: .login)
+      XCTAssertNil(PushNotificationDialog.eligibleContext(for: notification))
+      XCTAssertNil(PushNotificationDialog.eligibleContext(for: Notification(name: .ksr_showNotificationsDialog)))
+    }
+  }
+
   func testTitleForDismissalIs_NotNow_WhenUserDeniedLessThanTwoTimes() {
     withEnvironment(userDefaults: self.userDefaults) {
       PushNotificationDialog.didDenyAccess(for: .save)

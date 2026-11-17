@@ -217,6 +217,9 @@ final class AppModelTests: XCTestCase {
       ),
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
+      devicePushRegistrationService: DevicePushRegistrationService(register: { _ in
+        XCTFail("Composition must not register for push")
+      }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -279,6 +282,9 @@ final class AppModelTests: XCTestCase {
       ),
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
+      devicePushRegistrationService: DevicePushRegistrationService(register: { _ in
+        XCTFail("Composition must not register for push")
+      }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -537,6 +543,30 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
 
 @MainActor
 final class DevicePushRegistrationServiceTests: XCTestCase {
+  func testReceivesRawTokensInOrderAndDebouncesHexServerRegistration() async {
+    let first = Data([0x01, 0xff])
+    let latest = Data([0x00, 0x0a, 0xbe])
+    var forwarded: [Data] = []
+    var registered: [String] = []
+    var delivered: [String] = []
+    let service = DevicePushRegistrationService(
+      register: { registered.append($0) }, debounce: { try Task.checkCancellation() }
+    )
+
+    service.receive(deviceToken: first, registerWithMessagingSDK: { forwarded.append($0) }) {
+      delivered.append($0)
+    }
+    service.receive(deviceToken: latest, registerWithMessagingSDK: { forwarded.append($0) }) {
+      delivered.append($0)
+    }
+
+    XCTAssertEqual(forwarded, [first, latest])
+    XCTAssertTrue(registered.isEmpty)
+    await service.waitForScheduledDelivery()
+    XCTAssertEqual(registered, ["000abe"])
+    XCTAssertEqual(delivered, registered)
+  }
+
   func testSessionChangePreventsDebouncedRegistration() async throws {
     let gate = AccountRequestGate<Void>()
     defer { gate.releaseAll() }
@@ -545,7 +575,9 @@ final class DevicePushRegistrationServiceTests: XCTestCase {
       register: { registeredTokens.append($0) },
       debounce: { try await gate.request() }
     )
-    service.schedule(token: "previous-session") { _ in XCTFail("Unexpected registration delivery") }
+    service.receive(deviceToken: Data([0x01]), registerWithMessagingSDK: { _ in }) { _ in
+      XCTFail("Unexpected registration delivery")
+    }
     await gate.waitFor(1)
     service.sessionChanged()
     try gate.finish(0, .success(()))
