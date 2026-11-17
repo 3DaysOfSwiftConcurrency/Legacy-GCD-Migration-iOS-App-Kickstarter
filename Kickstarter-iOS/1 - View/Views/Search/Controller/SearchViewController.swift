@@ -15,7 +15,10 @@ private enum Constants {
 internal final class SearchViewController: UITableViewController,
   MessageBannerViewControllerPresenting,
   VideoFeedBannerPresenting {
-  internal let viewModel: SearchViewModelType = SearchViewModel()
+  internal let viewModel: SearchViewModelType = SearchViewModel(
+    searchFeature: AppModel.shared.searchFeature,
+    sessionFeature: AppModel.shared.sessionFeature
+  )
   internal let dataSource = SearchDataSource()
 
   @IBOutlet fileprivate var searchBarContainerView: UIView!

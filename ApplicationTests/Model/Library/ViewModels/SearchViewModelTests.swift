@@ -16,7 +16,12 @@ internal final class SearchViewModelTests: TestCase {
   private lazy var searchFeature = SearchFeature(
     provider: AsyncSearchProjectsProvider(), lookupSleep: { _ in }, sleep: { [delay] in try await delay.sleep($0) }
   )
-  fileprivate lazy var vm = SearchViewModel(searchFeature: self.searchFeature)
+  private let sessionFeature = SessionFeature(makeProvider: {
+    AsyncSessionProvider(service: AppEnvironment.current.apiService)
+  })
+  fileprivate lazy var vm = SearchViewModel(
+    searchFeature: self.searchFeature, sessionFeature: self.sessionFeature
+  )
 
   override func tearDown() async throws {
     MainActor.assumeIsolated {
@@ -135,7 +140,7 @@ internal final class SearchViewModelTests: TestCase {
       self.vm.inputs.viewWillAppear(animated: true)
       await self.advanceRequests()
       let existingParameters = self.searchFeature.parameters
-      let secondScreen = SearchViewModel(searchFeature: self.searchFeature)
+      let secondScreen = SearchViewModel(searchFeature: self.searchFeature, sessionFeature: self.sessionFeature)
 
       secondScreen.inputs.searchTextChanged("second screen")
       XCTAssertNil(secondScreen.searchTask)

@@ -3300,3 +3300,8 @@ Settings, Account, Privacy, Newsletters and Notifications now compose Settings
 at their controller and cell boundaries. The focused simulator runs passed
 43 model tests and five presentation tests. `make check-cfa` checks the
 Settings view-model directories for direct AppModel singleton access.
+
+Search now receives SearchFeature and SessionFeature from its controller.
+The multi-screen test fixture shares these explicit dependencies. The view
+model, lookup and cancellation suites passed 67 focused simulator tests.
+`make check-cfa` now guards the Search view-model boundary.

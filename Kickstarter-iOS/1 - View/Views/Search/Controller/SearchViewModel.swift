@@ -99,10 +99,7 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
   internal private(set) var filterOptionsTask: Task<Void, Never>?
   internal private(set) var locationLookupTask: Task<Void, Never>?
 
-  public init(searchFeature: SearchFeature? = nil, sessionFeature: SessionFeature? = nil) {
-    // Resolve the live default inside MainActor, not in a Swift 5 default argument.
-    let searchFeature = searchFeature ?? AppModel.shared.searchFeature
-    let sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
+  public init(searchFeature: SearchFeature, sessionFeature: SessionFeature) {
     self.searchFeature = searchFeature
     self.sessionFeature = sessionFeature
     self.searchFiltersUseCase = SearchFiltersUseCase(
