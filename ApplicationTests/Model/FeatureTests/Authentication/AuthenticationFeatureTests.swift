@@ -14,6 +14,7 @@ final class AuthenticationFeatureTests: XCTestCase {
       }),
       platform: .init(
         webBaseURL: { webBaseURL },
+        oauthClientID: { "injected-client-id" },
         appleAppID: { "injected-app-id" },
         trackLoginPageViewed: { events.append("page") },
         trackLoginSubmitButtonClicked: { events.append("submit") }
@@ -26,6 +27,15 @@ final class AuthenticationFeatureTests: XCTestCase {
 
     XCTAssertEqual(feature.webBaseURL, webBaseURL)
     XCTAssertEqual(feature.signInWithAppleAppID, "injected-app-id")
+    let authorizationURL = try XCTUnwrap(feature.oauthAuthorizationURL(
+      codeChallenge: "challenge", redirectScheme: "callback"
+    ))
+    let components = try XCTUnwrap(URLComponents(url: authorizationURL, resolvingAgainstBaseURL: false))
+    XCTAssertEqual(components.host, "injected.example.invalid")
+    XCTAssertEqual(components.path, "/oauth/authorizations/new")
+    XCTAssertEqual(components.queryItems?.first(where: { $0.name == "client_id" })?.value, "injected-client-id")
+    XCTAssertEqual(components.queryItems?.first(where: { $0.name == "redirect_uri" })?.value, "callback")
+    XCTAssertEqual(components.queryItems?.first(where: { $0.name == "code_challenge" })?.value, "challenge")
     XCTAssertEqual(events, ["page", "submit"])
   }
 

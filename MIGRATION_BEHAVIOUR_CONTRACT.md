@@ -1871,3 +1871,17 @@ safe for arbitrary concurrent environment mutation.
 - Controlled coverage proves both read and write timing boundaries. Live uploads,
   server persistence, visual behavior and the whole Library suite remain outside
   this checkpoint.
+
+## OAuth authorization composition — 17 November 2026
+
+- AuthenticationFeature's platform now supplies the OAuth web base URL and client
+  identifier. The screen-owned OAuth adapter asks the Feature to construct the
+  authorization URL instead of reading AppEnvironment.
+- The path, redirect scheme, response type, email scope, PKCE S256 method and code
+  challenge are unchanged. Token exchange, matching-user fetch, pre-commit login
+  analytics and exactly-once session establishment retain their existing ownership.
+- Canceling or releasing the adapter still rejects late redirects and session commits;
+  external session replacement still invalidates an admitted authorization.
+- Controlled coverage verifies the injected URL/client ID and existing redirect,
+  cancellation, failure and success cases. The system browser, live OAuth server and
+  end-to-end external callback remain unverified.

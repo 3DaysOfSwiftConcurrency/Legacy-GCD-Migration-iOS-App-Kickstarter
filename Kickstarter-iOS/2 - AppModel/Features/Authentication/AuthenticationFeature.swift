@@ -57,17 +57,20 @@ public struct AsyncAuthenticationProvider: AuthenticationProvider {
 public final class AuthenticationFeature {
   public struct Platform {
     let webBaseURL: @MainActor () -> URL
+    let oauthClientID: @MainActor () -> String
     let appleAppID: @MainActor () -> String
     let trackLoginPageViewed: @MainActor () -> Void
     let trackLoginSubmitButtonClicked: @MainActor () -> Void
 
     public init(
       webBaseURL: @escaping @MainActor () -> URL,
+      oauthClientID: @escaping @MainActor () -> String,
       appleAppID: @escaping @MainActor () -> String,
       trackLoginPageViewed: @escaping @MainActor () -> Void,
       trackLoginSubmitButtonClicked: @escaping @MainActor () -> Void
     ) {
       self.webBaseURL = webBaseURL
+      self.oauthClientID = oauthClientID
       self.appleAppID = appleAppID
       self.trackLoginPageViewed = trackLoginPageViewed
       self.trackLoginSubmitButtonClicked = trackLoginSubmitButtonClicked
@@ -75,6 +78,20 @@ public final class AuthenticationFeature {
   }
 
   public var webBaseURL: URL { self.platform.webBaseURL() }
+  func oauthAuthorizationURL(codeChallenge: String, redirectScheme: String) -> URL? {
+    let parameters = [
+      URLQueryItem(name: "redirect_uri", value: redirectScheme),
+      URLQueryItem(name: "response_type", value: "code"),
+      URLQueryItem(name: "scope", value: "email"),
+      URLQueryItem(name: "client_id", value: self.platform.oauthClientID()),
+      URLQueryItem(name: "code_challenge_method", value: "S256"),
+      URLQueryItem(name: "code_challenge", value: codeChallenge)
+    ]
+    var components = URLComponents(url: self.webBaseURL, resolvingAgainstBaseURL: false)
+    components?.path = "/oauth/authorizations/new"
+    components?.queryItems = parameters
+    return components?.url
+  }
   public func helpType(for url: URL) -> HelpType? {
     HelpType.allCases.first { url.absoluteString == $0.url(withBaseUrl: self.webBaseURL)?.absoluteString }
   }

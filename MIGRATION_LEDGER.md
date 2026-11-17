@@ -4837,3 +4837,26 @@ zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
 The CFA gate rejects direct AppEnvironment access in CreatorDraftsFeature. The wider
 in-scope ownership audit continues. This is not full CFA compliance. Swift packages,
 target identifiers and existing history are unchanged. No push.
+
+### OAuth authorization policy joins Authentication composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AuthenticationFeature's platform now supplies both the OAuth web base URL and client
+identifier. The screen-owned OAuth adapter asks the Feature to construct the
+authorization URL rather than reading AppEnvironment. The path, redirect scheme,
+email scope, response type and PKCE challenge parameters are preserved. Token
+exchange, user fetch, pre-commit analytics, session establishment, cancellation and
+session-replacement ownership are unchanged.
+
+The existing Authentication platform test now proves the injected host, path, client
+ID, redirect scheme and challenge. Focused Authentication/OAuth validation passed 35
+tests. The bounded Authentication, OAuth, AppModel and affected login/reset/two-factor
+screen selection passed 94 tests. Both runs had zero failures and skips on iPhone 17
+Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-oauth-composition-focused.xcresult` and
+`/private/tmp/kickstarter-oauth-composition-bounded.xcresult`.
+
+The CFA gate rejects direct AppEnvironment access in OAuth. The system browser and
+live OAuth service remain integration boundaries. This is not full CFA compliance.
+Swift packages, target identifiers and existing history are unchanged. No push.

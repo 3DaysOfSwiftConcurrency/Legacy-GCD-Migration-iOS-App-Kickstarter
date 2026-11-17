@@ -336,6 +336,7 @@ public final class AppModel {
         sessionFeature: sessionFeature,
         platform: .init(
           webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
+          oauthClientID: { AppEnvironment.current.apiService.serverConfig.apiClientAuth.clientId },
           appleAppID: { AppEnvironment.current.apiService.appId },
           trackLoginPageViewed: { AppEnvironment.current.ksrAnalytics.trackLoginPageViewed() },
           trackLoginSubmitButtonClicked: {

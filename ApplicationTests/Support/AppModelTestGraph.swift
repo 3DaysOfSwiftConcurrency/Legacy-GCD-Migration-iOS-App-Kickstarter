@@ -228,6 +228,9 @@ extension AuthenticationFeature {
     webBaseURL: @escaping @MainActor () -> URL = {
       AppEnvironment.current.apiService.serverConfig.webBaseUrl
     },
+    oauthClientID: @escaping @MainActor () -> String = {
+      AppEnvironment.current.apiService.serverConfig.apiClientAuth.clientId
+    },
     trackLoginPageViewed: @escaping @MainActor () -> Void = {
       AppEnvironment.current.ksrAnalytics.trackLoginPageViewed()
     }
@@ -236,6 +239,7 @@ extension AuthenticationFeature {
       sessionFeature: sessionFeature,
       platform: .init(
         webBaseURL: webBaseURL,
+        oauthClientID: oauthClientID,
         appleAppID: appleAppID,
         trackLoginPageViewed: trackLoginPageViewed,
         trackLoginSubmitButtonClicked: trackOAuthLogin

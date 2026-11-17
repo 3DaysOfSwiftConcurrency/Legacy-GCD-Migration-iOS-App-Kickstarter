@@ -62,7 +62,8 @@ Swift packages are excluded.
 - AuthenticationFeature now receives web URL, Sign in with Apple app ID and login
   analytics through an explicit platform composed by AppModel. LoginViewModel reports
   page and submit intent through that Feature instead of reading AppEnvironment.
-  OAuth keeps its existing successful-login tracking point before session commit.
+  OAuth authorization URL/client ID policy now uses the same composition boundary;
+  the adapter keeps its existing successful-login tracking point before session commit.
 - MessagingFeature now receives mailbox response-delay policy from AppModel instead
   of reading AppEnvironment while admitting a page request. Test-only composition
   defaults that policy to zero; production has no hidden global fallback.
