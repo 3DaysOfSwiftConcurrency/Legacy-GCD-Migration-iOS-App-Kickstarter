@@ -17,6 +17,7 @@ final class DeepLinkRouterTests: XCTestCase {
   private var monitorStarts = 0
   private var discoveryDelay: TimeInterval = 0
   private var discoverySleeps: [TimeInterval] = []
+  private let redirects = AccountRequestGate<URL?>()
 
   override func setUp() async throws {
     try await super.setUp()
@@ -42,6 +43,11 @@ final class DeepLinkRouterTests: XCTestCase {
         sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },
         loadSurvey: { try await provider.survey(id: $0) }
       ),
+      authenticationFeature: AuthenticationFeature(
+        sessionFeature: session,
+        makeProvider: { AsyncAuthenticationProvider(service: MockService()) },
+        resolveRedirect: { [redirects = self.redirects] _ in try await redirects.request() }
+      ),
       serverConfig: { ServerConfig.local },
       discoveryResponseDelay: { [weak self] in self?.discoveryDelay ?? 0 },
       sleep: { [weak self] seconds in
@@ -53,6 +59,7 @@ final class DeepLinkRouterTests: XCTestCase {
   override func tearDown() async throws {
     self.feature?.reset()
     self.provider.releaseAll()
+    self.redirects.releaseAll()
     await self.feature?.waitForOperations()
     try await super.tearDown()
   }
@@ -72,20 +79,67 @@ final class DeepLinkRouterTests: XCTestCase {
     let url = try XCTUnwrap(URL(string: "http://ksr.test/profile/verify_email?at=fixture"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url) { actions.append($0) })
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
     XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail)), .verifyEmail("fixture")])
 
     actions.removeAll()
-    XCTAssertTrue(self.feature.route(url: url, source: .braze) { actions.append($0) })
+    XCTAssertTrue(self.feature.route(url: url, route: self.route, source: .braze) { actions.append($0) })
     XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail))])
   }
 
-  func testApplicationEmailClickCancelsDestinationBeforeResolvingRedirect() throws {
+  func testDuplicateEmailClicksShareRedirectAndOnlyDeliverTheResolvedRouteOnce() async throws {
     let url = try XCTUnwrap(URL(string: "https://clicks.kickstarter.com/?qs=fixture"))
+    let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url) { actions.append($0) })
-    XCTAssertEqual(actions, [.cancelDestinationPresentation, .resolveEmailRedirect(url)])
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    await self.redirects.waitFor(1)
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    XCTAssertTrue(actions.isEmpty)
+
+    try self.redirects.finish(0, .success(destination))
+    await self.feature.waitForOperations()
+    XCTAssertEqual(self.redirects.count, 1)
+    XCTAssertEqual(actions, [.selectActivity, .resolveDestination(.tab(.activity))])
+  }
+
+  func testNewDestinationDiscardsLateEmailRedirect() async throws {
+    let url = try XCTUnwrap(URL(string: "https://clicks.kickstarter.com/?qs=fixture"))
+    let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
+    var actions: [DeepLinkRouter.Action] = []
+
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    await self.redirects.waitFor(1)
+    _ = try await self.feature.resolve(.tab(.discovery(nil)), route: self.route)
+
+    try self.redirects.finish(0, .success(destination))
+    await self.feature.waitForOperations()
+    XCTAssertTrue(actions.isEmpty)
+  }
+
+  func testNewDestinationCanReplaceAnEmailClickBeforeRedirectStarts() async throws {
+    let url = try XCTUnwrap(URL(string: "https://clicks.kickstarter.com/?qs=fixture"))
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { _ in
+      XCTFail("A replaced email click delivered an action")
+    })
+    _ = try await self.feature.resolve(.tab(.discovery(nil)), route: self.route)
+
+    await self.feature.waitForOperations()
+    XCTAssertEqual(self.redirects.count, 0)
+  }
+
+  func testReplacingSessionDiscardsLateEmailRedirect() async throws {
+    let url = try XCTUnwrap(URL(string: "https://clicks.kickstarter.com/?qs=fixture"))
+    let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
+    var actions: [DeepLinkRouter.Action] = []
+
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    await self.redirects.waitFor(1)
+    self.feature.sessionFeature.sessionChanged()
+
+    try self.redirects.finish(0, .success(destination))
+    await self.feature.waitForOperations()
+    XCTAssertTrue(actions.isEmpty)
   }
 
   func testDiscoveryTimingUsesTheDelayAtRequestAdmission() async throws {

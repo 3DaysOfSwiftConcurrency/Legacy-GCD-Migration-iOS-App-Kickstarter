@@ -3614,3 +3614,17 @@ The simulator passed 22 focused Navigation tests and 137 bounded
 regressions across the legacy delegate handler and Root Tabs. The new
 cases cover a configured host, app versus Braze verification, email
 redirect ordering, and Discovery timing at request admission.
+
+### Email redirect delivery — Matthew Thomas
+
+DeepLinkRouter owns redirect delivery and ties it to the same route
+lifetime as other destinations. Authentication retains the first-redirect
+lookup. Duplicate pending clicks share delivery. A newer route can
+replace an email click before lookup starts, and account replacement
+prevents a late result from navigating. The delegate has no round trip
+for a resolved URL. The source check guards that boundary.
+
+The simulator passed 43 focused Navigation and Authentication tests and
+137 bounded delegate and Root Tabs tests. Injected redirect results
+exercise project presentation and Safari fallback through the actual
+routing path.

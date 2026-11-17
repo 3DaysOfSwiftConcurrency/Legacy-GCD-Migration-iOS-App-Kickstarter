@@ -20,9 +20,7 @@ public final class DeepLinkRouter {
     case showLogin(LoginIntent)
     case updateNotification(name: String, enabled: Bool)
     case verifyEmail(String)
-    case resolveEmailRedirect(URL)
     case openBrowser(URL)
-    case cancelDestinationPresentation
     case resolveDestination(Navigation)
   }
 
@@ -61,17 +59,21 @@ public final class DeepLinkRouter {
 
   @discardableResult
   func route(
-    url: URL, source: URLSource = .application, perform: (Action) -> Void
+    url: URL, route: UUID, source: URLSource = .application,
+    perform: @escaping @MainActor (Action) -> Void
   ) -> Bool {
     let match = Self.match(url, source: source, config: self.serverConfig())
     if let navigation = match.navigation {
-      self.route(navigation, perform: perform)
-      if source == .application {
-        switch navigation {
-        case .profile(.verifyEmail):
-          if let token = accessTokenFromUrl(url) { perform(.verifyEmail(token)) }
-        case .emailClick: perform(.resolveEmailRedirect(url))
-        default: break
+      if navigation == .emailClick {
+        self.cancelPresentation(route: route)
+        if source == .application {
+          self.resolveEmailRedirect(url, route: route, perform: perform)
+        }
+      } else {
+        self.route(navigation, perform: perform)
+        if source == .application, navigation == .profile(.verifyEmail),
+           let token = accessTokenFromUrl(url) {
+          perform(.verifyEmail(token))
         }
       }
     }
@@ -99,9 +101,6 @@ public final class DeepLinkRouter {
     case .tab(.login): perform(.showLogin(.generic))
     case .project(_, .pledge(.manage), _, _) where self.sessionFeature.currentUser == nil:
       perform(.showLogin(.erroredPledge))
-    case .emailClick:
-      perform(.cancelDestinationPresentation)
-      return
     default: break
     }
     perform(.resolveDestination(navigation))
@@ -135,17 +134,21 @@ public final class DeepLinkRouter {
   private let discussionFeature: DiscussionFeature
   private let discoveryFeature: DiscoveryFeature
   private let activityFeature: ActivityFeature
+  private let authenticationFeature: AuthenticationFeature
   private let serverConfig: () -> ServerConfigType
   private let discoveryResponseDelay: () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
   private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
   private var presentations: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
+  private var redirects: [UUID: (url: URL, session: Session, id: UUID)] = [:]
+  private var redirectTasks: [UUID: Task<Void, Never>] = [:]
 
   public init(
     sessionFeature: SessionFeature, messagingFeature: MessagingFeature,
     discussionFeature: DiscussionFeature,
     discoveryFeature: DiscoveryFeature, activityFeature: ActivityFeature,
+    authenticationFeature: AuthenticationFeature,
     serverConfig: @escaping () -> ServerConfigType,
     discoveryResponseDelay: @escaping () -> TimeInterval,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
@@ -157,6 +160,7 @@ public final class DeepLinkRouter {
     self.discussionFeature = discussionFeature
     self.discoveryFeature = discoveryFeature
     self.activityFeature = activityFeature
+    self.authenticationFeature = authenticationFeature
     self.serverConfig = serverConfig
     self.discoveryResponseDelay = discoveryResponseDelay
     self.sleep = sleep
@@ -263,6 +267,38 @@ public final class DeepLinkRouter {
   public func release(route: UUID) {
     self.cancelPresentation(route: route)
     self.destinations.removeValue(forKey: route)?.request.task.cancel()
+    if let redirect = self.redirects.removeValue(forKey: route) {
+      self.redirectTasks[redirect.id]?.cancel()
+    }
+    self.authenticationFeature.releaseEmailRedirect(route: route)
+  }
+
+  private func resolveEmailRedirect(
+    _ url: URL, route: UUID, perform: @escaping @MainActor (Action) -> Void
+  ) {
+    let session = self.session
+    if let pending = self.redirects[route], pending.url == url, pending.session == session { return }
+    self.release(route: route)
+    let id = UUID()
+    let authentication = self.authenticationFeature
+    self.redirects[route] = (url, session, id)
+    self.redirectTasks[id] = Task { [weak self] in
+      defer {
+        self?.redirectTasks[id] = nil
+        if self?.redirects[route]?.id == id {
+          self?.redirects[route] = nil
+          authentication.releaseEmailRedirect(route: route)
+        }
+      }
+      do {
+        let destination = try await authentication.firstRedirect(url, route: route)
+        guard let self, self.redirects[route]?.id == id, let destination else { return }
+        try self.requireCurrent(session)
+        self.redirects[route] = nil
+        authentication.releaseEmailRedirect(route: route)
+        self.route(url: destination, route: route, perform: perform)
+      } catch { /* Failed or cancelled redirects do not navigate. */ }
+    }
   }
 
   func presentDestination(
@@ -295,13 +331,16 @@ public final class DeepLinkRouter {
     await self.presentations[route]?.task.value
   }
   public func reset() {
-    for route in Set(self.destinations.keys).union(self.presentations.keys) { self.release(route: route) }
+    for route in Set(self.destinations.keys).union(self.presentations.keys).union(self.redirects.keys) {
+      self.release(route: route)
+    }
   }
   public func waitForOperations() async {
-    while !self.destinationTasks.isEmpty || !self.presentations.isEmpty
+    while !self.destinationTasks.isEmpty || !self.presentations.isEmpty || !self.redirectTasks.isEmpty
     {
       for task in Array(self.destinationTasks.values) { _ = await task.result }
       for presentation in Array(self.presentations.values) { await presentation.task.value }
+      for redirect in Array(self.redirectTasks.values) { await redirect.value }
     }
   }
 

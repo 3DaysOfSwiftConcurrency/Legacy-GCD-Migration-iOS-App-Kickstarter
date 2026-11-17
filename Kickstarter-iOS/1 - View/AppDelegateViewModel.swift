@@ -49,10 +49,6 @@ public protocol AppDelegateViewModelInputs {
   /// Call when the app delegate gets notice of a successful notification registration.
   func didRegisterForRemoteNotifications(withDeviceTokenData data: Data)
 
-  /// Call when the redirect URL has been found, see `findRedirectUrl` for more information.
-  func resolveEmailRedirect(_ url: URL)
-  func foundRedirectUrl(_ url: URL)
-
   /// Call when the contextual PushNotification dialog should be presented.
   func showNotificationDialog(notification: Notification)
 
@@ -79,10 +75,6 @@ public protocol AppDelegateViewModelOutputs: AnyObject {
 
   /// Emits the response from email verification with a message and success/failure.
   var onEmailVerificationCompleted: ((String, Bool) -> Void)? { get set }
-
-  /// Emits when the view needs to figure out the redirect URL for the emitted URL.
-  /// Required in order to handle email links.
-  var onFindRedirectUrl: ((URL) -> Void)? { get set }
 
   /// Emits when opening the app with an invalid access token.
   var onForceLogout: (() -> Void)? { get set }
@@ -163,7 +155,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
   private var notificationTasks: [UUID: Task<Void, Never>] = [:]
   private var verificationTask: Task<Void, Never>?
-  private let authenticationFeature: AuthenticationFeature
   private let deepLinkRouter: DeepLinkRouter
   private let pushRegistration: () -> PushRegistrationType.Type
   private let trackingAdapter: () -> any AppTrackingTransparencyType
@@ -174,13 +165,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private let settingsFeature: SettingsFeature
   private let onboardingFeature: OnboardingFeature
   private let navigationRoute = UUID()
-  @MainActor private final class RedirectObservation {
-    var task: Task<Void, Never>?
-    var input: URL?
-    var id: UUID?
-    func cancel() { self.task?.cancel(); self.task = nil; self.input = nil; self.id = nil }
-  }
-  private let redirectObservation = RedirectObservation()
   private let trackingDelay: @MainActor () async throws -> Void
   private var trackingDelayTasks: [UUID: Task<Void, Never>] = [:]
   private var hasLaunchEvent = false
@@ -195,7 +179,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     pushRegistration: @escaping () -> PushRegistrationType.Type,
     trackingAdapter: @escaping () -> any AppTrackingTransparencyType,
     settingsPresentationDelaySeconds: @escaping () -> TimeInterval,
-    authenticationFeature: AuthenticationFeature,
     applicationShortcuts: ApplicationShortcutService,
     devicePushRegistration: DevicePushRegistrationService,
     sessionFeature: SessionFeature,
@@ -204,7 +187,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
   ) {
     self.trackingDelay = trackingDelay
-    self.authenticationFeature = authenticationFeature
     self.deepLinkRouter = deepLinkRouter
     self.pushRegistration = pushRegistration
     self.trackingAdapter = trackingAdapter
@@ -224,8 +206,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     let settingsFeature = self.settingsFeature
     self.pushTasks.values.forEach { $0.cancel() }
     self.trackingDelayTasks.values.forEach { $0.cancel() }
-    let redirectObservation = self.redirectObservation
-    let authenticationFeature = self.authenticationFeature
     let trackingObserver = self.trackingObserver
     let feature = self.deepLinkRouter
     let route = self.navigationRoute
@@ -233,9 +213,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
       devicePushRegistration.cancelScheduledDelivery()
       settingsFeature.cancelScheduledAccountRefresh()
       settingsFeature.cancelAccountSetupRefresh()
-      redirectObservation.cancel()
       if let (tracking, id) = trackingObserver { tracking.removeAuthorizationObserver(id) }
-      authenticationFeature.releaseEmailRedirect(route: route)
       feature.release(route: route)
     }
   }
@@ -243,8 +221,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public var inputs: AppDelegateViewModelInputs { return self }
   public var outputs: AppDelegateViewModelOutputs { return self }
   private func resolveDestination(_ navigation: Navigation) {
-    self.redirectObservation.cancel()
-    self.authenticationFeature.releaseEmailRedirect(route: self.navigationRoute)
     self.deepLinkRouter.presentDestination(navigation, route: self.navigationRoute) { [weak self] destination in
       self?.present(destination)
     }
@@ -393,32 +369,11 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     }
   }
 
-  public func resolveEmailRedirect(_ url: URL) {
-    if self.redirectObservation.input == url, self.redirectObservation.task != nil { return }
-    self.redirectObservation.task?.cancel()
-    self.redirectObservation.input = url
-    let id = UUID()
-    self.redirectObservation.id = id
-    self.deepLinkRouter.release(route: self.navigationRoute)
-    let feature = self.authenticationFeature, route = self.navigationRoute
-    self.redirectObservation.task = Task { [weak self] in
-      defer {
-        if self?.redirectObservation.id == id { self?.redirectObservation.task = nil; self?.redirectObservation.input = nil }
-      }
-      do {
-        let destination = try await feature.firstRedirect(url, route: route)
-        try Task.checkCancellation()
-        guard let self, self.redirectObservation.id == id, let destination else { return }
-        self.foundRedirectUrl(destination)
-      } catch { /* Preserve the existing silent failure/no-redirect behavior. */ }
-    }
-  }
-
   public func applicationContinueUserActivity(_ userActivity: NSUserActivity) -> Bool {
     if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
       if let url = userActivity.webpageURL {
         self.continueUserActivityReturnValue = self.deepLinkRouter.route(
-          url: url, perform: self.performNavigationAction
+          url: url, route: self.navigationRoute, perform: self.navigationActionHandler
         )
       } else {
         self.continueUserActivityReturnValue = false
@@ -488,16 +443,12 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.beginPushRegistration()
   }
 
-  public func foundRedirectUrl(_ url: URL) {
-    self.deepLinkRouter.route(url: url, perform: self.performNavigationAction)
-  }
-
   public func applicationOpenUrl(
     application: UIApplication?,
     url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any]
   ) -> Bool {
-    self.deepLinkRouter.route(url: url, perform: self.performNavigationAction)
+    self.deepLinkRouter.route(url: url, route: self.navigationRoute, perform: self.navigationActionHandler)
     return true
   }
 
@@ -521,7 +472,11 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func urlFromBrazeNotification(_ url: URL?) {
     guard let url else { return }
-    self.deepLinkRouter.route(url: url, source: .braze, perform: self.performNavigationAction)
+    self.deepLinkRouter.route(url: url, route: self.navigationRoute, source: .braze, perform: self.navigationActionHandler)
+  }
+
+  private var navigationActionHandler: @MainActor (DeepLinkRouter.Action) -> Void {
+    { [weak self] action in self?.performNavigationAction(action) }
   }
 
   private func performNavigationAction(_ action: DeepLinkRouter.Action) {
@@ -532,9 +487,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     case let .showLogin(intent): self.onGoToLoginWithIntent?(intent)
     case let .updateNotification(name, enabled): self.updateNotification(name: name, enabled: enabled)
     case let .verifyEmail(token): self.verifyEmail(token: token)
-    case let .resolveEmailRedirect(url): self.onFindRedirectUrl?(url)
     case let .openBrowser(url): self.onGoToMobileSafari?(url)
-    case .cancelDestinationPresentation: self.deepLinkRouter.cancelPresentation(route: self.navigationRoute)
     case let .resolveDestination(navigation): self.resolveDestination(navigation)
     }
   }
@@ -598,7 +551,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public var onApplicationIconBadgeNumber: ((Int) -> Void)?
   public private(set) var continueUserActivityReturnValue = false
   public var onEmailVerificationCompleted: ((String, Bool) -> Void)?
-  public var onFindRedirectUrl: ((URL) -> Void)?
   public var onForceLogout: (() -> Void)?
   public var onGoToActivity: (() -> Void)?
   public var onGoToDiscovery: ((DiscoveryParams?) -> Void)?

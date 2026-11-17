@@ -84,6 +84,13 @@ final class AppDelegateViewModelTests: TestCase {
       sessionFeature: self.settingsFeature.sessionFeature,
       makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
     ),
+    authenticationFeature: AuthenticationFeature(
+      sessionFeature: self.settingsFeature.sessionFeature,
+      makeProvider: { AsyncAuthenticationProvider(service: AppEnvironment.current.apiService) },
+      resolveRedirect: { [weak self] url in
+        await self?.recordEmailRedirect(url)
+      }
+    ),
     serverConfig: { AppEnvironment.current.apiService.serverConfig },
     discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     sleep: { _ in try Task.checkCancellation() }
@@ -100,6 +107,7 @@ final class AppDelegateViewModelTests: TestCase {
   private let emailVerificationCompletedMessage = ValueRecorder<String>()
   private let emailVerificationCompletedSuccess = ValueRecorder<Bool>()
   private let findRedirectUrl = ValueRecorder<URL>()
+  private var emailRedirectDestination: URL?
   private let forceLogout = ValueRecorder<()>()
   private let goToActivity = ValueRecorder<()>()
   private let goToDiscovery = ValueRecorder<DiscoveryParams?>()
@@ -173,9 +181,6 @@ final class AppDelegateViewModelTests: TestCase {
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
       settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      authenticationFeature: AuthenticationFeature(sessionFeature: session, makeProvider: {
-        AsyncAuthenticationProvider(service: AppEnvironment.current.apiService)
-      }),
       applicationShortcuts: ApplicationShortcutService(
         session: session,
         hasRecommendations: { [discoveryFeature = self.discoveryFeature] in
@@ -200,7 +205,6 @@ final class AppDelegateViewModelTests: TestCase {
       self?.emailVerificationCompletedMessage.record(message)
       self?.emailVerificationCompletedSuccess.record(success)
     }
-    self.vm.outputs.onFindRedirectUrl = { [weak self] in self?.findRedirectUrl.record($0) }
     self.vm.outputs.onForceLogout = { [weak self] in self?.forceLogout.record(()) }
     self.vm.outputs.onGoToActivity = { [weak self] in self?.goToActivity.record(()) }
     self.vm.outputs.onGoToDiscovery = { [weak self] in self?.goToDiscovery.record($0) }
@@ -1598,152 +1602,66 @@ final class AppDelegateViewModelTests: TestCase {
     }
   }
 
-  func testEmailDeepLinking() async {
+  private func recordEmailRedirect(_ url: URL) -> URL? {
+    self.findRedirectUrl.record(url)
+    return self.emailRedirectDestination
+  }
+
+  func testEmailDeepLinking() async throws {
+    let emailURL = try XCTUnwrap(URL(string: "https://clicks.kickstarter.com/?qs=deadbeef"))
+    self.emailRedirectDestination = try XCTUnwrap(
+      URL(string: "https://www.kickstarter.com/projects/creator/project")
+    )
+
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      let emailUrl = URL(string: "https://clicks.kickstarter.com/?qs=deadbeef")!
-
-      // The application launches.
-      self.vm.inputs.applicationDidFinishLaunching(
-        application: UIApplication.shared,
-        launchOptions: [:]
-      )
-
-      self.findRedirectUrl.assertValues([])
-      self.presentViewController.assertValues([])
-      self.goToMobileSafari.assertValues([])
-
-      // We deep-link to an email url.
-      self.vm.inputs.applicationWillEnterForeground()
-      let result = self.vm.inputs.applicationOpenUrl(
-        application: UIApplication.shared,
-        url: emailUrl,
-        options: [:]
-      )
-      XCTAssertTrue(result)
-
-      self.findRedirectUrl.assertValues([emailUrl], "Ask to find the redirect after open the email url.")
+      XCTAssertTrue(self.vm.inputs.applicationOpenUrl(application: .shared, url: emailURL, options: [:]))
+      self.presentViewController.assertDidNotEmitValue()
       await self.deepLinkRouter.waitForOperations()
-      self.presentViewController.assertValues([], "No view controller is presented yet.")
-      self.goToMobileSafari.assertValues([])
-
-      // We find the redirect to be a project url.
-      self.vm.inputs.foundRedirectUrl(URL(string: "https://www.kickstarter.com/projects/creator/project")!)
-
-      self.findRedirectUrl.assertValues([emailUrl], "Nothing new is emitted.")
-      await self.deepLinkRouter.waitForOperations()
-      self.presentViewController.assertValueCount(1, "Present the project view controller.")
-      self.goToMobileSafari.assertValues([])
+      self.findRedirectUrl.assertValues([emailURL])
+      self.presentViewController.assertValueCount(1)
+      self.goToMobileSafari.assertDidNotEmitValue()
     }
   }
 
-  func testEmailDeepLinking_ContinuedUserActivity() async {
+  func testEmailDeepLinking_ContinuedUserActivity() async throws {
+    let emailURL = try XCTUnwrap(URL(string: "https://emails.kickstarter.com/?qs=deadbeef"))
+    self.emailRedirectDestination = try XCTUnwrap(
+      URL(string: "https://www.kickstarter.com/projects/creator/project")
+    )
+    let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+    activity.webpageURL = emailURL
+
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      let emailUrl = URL(string: "https://emails.kickstarter.com/?qs=deadbeef")!
-      let userActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-      userActivity.webpageURL = emailUrl
-
-      // The application launches.
-      self.vm.inputs.applicationDidFinishLaunching(
-        application: UIApplication.shared,
-        launchOptions: [:]
-      )
-
-      self.findRedirectUrl.assertValues([])
-      self.presentViewController.assertValues([])
-      self.goToMobileSafari.assertValues([])
-
-      // We deep-link to an email url.
-      self.vm.inputs.applicationWillEnterForeground()
-      let result = self.vm.inputs.applicationContinueUserActivity(userActivity)
-      XCTAssertTrue(result)
-
-      self.findRedirectUrl.assertValues([emailUrl], "Ask to find the redirect after open the email url.")
+      XCTAssertTrue(self.vm.inputs.applicationContinueUserActivity(activity))
       await self.deepLinkRouter.waitForOperations()
-      self.presentViewController.assertValues([], "No view controller is presented yet.")
-      self.goToMobileSafari.assertValues([])
-
-      // We find the redirect to be a project url.
-      self.vm.inputs.foundRedirectUrl(URL(string: "https://www.kickstarter.com/projects/creator/project")!)
-
-      self.findRedirectUrl.assertValues([emailUrl], "Nothing new is emitted.")
-      await self.deepLinkRouter.waitForOperations()
-      self.presentViewController.assertValueCount(1, "Present the project view controller.")
-      self.goToMobileSafari.assertValues([])
+      self.findRedirectUrl.assertValues([emailURL])
+      self.presentViewController.assertValueCount(1)
+      self.goToMobileSafari.assertDidNotEmitValue()
     }
   }
 
-  func testEmailDeepLinking_UnrecognizedUrl() async {
-    let emailUrl = URL(string: "https://clicks.kickstarter.com/?qs=deadbeef")!
+  func testEmailDeepLinking_UnrecognizedUrl() async throws {
+    let emailURL = try XCTUnwrap(URL(string: "https://clicks.kickstarter.com/?qs=deadbeef"))
+    let unrecognizedURL = try XCTUnwrap(URL(string: "https://www.kickstarter.com/unreconizable"))
+    self.emailRedirectDestination = unrecognizedURL
 
-    // The application launches.
-    self.vm.inputs.applicationDidFinishLaunching(
-      application: UIApplication.shared,
-      launchOptions: [:]
-    )
-
-    self.findRedirectUrl.assertValues([])
-    self.presentViewController.assertValueCount(0)
-    self.goToMobileSafari.assertValues([])
-
-    // We deep-link to an email url.
-    self.vm.inputs.applicationWillEnterForeground()
-    let result = self.vm.inputs.applicationOpenUrl(
-      application: UIApplication.shared,
-      url: emailUrl,
-      options: [:]
-    )
-    XCTAssertTrue(result)
-
-    self.findRedirectUrl.assertValues([emailUrl], "Ask to find the redirect after open the email url.")
+    XCTAssertTrue(self.vm.inputs.applicationOpenUrl(application: .shared, url: emailURL, options: [:]))
     await self.deepLinkRouter.waitForOperations()
-    self.presentViewController.assertValues([], "No view controller is presented.")
-    self.goToMobileSafari.assertValues([], "Do not go to mobile safari")
-
-    // We find the redirect to be an unrecognized url.
-    let unrecognizedUrl = URL(string: "https://www.kickstarter.com/unreconizable")!
-    self.vm.inputs.foundRedirectUrl(unrecognizedUrl)
-
-    self.findRedirectUrl.assertValues([emailUrl], "Nothing new is emitted.")
-    await self.deepLinkRouter.waitForOperations()
-    self.presentViewController.assertValues([], "Do not present controller since the url was unrecognizable.")
-    self.goToMobileSafari.assertValues([unrecognizedUrl], "Go to mobile safari for the unrecognized url.")
+    self.findRedirectUrl.assertValues([emailURL])
+    self.presentViewController.assertDidNotEmitValue()
+    self.goToMobileSafari.assertValues([unrecognizedURL])
   }
 
-  func testEmailDeepLinking_UnrecognizedUrl_ProjectPreview() async {
-    let emailUrl = URL(string: "https://emails.kickstarter.com/?qs=deadbeef")!
+  func testEmailDeepLinking_UnrecognizedUrl_ProjectPreview() async throws {
+    let emailURL = try XCTUnwrap(URL(string: "https://emails.kickstarter.com/?qs=deadbeef"))
+    let previewURL = try XCTUnwrap(URL(string: "https://www.kickstarter.com/projects/creator/project?token=4"))
+    self.emailRedirectDestination = previewURL
 
-    // The application launches.
-    self.vm.inputs.applicationDidFinishLaunching(
-      application: UIApplication.shared,
-      launchOptions: [:]
-    )
-
-    self.findRedirectUrl.assertValues([])
-    self.presentViewController.assertValueCount(0)
-    self.goToMobileSafari.assertValues([])
-
-    // We deep-link to an email url.
-    self.vm.inputs.applicationWillEnterForeground()
-    let result = self.vm.inputs.applicationOpenUrl(
-      application: UIApplication.shared,
-      url: emailUrl,
-      options: [:]
-    )
-    XCTAssertTrue(result)
-
-    self.findRedirectUrl.assertValues([emailUrl], "Ask to find the redirect after open the email url.")
+    XCTAssertTrue(self.vm.inputs.applicationOpenUrl(application: .shared, url: emailURL, options: [:]))
     await self.deepLinkRouter.waitForOperations()
-    self.presentViewController.assertValues([], "No view controller is presented.")
-    self.goToMobileSafari.assertValues([], "Do not go to mobile safari")
-
-    // We find the redirect to be an unrecognized url (project preview).
-    let unrecognizedUrl = URL(string: "https://www.kickstarter.com/projects/creator/project?token=4")!
-    self.vm.inputs.foundRedirectUrl(unrecognizedUrl)
-
-    self.findRedirectUrl.assertValues([emailUrl], "Nothing new is emitted.")
-    await self.deepLinkRouter.waitForOperations()
-    self.presentViewController.assertValues([], "Do not present controller since the url was unrecognizable.")
-    self.goToMobileSafari.assertValues([unrecognizedUrl], "Go to mobile safari for the unrecognized url.")
+    self.findRedirectUrl.assertValues([emailURL])
+    self.presentViewController.assertDidNotEmitValue()
+    self.goToMobileSafari.assertValues([previewURL])
   }
 
   func testProjectSurveyDeepLink() async {

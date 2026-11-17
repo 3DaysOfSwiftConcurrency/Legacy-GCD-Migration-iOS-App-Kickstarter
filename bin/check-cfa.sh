@@ -53,6 +53,9 @@ reject_matches 'DeepLinkRouter receives platform dependencies from composition.'
   'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Navigation/DeepLinkRouter.swift"
 reject_matches 'Navigation owns incoming URL, push envelope, and shortcut routing decisions.' \
   'serverConfig|fromPushEnvelope|fromShortcutItem|accessTokenFromUrl|shouldOpenInBrowser' "$delegate_handler"
+reject_matches 'Navigation owns email redirect delivery and release.' \
+  'onFindRedirectUrl|foundRedirectUrl|resolveEmailRedirect|RedirectObservation|releaseEmailRedirect' \
+  "$app_view/AppDelegate.swift" "$delegate_handler"
 reject_matches 'Checkout view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$pledge_view_model" "$post_campaign_view_model"
 reject_matches 'Pledge CTA and shipping view models must receive their dependencies explicitly.' \

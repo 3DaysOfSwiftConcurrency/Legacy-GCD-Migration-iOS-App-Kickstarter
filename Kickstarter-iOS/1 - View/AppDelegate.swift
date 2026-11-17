@@ -29,6 +29,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       discussionFeature: model.discussionFeature,
       discoveryFeature: model.discoveryFeature,
       activityFeature: model.activityFeature,
+      authenticationFeature: model.authenticationFeature,
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
     )
@@ -37,7 +38,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
       settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      authenticationFeature: model.authenticationFeature,
       applicationShortcuts: model.applicationShortcuts,
       devicePushRegistration: model.devicePushRegistrationService,
       sessionFeature: model.sessionFeature,
@@ -254,10 +254,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         guard session.isCurrent(userID: userID, generation: generation) else { return }
         UIApplication.shared.shortcutItems = shortcutItems.map { $0.applicationShortcutItem }
       }
-    }
-
-    self.viewModel.outputs.onFindRedirectUrl = { [weak self] url in
-      DispatchQueue.main.async { [weak self] in self?.viewModel.inputs.resolveEmailRedirect(url) }
     }
 
     self.viewModel.outputs.onEmailVerificationCompleted = { [weak self] message, success in
