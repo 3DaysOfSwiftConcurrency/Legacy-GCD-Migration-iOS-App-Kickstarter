@@ -491,7 +491,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
       do {
         let config = try await request.value
         try Task.checkCancellation()
-        self?.onUpdateConfig?(configRetainingDebugFeatureFlags(config))
+        self?.onUpdateConfig?(config)
       } catch { /* Configuration failures leave the current configuration in place. */ }
     }
   }
@@ -980,19 +980,6 @@ private func accessTokenFromUrl(_ url: URL?) -> String? {
   }?
     .first { item in item.name == "at" }?
     .value
-}
-
-@MainActor
-private func configRetainingDebugFeatureFlags(_ config: Config) -> Config {
-  guard AppEnvironment.current.mainBundle.isRelease == false else { return config }
-
-  let currentFeatures = config.features
-  let currentFeatureKeys = Set(currentFeatures.keys)
-
-  let storedFeatures = (AppEnvironment.current.config?.features ?? [:])
-    .filter { key, _ in currentFeatureKeys.contains(key) }
-
-  return config |> Config.lens.features .~ currentFeatures.withAllValuesFrom(storedFeatures)
 }
 
 @MainActor

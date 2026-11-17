@@ -1,5 +1,6 @@
 import Foundation
 import KsApi
+import Prelude
 
 /// Retains one remote-configuration activation at a time for the active SDK client.
 ///
@@ -81,7 +82,7 @@ public final class ApplicationConfigurationService {
       let value = try await load()
       try Task.checkCancellation()
       guard self.request?.id == id else { throw CancellationError() }
-      return value
+      return self.retainingDebugFeatureFlags(value)
     }
     self.request = (id, task)
     return task
@@ -90,6 +91,14 @@ public final class ApplicationConfigurationService {
   public func reset() {
     self.request?.task.cancel()
     self.request = nil
+  }
+
+  private func retainingDebugFeatureFlags(_ config: Config) -> Config {
+    guard let environment = AppEnvironment.current, !environment.mainBundle.isRelease else {
+      return config
+    }
+    let stored = (environment.config?.features ?? [:]).filter { config.features[$0.key] != nil }
+    return config |> Config.lens.features .~ config.features.withAllValuesFrom(stored)
   }
 }
 
