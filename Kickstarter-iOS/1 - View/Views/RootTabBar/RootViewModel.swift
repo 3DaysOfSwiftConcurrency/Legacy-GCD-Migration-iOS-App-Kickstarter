@@ -175,10 +175,22 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   private var badgePresentationTasks: [UUID: Task<Void, Never>] = [:]
   private var badgeIdentity: (userID: Int, generation: Int, token: UUID)?
 
-  public init(profileFeature: ProfileFeature? = nil, activityFeature: ActivityFeature? = nil) {
-    let profileFeature = profileFeature ?? AppModel.shared.profileFeature
+  private let analytics: () -> KSRAnalytics
+  private let badgePresentationDelay: () -> TimeInterval
+  private let isVoiceOverRunning: () -> Bool
+
+  public init(
+    profileFeature: ProfileFeature,
+    activityFeature: ActivityFeature,
+    analytics: @escaping () -> KSRAnalytics,
+    badgePresentationDelay: @escaping () -> TimeInterval,
+    isVoiceOverRunning: @escaping () -> Bool
+  ) {
     self.profileFeature = profileFeature
-    self.activityFeature = activityFeature ?? AppModel.shared.activityFeature
+    self.activityFeature = activityFeature
+    self.analytics = analytics
+    self.badgePresentationDelay = badgePresentationDelay
+    self.isVoiceOverRunning = isVoiceOverRunning
   }
 
   private func refreshCurrentUser() {
@@ -239,7 +251,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     let origin = tabBarItemLabel(for: data.items[previous])
     guard self.lastSearchOrigin != origin else { return }
     self.lastSearchOrigin = origin
-    AppEnvironment.current.ksrAnalytics.trackSearchTabBarClicked(prevTabBarItemLabel: origin)
+    self.analytics().trackSearchTabBarClicked(prevTabBarItemLabel: origin)
   }
 
   private func trackTabSelection(_ index: Int) {
@@ -249,7 +261,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     self.trackSearchSelectionIfNeeded()
     guard let data = self.latestTabBarData, !data.items.isEmpty, data.items.indices.contains(index) else { return }
     let previous = data.items.indices.contains(self.previousUserSelectedIndex) ? self.previousUserSelectedIndex : 0
-    AppEnvironment.current.ksrAnalytics.trackTabBarClicked(
+    self.analytics().trackTabBarClicked(
       tabBarItemLabel: tabBarItemLabel(for: data.items[index]),
       previousTabBarItemLabel: tabBarItemLabel(for: data.items[previous])
     )
@@ -272,7 +284,9 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   private func updateBadge(_ value: Int?, index: RootViewControllerIndex) {
     self.lastBadgeInput = (value, index)
     let hasPPOAction = self.sessionFeature.currentUserPPOSettings?.hasAction ?? false
-    let displayed = activitiesBadgeValue(with: value, hasPPOAction: hasPPOAction)
+    let displayed = activitiesBadgeValue(
+      with: value, hasPPOAction: hasPPOAction, isVoiceOverRunning: self.isVoiceOverRunning()
+    )
     self.currentBadgeValue = displayed
     self.onSetBadgeValue?((displayed, index))
   }
@@ -312,7 +326,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   }
 
   private func scheduleBadgePresentation(_ user: User, generation: Int) {
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.badgePresentationDelay()
     guard !delay.isInfinite else { return }
     let id = UUID()
     self.badgePresentationTasks[id] = Task { [weak self] in
@@ -519,13 +533,14 @@ extension TabBarItemsData: Equatable {}
 extension TabBarItem: Equatable {}
 
 @MainActor
-private func activitiesBadgeValue(with value: Int?, hasPPOAction: Bool) -> String? {
+private func activitiesBadgeValue(
+  with value: Int?, hasPPOAction: Bool, isVoiceOverRunning: Bool
+) -> String? {
   guard !hasPPOAction else {
     // an empty string will show a dot as badge
     return ""
   }
 
-  let isVoiceOverRunning = AppEnvironment.current.isVoiceOverRunning()
   let badgeValue = value ?? 0
   let maxBadgeValue = !isVoiceOverRunning ? 99 : badgeValue
   let clampedBadgeValue = min(badgeValue, maxBadgeValue)

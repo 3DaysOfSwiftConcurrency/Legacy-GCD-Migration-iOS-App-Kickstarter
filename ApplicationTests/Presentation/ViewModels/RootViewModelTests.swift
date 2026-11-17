@@ -13,12 +13,23 @@ final class RootViewModelTests: TestCase {
   private let sessionFeature = SessionFeature(makeProvider: {
     AsyncSessionProvider(service: AppEnvironment.current.apiService)
   })
-  private lazy var vm = RootViewModel(profileFeature: ProfileFeature(
+  private lazy var vm = self.makeViewModel(profileFeature: ProfileFeature(
     sessionFeature: self.sessionFeature,
-    makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }), activityFeature: ActivityFeature(
-      sessionFeature: self.sessionFeature,
-      makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
-    ))
+    makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }
+  ))
+
+  private func makeViewModel(profileFeature: ProfileFeature) -> RootViewModel {
+    RootViewModel(
+      profileFeature: profileFeature,
+      activityFeature: ActivityFeature(
+        sessionFeature: profileFeature.sessionFeature,
+        makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
+      ),
+      analytics: { AppEnvironment.current.ksrAnalytics },
+      badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
+    )
+  }
   let viewControllerNames = ValueRecorder<[String]>()
   let filterDiscovery = ValueRecorder<DiscoveryParams>()
   let floatingTabBarEnabled = ValueRecorder<Bool>()
@@ -34,7 +45,7 @@ final class RootViewModelTests: TestCase {
     defer { gate.releaseAll() }
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template })
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { AsyncProfileProvider(service: MockService()) }, loadAvatar: { _ in try await gate.request() })
-    let vm = RootViewModel(profileFeature: feature)
+    let vm = self.makeViewModel(profileFeature: feature)
     var delivered = 0
     vm.onAvatarImage = { _, _, _ in delivered += 1 }
     let url = try XCTUnwrap(URL(string: User.template.avatar.small))
@@ -50,7 +61,7 @@ final class RootViewModelTests: TestCase {
     defer { gate.releaseAll() }
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template })
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { AsyncProfileProvider(service: MockService()) }, loadAvatar: { _ in try await gate.request() })
-    let vm = RootViewModel(profileFeature: feature)
+    let vm = self.makeViewModel(profileFeature: feature)
     var indices: [Int] = []
     vm.onAvatarImage = { _, _, index in indices.append(index) }
     let url = try XCTUnwrap(URL(string: User.template.avatar.small))

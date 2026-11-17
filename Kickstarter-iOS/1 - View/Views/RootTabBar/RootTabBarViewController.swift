@@ -27,7 +27,13 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   private var userLocalePreferencesChangedObserver: MainActorNotificationObservation?
   private var voiceOverStatusDidChangeObserver: MainActorNotificationSignalObservation?
 
-  fileprivate let viewModel: RootViewModelType = RootViewModel()
+  fileprivate let viewModel: RootViewModelType = RootViewModel(
+    profileFeature: AppModel.shared.profileFeature,
+    activityFeature: AppModel.shared.activityFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+    isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
+  )
 
   /// Keep the applied tab bar mode in sync with the ViewModel (single source of truth)
   /// Accounts for remote config feature flag load issues.
