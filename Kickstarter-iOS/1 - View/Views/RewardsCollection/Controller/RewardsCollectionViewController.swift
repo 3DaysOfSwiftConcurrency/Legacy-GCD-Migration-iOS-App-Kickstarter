@@ -23,7 +23,7 @@ final class RewardsCollectionViewController: UICollectionViewController {
 
   /// The bottom-up modal for selecting a new shipping location
   private lazy var pledgeShippingLocationViewController = {
-    PledgeShippingLocationViewController.instantiate()
+    PledgeShippingLocationViewController.instantiate(rewardsFeature: self.rewardsFeature)
       |> \.delegate .~ self
       |> \.view.layoutMargins .~ .init(all: Styles.grid(3))
   }()

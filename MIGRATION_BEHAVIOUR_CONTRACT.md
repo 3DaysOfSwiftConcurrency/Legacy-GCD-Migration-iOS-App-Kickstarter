@@ -2213,3 +2213,12 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel, summary and checkout coverage passes 125 tests. The bounded Rewards,
   Manage Pledge, payment-method, CTA, summary and checkout selection passes 274 tests.
   Visual rendering and the whole Library suite remain outside this checkpoint.
+
+## Shipping-location feature injection — 17 November 2026
+
+- PledgeShippingLocationViewController now requires RewardsFeature at construction.
+- RewardsCollectionViewController passes the same Rewards feature that owns its reward
+  and shipping state into the location selector, removing the child's AppModel lookup.
+- Focused Rewards, shipping-location and Rewards Collection coverage passes 48 tests.
+  The bounded Rewards, Manage Pledge and checkout selection passes 283 tests. Visual
+  rendering and the whole Library suite remain outside this checkpoint.

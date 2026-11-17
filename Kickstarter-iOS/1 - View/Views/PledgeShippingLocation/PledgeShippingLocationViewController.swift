@@ -19,7 +19,20 @@ final class PledgeShippingLocationViewController: UIViewController {
   // MARK: - Properties
 
   public weak var delegate: PledgeShippingLocationViewControllerDelegate?
-  private let viewModel = PledgeShippingLocationViewModel(rewardsFeature: AppModel.shared.rewardsFeature)
+  private let viewModel: PledgeShippingLocationViewModel
+
+  static func instantiate(rewardsFeature: RewardsFeature) -> PledgeShippingLocationViewController {
+    PledgeShippingLocationViewController(rewardsFeature: rewardsFeature)
+  }
+
+  private init(rewardsFeature: RewardsFeature) {
+    self.viewModel = PledgeShippingLocationViewModel(rewardsFeature: rewardsFeature)
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("PledgeShippingLocationViewController must be created with a RewardsFeature")
+  }
 
   private lazy var adaptableStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var shippingLocationButton: UIButton = { UIButton(frame: .zero) }()

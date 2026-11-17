@@ -35,7 +35,10 @@ final class RewardsCollectionViewControllerTests: TestCase {
           rewardsFeature: AppModel.shared.rewardsFeature
         )
 
-        vc.pledgeShippingLocationViewController(PledgeShippingLocationViewController(), didSelect: .usa)
+        vc.pledgeShippingLocationViewController(
+          PledgeShippingLocationViewController.instantiate(rewardsFeature: AppModel.shared.rewardsFeature),
+          didSelect: .usa
+        )
 
 
         let deviceSize = type.device.deviceSize(in: type.orientation)
@@ -89,7 +92,10 @@ final class RewardsCollectionViewControllerTests: TestCase {
           rewardsFeature: AppModel.shared.rewardsFeature
         )
 
-        vc.pledgeShippingLocationViewController(PledgeShippingLocationViewController(), didSelect: .usa)
+        vc.pledgeShippingLocationViewController(
+          PledgeShippingLocationViewController.instantiate(rewardsFeature: AppModel.shared.rewardsFeature),
+          didSelect: .usa
+        )
 
 
         let deviceSize = type.device.deviceSize(in: type.orientation)

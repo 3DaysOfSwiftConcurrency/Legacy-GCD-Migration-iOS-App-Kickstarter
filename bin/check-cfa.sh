@@ -269,6 +269,9 @@ reject_matches 'Rewards controllers receive their owning Feature through composi
   'AppModel[.]shared|AppEnvironment[.]current' \
   "$app_view/Views/RewardsCollection/Controller/RewardsCollectionViewController.swift" \
   "$app_view/Views/RewardAddOnSelection/Controller/RewardAddOnSelectionViewController.swift"
+reject_matches 'Shipping-location selection receives RewardsFeature from Rewards composition.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/PledgeShippingLocation/PledgeShippingLocationViewController.swift"
 reject_matches 'Project Page derives presentation idiom from its view traits.' \
   'AppEnvironment[.]current[.]device|UIDevice[.]current' \
   "$app_view/Views/ProjectPage/Controller/ProjectPageViewController.swift"

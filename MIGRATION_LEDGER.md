@@ -5478,3 +5478,22 @@ Visual rendering and the whole Library suite remain unverified. The CFA gate rej
 restored ambient composition in the summary parents and direct property initialization
 in the total child. This is not full CFA compliance. Swift packages, target identifiers
 and existing history are unchanged. No push.
+
+### Shipping-location feature injection — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgeShippingLocationViewController now requires RewardsFeature at construction, and
+RewardsCollectionViewController passes the exact instance that owns its reward and
+shipping state. The location selector no longer resolves AppModel independently.
+
+Focused Rewards, shipping-location and Rewards Collection validation passed all 48 tests.
+The bounded Rewards, Manage Pledge and checkout selection passed all 283 tests. Both runs
+had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-shipping-location-injection-focused.xcresult` and
+`/private/tmp/kickstarter-shipping-location-injection-bounded.xcresult`.
+
+Visual rendering and the whole Library suite remain unverified. The CFA gate rejects
+restored AppModel or AppEnvironment access in PledgeShippingLocationViewController. This
+is not full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.
