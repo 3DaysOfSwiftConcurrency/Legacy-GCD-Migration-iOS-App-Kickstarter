@@ -32,7 +32,13 @@ final class AppLifecycleFeatureTests: XCTestCase {
     self.feature = AppLifecycleFeature(
       sessionFeature: session, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(sessionFeature: session, makeProvider: { provider }),
-      makeProvider: { provider },
+      discoveryFeature: DiscoveryFeature(
+        provider: AsyncDiscoveryProvider(), loadCategories: { try await provider.categories() }
+      ),
+      activityFeature: ActivityFeature(
+        sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },
+        loadSurvey: { try await provider.survey(id: $0) }
+      ),
       sleep: { _ in try Task.checkCancellation() })
   }
   override func tearDown() async throws {
@@ -245,7 +251,7 @@ final class AppLifecycleFeatureTests: XCTestCase {
 }
 
 @MainActor
-private final class ControlledLifecycleProvider: AppLifecycleProvider, DiscussionProvider {
+private final class ControlledLifecycleProvider: DiscussionProvider {
   let permissions = AccountRequestGate<Bool>()
   let tracking = AccountRequestGate<UInt>()
   var permissionOptions: [UInt] = []

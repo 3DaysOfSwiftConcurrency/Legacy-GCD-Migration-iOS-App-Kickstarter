@@ -30,7 +30,11 @@ final class AppDelegateViewModelTests: TestCase {
       sessionFeature: self.settingsFeature.sessionFeature,
       makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }
     ),
-    makeProvider: { AsyncAppLifecycleProvider(service: AppEnvironment.current.apiService) },
+    discoveryFeature: self.discoveryFeature,
+    activityFeature: ActivityFeature(
+      sessionFeature: self.settingsFeature.sessionFeature,
+      makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
+    ),
     sleep: { _ in try Task.checkCancellation() }
   )
   private lazy var applicationConfigurationService = ApplicationConfigurationService(

@@ -27,6 +27,14 @@ final class AppModelTests: XCTestCase {
         AsyncAccountPreferencesProvider(service: MockService())
       })
     let firstMessaging = MessagingFeature(sessionFeature: firstSession, makeProvider: { AsyncMessagingProvider(service: MockService()) })
+    let firstActivity = ActivityFeature(
+      sessionFeature: firstSession,
+      makeProvider: { AsyncActivityProvider(service: MockService()) }
+    )
+    let firstDiscovery = DiscoveryFeature(
+      provider: NoRequestDiscoveryProvider(),
+      currentUser: { firstSession.currentUser }
+    )
     let first = AppModel(
       developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load developer examples")
@@ -34,10 +42,8 @@ final class AppModelTests: XCTestCase {
       }),
       onboardingFeature: OnboardingFeature(),
       appLifecycleFeature: AppLifecycleFeature(sessionFeature: firstSession,
-        messagingFeature: firstMessaging, discussionFeature: firstDiscussion, makeProvider: {
-          XCTFail("Composition must not perform startup requests")
-          return AsyncAppLifecycleProvider(service: MockService())
-        }),
+        messagingFeature: firstMessaging, discussionFeature: firstDiscussion,
+        discoveryFeature: firstDiscovery, activityFeature: firstActivity),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -57,19 +63,13 @@ final class AppModelTests: XCTestCase {
         AsyncAuthenticationProvider(service: MockService())
       }),
       settingsFeature: firstSettings,
-      activityFeature: ActivityFeature(
-        sessionFeature: firstSession,
-        makeProvider: { AsyncActivityProvider(service: MockService()) }
-      ),
+      activityFeature: firstActivity,
       profileFeature: ProfileFeature(
         sessionFeature: firstSession,
         makeProvider: { AsyncProfileProvider(service: MockService()) }
       ),
       searchFeature: firstFeature,
-      discoveryFeature: DiscoveryFeature(
-        provider: NoRequestDiscoveryProvider(),
-        currentUser: { firstSession.currentUser }
-      ),
+      discoveryFeature: firstDiscovery,
       projectDetailsFeature: firstDetails,
       rewardsFeature: RewardsFeature(sessionFeature: firstSession, makeProvider: { AsyncRewardsProvider(service: MockService()) }),
       discussionFeature: firstDiscussion,
@@ -84,6 +84,14 @@ final class AppModelTests: XCTestCase {
         AsyncAccountPreferencesProvider(service: MockService())
       })
     let secondMessaging = MessagingFeature(sessionFeature: secondSession, makeProvider: { AsyncMessagingProvider(service: MockService()) })
+    let secondActivity = ActivityFeature(
+      sessionFeature: secondSession,
+      makeProvider: { AsyncActivityProvider(service: MockService()) }
+    )
+    let secondDiscovery = DiscoveryFeature(
+      provider: NoRequestDiscoveryProvider(),
+      currentUser: { secondSession.currentUser }
+    )
     let second = AppModel(
       developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load developer examples")
@@ -91,10 +99,8 @@ final class AppModelTests: XCTestCase {
       }),
       onboardingFeature: OnboardingFeature(),
       appLifecycleFeature: AppLifecycleFeature(sessionFeature: secondSession,
-        messagingFeature: secondMessaging, discussionFeature: secondDiscussion, makeProvider: {
-          XCTFail("Composition must not perform startup requests")
-          return AsyncAppLifecycleProvider(service: MockService())
-        }),
+        messagingFeature: secondMessaging, discussionFeature: secondDiscussion,
+        discoveryFeature: secondDiscovery, activityFeature: secondActivity),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -114,19 +120,13 @@ final class AppModelTests: XCTestCase {
         AsyncAuthenticationProvider(service: MockService())
       }),
       settingsFeature: secondSettings,
-      activityFeature: ActivityFeature(
-        sessionFeature: secondSession,
-        makeProvider: { AsyncActivityProvider(service: MockService()) }
-      ),
+      activityFeature: secondActivity,
       profileFeature: ProfileFeature(
         sessionFeature: secondSession,
         makeProvider: { AsyncProfileProvider(service: MockService()) }
       ),
       searchFeature: secondFeature,
-      discoveryFeature: DiscoveryFeature(
-        provider: NoRequestDiscoveryProvider(),
-        currentUser: { secondSession.currentUser }
-      ),
+      discoveryFeature: secondDiscovery,
       projectDetailsFeature: secondDetails,
       rewardsFeature: RewardsFeature(sessionFeature: secondSession, makeProvider: { AsyncRewardsProvider(service: MockService()) }),
       discussionFeature: secondDiscussion,

@@ -277,6 +277,9 @@ public final class AppModel {
     let discussionFeature = DiscussionFeature(sessionFeature: sessionFeature, makeProvider: {
       AsyncDiscussionProvider(service: AppEnvironment.current.apiService)
     })
+    let discoveryFeature = DiscoveryFeature(
+      provider: AsyncDiscoveryProvider(), currentUser: { sessionFeature.currentUser }
+    )
     return AppModel(
       developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
@@ -285,7 +288,7 @@ public final class AppModel {
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
       appLifecycleFeature: AppLifecycleFeature(sessionFeature: sessionFeature,
         messagingFeature: messagingFeature, discussionFeature: discussionFeature,
-        makeProvider: { AsyncAppLifecycleProvider(service: AppEnvironment.current.apiService) }),
+        discoveryFeature: discoveryFeature, activityFeature: activityFeature),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
       }),
@@ -316,10 +319,7 @@ public final class AppModel {
       activityFeature: activityFeature,
       profileFeature: profileFeature,
       searchFeature: SearchFeature(provider: searchProvider, lookupProvider: AsyncSearchLookupProvider()),
-      discoveryFeature: DiscoveryFeature(
-        provider: AsyncDiscoveryProvider(),
-        currentUser: { sessionFeature.currentUser }
-      ),
+      discoveryFeature: discoveryFeature,
       projectDetailsFeature: ProjectDetailsFeature(sessionFeature: sessionFeature, discussionFeature: discussionFeature, makeProvider: {
         AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService)
       }),

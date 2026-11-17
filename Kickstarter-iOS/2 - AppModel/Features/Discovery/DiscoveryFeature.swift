@@ -58,6 +58,7 @@ public final class DiscoveryFeature {
   private var recommendationRequest: (id: UUID, userID: Int, task: Task<Bool, Error>)?
   private var recommendationGeneration = 0
   private let provider: any DiscoveryProvider
+  private let loadCategories: @MainActor () async throws -> RootCategoriesEnvelope
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private let currentUser: @MainActor () -> User?
   internal enum Update {
@@ -220,6 +221,9 @@ public final class DiscoveryFeature {
 
   public init(
     provider: any DiscoveryProvider,
+    loadCategories: @escaping @MainActor () async throws -> RootCategoriesEnvelope = {
+      try await AppEnvironment.current.apiService.fetchSearchCategories()
+    },
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -230,8 +234,13 @@ public final class DiscoveryFeature {
     currentUser: @escaping @MainActor () -> User? = { AppModel.shared.sessionFeature.currentUser }
   ) {
     self.provider = provider
+    self.loadCategories = loadCategories
     self.sleep = sleep
     self.currentUser = currentUser
+  }
+
+  func rootCategories() async throws -> RootCategoriesEnvelope {
+    try await self.loadCategories()
   }
 
   public func snapshot(for sort: DiscoveryParams.Sort) -> PageSnapshot {

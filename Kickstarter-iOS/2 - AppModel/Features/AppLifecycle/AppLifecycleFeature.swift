@@ -3,24 +3,6 @@ import Experimentation
 import KsApi
 import Prelude
 
-@MainActor
-public protocol AppLifecycleProvider {
-  func categories() async throws -> RootCategoriesEnvelope
-  func survey(id: Int) async throws -> SurveyResponse
-}
-
-@MainActor
-public struct AsyncAppLifecycleProvider: AppLifecycleProvider {
-  private let service: any ServiceType
-  public init(service: any ServiceType) { self.service = service }
-  public func categories() async throws -> RootCategoriesEnvelope {
-    try await self.service.fetchSearchCategories()
-  }
-  public func survey(id: Int) async throws -> SurveyResponse {
-    try await self.service.applicationSurvey(id: id)
-  }
-}
-
 /// Resolves deep-link destinations before UIKit presents them.
 /// Project links publish only after the complete project, update and reply chain loads.
 @MainActor
@@ -51,7 +33,8 @@ public final class AppLifecycleFeature {
     let task: Task<Value, Error>
   }
   private let discussionFeature: DiscussionFeature
-  private let makeProvider: () -> any AppLifecycleProvider
+  private let discoveryFeature: DiscoveryFeature
+  private let activityFeature: ActivityFeature
   private let sleep: (TimeInterval) async throws -> Void
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
   private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
@@ -59,7 +42,7 @@ public final class AppLifecycleFeature {
   public init(
     sessionFeature: SessionFeature, messagingFeature: MessagingFeature,
     discussionFeature: DiscussionFeature,
-    makeProvider: @escaping () -> any AppLifecycleProvider,
+    discoveryFeature: DiscoveryFeature, activityFeature: ActivityFeature,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
@@ -67,7 +50,8 @@ public final class AppLifecycleFeature {
     self.sessionFeature = sessionFeature
     self.messagingFeature = messagingFeature
     self.discussionFeature = discussionFeature
-    self.makeProvider = makeProvider
+    self.discoveryFeature = discoveryFeature
+    self.activityFeature = activityFeature
     self.sleep = sleep
   }
   private var session: Session {
@@ -99,7 +83,6 @@ public final class AppLifecycleFeature {
     }
     self.release(route: route)
     let id = UUID()
-    let provider = self.makeProvider()
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let task = Task { [self] in
       defer {
@@ -110,7 +93,7 @@ public final class AppLifecycleFeature {
       let destination: Destination?
       do {
         destination = try await self.load(
-          navigation, provider: provider, session: session, delay: delay)
+          navigation, session: session, delay: delay)
       } catch {
         try self.requireCurrent(session)
         throw error
@@ -125,7 +108,7 @@ public final class AppLifecycleFeature {
   }
 
   private func load(
-    _ navigation: Navigation, provider: any AppLifecycleProvider, session: Session,
+    _ navigation: Navigation, session: Session,
     delay: TimeInterval
   ) async throws -> Destination? {
     switch navigation {
@@ -135,15 +118,15 @@ public final class AppLifecycleFeature {
       }
       let (category, subcategory) = deepLinkCategories(rawParams: rawParams)
       guard let category else { return .discovery(params) }
-      let envelope = try await provider.categories()
+      let envelope = try await self.discoveryFeature.rootCategories()
       try self.requireCurrent(session)
       let matched = findCategoryFromRootCategories(
         envelope: envelope, categoryParam: category, subcategoryParam: subcategory)
       try await self.sleep(delay)
       return .discovery(params |> DiscoveryParams.lens.category .~ matched)
     case .user(_, .survey(let id)):
-      let survey = try await provider.survey(id: id)
-      return .survey(survey.urls.web.survey)
+      let url = try await self.activityFeature.surveyURL(id: id)
+      return .survey(url)
     case .messages(let id):
       return try await self.messagingFeature.thread(id: id).map { .message($0.messageThread) }
     case .project(_, .pledgeManagerWebview(let url), _, _):
