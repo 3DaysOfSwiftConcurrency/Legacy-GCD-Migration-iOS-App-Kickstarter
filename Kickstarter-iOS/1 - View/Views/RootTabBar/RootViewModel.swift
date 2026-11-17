@@ -1,6 +1,6 @@
+import Foundation
 import KsApi
 import Prelude
-import UIKit
 
 public typealias RootViewControllerIndex = Int
 public typealias RootTabBarItemBadgeValueData = (String?, RootViewControllerIndex)
@@ -12,34 +12,34 @@ public enum RootViewControllerData: Equatable {
   case search
   case profile(isLoggedIn: Bool)
 
-  public static func == (lhs: RootViewControllerData, rhs: RootViewControllerData) -> Bool {
-    switch (lhs, rhs) {
-    case (.discovery, .discovery): return true
-    case (.activities, .activities): return true
-    case (.pledgedProjectsAndActivities, .pledgedProjectsAndActivities): return true
-    case (.search, .search): return true
-    case let (.profile(lhsIsLoggedIn), .profile(rhsIsLoggedIn)):
-      return lhsIsLoggedIn == rhsIsLoggedIn
-    default:
-      return false
+  fileprivate var tab: RootTab {
+    switch self {
+    case .discovery: return .discovery
+    case .activities, .pledgedProjectsAndActivities: return .activity
+    case .search: return .search
+    case .profile: return .profile
+    }
+  }
+}
+
+private enum RootTab {
+  case discovery, activity, search, profile
+
+  var analyticsLabel: KSRAnalytics.TabBarItemLabel {
+    switch self {
+    case .discovery: return .discovery
+    case .activity: return .activity
+    case .search: return .search
+    case .profile: return .profile
     }
   }
 
-  var isProfile: Bool {
+  func item(index: RootViewControllerIndex, avatarURL: URL?) -> TabBarItem {
     switch self {
-    case .profile:
-      return true
-    default:
-      return false
-    }
-  }
-
-  var isActivity: Bool {
-    switch self {
-    case .activities, .pledgedProjectsAndActivities:
-      return true
-    case .discovery, .profile, .search:
-      return false
+    case .discovery: return .home(index: index)
+    case .activity: return .activity(index: index)
+    case .search: return .search(index: index)
+    case .profile: return .profile(avatarUrl: avatarURL, index: index)
     }
   }
 }
@@ -74,7 +74,7 @@ public protocol RootViewModelInputs {
   /// Call before selected tab bar index changes.
   func shouldSelect(index: RootViewControllerIndex?)
 
-  /// Call when we should switch to the activities tab.
+  /// Call when we should open Activity in the current layout.
   func switchToActivities()
 
   /// Call when we should switch to the discovery tab.
@@ -112,6 +112,9 @@ public protocol RootViewModelOutputs: AnyObject {
   /// Emits when the discovery VC should filter with specific params.
   var onFilterDiscovery: (((RootViewControllerIndex, DiscoveryParams)) -> Void)? { get set }
 
+  /// Opens Activity on the Discovery stack when the layout has no Activity tab.
+  var onShowActivities: ((RootViewControllerIndex) -> Void)? { get set }
+
   /// Emits a controller index that should be scrolled to the top. This requires figuring out what kind of
   /// controller it is, and setting its `contentOffset`.
   var onScrollToTop: ((RootViewControllerIndex) -> Void)? { get set }
@@ -144,29 +147,17 @@ public protocol RootViewModelType {
 
 @MainActor
 public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootViewModelOutputs {
+  private let sessionFeature: SessionFeature
   private let profileFeature: ProfileFeature
   private let activityFeature: ActivityFeature
-  private var sessionFeature: SessionFeature { self.profileFeature.sessionFeature }
-  private var latestSelectedIndex: RootViewControllerIndex?
-  private var lastUserSelectedIndex = 0
-  private var previousUserSelectedIndex = 0
-  private var hasUserSelection = false
-  private var latestTabBarData: TabBarItemsData?
+  private var controllers: [RootViewControllerData] = []
+  private var selectedTab: RootTab = .discovery
+  private var lastUserSelectedTab: RootTab = .discovery
   private var lastSearchOrigin: KSRAnalytics.TabBarItemLabel?
-  private var requestedIndex: RootViewControllerIndex?
-  private var controllerCount: Int?
-  private var latestLoginState: Bool?
-  private var latestCurrentUser: User?
-  private var hasCurrentUserSnapshot = false
-  private var lastObservedFloatingFlag: Bool?
-  private var publishedFloatingFlag: Bool?
-  private var hasTabItemsTrigger = false
+  private var profileTab: (isLoggedIn: Bool, avatarURL: URL?) = (false, nil)
+  private var appliedFloatingFlag: Bool?
   private var hasLoadedRootView = false
-  private var loadingRootView = false
-  private var discoveryIndex: RootViewControllerIndex?
-  private var activityIndex: RootViewControllerIndex?
-  private var currentBadgeValue: String?
-  private var lastBadgeInput: (Int?, RootViewControllerIndex)?
+  private var activityBadge: (count: Int?, label: String?)?
   private var avatarTask: Task<Void, Never>?
   private var avatarID: UUID?
   private var avatarInput: (URL, Int, Int)?
@@ -177,124 +168,105 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
 
   private let analytics: () -> KSRAnalytics
   private let badgePresentationDelay: () -> TimeInterval
+  private let floatingTabBarEnabled: @MainActor () -> Bool
   private let isVoiceOverRunning: () -> Bool
 
   public init(
+    sessionFeature: SessionFeature,
     profileFeature: ProfileFeature,
     activityFeature: ActivityFeature,
     analytics: @escaping () -> KSRAnalytics,
     badgePresentationDelay: @escaping () -> TimeInterval,
+    floatingTabBarEnabled: @escaping @MainActor () -> Bool,
     isVoiceOverRunning: @escaping () -> Bool
   ) {
+    self.sessionFeature = sessionFeature
     self.profileFeature = profileFeature
     self.activityFeature = activityFeature
     self.analytics = analytics
     self.badgePresentationDelay = badgePresentationDelay
+    self.floatingTabBarEnabled = floatingTabBarEnabled
     self.isVoiceOverRunning = isVoiceOverRunning
   }
 
   private func refreshCurrentUser() {
     let user = self.sessionFeature.currentUser
-    let loggedIn = user != nil
-    let loginChanged = self.latestLoginState != loggedIn
-    self.latestCurrentUser = user
-    self.hasCurrentUserSnapshot = true
-    self.latestLoginState = loggedIn
+    let isLoggedIn = user != nil
+    let loginChanged = self.profileTab.isLoggedIn != isLoggedIn
+    self.profileTab = (isLoggedIn, user.flatMap { URL(string: $0.avatar.small) })
     if loginChanged { self.rebuildViewControllers() }
     self.publishTabItemsIfReady()
   }
 
-  private func publishFloatingFlagIfChanged(_ enabled: Bool) {
-    guard self.publishedFloatingFlag != enabled else { return }
-    self.publishedFloatingFlag = enabled
+  private func applyFloatingLayoutIfChanged() {
+    let enabled = self.floatingTabBarEnabled()
+    guard self.appliedFloatingFlag != enabled else { return }
+    self.appliedFloatingFlag = enabled
     self.onFloatingTabBarEnabled?(enabled)
     self.rebuildViewControllers()
     self.publishTabItemsIfReady()
   }
 
-  private func observeFloatingFlag() {
-    let enabled = featureFloatingTabBarEnabled()
-    defer { self.lastObservedFloatingFlag = enabled }
-    guard let previous = self.lastObservedFloatingFlag, previous != enabled else { return }
-    self.publishFloatingFlagIfChanged(enabled)
-    self.hasTabItemsTrigger = true
-    self.rebuildViewControllers()
-    self.publishTabItemsIfReady()
+  private func index(of tab: RootTab) -> RootViewControllerIndex? {
+    self.controllers.firstIndex { $0.tab == tab }
   }
 
   private func rebuildViewControllers() {
-    guard let loggedIn = self.latestLoginState, let floating = self.publishedFloatingFlag else { return }
-    let controllers = generateViewControllers(isLoggedIn: loggedIn, isFloatingTabBarEnabled: floating)
-    self.controllerCount = controllers.count
-    if let index = controllers.firstIndex(of: .discovery) { self.discoveryIndex = index }
-    if let index = controllers.firstIndex(where: \.isActivity) {
-      self.activityIndex = index
-      self.clearBadgeIfActivitySelected()
-    }
-    self.onSetViewControllers?(controllers)
-    if !self.loadingRootView { self.publishSelectedIndexIfReady() }
+    guard let floating = self.appliedFloatingFlag else { return }
+    self.controllers = generateViewControllers(
+      isLoggedIn: self.profileTab.isLoggedIn,
+      isFloatingTabBarEnabled: floating
+    )
+    if self.index(of: self.selectedTab) == nil { self.selectedTab = .discovery }
+    if self.index(of: self.lastUserSelectedTab) == nil { self.lastUserSelectedTab = .discovery }
+    self.onSetViewControllers?(self.controllers)
+    self.publishSelectedIndexIfReady()
   }
 
   private func publishTabItemsIfReady() {
-    guard self.hasCurrentUserSnapshot, self.hasTabItemsTrigger, let floating = self.publishedFloatingFlag else { return }
-    let data = tabData(forUser: self.latestCurrentUser, isFloatingTabBarEnabled: floating)
-    self.latestTabBarData = data
-    self.onTabBarItemsData?(data)
-    self.trackSearchSelectionIfNeeded()
+    guard !self.controllers.isEmpty else { return }
+    let items = self.controllers.enumerated().map { index, controller in
+      controller.tab.item(index: index, avatarURL: self.profileTab.avatarURL)
+    }
+    self.onTabBarItemsData?(TabBarItemsData(items: items, isLoggedIn: self.profileTab.isLoggedIn))
   }
 
-  private func trackSearchSelectionIfNeeded() {
-    guard self.hasUserSelection, let data = self.latestTabBarData, !data.items.isEmpty,
-          data.items.indices.contains(self.lastUserSelectedIndex),
-          tabBarItemLabel(for: data.items[self.lastUserSelectedIndex]) == .search else { return }
-    let previous = data.items.indices.contains(self.previousUserSelectedIndex) ? self.previousUserSelectedIndex : 0
-    let origin = tabBarItemLabel(for: data.items[previous])
-    guard self.lastSearchOrigin != origin else { return }
-    self.lastSearchOrigin = origin
-    self.analytics().trackSearchTabBarClicked(prevTabBarItemLabel: origin)
-  }
-
-  private func trackTabSelection(_ index: Int) {
-    self.previousUserSelectedIndex = self.lastUserSelectedIndex
-    self.lastUserSelectedIndex = index
-    self.hasUserSelection = true
-    self.trackSearchSelectionIfNeeded()
-    guard let data = self.latestTabBarData, !data.items.isEmpty, data.items.indices.contains(index) else { return }
-    let previous = data.items.indices.contains(self.previousUserSelectedIndex) ? self.previousUserSelectedIndex : 0
+  private func trackTabSelection(_ tab: RootTab) {
+    let origin = self.lastUserSelectedTab.analyticsLabel
+    self.lastUserSelectedTab = tab
+    if tab == .search, self.lastSearchOrigin != origin {
+      self.lastSearchOrigin = origin
+      self.analytics().trackSearchTabBarClicked(prevTabBarItemLabel: origin)
+    }
     self.analytics().trackTabBarClicked(
-      tabBarItemLabel: tabBarItemLabel(for: data.items[index]),
-      previousTabBarItemLabel: tabBarItemLabel(for: data.items[previous])
+      tabBarItemLabel: tab.analyticsLabel,
+      previousTabBarItemLabel: origin
     )
   }
 
-  private func selectIndex(_ index: RootViewControllerIndex) {
-    self.requestedIndex = index
+  private func select(_ tab: RootTab) {
+    self.selectedTab = tab
     self.publishSelectedIndexIfReady()
   }
 
   private func publishSelectedIndexIfReady() {
-    guard self.hasLoadedRootView, let requestedIndex = self.requestedIndex,
-          let count = self.controllerCount, count > 0 else { return }
-    let index = clamp(0, count - 1)(requestedIndex)
-    self.latestSelectedIndex = index
+    guard self.hasLoadedRootView, let index = self.index(of: self.selectedTab) else { return }
     self.onSelectedIndex?(index)
     self.clearBadgeIfActivitySelected()
   }
 
-  private func updateBadge(_ value: Int?, index: RootViewControllerIndex) {
-    self.lastBadgeInput = (value, index)
+  private func updateActivityBadge(_ value: Int?) {
     let hasPPOAction = self.sessionFeature.currentUserPPOSettings?.hasAction ?? false
-    let displayed = activitiesBadgeValue(
+    let label = activitiesBadgeValue(
       with: value, hasPPOAction: hasPPOAction, isVoiceOverRunning: self.isVoiceOverRunning()
     )
-    self.currentBadgeValue = displayed
-    self.onSetBadgeValue?((displayed, index))
+    self.activityBadge = (value, label)
+    if let index = self.index(of: .activity) { self.onSetBadgeValue?((label, index)) }
   }
 
   private func clearBadgeIfActivitySelected() {
-    guard let activityIndex = self.activityIndex, self.latestSelectedIndex == activityIndex,
-          self.currentBadgeValue != nil else { return }
-    self.updateBadge(self.sessionFeature.currentUser?.erroredBackingsCount, index: activityIndex)
+    guard self.selectedTab == .activity, self.activityBadge?.label != nil else { return }
+    self.updateActivityBadge(self.sessionFeature.currentUser?.erroredBackingsCount)
     self.clearActivityBadge()
   }
 
@@ -376,62 +348,67 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   }
 
   public func applicationWillEnterForeground() {
-    let previousIndex = self.activityIndex
-    self.observeFloatingFlag()
-    if let index = previousIndex {
-      self.updateBadge(self.activityFeature.currentApplicationBadgeNumber, index: index)
-    }
+    guard self.hasLoadedRootView else { return }
+    self.applyFloatingLayoutIfChanged()
+    self.updateActivityBadge(self.activityFeature.currentApplicationBadgeNumber)
   }
 
   public func currentUserUpdated() {
     self.refreshCurrentUser()
-    if self.latestSelectedIndex != nil, let index = self.activityIndex {
-      self.updateBadge(currentUserActivitiesAndErroredPledgeCount(self.sessionFeature.currentUser), index: index)
+    if self.hasLoadedRootView {
+      self.updateActivityBadge(self.sessionFeature.currentUser?.unseenActivityCount ?? 0)
     }
   }
 
   public func didReceiveBadgeValue(_ value: Int?) {
-    guard self.latestSelectedIndex != nil, let index = self.activityIndex else { return }
-    self.updateBadge(value, index: index)
+    guard self.hasLoadedRootView else { return }
+    self.updateActivityBadge(value)
   }
 
   public func didSelect(index: Int) {
-    self.trackTabSelection(index)
-    self.selectIndex(index)
+    guard !self.controllers.isEmpty else { return }
+    if self.controllers.indices.contains(index) { self.trackTabSelection(self.controllers[index].tab) }
+    let selectedIndex = clamp(0, self.controllers.count - 1)(index)
+    self.select(self.controllers[selectedIndex].tab)
   }
 
   public func shouldSelect(index: Int?) {
-    guard let index, index == self.latestSelectedIndex else { return }
+    guard self.hasLoadedRootView, let index, index == self.index(of: self.selectedTab) else { return }
     self.onScrollToTop?(index)
   }
 
   public func switchToActivities() {
-    self.selectIndex(1)
+    if self.index(of: .activity) != nil {
+      self.select(.activity)
+    } else if let discovery = self.index(of: .discovery) {
+      self.select(.discovery)
+      self.onShowActivities?(discovery)
+    }
   }
 
   public func switchToDiscovery(params: DiscoveryParams?) {
-    self.selectIndex(0)
-    if let params, let index = self.discoveryIndex { self.onFilterDiscovery?((index, params)) }
+    self.select(.discovery)
+    if let params, let index = self.index(of: .discovery) { self.onFilterDiscovery?((index, params)) }
   }
 
   public func switchToLogin() {
-    guard self.latestLoginState == false, let count = self.controllerCount else { return }
-    self.selectIndex(count)
+    guard !self.profileTab.isLoggedIn else { return }
+    self.select(.profile)
   }
 
   public func switchToProfile() {
-    guard self.latestLoginState == true, let count = self.controllerCount else { return }
-    self.selectIndex(count)
+    guard self.profileTab.isLoggedIn else { return }
+    self.select(.profile)
   }
 
   public func switchToSearch() {
-    self.selectIndex(2)
+    self.select(.search)
   }
 
   public func userLocalePreferencesChanged() {
-    self.hasTabItemsTrigger = true
     self.rebuildViewControllers()
     self.publishTabItemsIfReady()
+    if let badge = self.activityBadge { self.updateActivityBadge(badge.count) }
   }
 
   public func userSessionStarted() {
@@ -440,30 +417,22 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
 
   public func userSessionEnded() {
     self.refreshCurrentUser()
-    if let index = self.activityIndex { self.updateBadge(nil, index: index) }
+    self.updateActivityBadge(nil)
   }
 
   public func viewDidLoad() {
-    let previousIndex = self.activityIndex
-    self.loadingRootView = true
     self.refreshCurrentUser()
-    self.observeFloatingFlag()
-    self.publishFloatingFlagIfChanged(featureFloatingTabBarEnabled())
-    self.hasTabItemsTrigger = true
-    self.publishTabItemsIfReady()
-    self.loadingRootView = false
+    self.applyFloatingLayoutIfChanged()
     self.hasLoadedRootView = true
-    self.selectIndex(0)
-    if let index = previousIndex {
-      self.updateBadge(self.activityFeature.currentApplicationBadgeNumber, index: index)
-    }
+    self.select(.discovery)
   }
 
   public func voiceOverStatusDidChange() {
-    if let (value, index) = self.lastBadgeInput { self.updateBadge(value, index: index) }
+    if let badge = self.activityBadge { self.updateActivityBadge(badge.count) }
   }
 
   public var onFilterDiscovery: (((RootViewControllerIndex, DiscoveryParams)) -> Void)?
+  public var onShowActivities: ((RootViewControllerIndex) -> Void)?
   public var onScrollToTop: ((RootViewControllerIndex) -> Void)?
   public var onSelectedIndex: ((RootViewControllerIndex) -> Void)?
   public var onSetBadgeValue: ((RootTabBarItemBadgeValueData) -> Void)?
@@ -474,11 +443,6 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
 
   public var inputs: RootViewModelInputs { return self }
   public var outputs: RootViewModelOutputs { return self }
-}
-
-@MainActor
-private func currentUserActivitiesAndErroredPledgeCount(_ user: User?) -> Int {
-  user?.unseenActivityCount ?? 0
 }
 
 private func generateViewControllers(
@@ -507,28 +471,6 @@ private func generateViewControllers(
   return controllers
 }
 
-private func tabData(forUser user: User?, isFloatingTabBarEnabled: Bool) -> TabBarItemsData {
-  var items: [TabBarItem] = []
-
-  if isFloatingTabBarEnabled {
-    items = [
-      .home(index: 0),
-      .search(index: 1),
-      .profile(avatarUrl: (user?.avatar.small).flatMap(URL.init(string:)), index: 2)
-    ]
-  } else {
-    items = [
-      .home(index: 0), .activity(index: 1), .search(index: 2),
-      .profile(avatarUrl: (user?.avatar.small).flatMap(URL.init(string:)), index: 3)
-    ]
-  }
-
-  return TabBarItemsData(
-    items: items,
-    isLoggedIn: user != nil
-  )
-}
-
 extension TabBarItemsData: Equatable {}
 extension TabBarItem: Equatable {}
 
@@ -550,17 +492,4 @@ private func activitiesBadgeValue(
   return (badgeValue > maxBadgeValue) && !isVoiceOverRunning
     ? Strings.activities_badge_value_plus(activities_badge_value: "\(clampedBadgeValue)")
     : "\(clampedBadgeValue)"
-}
-
-private func tabBarItemLabel(for tabBarItem: TabBarItem) -> KSRAnalytics.TabBarItemLabel {
-  switch tabBarItem {
-  case .activity:
-    return .activity
-  case .home:
-    return .discovery
-  case .profile:
-    return .profile
-  case .search:
-    return .search
-  }
 }

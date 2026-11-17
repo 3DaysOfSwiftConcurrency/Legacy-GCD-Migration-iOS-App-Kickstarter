@@ -210,6 +210,9 @@ extension ActivitiesViewController: EmptyStatesViewControllerDelegate {
     goToDiscoveryWithParams params: DiscoveryParams?
   ) {
     guard let tabController = self.tabBarController as? RootTabBarViewController else { return }
+    if let navigation = self.navigationController, navigation.viewControllers.first is DiscoveryViewController {
+      navigation.popToRootViewController(animated: navigation.viewIfLoaded?.window != nil)
+    }
     tabController.switchToDiscovery(params: params)
   }
 

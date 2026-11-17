@@ -4073,3 +4073,26 @@ parity remains unverified.
 The floating layout still reuses tab slots that the ViewModel addresses
 by fixed index. Search and Activity badge delivery need to follow the
 active layout.
+
+### Root Tabs layout and Activity routing — Matthew Thomas
+
+Root Tabs derives controller order, item styles, selection, and the
+Activity badge target from one active layout. A flag change rebuilds
+the layout once. The selected destination survives when it exists in
+both layouts. Removing the selected Activity tab returns to Discovery,
+and explicit Activity routes in the floating layout open the existing
+Activity screen from Discovery.
+
+RootViewModel receives Session and the main-actor flag reader from
+composition. Search analytics records user selections without replaying
+them during a layout change. Activity badges stay off the floating layout
+and refresh from the app badge when the standard layout returns.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 35 focused Root Tabs
+tests, 123 routing and Pledged Projects regressions, and 79 Activity,
+Search, and deep-link model regressions. `make check-cfa` passed.
+Visual transition parity remains unverified.
+
+AppDelegate still adds a separate dispatch before handing Activity,
+Search, and Discovery routes to Root Tabs. Audit those handoffs and
+how a newer link supersedes a pending tab action.

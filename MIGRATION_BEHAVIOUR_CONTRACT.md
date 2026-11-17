@@ -412,6 +412,9 @@ full-suite and app-wide concurrency sign-off remain open.
 - Suppress old-session results and delayed notifications. Completed badge changes
   invalidate older whole-user reads without cancelling unrelated setup metadata.
 - Controllers notify after persistence; they must not replay returned User snapshots.
+- The standard layout displays the Activity badge on Activity. The floating
+  layout has no Activity tab. Restoring the standard layout displays the
+  current badge count on Activity.
 
 Baseline: 24 original Root tests. Final: 992 tests passed and app built, zero
 failures/skips; six new scenarios. The Rewards fixture-cleanup crash, corrective
@@ -1237,6 +1240,11 @@ and every existing deep-link controller stack. A resolved link is one operation:
 project, optional update and optional replies must belong to the same destination.
 A newer link (including a synchronous tab link), session change or delegate release
 invalidates old navigation. Equivalent pending destinations share work.
+
+Root Tabs retains the selected destination when it exists in the new layout.
+Removing the selected Activity tab returns to Discovery. In the floating
+layout an explicit Activity route opens the existing Activity screen on
+Discovery's stack.
 
 Push registrations are admitted writes: equivalent pending tokens share; changed
 tokens execute in order, without automatic retries. Stale account completions cannot

@@ -20,6 +20,7 @@ final class RootViewModelTests: TestCase {
 
   private func makeViewModel(profileFeature: ProfileFeature) -> RootViewModel {
     RootViewModel(
+      sessionFeature: profileFeature.sessionFeature,
       profileFeature: profileFeature,
       activityFeature: ActivityFeature(
         sessionFeature: profileFeature.sessionFeature,
@@ -27,6 +28,7 @@ final class RootViewModelTests: TestCase {
       ),
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      floatingTabBarEnabled: featureFloatingTabBarEnabled,
       isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
     )
   }
@@ -579,6 +581,72 @@ final class RootViewModelTests: TestCase {
     self.selectedIndex.assertLastValue(2)
   }
 
+  func testSearchFollowsTheActiveLayoutWithoutSpuriousAnalytics() {
+    let remoteConfig = MockRemoteConfigClient()
+    withEnvironment(remoteConfigClient: remoteConfig) {
+      self.vm.inputs.viewDidLoad()
+      self.vm.inputs.didSelect(index: 2)
+      self.selectedIndex.assertLastValue(2)
+
+      remoteConfig.features = [RemoteConfigFeature.floatingTabBar.rawValue: true]
+      self.vm.inputs.applicationWillEnterForeground()
+      self.selectedIndex.assertLastValue(1)
+      self.viewControllerNames.assertLastValue(["Discovery", "Search", "LoginTout"])
+      self.tabBarItemsData.assertLastValue(TabBarItemsData(
+        items: [.home(index: 0), .search(index: 1), .profile(avatarUrl: nil, index: 2)],
+        isLoggedIn: false
+      ))
+
+      self.vm.inputs.switchToDiscovery(params: nil)
+      self.vm.inputs.switchToSearch()
+      self.selectedIndex.assertValues([0, 2, 1, 0, 1])
+
+      remoteConfig.features = [:]
+      self.vm.inputs.applicationWillEnterForeground()
+      self.selectedIndex.assertLastValue(2)
+      XCTAssertEqual(self.segmentTrackingClient.properties(forKey: "context_cta"), ["search"])
+    }
+  }
+
+  func testRemovingTheSelectedActivityTabFallsBackToDiscovery() {
+    let remoteConfig = MockRemoteConfigClient()
+    withEnvironment(remoteConfigClient: remoteConfig) {
+      self.vm.inputs.viewDidLoad()
+      self.vm.inputs.didSelect(index: 1)
+
+      remoteConfig.features = [RemoteConfigFeature.floatingTabBar.rawValue: true]
+      self.vm.inputs.applicationWillEnterForeground()
+
+      self.selectedIndex.assertValues([0, 1, 0])
+    }
+  }
+
+  func testBadgeUpdatesSkipFloatingSearchAndResumeOnActivity() {
+    let application = MockApplication()
+    application.applicationIconBadgeNumber = 5
+    let remoteConfig = MockRemoteConfigClient()
+    withEnvironment(application: application, remoteConfigClient: remoteConfig) {
+      self.vm.inputs.viewDidLoad()
+      self.vm.inputs.applicationWillEnterForeground()
+      self.setBadgeValueAtIndexValue.assertValues(["5"])
+      self.setBadgeValueAtIndexIndex.assertValues([1])
+
+      remoteConfig.features = [RemoteConfigFeature.floatingTabBar.rawValue: true]
+      self.vm.inputs.applicationWillEnterForeground()
+      self.vm.inputs.didReceiveBadgeValue(8)
+      self.vm.inputs.voiceOverStatusDidChange()
+      self.vm.inputs.currentUserUpdated()
+      self.setBadgeValueAtIndexValue.assertValues(["5"])
+      self.setBadgeValueAtIndexIndex.assertValues([1])
+
+      application.applicationIconBadgeNumber = 9
+      remoteConfig.features = [:]
+      self.vm.inputs.applicationWillEnterForeground()
+      self.setBadgeValueAtIndexValue.assertValues(["5", "9"])
+      self.setBadgeValueAtIndexIndex.assertValues([1, 1])
+    }
+  }
+
   func testTabBarItemStyles() {
     let user = User.template |> \.avatar.small .~ "http://image.com/image"
     let creator = User.template
@@ -782,10 +850,8 @@ final class RootViewModelTests: TestCase {
     withEnvironment(remoteConfigClient: remoteConfig) {
       self.vm.inputs.applicationWillEnterForeground()
 
-      // The view controller names and tab bar items data get recreated twice. Once because
-      // any watched feature flag changed and once because the floating tab bar value changed.
-      self.viewControllerNames.assertValueCount(3, "State changed so recreate data.")
-      self.tabBarItemsData.assertValueCount(3, "State changed so recreate data.")
+      self.viewControllerNames.assertValueCount(2, "One rebuild for the changed layout.")
+      self.tabBarItemsData.assertValueCount(2, "One style update for the changed layout.")
       self.floatingTabBarEnabled.assertValueCount(2, "State changed so recreate data.")
     }
   }
@@ -794,6 +860,32 @@ final class RootViewModelTests: TestCase {
 @MainActor
 final class RootTabsNavigationTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
+
+  func testFloatingLayoutOpensActivityFromDiscoveryAndCanReturn() async throws {
+    self.remoteConfigClient.features = [RemoteConfigFeature.floatingTabBar.rawValue: true]
+    let root = Storyboard.Main.instantiate(RootTabBarViewController.self)
+    root.switchToSearch()
+    await root.waitForPresentation()
+
+    let search = try XCTUnwrap(root.selectedViewController as? UINavigationController)
+    XCTAssertTrue(search.viewControllers.first is SearchViewController)
+    let discovery = try XCTUnwrap(root.viewControllers?.first as? UINavigationController)
+    let discoveryRoot = try XCTUnwrap(discovery.viewControllers.first)
+
+    root.switchToActivities()
+    root.switchToActivities()
+    await root.waitForPresentation()
+
+    XCTAssertTrue(root.selectedViewController === discovery)
+    XCTAssertEqual(discovery.viewControllers.count, 2)
+    let activity = try XCTUnwrap(discovery.topViewController as? ActivitiesViewController)
+    activity.emptyStatesViewController(
+      EmptyStatesViewController.configuredWith(emptyState: .activity),
+      goToDiscoveryWithParams: nil
+    )
+    await root.waitForPresentation()
+    XCTAssertEqual(discovery.viewControllers, [discoveryRoot])
+  }
 
   func testMessageLinkOpensOnProfileAndPreservesDiscoveryStack() async throws {
     AppEnvironment.replaceCurrentEnvironment(currentUser: .template)

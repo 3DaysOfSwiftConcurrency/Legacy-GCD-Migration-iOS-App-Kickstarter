@@ -31,10 +31,12 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
 
   private let sessionFeature = AppModel.shared.sessionFeature
   fileprivate let viewModel: RootViewModelType = RootViewModel(
+    sessionFeature: AppModel.shared.sessionFeature,
     profileFeature: AppModel.shared.profileFeature,
     activityFeature: AppModel.shared.activityFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
     badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+    floatingTabBarEnabled: featureFloatingTabBarEnabled,
     isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
   )
 
@@ -155,12 +157,20 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     self.viewModel.outputs.onFilterDiscovery = { [weak self] data in
       let (index, params) = data
       self?.enqueuePresentation { controller in
-        guard
-          let tabs = controller.viewControllers, tabs.indices.contains(index),
-          let navigation = tabs[index] as? UINavigationController,
-          let discovery = navigation.viewControllers.first as? DiscoveryViewController
-        else { return }
+        guard let discovery = controller.discoveryNavigationController(at: index)?
+          .viewControllers.first as? DiscoveryViewController else { return }
         discovery.filter(with: params)
+      }
+    }
+
+    self.viewModel.outputs.onShowActivities = { [weak self] index in
+      self?.enqueuePresentation { controller in
+        guard let discovery = controller.discoveryNavigationController(at: index),
+              !(discovery.topViewController is ActivitiesViewController) else { return }
+        discovery.pushViewController(
+          ActivitiesViewController.instantiate(),
+          animated: discovery.viewIfLoaded?.window != nil
+        )
       }
     }
 
@@ -189,11 +199,20 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     await self.presentationTask?.value
   }
 
+  private func discoveryNavigationController(at index: RootViewControllerIndex) -> UINavigationController? {
+    guard let tabs = self.viewControllers, tabs.indices.contains(index),
+          let navigation = tabs[index] as? UINavigationController,
+          navigation.viewControllers.first is DiscoveryViewController else { return nil }
+    return navigation
+  }
+
   public func switchToActivities() {
+    self.loadViewIfNeeded()
     self.viewModel.inputs.switchToActivities()
   }
 
   public func switchToDiscovery(params: DiscoveryParams?) {
+    self.loadViewIfNeeded()
     self.viewModel.inputs.switchToDiscovery(params: params)
   }
 
@@ -206,6 +225,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   }
 
   public func switchToSearch() {
+    self.loadViewIfNeeded()
     self.viewModel.inputs.switchToSearch()
   }
 

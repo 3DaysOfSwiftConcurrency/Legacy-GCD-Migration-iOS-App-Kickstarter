@@ -39,7 +39,7 @@ test -f "$cancel_pledge_view_model"
 test -f "$project_page_view_model"
 test -f "$discovery_feature"
 reject_matches 'RootViewModel must receive its dependencies from the controller.' \
-  'AppModel[.]shared|AppEnvironment[.]current' "$root_view_model"
+  'AppModel[.]shared|AppEnvironment[.]current|featureFloatingTabBarEnabled|profileFeature[.]sessionFeature' "$root_view_model"
 reject_matches 'Root Tabs owns and orders deferred UIKit presentation.' \
   'DispatchQueue[.]main' "$root_tabs"
 reject_matches 'The app delegate uses its composed owners directly.' \
