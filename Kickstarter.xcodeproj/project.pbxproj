@@ -8243,6 +8243,7 @@
 				"ED3FBF9E46346230EAB17425",
 				"BE98FB3FEC1860B0B012B1E6",
 				"DA28191A52061270D4E5AFF0",
+				"CFA031200000000000000008",
 				"CEA5E027587E82990B72D988",
 				"C04B6F18B76468884638BD34",
 				"3EB1A8CBE836472CD4EF6FF7",
@@ -14331,6 +14332,17 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "49C465B569439414A95229C4";
 		};
+		"CFA031200000000000000007" = {
+			"isa" = "PBXFileReference";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Onboarding/OnboardingFeature.swift";
+			"name" = "OnboardingFeature.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"CFA031200000000000000008" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "CFA031200000000000000007";
+		};
 		"F9EF8AF981F201BD767130C6" = {
 			"path" = "GraphAPI/GraphAPITestMocks/PaymentIncrementBadge+Mock.graphql.swift";
 			"isa" = "PBXFileReference";
@@ -19809,6 +19821,7 @@
 			"sourceTree" = "<group>";
 			"children" = (
 				"49C465B569439414A95229C4",
+				"CFA031200000000000000007",
 			);
 		};
 		"CFA031200000000000000006" = {

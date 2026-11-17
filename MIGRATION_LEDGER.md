@@ -3389,3 +3389,9 @@ and notification declarations and push infrastructure under Composition.
 All nine moves preserved the Swift file contents. Xcode project validation,
 the CFA check, 31 focused model tests and 124 AppDelegate presentation
 tests passed.
+
+OnboardingFeature now lives alongside the onboarding use case. AppModel
+composition supplies the existing onboarding completion store and tracking
+adapter. Prompt admission and serialization remain owned by Onboarding.
+All 48 focused Onboarding, Settings and AppModel tests and all 124
+AppDelegate presentation tests passed on the simulator.

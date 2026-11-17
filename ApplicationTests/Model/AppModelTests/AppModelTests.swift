@@ -56,7 +56,7 @@ final class AppModelTests: XCTestCase {
         XCTFail("Composition must not load developer examples")
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
-      onboardingFeature: OnboardingFeature(),
+      onboardingFeature: OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -108,7 +108,7 @@ final class AppModelTests: XCTestCase {
         XCTFail("Composition must not load developer examples")
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
-      onboardingFeature: OnboardingFeature(),
+      onboardingFeature: OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())

@@ -136,7 +136,7 @@ final class AppDelegateViewModelTests: TestCase {
       devicePushRegistration: registration,
       sessionFeature: session,
       settingsFeature: self.settingsFeature,
-      onboardingFeature: OnboardingFeature(),
+      onboardingFeature: .live(),
       trackingDelay: { try Task.checkCancellation() }
     )
   }

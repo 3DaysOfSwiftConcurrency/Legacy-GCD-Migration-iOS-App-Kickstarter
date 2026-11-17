@@ -20,7 +20,7 @@ final class OnboardingViewModelTest: TestCase {
   override func setUp() async throws {
     try await super.setUp()
 
-    self.viewModel = OnboardingViewModel(with: Bundle.main, onboardingFeature: OnboardingFeature())
+    self.viewModel = OnboardingViewModel(with: Bundle.main, onboardingFeature: .live())
 
     self.viewModel.onTrackingPrompt = { [weak self] in
       self?.trackingPromptCount += 1
@@ -31,7 +31,10 @@ final class OnboardingViewModelTest: TestCase {
   func testClosingOnboardingSuppressesLateNotificationCompletion() async throws {
     let gate = AccountRequestGate<UNAuthorizationStatus>()
     defer { gate.releaseAll() }
-    let feature = OnboardingFeature(notificationStatus: { (try? await gate.request()) ?? .denied })
+    let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store },
+      notificationStatus: { (try? await gate.request()) ?? .denied }
+    )
     let model = OnboardingViewModel(onboardingFeature: feature)
     let advance = expectation(description: "Closed onboarding must not advance")
     advance.isInverted = true
@@ -46,6 +49,7 @@ final class OnboardingViewModelTest: TestCase {
   @MainActor
   func testRebindingOnboardingDeliversNotificationCompletionOnce() async throws {
     let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store },
       authorizeNotifications: { _ in true },
       registerNotifications: {},
       notificationStatus: { .denied })
@@ -72,6 +76,7 @@ final class OnboardingViewModelTest: TestCase {
   func testAlreadyAuthorizedNotificationsDoNotPromptOrAdvance() async {
     var requested = false
     let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store },
       authorizeNotifications: { _ in requested = true; return true },
       registerNotifications: {},
       notificationStatus: { .authorized }
@@ -91,6 +96,7 @@ final class OnboardingViewModelTest: TestCase {
     defer { gate.releaseAll() }
     var registrations = 0
     let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store },
       authorizeNotifications: { _ in (try? await gate.request()) ?? false },
       registerNotifications: { registrations += 1 }
     )
@@ -114,6 +120,7 @@ final class OnboardingViewModelTest: TestCase {
     var options: [UInt] = []
     var registrations = 0
     let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store },
       authorizeNotifications: { option in
         options.append(option.rawValue)
         return (try? await gate.request()) ?? false
@@ -138,6 +145,7 @@ final class OnboardingViewModelTest: TestCase {
     let gate = AccountRequestGate<UInt>()
     defer { gate.releaseAll() }
     let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store },
       trackingAuthorization: {
         let value = (try? await gate.request()) ?? ATTrackingManager.AuthorizationStatus.notDetermined.rawValue
         return ATTrackingManager.AuthorizationStatus(rawValue: value) ?? .notDetermined

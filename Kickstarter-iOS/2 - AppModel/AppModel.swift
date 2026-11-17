@@ -2,6 +2,21 @@ import Foundation
 import KsApi
 import Prelude
 
+extension OnboardingFeature {
+  static func live() -> OnboardingFeature {
+    OnboardingFeature(
+      completionStore: { AppEnvironment.current.userDefaults },
+      trackingAuthorization: {
+        await withCheckedContinuation { continuation in
+          AppEnvironment.current.appTrackingTransparency.requestAndSetAuthorizationStatus {
+            continuation.resume(returning: $0)
+          }
+        }
+      }
+    )
+  }
+}
+
 /// Retains one remote-configuration activation at a time for the active SDK client.
 ///
 /// This is application infrastructure rather than a product feature. `AppModel` receives
@@ -367,7 +382,7 @@ public final class AppModel {
       developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
       }),
-      onboardingFeature: OnboardingFeature(),
+      onboardingFeature: .live(),
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
