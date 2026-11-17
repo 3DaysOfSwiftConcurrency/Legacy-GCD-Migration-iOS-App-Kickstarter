@@ -1030,6 +1030,40 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
     }
   }
 
+  func testReplacingLatePledgeCannotReuseThePreviousApplePayIntent() async {
+    let service = MockService(
+      createCheckoutResult: .success(self.checkoutResponse),
+      createPaymentIntentResult: .success(PaymentIntentEnvelope(clientSecret: "fixture"))
+    )
+    let reward = Reward.noReward
+    func selection(bonus: Double) -> PledgeViewData {
+      PledgeViewData(
+        project: .cosmicSurgery, rewards: [reward], bonusSupport: bonus, selectedShippingRule: nil,
+        selectedQuantities: [reward.id: 1], selectedLocationId: nil, refTag: nil, context: .latePledge
+      )
+    }
+    await withEnvironment(apiService: service, currentUser: .template) {
+      self.vm.configure(with: selection(bonus: 5))
+      self.vm.viewDidLoad()
+      await self.runPayments()
+      let original = self.vm.paymentPresentation
+      XCTAssertNotNil(original)
+      self.vm.applePayButtonTapped()
+      self.goToApplePayPaymentAuthorization.assertValueCount(1)
+
+      self.vm.configure(with: selection(bonus: 10))
+      XCTAssertNotEqual(self.vm.paymentPresentation, original)
+      XCTAssertEqual(self.vm.paymentPresentation?.session, original?.session)
+      self.vm.applePayButtonTapped()
+      self.goToApplePayPaymentAuthorization.assertValueCount(1)
+
+      await self.runPayments()
+      self.vm.applePayButtonTapped()
+      self.goToApplePayPaymentAuthorization.assertValueCount(2)
+      XCTAssertEqual(self.goToApplePayPaymentAuthorization.lastValue?.total, 10)
+    }
+  }
+
   func testCreatePaymentIntent_emitsOnViewDidLoad() async {
     let paymentIntent = PaymentIntentEnvelope(clientSecret: "foo")
     let mockService = MockService(

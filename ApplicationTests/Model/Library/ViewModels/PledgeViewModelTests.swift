@@ -1236,6 +1236,45 @@ final class PledgeViewModelTests: TestCase {
     await self.feature.waitForOperations()
   }
 
+  func testReplacingPledgeAmountInvalidatesDelayedStripeSetup() async throws {
+    let checkout = Checkout(
+      id: "Q2hlY2tvdXQtMQ==", state: .successful,
+      backing: .init(clientSecret: "fixture", requiresAction: true)
+    )
+    let service = MockService(createBackingResult: .success(
+      CreateBackingEnvelope(createBacking: .init(checkout: checkout))
+    ))
+    let model = try XCTUnwrap(self.vm as? PledgeViewModel)
+    let reward = Reward.template |> Reward.lens.minimum .~ 5
+    func selection(bonus: Double) -> PledgeViewData {
+      PledgeViewData(
+        project: .template, rewards: [reward], bonusSupport: bonus, selectedShippingRule: self.shippingRule,
+        selectedQuantities: [reward.id: 1], selectedLocationId: nil, refTag: nil, context: .pledge
+      )
+    }
+    await withEnvironment(apiService: service, apiDelayInterval: .seconds(1), currentUser: .template) {
+      model.configure(with: selection(bonus: 10))
+      model.viewDidLoad()
+      let original = model.paymentPresentation
+      XCTAssertNotNil(original)
+      model.paymentAuthorizationDidAuthorizePayment(
+        paymentData: (displayName: "Visa", network: "Visa", transactionIdentifier: "fixture")
+      )
+      XCTAssertEqual(model.stripeTokenCreated(token: "fixture", error: nil), .success)
+      await self.feature.waitForOperations()
+      while !self.delayGate.isWaiting { await Task.yield() }
+
+      model.configure(with: selection(bonus: 20))
+      XCTAssertNotEqual(model.paymentPresentation, original)
+      XCTAssertEqual(model.paymentPresentation?.session, original?.session)
+      self.delayGate.resume()
+      await Task.yield()
+      self.beginSCAFlowWithClientSecret.assertDidNotEmitValue()
+      self.goToThanksProject.assertDidNotEmitValue()
+      self.processingViewIsHidden.assertLastValue(true)
+    }
+  }
+
   func testDelayedCreateDoesNotPresentAfterSessionChange() async {
     let checkout = Checkout(
       id: "Q2hlY2tvdXQtMQ==", state: .successful,

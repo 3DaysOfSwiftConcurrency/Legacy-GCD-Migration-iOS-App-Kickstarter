@@ -62,8 +62,8 @@ reject_matches 'Pledge owns checkout amount rules and API input construction.' \
   "$pledge_view_model" "$post_campaign_view_model"
 reject_matches 'Pledge owns backing draft construction and payment retry eligibility.' \
   'personalization[.]backing[?][.]paymentSource|savedCreditCardId|incremental = .*pledgeOverTime' "$pledge_view_model"
-reject_matches 'Checkout controllers use the same session identity as Pledge.' \
-  'AppModel[.]shared[.]sessionFeature' "$app_view/Views/PledgeView/Controllers/PledgeViewController.swift" \
+reject_matches 'Checkout controllers use the payment presentation from their ViewModel.' \
+  'AppModel[.]shared[.]sessionFeature|[.]sessionIdentity' "$app_view/Views/PledgeView/Controllers/PledgeViewController.swift" \
   "$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewController.swift"
 reject_matches 'Pledge CTA and shipping view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Shared Views/PledgeCTAContainerViewViewModel.swift" \

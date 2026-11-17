@@ -4029,3 +4029,24 @@ fixture was corrected before verification. Live Stripe behavior
 and visual parity remain unverified. The main checkout controllers
 still check session identity alone for some Apple Pay and Stripe
 confirmation callbacks.
+
+### Apple Pay and Stripe confirmation checkout scope — Matthew Thomas
+
+The main pledge and post-campaign controllers now validate native
+payment callbacks against the ViewModel's checkout revision and
+session. Pledge replaces the revision if the payment details change
+and stops observing the previous backing write. Post-campaign checkout
+clears the previous checkout ID, intent secrets, and validation
+observers when opening a replacement. The Payments and Pledge features
+still own admitted writes.
+
+Tests cover a backing response awaiting Stripe setup when the amount
+changes, attempts to re-use a late-pledge Apple Pay intent, and native
+Apple Pay and Stripe results after same-session replacement. The first
+native build caught a missing StripePayments import in the new test.
+The next Root Tabs audit includes UIKit presentation still deferred
+through DispatchQueue.main.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 147 focused tests,
+71 saved-card regressions, and 15 native payment callback tests.
+Live Stripe, Apple Pay, and visual parity remain unverified.

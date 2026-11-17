@@ -27,7 +27,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
   private struct ApplePayAuthorization {
     let context: STPApplePayContext
-    let session: PledgeFeature.SessionIdentity
+    let presentation: CheckoutPaymentPresentation
     let clientSecret: String
   }
   private var applePayAuthorization: ApplePayAuthorization?
@@ -89,7 +89,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
   private var sessionStartedObserver: MainActorNotificationObservation?
 
   private let pledgeFeature = AppModel.shared.pledgeFeature
-  private lazy var viewModel: PostCampaignCheckoutViewModelType =
+  private lazy var viewModel =
     PostCampaignCheckoutViewModel(
       pledgeFeature: self.pledgeFeature,
       authenticationFeature: AppModel.shared.authenticationFeature,
@@ -339,6 +339,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
   }
 
   private func confirmPayment(with validation: PaymentSourceValidation) {
+    guard let presentation = self.viewModel.paymentPresentation else { return }
     guard validation.requiresConfirmation else {
       // Short circuit for payment intents that have already been validated
       self.viewModel.inputs.confirmPaymentSuccessful(clientSecret: validation.paymentIntentClientSecret)
@@ -351,12 +352,10 @@ final class PostCampaignCheckoutViewController: UIViewController,
       paymentParams.paymentMethodId = id
     }
 
-    let feature = self.pledgeFeature
-    let session = feature.sessionIdentity
     self.confirmation.start(
       identity: .init(kind: .payment, clientSecret: validation.paymentIntentClientSecret,
                       paymentMethodID: validation.selectedCardStripeCardId),
-      isCurrent: { feature.sessionIdentity == session },
+      isCurrent: { [weak self] in self?.viewModel.paymentPresentation == presentation },
       begin: { completion in
         STPPaymentHandler.shared().confirmPayment(paymentParams, with: self) { status, _, error in
           completion(.init(status: status, error: error))
@@ -397,7 +396,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
   }
 
   private func goToPaymentAuthorization(_ paymentAuthorizationData: PostCampaignPaymentAuthorizationData) {
-    guard self.applePayAuthorization == nil else { return }
+    guard self.applePayAuthorization == nil, let presentation = self.viewModel.paymentPresentation else { return }
     let request = PKPaymentRequest.paymentRequest(for: paymentAuthorizationData)
     guard let applePayContext = STPApplePayContext(paymentRequest: request, delegate: self) else {
       self.viewModel.inputs.checkoutTerminated()
@@ -406,7 +405,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
     self.applePayAuthorization = ApplePayAuthorization(
       context: applePayContext,
-      session: self.pledgeFeature.sessionIdentity,
+      presentation: presentation,
       clientSecret: paymentAuthorizationData.paymentIntent
     )
     applePayContext.presentApplePay()
@@ -506,7 +505,7 @@ extension PostCampaignCheckoutViewController: STPApplePayContextDelegate {
     let result: Result<String, PostCampaignCheckoutApplePayError> = MainActor.assumeIsolated {
       guard let authorization = self.applePayAuthorization,
             ObjectIdentifier(authorization.context) == contextID,
-            self.pledgeFeature.sessionIdentity == authorization.session else {
+            self.viewModel.paymentPresentation == authorization.presentation else {
         return .failure(.missingPaymentIntent("Missing PaymentIntent"))
       }
       self.viewModel.inputs.applePayContextDidCreatePayment(with: paymentMethodID)
@@ -538,7 +537,7 @@ extension PostCampaignCheckoutViewController: STPApplePayContextDelegate {
       guard let authorization = self.applePayAuthorization,
             ObjectIdentifier(authorization.context) == contextID else { return }
       self.applePayAuthorization = nil
-      guard self.pledgeFeature.sessionIdentity == authorization.session else { return }
+      guard self.viewModel.paymentPresentation == authorization.presentation else { return }
       switch outcome {
       case .succeeded:
         self.viewModel.inputs.applePayContextDidComplete()

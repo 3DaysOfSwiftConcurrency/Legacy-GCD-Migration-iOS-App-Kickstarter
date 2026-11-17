@@ -14,6 +14,19 @@ public struct PledgeViewData: Equatable {
   public let refTag: RefTag?
   public let context: PledgeViewContext
 
+  func hasSamePaymentDetails(as other: PledgeViewData) -> Bool {
+    self.project.id == other.project.id &&
+      self.project.personalization.backing?.id == other.project.personalization.backing?.id &&
+      self.context == other.context &&
+      self.rewards.map(\.id) == other.rewards.map(\.id) &&
+      self.selectedQuantities == other.selectedQuantities &&
+      self.selectedLocationId == other.selectedLocationId &&
+      self.selectedShippingRule == other.selectedShippingRule &&
+      self.bonusSupport == other.bonusSupport &&
+      PledgeAmounts(self) == PledgeAmounts(other) &&
+      PostCampaignAmounts(self) == PostCampaignAmounts(other)
+  }
+
   func retriesExistingPayment(with payment: PaymentSourceSelected?) -> Bool {
     self.context == .fixPaymentMethod &&
       self.project.personalization.backing?.paymentSource?.id == payment?.savedCreditCardId
@@ -68,7 +81,7 @@ public typealias UpdateBackingData = (
   incremental: Bool
 )
 
-struct PledgeAmounts {
+struct PledgeAmounts: Equatable {
   let rewards: Double
   let shipping: Double
   let bonus: Double
@@ -89,7 +102,7 @@ struct PledgeAmounts {
   }
 }
 
-struct PostCampaignAmounts {
+struct PostCampaignAmounts: Equatable {
   let rewards: Double
   let shipping: Double
   let total: Double

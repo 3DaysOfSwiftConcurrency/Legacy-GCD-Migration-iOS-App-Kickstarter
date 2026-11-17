@@ -2,6 +2,7 @@
 @testable import KsApi
 
 import PassKit
+import StripePayments
 import XCTest
 
 @MainActor
@@ -83,6 +84,62 @@ final class ApplePayTokenOperationTests: XCTestCase {
     XCTAssertEqual(session.generation, admitted.generation)
     callback?(.init(tokenID: "late", error: nil))
     await task?.value
+    XCTAssertEqual(replies, [.failure])
+  }
+
+  func testReplacementPledgeRejectsNativeCallbacksInTheSameSession() async throws {
+    let service = MockService()
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: service) },
+      currentUser: { .template }, updateUser: { _ in }
+    )
+    let pledge = PledgeFeature(platform: .live(), sessionFeature: session, makeProvider: {
+      AsyncPledgeProvider(service: service)
+    })
+    let viewModel = PledgeViewModel(
+      pledgeFeature: pledge,
+      authenticationFeature: AuthenticationFeature(
+        sessionFeature: session, makeProvider: { AsyncAuthenticationProvider(service: service) }
+      ),
+      paymentsFeature: PaymentsFeature(
+        sessionFeature: session, makeProvider: { AsyncPaymentsProvider(service: service) }
+      ),
+      analytics: { AppEnvironment.current.ksrAnalytics },
+      currencyContext: { .live() },
+      hasEligibleApplePayCard: { _ in true },
+      responseDelay: { 0 },
+      stripePublishableKey: { "fixture" }
+    )
+    let reward = Reward.noReward
+    func selection(bonus: Double) -> PledgeViewData {
+      PledgeViewData(
+        project: .template, rewards: [reward], bonusSupport: bonus, selectedShippingRule: nil,
+        selectedQuantities: [reward.id: 1], selectedLocationId: nil, refTag: nil, context: .pledge
+      )
+    }
+    viewModel.configure(with: selection(bonus: 5))
+    let admitted = try XCTUnwrap(viewModel.paymentPresentation)
+    let isCurrent: @MainActor () -> Bool = { viewModel.paymentPresentation == admitted }
+    let tokenization = ApplePayTokenOperation()
+    let confirmation = StripeConfirmationOperation()
+    var tokenCallback: (@Sendable (ApplePayTokenOutcome) -> Void)?
+    var stripeCallback: (@Sendable (StripeConfirmationOutcome) -> Void)?
+    var replies: [PKPaymentAuthorizationStatus] = []
+    tokenization.start(isCurrent: isCurrent, begin: { tokenCallback = $0 }, apply: { _ in
+      XCTFail("The previous pledge cannot admit a backing"); return .success
+    }, reply: { replies.append($0.status) })
+    confirmation.start(identity: .init(kind: .setup, clientSecret: "fixture"), isCurrent: isCurrent,
+                       begin: { stripeCallback = $0 }, completed: { _ in
+      XCTFail("The previous pledge cannot complete a confirmation")
+    })
+
+    viewModel.configure(with: selection(bonus: 10))
+    XCTAssertEqual(viewModel.paymentPresentation?.session, admitted.session)
+    XCTAssertFalse(isCurrent())
+    tokenCallback?(.init(tokenID: "fixture", error: nil))
+    stripeCallback?(.init(status: .succeeded, error: nil))
+    await tokenization.task?.value
+    await confirmation.task?.value
     XCTAssertEqual(replies, [.failure])
   }
 

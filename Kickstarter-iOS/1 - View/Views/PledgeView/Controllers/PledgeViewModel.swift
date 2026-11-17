@@ -3,6 +3,11 @@ import KsApi
 import PassKit
 import Prelude
 
+struct CheckoutPaymentPresentation: Equatable {
+  let revision: UUID
+  let session: PledgeFeature.SessionIdentity
+}
+
 public typealias PledgeViewCTAContainerViewData = (
   project: Project,
   total: Double,
@@ -78,6 +83,13 @@ public protocol PledgeViewModelType {
 @MainActor
 public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   PledgeViewModelOutputs {
+  private let pledgeFeature: PledgeFeature
+  private var paymentRevision = UUID()
+  var paymentPresentation: CheckoutPaymentPresentation? {
+    guard self.configuredData != nil else { return nil }
+    return CheckoutPaymentPresentation(revision: self.paymentRevision, session: self.pledgeFeature.sessionIdentity)
+  }
+
   private let analytics: () -> KSRAnalytics
   private let currencyContext: @MainActor () -> PledgeCurrencyContext
   private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
@@ -96,6 +108,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
+    self.pledgeFeature = pledgeFeature
     self.analytics = analytics
     self.currencyContext = currencyContext
     self.hasEligibleApplePayCard = hasEligibleApplePayCard
@@ -138,7 +151,6 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       let identity = isCreate ? self.createIdentity : self.updateIdentity
       guard identity.id == id else { return }
       guard pledgeFeature.sessionIdentity == session else {
-        identity.id = UUID()
         processingState.setHidden(true)
         return
       }
@@ -250,6 +262,9 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       let request = pledgeFeature.startCreate(data, isApplePay: isApplePay)
       processingState.setHidden(false)
       self.createTask = Task { [weak self] in
+        defer {
+          if self?.createIdentity.id == id { self?.createTask = nil }
+        }
         do {
           let result = try await request.value
           guard !Task.isCancelled else { return }
@@ -272,6 +287,9 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       let request = pledgeFeature.startUpdate(data, isApplePay: isApplePay)
       processingState.setHidden(false)
       self.updateTask = Task { [weak self] in
+        defer {
+          if self?.updateIdentity.id == id { self?.updateTask = nil }
+        }
         do {
           let result = try await request.value
           guard !Task.isCancelled else { return }
@@ -330,10 +348,25 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   private let formState = PledgeFormState()
 
   public func configure(with data: PledgeViewData) {
+    let replacing = self.configuredData.map { !$0.hasSamePaymentDetails(as: data) } ?? false
+    let wasProcessing = self.createTask != nil || self.updateTask != nil
+    if replacing {
+      self.paymentRevision = UUID()
+      self.createIdentity.id = UUID()
+      self.updateIdentity.id = UUID()
+      self.createTask?.cancel()
+      self.updateTask?.cancel()
+      self.createTask = nil
+      self.updateTask = nil
+      self.applePayAuthorization.reset()
+      self.completionState.reset()
+      self.thanksState.hasCheckoutResult = false
+    }
     // A request from the previous configuration must never be submitted for this pledge.
     self.latestCreateBackingData = nil
     self.latestUpdateBackingData = nil
     self.configuredData = data
+    if replacing && wasProcessing { self.onProcessingHidden?(true) }
     self.publishInitialDataWhenReady()
   }
 
@@ -534,6 +567,16 @@ private final class PledgeCompletionState {
   private var error: ErrorEnvelope?
 
   func setContext(_ context: PledgeViewContext) { self.context = context }
+
+  func reset() {
+    context = nil
+    isApplePay = false
+    hasStarted = false
+    hasValue = false
+    terminal = false
+    didFinishApplePay = false
+    error = nil
+  }
 
   func begin(context: PledgeViewContext, isApplePay: Bool) {
     self.context = context
@@ -745,6 +788,8 @@ private final class ApplePayAuthorization {
   var onSuccess: (() -> Void)?
   var onParams: ((ApplePayParams) -> Void)?
   private var payment: PKPaymentData?
+
+  func reset() { self.payment = nil }
 
   func authorized(_ data: (displayName: String?, network: String?, transactionIdentifier: String)) {
     guard let name = data.displayName, let network = data.network else { self.payment = nil; return }

@@ -47,6 +47,13 @@ private final class PostCampaignApplePayState {
   private var selectedSecret: String?
   private var paymentMethodID: String?
 
+  func resetCheckout() {
+    checkoutID = nil
+    intentSecret = nil
+    selectedSecret = nil
+    paymentMethodID = nil
+  }
+
   func setCheckoutID(_ value: String) { checkoutID = value }
   func setIntentSecret(_ value: String) { intentSecret = value }
   func setPaymentMethodID(_ value: String) { paymentMethodID = value }
@@ -78,8 +85,21 @@ private final class PostCampaignCardState {
   private var selectedCard: PaymentSourceSelected?
   private var selectedSecret: String?
 
+  func resetCheckout(keepSelectedCard: Bool) {
+    checkoutID = nil
+    intentSecret = nil
+    selectedSecret = nil
+    if !keepSelectedCard { selectedCard = nil }
+  }
+
   func setCheckoutID(_ value: String) { checkoutID = value; notifyIfReady() }
-  func setIntentSecret(_ value: String) { intentSecret = value }
+  func setIntentSecret(_ value: String) {
+    intentSecret = value
+    if selectedCard != nil {
+      selectedSecret = value
+      notifyIfReady()
+    }
+  }
   func select(_ value: PaymentSourceSelected?) {
     guard let value else { return }
     selectedCard = value
@@ -202,6 +222,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     responseDelay: @escaping @MainActor () -> TimeInterval,
     stripePublishableKey: @escaping () -> String
   ) {
+    self.pledgeFeature = pledgeFeature
     self.analytics = analytics
     self.currencyContext = currencyContext
     self.hasEligibleApplePayCard = hasEligibleApplePayCard
@@ -255,12 +276,14 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
 
     openingState.onOpen = { [weak self] data in
       guard let self else { return }
-      self.activeCheckoutData = data
-      self.paymentIntentTask?.cancel()
-      self.checkoutTask?.cancel()
       let session = pledgeFeature.sessionIdentity
-      let id = UUID()
-      self.checkoutIdentity.id = id
+      guard session.userID != nil else { return }
+      let keepSelectedCard = self.activeCheckoutSession == nil ||
+        (self.activeCheckoutSession == session && self.activeCheckoutData?.hasSamePaymentDetails(as: data) == true)
+      self.invalidateCheckout(keepSelectedCard: keepSelectedCard)
+      self.activeCheckoutData = data
+      self.activeCheckoutSession = session
+      let id = self.checkoutIdentity.id
       let request = pledgeFeature.startOpenCheckout(data)
       self.checkoutTask = Task { [weak self] in
         do {
@@ -279,7 +302,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       }
     }
     self.startCompletion = { [weak self] input in
-      guard let self else { return }
+      guard let self, self.paymentPresentation != nil else { return }
       self.completionTask?.cancel()
       let session = pledgeFeature.sessionIdentity
       let id = UUID()
@@ -305,13 +328,15 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     }
     appleState.onComplete = { [weak self] in self?.startCompletion?($0) }
     cardState.onSubmit = { [weak self] checkoutID, card, secret in
+      guard let self, self.paymentPresentation != nil else { return }
       assert(card.stripePaymentMethodId.isSome && card.stripePaymentMethodId != "",
              "Payment method ID should not be missing in a late pledge context.")
-      self?.cardValidation.start(feature: pledgeFeature, checkoutID: checkoutID,
+      self.cardValidation.start(feature: pledgeFeature, checkoutID: checkoutID,
                                  sourceID: card.stripePaymentMethodId ?? "", secret: secret)
     }
     appleState.onValidate = { [weak self] checkoutID, paymentMethodID, secret in
-      self?.applePayValidation.start(feature: pledgeFeature, checkoutID: checkoutID,
+      guard let self, self.paymentPresentation != nil else { return }
+      self.applePayValidation.start(feature: pledgeFeature, checkoutID: checkoutID,
                                      sourceID: paymentMethodID, secret: secret)
     }
     self.deliverCheckout = { [weak self] result in
@@ -485,6 +510,14 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
 
   private var configuredData: PledgeViewData?
   private var activeCheckoutData: PledgeViewData?
+  private var activeCheckoutSession: PledgeFeature.SessionIdentity?
+  private let pledgeFeature: PledgeFeature
+
+  var paymentPresentation: CheckoutPaymentPresentation? {
+    guard let session = self.activeCheckoutSession, self.pledgeFeature.sessionIdentity == session else { return nil }
+    return CheckoutPaymentPresentation(revision: self.checkoutIdentity.id, session: session)
+  }
+
   private var trackingCheckoutID: String?
   private var hasTrackingCheckoutResult = false
   private var hasTrackedCheckoutError = false
@@ -496,7 +529,26 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   private let cardState = PostCampaignCardState()
   private let applePayState = PostCampaignApplePayState()
 
+  private func invalidateCheckout(keepSelectedCard: Bool) {
+    self.checkoutIdentity.id = UUID()
+    self.completionIdentity.id = UUID()
+    self.checkoutTask?.cancel()
+    self.paymentIntentTask?.cancel()
+    self.completionTask?.cancel()
+    self.cardValidation.cancel()
+    self.applePayValidation.cancel()
+    self.cardState.resetCheckout(keepSelectedCard: keepSelectedCard)
+    self.applePayState.resetCheckout()
+    let hadCheckout = self.activeCheckoutData != nil
+    self.activeCheckoutData = nil
+    self.activeCheckoutSession = nil
+    if hadCheckout { self.ctaState.setEnabled(false) }
+  }
+
   public func configure(with data: PledgeViewData) {
+    if let previous = self.configuredData, !previous.hasSamePaymentDetails(as: data) {
+      self.invalidateCheckout(keepSelectedCard: false)
+    }
     self.configuredData = data
     self.publishInitialDataWhenReady()
   }
@@ -538,6 +590,9 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   }
 
   public func userSessionDidChange() {
+    if let session = self.activeCheckoutSession, self.pledgeFeature.sessionIdentity != session {
+      self.invalidateCheckout(keepSelectedCard: false)
+    }
     self.loginSignupUseCase.userSessionDidChange()
   }
 
@@ -638,6 +693,12 @@ private final class CheckoutValidationLane {
   deinit { self.task?.cancel() }
 
   func waitForOperation() async { await self.task?.value }
+
+  func cancel() {
+    self.identity.id = UUID()
+    self.task?.cancel()
+    self.task = nil
+  }
 
   func start(feature: PledgeFeature, checkoutID: String, sourceID: String, secret: String) {
     self.task?.cancel()
