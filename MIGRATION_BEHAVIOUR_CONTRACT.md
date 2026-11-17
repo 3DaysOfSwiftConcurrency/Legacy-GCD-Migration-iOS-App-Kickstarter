@@ -2137,3 +2137,15 @@ safe for arbitrary concurrent environment mutation.
   direct composed-payload proof. The bounded AppModel, Rewards, Manage Pledge and checkout
   selection passes 214 tests. Live analytics delivery, visual snapshots and the whole
   Library suite remain outside this checkpoint.
+
+## Project Page feature graph — 17 November 2026
+
+- AppModel exposes one ProjectPageComposition containing the exact Project Details,
+  Project Media, Rewards and Project Reporting feature instances owned by the application.
+- ProjectPageViewController builds its view model and downstream Rewards and reporting
+  flows from that one graph. Existing static factories still default to the AppModel
+  composition boundary so legacy callers retain their behavior while accepting an
+  explicit graph for tests and future caller migration.
+- Focused AppModel and Project Page coverage passes 72 tests. The bounded AppModel,
+  Rewards, Manage Pledge and checkout selection passes 214 tests. Visual snapshots and
+  the whole Library suite remain outside this checkpoint.

@@ -28,11 +28,9 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   // MARK: Properties
 
   private let dataSource = ProjectPageViewControllerDataSource()
-  private let viewModel: ProjectPageViewModelType = ProjectPageViewModel(
-    projectDetailsFeature: AppModel.shared.projectDetailsFeature,
-    projectMediaFeature: AppModel.shared.projectMediaFeature
-  )
-  private let projectDetailsFeature = AppModel.shared.projectDetailsFeature
+  private let composition: ProjectPageComposition
+  private let viewModel: ProjectPageViewModelType
+  private var projectDetailsFeature: ProjectDetailsFeature { self.composition.projectDetailsFeature }
 
   private var navigation: ProjectPageNavigation = ProjectPageNavigation()
 
@@ -92,12 +90,14 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   public static func navigationController(
     withProjectOrParam projectOrParam: Either<Project, any ProjectPageParam>,
     refInfo: RefInfo?,
-    secretRewardToken: String? = nil
+    secretRewardToken: String? = nil,
+    composition: ProjectPageComposition = AppModel.shared.projectPageComposition
   ) -> UINavigationController {
     let vc = ProjectPageViewController.configuredWith(
       projectOrParam: projectOrParam,
       refInfo: refInfo,
-      secretRewardToken: secretRewardToken
+      secretRewardToken: secretRewardToken,
+      composition: composition
     )
 
     return ProjectPageViewController.navigationController(withViewControllers: [vc])
@@ -106,9 +106,10 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   public static func configuredWith(
     projectOrParam: Either<Project, any ProjectPageParam>,
     refInfo: RefInfo?,
-    secretRewardToken: String? = nil
+    secretRewardToken: String? = nil,
+    composition: ProjectPageComposition = AppModel.shared.projectPageComposition
   ) -> ProjectPageViewController {
-    let vc = ProjectPageViewController.instantiate()
+    let vc = ProjectPageViewController(composition: composition)
 
     vc.viewModel.inputs.configureWith(
       projectOrParam: projectOrParam,
@@ -117,6 +118,19 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
     )
 
     return vc
+  }
+
+  private init(composition: ProjectPageComposition) {
+    self.composition = composition
+    self.viewModel = ProjectPageViewModel(
+      projectDetailsFeature: composition.projectDetailsFeature,
+      projectMediaFeature: composition.projectMediaFeature
+    )
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("ProjectPageViewController must be created with a ProjectPageComposition")
   }
 
   public override func viewDidLoad() {
@@ -747,7 +761,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
       with: project,
       refTag: refTag,
       secretRewardToken: secretRewardToken,
-      rewardsFeature: AppModel.shared.rewardsFeature
+      rewardsFeature: self.composition.rewardsFeature
     )
 
     assert(
@@ -796,7 +810,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   }
 
   private func goToReportProject(projectID: String, projectUrl: String) {
-    let reporting = AppModel.shared.projectReportingFeature
+    let reporting = self.composition.projectReportingFeature
     let reportProjectInfoView = ReportProjectInfoView(
       projectID: projectID,
       projectUrl: projectUrl,

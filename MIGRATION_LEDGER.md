@@ -5332,3 +5332,26 @@ Live analytics delivery, visual snapshots and the whole Library suite remain unv
 The CFA gate rejects restored analytics and tracking globals in Project Page presentation.
 This is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
+
+### Project Page feature graph — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes ProjectPageComposition as the explicit graph for Project Details,
+Project Media, Rewards and Project Reporting. ProjectPageViewController constructs its
+view model and its downstream Rewards and reporting routes from those exact shared
+feature instances instead of resolving each dependency separately. The legacy static
+factories keep AppModel.projectPageComposition as their default boundary while permitting
+an explicit composition to be supplied.
+
+Focused AppModel and Project Page validation passed all 72 tests. The bounded AppModel,
+Rewards, Reward Add-On Selection, Manage Pledge, pledge checkout and post-campaign
+checkout selection passed all 214 tests. Both runs had zero failures and skips on iPhone
+17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-project-page-feature-graph-focused-final.xcresult` and
+`/private/tmp/kickstarter-project-page-feature-graph-bounded.xcresult`.
+
+Visual snapshots and the whole Library suite remain unverified. The CFA gate rejects
+restoring individual AppModel feature lookups in ProjectPageViewController. This is not
+full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.

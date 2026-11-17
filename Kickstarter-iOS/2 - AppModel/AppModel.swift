@@ -114,6 +114,25 @@ extension OnboardingFeature {
 }
 
 /// Application composition root. Features own shared state and directly awaitable workflows.
+public struct ProjectPageComposition {
+  public let projectDetailsFeature: ProjectDetailsFeature
+  public let projectMediaFeature: ProjectMediaFeature
+  public let rewardsFeature: RewardsFeature
+  public let projectReportingFeature: ProjectReportingFeature
+
+  public init(
+    projectDetailsFeature: ProjectDetailsFeature,
+    projectMediaFeature: ProjectMediaFeature,
+    rewardsFeature: RewardsFeature,
+    projectReportingFeature: ProjectReportingFeature
+  ) {
+    self.projectDetailsFeature = projectDetailsFeature
+    self.projectMediaFeature = projectMediaFeature
+    self.rewardsFeature = rewardsFeature
+    self.projectReportingFeature = projectReportingFeature
+  }
+}
+
 @MainActor
 public final class AppModel {
   public static let shared = AppModel.live()
@@ -142,6 +161,15 @@ public final class AppModel {
   public let rewardsFeature: RewardsFeature
   public let discussionFeature: DiscussionFeature
   public let projectMediaFeature: ProjectMediaFeature
+
+  public var projectPageComposition: ProjectPageComposition {
+    ProjectPageComposition(
+      projectDetailsFeature: self.projectDetailsFeature,
+      projectMediaFeature: self.projectMediaFeature,
+      rewardsFeature: self.rewardsFeature,
+      projectReportingFeature: self.projectReportingFeature
+    )
+  }
 
   public init(
     developerExamplesFeature: DeveloperExamplesFeature,

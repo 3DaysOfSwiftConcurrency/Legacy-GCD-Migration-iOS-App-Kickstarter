@@ -381,6 +381,14 @@ final class AppModelTests: XCTestCase {
     XCTAssertFalse(first.discussionFeature === second.discussionFeature)
     XCTAssertFalse(first.projectMediaFeature === second.projectMediaFeature)
     XCTAssertTrue(first.projectMediaFeature.sessionFeature === first.sessionFeature)
+    XCTAssertTrue(
+      first.projectPageComposition.projectDetailsFeature === first.projectDetailsFeature
+    )
+    XCTAssertTrue(first.projectPageComposition.projectMediaFeature === first.projectMediaFeature)
+    XCTAssertTrue(first.projectPageComposition.rewardsFeature === first.rewardsFeature)
+    XCTAssertTrue(
+      first.projectPageComposition.projectReportingFeature === first.projectReportingFeature
+    )
     XCTAssertTrue(first.discoveryFeature.snapshot(for: .magic).projects.isEmpty)
     XCTAssertEqual(firstProvider.requestCount, 0)
     XCTAssertEqual(secondProvider.requestCount, 0)
