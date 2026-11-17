@@ -118,6 +118,9 @@ Swift packages are excluded.
 - Manage Pledge status presentation now receives its web-host policy from the
   controller's composed PledgeFeature. The reusable view no longer reaches through
   AppModel to an unrelated Project Details owner.
+- OnboardingFeature now receives onboarding analytics alongside its completion and
+  permission capabilities. OnboardingViewModel reports page, CTA and permission-dialog
+  events through the composed Feature rather than the process environment.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

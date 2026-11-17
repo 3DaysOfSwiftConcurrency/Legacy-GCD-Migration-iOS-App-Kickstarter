@@ -249,6 +249,9 @@ reject_matches 'OAuth authorization receives server policy from Authentication c
   'AppEnvironment[.]current' "$app_model/Features/Authentication/OAuth.swift"
 reject_matches 'Onboarding permission policy belongs to OnboardingFeature.' \
   'AppEnvironment[.]current|allowTrackingTapped' "$app_model/Features/Onboarding/OnboardingUseCase.swift"
+reject_matches 'Onboarding analytics belong to OnboardingFeature composition.' \
+  'AppEnvironment[.]current|ksrAnalytics' \
+  "$app_view/Views/Onboarding/Views/OnboardingViewModel.swift"
 reject_matches 'Apple Pay request policy belongs to PaymentsFeature composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Payments/PKPaymentRequest+Helpers.swift"
 reject_matches 'Payment presentation reads Stripe policy through PaymentsFeature.' \

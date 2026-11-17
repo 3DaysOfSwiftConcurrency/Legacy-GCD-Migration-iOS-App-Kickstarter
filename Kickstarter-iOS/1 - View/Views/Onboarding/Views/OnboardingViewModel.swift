@@ -74,7 +74,7 @@ public final class OnboardingViewModel {
   // MARK: - Inputs
 
   public func onAppear() {
-    AppEnvironment.current.ksrAnalytics.trackOnboardingPageViewed(at: .welcome)
+    self.onboardingFeature.trackPageViewed(.welcome)
   }
 
   public func getNotifiedTapped() {
@@ -85,7 +85,7 @@ public final class OnboardingViewModel {
       let existing = await feature.currentNotificationStatus()
       guard !Task.isCancelled, let self, self.completionVersion == version else { return }
       guard existing != .authorized else { self.completionTask = nil; return }
-      AppEnvironment.current.ksrAnalytics.trackSystemPermissionsDialogViewed(on: .onboardingNotificationsDialog)
+      feature.trackPermissionsDialogViewed(.onboardingNotificationsDialog)
       _ = await feature.requestNotifications(options: [.alert, .sound, .badge])
       guard !Task.isCancelled, self.completionVersion == version else { return }
       let status = await feature.currentNotificationStatus()
@@ -93,61 +93,43 @@ public final class OnboardingViewModel {
       self.onNotificationCompletion?(status)
     }
 
-    AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(
-      context: .onboardingGetNotified,
-      item: .enableNotifications
-    )
+    feature.trackButtonTapped(.onboardingGetNotified, item: .enableNotifications)
   }
 
   public func allowTrackingTapped() {
     if self.onboardingFeature.shouldRequestTrackingAuthorization, let prompt = self.onTrackingPrompt {
-      AppEnvironment.current.ksrAnalytics.trackSystemPermissionsDialogViewed(on: .onboardingAppTrackingDialog)
+      self.onboardingFeature.trackPermissionsDialogViewed(.onboardingAppTrackingDialog)
       prompt()
     }
 
-    AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(
-      context: .onboardingAllowTracking,
-      item: .allowTracking
-    )
+    self.onboardingFeature.trackButtonTapped(.onboardingAllowTracking, item: .allowTracking)
   }
 
   public func didCompletePushNotificationsDialog(with authStatus: UNAuthorizationStatus) {
     /// Send analytics event when the user has finished interacting with the PN system dialog. `authStatus` let's insights know whether they allowed or denied permissions.
 
-    AppEnvironment.current.ksrAnalytics.trackPushNotificationPermissionsDialogInteraction(
-      .onboardingNotificationsDialog,
-      authStatus: authStatus
-    )
+    self.onboardingFeature.trackPushPermissionCompleted(.onboardingNotificationsDialog, status: authStatus)
   }
 
   public func didCompleteAppTrackingDialog(with authStatus: ATTrackingManager.AuthorizationStatus) {
     /// Send analytics event if the user has allowed AppTracking permission.
     guard authStatus == .authorized else { return }
 
-    AppEnvironment.current.ksrAnalytics.trackAppTrackingTransparencyPermissionsDialogInteraction(
-      .onboardingAppTrackingDialog
-    )
+    self.onboardingFeature.trackTrackingPermissionCompleted(.onboardingAppTrackingDialog)
   }
 
   public func goToLoginSignupTapped() {
-    AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(
-      context: .onboardingSignUpLogIn,
-      item: .loginSignUp
-    )
-
-    AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(context: .onboardingClose)
+    self.onboardingFeature.trackButtonTapped(.onboardingSignUpLogIn, item: .loginSignUp)
+    self.onboardingFeature.trackButtonTapped(.onboardingClose)
   }
 
   public func onboardingFlowEnded() {
     self.onboardingFeature.recordCompletion()
-    AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(context: .onboardingClose)
+    self.onboardingFeature.trackButtonTapped(.onboardingClose)
   }
 
   public func goToNextItemTapped(item: OnboardingItem) {
-    AppEnvironment.current.ksrAnalytics.trackOnboardingPageViewed(at: item.type)
-    AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(
-      context: .onboardingNext,
-      item: item.type
-    )
+    self.onboardingFeature.trackPageViewed(item.type)
+    self.onboardingFeature.trackButtonTapped(.onboardingNext, item: item.type)
   }
 }

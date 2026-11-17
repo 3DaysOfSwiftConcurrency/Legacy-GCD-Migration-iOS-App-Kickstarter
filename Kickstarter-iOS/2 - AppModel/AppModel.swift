@@ -97,7 +97,18 @@ extension OnboardingFeature {
       shouldRequestTracking: { AppEnvironment.current.appTrackingTransparency.shouldRequestAuthorizationStatus() },
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       tracking: { AppEnvironment.current.appTrackingTransparency },
-      trackingDelay: trackingDelay
+      trackingDelay: trackingDelay,
+      analytics: .init(
+        pageViewed: { AppEnvironment.current.ksrAnalytics.trackOnboardingPageViewed(at: $0) },
+        buttonTapped: { AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(context: $0, item: $1) },
+        permissionsDialogViewed: { AppEnvironment.current.ksrAnalytics.trackSystemPermissionsDialogViewed(on: $0) },
+        pushPermissionCompleted: {
+          AppEnvironment.current.ksrAnalytics.trackPushNotificationPermissionsDialogInteraction($0, authStatus: $1)
+        },
+        trackingPermissionCompleted: {
+          AppEnvironment.current.ksrAnalytics.trackAppTrackingTransparencyPermissionsDialogInteraction($0)
+        }
+      )
     )
   }
 }

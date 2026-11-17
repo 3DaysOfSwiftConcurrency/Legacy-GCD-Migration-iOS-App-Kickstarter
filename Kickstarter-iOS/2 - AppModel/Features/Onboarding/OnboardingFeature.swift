@@ -6,6 +6,28 @@ import UserNotifications
 /// Owns onboarding completion, permission eligibility, and application-scoped consent requests.
 @MainActor
 public final class OnboardingFeature {
+  public struct Analytics {
+    let pageViewed: @MainActor (OnboardingItemType) -> Void
+    let buttonTapped: @MainActor (KSRAnalytics.CTAContext, OnboardingItemType?) -> Void
+    let permissionsDialogViewed: @MainActor (KSRAnalytics.SectionContext) -> Void
+    let pushPermissionCompleted: @MainActor (KSRAnalytics.SectionContext, UNAuthorizationStatus) -> Void
+    let trackingPermissionCompleted: @MainActor (KSRAnalytics.SectionContext) -> Void
+
+    public init(
+      pageViewed: @escaping @MainActor (OnboardingItemType) -> Void = { _ in },
+      buttonTapped: @escaping @MainActor (KSRAnalytics.CTAContext, OnboardingItemType?) -> Void = { _, _ in },
+      permissionsDialogViewed: @escaping @MainActor (KSRAnalytics.SectionContext) -> Void = { _ in },
+      pushPermissionCompleted: @escaping @MainActor (KSRAnalytics.SectionContext, UNAuthorizationStatus) -> Void = { _, _ in },
+      trackingPermissionCompleted: @escaping @MainActor (KSRAnalytics.SectionContext) -> Void = { _ in }
+    ) {
+      self.pageViewed = pageViewed
+      self.buttonTapped = buttonTapped
+      self.permissionsDialogViewed = permissionsDialogViewed
+      self.pushPermissionCompleted = pushPermissionCompleted
+      self.trackingPermissionCompleted = trackingPermissionCompleted
+    }
+  }
+
   private struct PendingNotificationRequest {
     let id: UUID
     let options: UInt
@@ -23,6 +45,7 @@ public final class OnboardingFeature {
   private let pushRegistration: () -> PushRegistrationType.Type
   private let tracking: () -> (any AppTrackingTransparencyType)?
   private let trackingDelay: @MainActor () async throws -> Void
+  private let analytics: Analytics
   private var pushOperations: [UUID: Task<Void, Never>] = [:]
   private var trackingChecks: [UUID: Task<Void, Never>] = [:]
   private var hasDeniedPushAuthorization = false
@@ -49,7 +72,8 @@ public final class OnboardingFeature {
     trackingAuthorization: (() async -> ATTrackingManager.AuthorizationStatus)? = nil,
     pushRegistration: @escaping () -> PushRegistrationType.Type = { PushRegistration.self },
     tracking: @escaping () -> (any AppTrackingTransparencyType)? = { nil },
-    trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
+    trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) },
+    analytics: Analytics = Analytics()
   ) {
     self.completionStore = completionStore
     self.authorizeNotifications = authorizeNotifications
@@ -60,6 +84,7 @@ public final class OnboardingFeature {
     self.pushRegistration = pushRegistration
     self.tracking = tracking
     self.trackingDelay = trackingDelay
+    self.analytics = analytics
   }
 
   public var hasSeenOnboarding: Bool { self.completionStore().hasSeenOnboarding }
@@ -70,6 +95,22 @@ public final class OnboardingFeature {
     return tracking.advertisingIdentifier == nil && tracking.shouldRequestAuthorizationStatus()
   }
   public func currentNotificationStatus() async -> UNAuthorizationStatus { await self.notificationStatus() }
+
+  public func trackPageViewed(_ item: OnboardingItemType) { self.analytics.pageViewed(item) }
+  public func trackButtonTapped(_ context: KSRAnalytics.CTAContext, item: OnboardingItemType? = nil) {
+    self.analytics.buttonTapped(context, item)
+  }
+  public func trackPermissionsDialogViewed(_ section: KSRAnalytics.SectionContext) {
+    self.analytics.permissionsDialogViewed(section)
+  }
+  public func trackPushPermissionCompleted(
+    _ section: KSRAnalytics.SectionContext, status: UNAuthorizationStatus
+  ) {
+    self.analytics.pushPermissionCompleted(section, status)
+  }
+  public func trackTrackingPermissionCompleted(_ section: KSRAnalytics.SectionContext) {
+    self.analytics.trackingPermissionCompleted(section)
+  }
 
   /// A system prompt is application-scoped. Equal callers share it, while a
   /// different option set waits for the admitted prompt to settle.

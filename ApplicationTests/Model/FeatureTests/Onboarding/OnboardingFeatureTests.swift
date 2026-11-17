@@ -6,6 +6,38 @@ import XCTest
 
 @MainActor
 final class OnboardingFeatureTests: XCTestCase {
+  func testAnalyticsUseComposedCapability() {
+    var pages: [OnboardingItemType] = []
+    var buttons: [(KSRAnalytics.CTAContext, OnboardingItemType?)] = []
+    var dialogs: [KSRAnalytics.SectionContext] = []
+    var pushCompletions: [(KSRAnalytics.SectionContext, UNAuthorizationStatus)] = []
+    var trackingCompletions: [KSRAnalytics.SectionContext] = []
+    let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store },
+      analytics: .init(
+        pageViewed: { pages.append($0) },
+        buttonTapped: { buttons.append(($0, $1)) },
+        permissionsDialogViewed: { dialogs.append($0) },
+        pushPermissionCompleted: { pushCompletions.append(($0, $1)) },
+        trackingPermissionCompleted: { trackingCompletions.append($0) }
+      )
+    )
+
+    feature.trackPageViewed(.welcome)
+    feature.trackButtonTapped(.onboardingNext, item: .saveProjects)
+    feature.trackPermissionsDialogViewed(.onboardingNotificationsDialog)
+    feature.trackPushPermissionCompleted(.onboardingNotificationsDialog, status: .authorized)
+    feature.trackTrackingPermissionCompleted(.onboardingAppTrackingDialog)
+
+    XCTAssertEqual(pages, [.welcome])
+    XCTAssertEqual(buttons.map(\.0), [.onboardingNext])
+    XCTAssertEqual(buttons.map(\.1), [.saveProjects])
+    XCTAssertEqual(dialogs.map(\.trackingString), ["enable_notifications_prompt"])
+    XCTAssertEqual(pushCompletions.map(\.0.trackingString), ["enable_notifications_prompt"])
+    XCTAssertEqual(pushCompletions.map(\.1), [.authorized])
+    XCTAssertEqual(trackingCompletions.map(\.trackingString), ["activity_tracking_prompt"])
+  }
+
   func testTrackingAuthorizationEligibilityUsesComposedTrackingAdapter() {
     let tracking = MockAppTrackingTransparency()
     tracking.shouldRequestAuthStatus = true

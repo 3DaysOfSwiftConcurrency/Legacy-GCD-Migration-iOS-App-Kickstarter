@@ -5132,3 +5132,26 @@ Live backing-details navigation, visual rendering and the whole Library suite re
 unverified. The CFA gate rejects restored AppModel/environment access in the reusable
 status view. This is not full CFA compliance. Swift packages, target identifiers and
 existing history are unchanged. No push.
+
+### Onboarding analytics composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now supplies page, CTA, system-dialog and permission-result analytics to
+OnboardingFeature. OnboardingViewModel retains presentation sequencing and appearance
+bindings while reporting through that Feature; it no longer reads AppEnvironment.
+Completion state, shared permission requests, authorization gating, event contexts and
+event ordering remain unchanged.
+
+Focused Onboarding Feature and view-model validation passed all 24 tests. The bounded
+AppModel, Onboarding and root main-module selection passed all 33 tests, and the root
+presentation selection passed all 37 tests. All successful runs had zero failures and
+skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-onboarding-analytics-focused-4.xcresult`,
+`/private/tmp/kickstarter-onboarding-analytics-bounded.xcresult` and
+`/private/tmp/kickstarter-onboarding-analytics-presentation.xcresult`.
+
+Live analytics delivery, system permission UI, visual rendering and the whole Library
+and Presentation suites remain unverified. The CFA gate rejects restored global
+analytics access in OnboardingViewModel. This is not full CFA compliance. Swift packages,
+target identifiers and existing history are unchanged. No push.

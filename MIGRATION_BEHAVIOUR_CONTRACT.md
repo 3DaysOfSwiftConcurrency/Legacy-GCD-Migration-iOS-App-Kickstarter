@@ -2029,3 +2029,15 @@ safe for arbitrary concurrent environment mutation.
   are unchanged.
 - Focused status, summary and Pledge Feature tests and the bounded Manage Pledge/AppModel
   selection pass. Live navigation and visual rendering remain outside this checkpoint.
+
+## Onboarding analytics composition — 17 November 2026
+
+- AppModel supplies OnboardingFeature's page, CTA, system-dialog and permission-result
+  analytics capability. The Feature remains the shared owner of completion and system
+  permission requests and is now also the reporting boundary for that workflow.
+- OnboardingViewModel retains appearance bindings and presentation sequencing but no
+  longer resolves analytics through AppEnvironment. Existing event names, contexts,
+  prompt ordering, authorization gating and completion behavior are unchanged.
+- Direct Feature coverage proves every composed analytics callback. Focused Onboarding,
+  bounded AppModel/root and presentation-root selections pass; live SDK delivery and
+  visual rendering remain outside this checkpoint.
