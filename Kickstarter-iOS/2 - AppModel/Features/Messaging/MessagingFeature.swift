@@ -48,6 +48,7 @@ public struct AsyncMessagingProvider: MessagingProvider {
 public final class MessagingFeature {
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any MessagingProvider
+  private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
   private struct Session: Hashable {
     let userID: Int?
@@ -63,12 +64,14 @@ public final class MessagingFeature {
 
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any MessagingProvider,
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.responseDelaySeconds = responseDelaySeconds
     self.sleep = sleep
   }
 
@@ -116,7 +119,7 @@ public final class MessagingFeature {
   private func startPage(route: UUID, state: MailboxRoute, cursor: String?) -> Task<Void, Never> {
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     state.snapshot.isLoading = true
     state.snapshot.error = nil
     let task = Task { [weak self, sleep] in

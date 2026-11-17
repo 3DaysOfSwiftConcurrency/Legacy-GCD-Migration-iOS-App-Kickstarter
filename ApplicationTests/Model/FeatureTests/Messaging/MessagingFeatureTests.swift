@@ -31,6 +31,27 @@ final class MessagingFeatureTests: TestCase {
           urls: .init(api: .init(moreMessageThreads: cursor)))
   }
 
+  func testMailboxUsesComposedResponseDelay() async throws {
+    let provider = ControlledMessagingProvider()
+    defer { provider.releaseAll() }
+    var sleeps: [TimeInterval] = []
+    let feature = MessagingFeature(
+      sessionFeature: self.session,
+      makeProvider: { provider },
+      responseDelaySeconds: { 7 },
+      sleep: { sleeps.append($0) }
+    )
+    let route = UUID()
+
+    let request = feature.requestMailbox(route: route, mailbox: .inbox, project: nil)
+    await provider.pages.waitFor(1)
+    try provider.pages.finish(0, .success(self.page([1])))
+    await request.value
+
+    XCTAssertEqual(sleeps, [7])
+    XCTAssertEqual(feature.snapshot(route: route).threads.map(\.id), [1])
+  }
+
   func testMailboxSharesPendingPagesAndPreservesConcatenation() async throws {
     let route = UUID()
     let first = self.feature.requestMailbox(route: route, mailbox: .inbox, project: nil)

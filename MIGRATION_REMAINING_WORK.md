@@ -63,6 +63,9 @@ Swift packages are excluded.
   analytics through an explicit platform composed by AppModel. LoginViewModel reports
   page and submit intent through that Feature instead of reading AppEnvironment.
   OAuth keeps its existing successful-login tracking point before session commit.
+- MessagingFeature now receives mailbox response-delay policy from AppModel instead
+  of reading AppEnvironment while admitting a page request. Test-only composition
+  defaults that policy to zero; production has no hidden global fallback.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

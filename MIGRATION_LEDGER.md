@@ -4687,3 +4687,27 @@ is claimed.
 
 The wider global/session ownership audit remains. This is not full CFA compliance.
 Swift packages, target identifiers and existing history are unchanged. No push.
+
+### Messaging receives response policy from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+MessagingFeature now receives the mailbox response-delay policy explicitly from
+AppModel composition. It captures the current value when admitting a page request
+and applies it after transport success before publishing, preserving the existing
+timing and cancellation boundary. The Feature no longer reads AppEnvironment.
+Test-only composition retains the compact legacy initializer with a zero delay; the
+production initializer has no global fallback.
+
+A named Feature test proves the injected delay reaches the owned sleep boundary and
+the page still publishes. Focused validation passed all 17 MessagingFeature tests.
+The bounded AppModel, Messaging Feature, message-screen ViewModel and deep-link
+routing selection passed 71 tests. Both runs had zero failures and skips on iPhone
+17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-messaging-policy-focused-2.xcresult` and
+`/private/tmp/kickstarter-messaging-policy-bounded.xcresult`.
+
+The CFA gate rejects direct AppEnvironment access in MessagingFeature. Friends,
+Profile, Search and other classified global seams remain for later checkpoints. This
+is not full CFA compliance. Swift packages, target identifiers and existing history
+are unchanged. No push.

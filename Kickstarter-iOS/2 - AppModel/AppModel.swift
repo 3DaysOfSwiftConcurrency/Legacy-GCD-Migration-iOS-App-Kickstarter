@@ -273,9 +273,11 @@ public final class AppModel {
       responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
     )
-    let messagingFeature = MessagingFeature(sessionFeature: sessionFeature, makeProvider: {
-      AsyncMessagingProvider(service: AppEnvironment.current.apiService)
-    })
+    let messagingFeature = MessagingFeature(
+      sessionFeature: sessionFeature,
+      makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    )
     let discussionFeature = DiscussionFeature(
       platform: .live(),
       sessionFeature: sessionFeature,

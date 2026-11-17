@@ -160,6 +160,16 @@ LoginViewModel do not read AppEnvironment directly.
 - Moving these dependencies does not change redirect ownership, login/resend overlap,
   password-reset behavior, two-factor presentation or session-generation checks.
 
+## Messaging response policy ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+MessagingFeature receives the mailbox response-delay policy from AppModel at
+composition. The delay is captured when a page request is admitted, after transport
+success and before publishing the page, exactly as before. Mailbox request sharing,
+pagination concatenation, empty-page termination, session invalidation, errors,
+search, reads and sends are unchanged.
+
 Final validation passed 144 focused LibraryTests, the separate Environment
 initialization test, 146 bounded PresentationTests and 14 signed Environment
 persistence tests on iPhone 17 Pro Max, iOS 26.2, with no failures/skips. Hardware network transitions and banner
