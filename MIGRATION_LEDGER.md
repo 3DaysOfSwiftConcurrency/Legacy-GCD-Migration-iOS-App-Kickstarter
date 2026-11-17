@@ -3781,3 +3781,21 @@ post-campaign tests now count payment and setup intent requests at the
 provider boundary. Live payments and visual parity were outside this run.
 The checkout ViewModels still calculate pledge totals, and post-campaign
 checkout constructs the open-checkout input in the View layer.
+
+### Pledge amounts and checkout requests — Matthew Thomas
+
+Pledge owns the selection and amount values used by both checkout
+screens. The ViewModels pass the selection, backing data, and payment
+choice to the feature. Pledge constructs create and update backing
+inputs and post-campaign open and completion inputs. The selection
+that opens checkout also supplies the payment intent amount. Card
+and Apple Pay completion retain their distinct saved-source and
+reusability values. Checkout ID conversion lives in the model.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 141 focused
+Pledge Feature and checkout ViewModel tests and 110 bounded backing,
+rewards, add-on, and payment-method regressions. Two Feature tests
+inspect the admitted inputs at the provider boundary. The CFA check
+guards against recreating the amount rules or API inputs in the
+checkout ViewModels. Live payments and visual parity were outside
+this run. The View layer still determines backing retry eligibility.

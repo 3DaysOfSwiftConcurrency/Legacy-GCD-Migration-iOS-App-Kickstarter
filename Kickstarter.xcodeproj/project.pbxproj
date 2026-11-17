@@ -908,6 +908,13 @@
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
 		};
+		"7E356C535F1A42D699D4BB08" = {
+			"name" = "PledgeViewData.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Pledge/PledgeViewData.swift";
+			"isa" = "PBXFileReference";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
 		"4253087E5E1E4846687C4124" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "A4DE2F93702DC661B9E328C5";
@@ -8278,6 +8285,7 @@
 				"F86AA1987FD3D02C4021E99B",
 				"D9118617BF31DE94853BE44D",
 				"3D915BD8AF02A2CBF626D368",
+				"50B63FE04EB5438397FE2660",
 				"E24FF4DFD2B48BDEE6831FE7",
 				"02F0D077E8C1EA2EF53F921E",
 				"AFD257F359CF97B68455F301",
@@ -19920,6 +19928,10 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "8BFED3C072AB8A56DAB63211";
 		};
+		"50B63FE04EB5438397FE2660" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7E356C535F1A42D699D4BB08";
+		};
 		"83161137677CB6BE90AD213F" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "5FC36AEAC9E869FFCA2068C6";
@@ -20118,6 +20130,7 @@
 				"B70588579FCAB1AE435001FF",
 				"B1D9B949DA98FE1AA0A17026",
 				"8BFED3C072AB8A56DAB63211",
+				"7E356C535F1A42D699D4BB08",
 				"EA78550649511EF73EC5E102",
 				"61669C6F20F8AF309A2D9AA4",
 			);

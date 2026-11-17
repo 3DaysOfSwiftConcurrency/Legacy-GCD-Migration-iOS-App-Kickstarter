@@ -13,30 +13,6 @@ public typealias PledgeViewCTAContainerViewData = (
 )
 
 public typealias StripeConfigurationData = (merchantIdentifier: String, publishableKey: String)
-public typealias CreateBackingData = (
-  project: Project,
-  rewards: [Reward],
-  pledgeTotal: Double,
-  selectedQuantities: SelectedRewardQuantities,
-  shippingRule: ShippingRule?,
-  paymentSourceId: String?,
-  setupIntentClientSecret: String?,
-  applePayParams: ApplePayParams?,
-  refTag: RefTag?,
-  incremental: Bool?
-)
-public typealias UpdateBackingData = (
-  backing: Backing,
-  rewards: [Reward],
-  pledgeTotal: Double,
-  selectedQuantities: SelectedRewardQuantities,
-  shippingRule: ShippingRule?,
-  paymentSourceId: String?,
-  setupIntentClientSecret: String?,
-  applePayParams: ApplePayParams?,
-  pledgeContext: PledgeViewContext,
-  incremental: Bool
-)
 public typealias PaymentAuthorizationData = (
   project: Project,
   reward: Reward,
@@ -46,17 +22,6 @@ public typealias PaymentAuthorizationData = (
   merchantIdentifier: String
 )
 public typealias PKPaymentData = (displayName: String, network: String, transactionIdentifier: String)
-
-public struct PledgeViewData: Equatable {
-  public let project: Project
-  public let rewards: [Reward]
-  public let bonusSupport: Double?
-  public let selectedShippingRule: ShippingRule?
-  public let selectedQuantities: SelectedRewardQuantities
-  public let selectedLocationId: Int?
-  public let refTag: RefTag?
-  public let context: PledgeViewContext
-}
 
 @MainActor
 public protocol PledgeViewModelInputs {
@@ -278,12 +243,11 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     processingState.onChange = { [weak self] in self?.onProcessingHidden?($0) }
     self.startCreate = { [weak self] data, isApplePay in
       guard let self else { return }
-      let input = CreateBackingInput.input(from: data, isApplePay: isApplePay)
       self.createTask?.cancel()
       let session = pledgeFeature.checkoutSession
       let id = UUID()
       self.createIdentity.id = id
-      let request = pledgeFeature.startCreate(input)
+      let request = pledgeFeature.startCreate(data, isApplePay: isApplePay)
       processingState.setHidden(false)
       self.createTask = Task { [weak self] in
         do {
@@ -301,12 +265,11 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     }
     self.startUpdate = { [weak self] data, isApplePay in
       guard let self else { return }
-      let input = UpdateBackingInput.input(from: data, isApplePay: isApplePay)
       self.updateTask?.cancel()
       let session = pledgeFeature.checkoutSession
       let id = UUID()
       self.updateIdentity.id = id
-      let request = pledgeFeature.startUpdate(input)
+      let request = pledgeFeature.startUpdate(data, isApplePay: isApplePay)
       processingState.setHidden(false)
       self.updateTask = Task { [weak self] in
         do {
@@ -760,28 +723,6 @@ final class PledgeRequestState {
     }
   }
 }
-
-private struct PledgeAmounts {
-  let rewards: Double
-  let shipping: Double
-  let bonus: Double
-  let total: Double?
-
-  init(_ data: PledgeViewData) {
-    let calculatedRewards = calculateAllRewardsTotal(addOnRewards: data.rewards, selectedQuantities: data.selectedQuantities)
-    rewards = data.context == .fixPaymentMethod
-      ? data.project.personalization.backing?.rewardsAmount ?? calculatedRewards
-      : calculatedRewards
-    shipping = data.selectedShippingRule.map {
-      calculateShippingTotal(shippingRule: $0, addOnRewards: data.rewards, quantities: data.selectedQuantities)
-    } ?? data.project.personalization.backing?.shippingAmount ?? 0
-    bonus = data.bonusSupport ?? data.project.personalization.backing?.bonusAmount ?? 0
-    total = data.context == .fixPaymentMethod
-      ? data.project.personalization.backing?.amount
-      : calculatePledgeTotal(pledgeAmount: bonus, shippingCost: shipping, addOnRewardsTotal: rewards)
-  }
-}
-
 
 private func pledgeAmountSummaryViewData(
   with project: Project,

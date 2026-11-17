@@ -272,6 +272,51 @@ final class PledgeFeatureTests: TestCase {
     } catch {}
   }
 
+  func testPostCampaignSelectionBuildsCheckoutWithQuantityAndBonus() async throws {
+    let project = Project.cosmicSurgery
+    let reward = try XCTUnwrap(project.rewards.first)
+    let data = PledgeViewData(
+      project: project, rewards: [reward], bonusSupport: 2, selectedShippingRule: nil,
+      selectedQuantities: [reward.id: 3], selectedLocationId: nil, refTag: .projectPage, context: .latePledge
+    )
+
+    let request = self.feature.startOpenCheckout(data)
+    await self.provider.checkouts.waitFor(1)
+    XCTAssertEqual(self.provider.checkoutInputs, [
+      .init(projectId: project.graphID, amount: "20.00", locationId: nil,
+            rewardIds: [reward.graphID, reward.graphID, reward.graphID], refParam: "project_page")
+    ])
+    try self.provider.checkouts.finish(
+      0, .success(.init(checkout: .init(id: "checkout", paymentUrl: "fixture", backingId: "b"))))
+    _ = try await request.value
+  }
+
+  func testPostCampaignCompletionMapsApplePayAndSavedCardSeparately() async throws {
+    let checkoutID = "19"
+    let encodedID = "Q2hlY2tvdXQtMTk="
+    XCTAssertEqual(PledgeFeature.checkoutID(from: encodedID), checkoutID)
+    XCTAssertEqual(PledgeFeature.checkoutID(from: checkoutID), checkoutID)
+    let applePay = self.feature.startCompleteCheckout(
+      .init(checkoutID: checkoutID, clientSecret: "apple-intent", payment: .applePay)
+    )
+    let card = self.feature.startCompleteCheckout(
+      .init(checkoutID: checkoutID, clientSecret: "card-intent", payment: .card(savedID: "card"))
+    )
+    await self.provider.completions.waitFor(1)
+    try self.provider.completions.finish(0, .success(()))
+    await self.provider.completions.waitFor(2)
+    try self.provider.completions.finish(1, .success(()))
+    try await applePay.value
+    try await card.value
+
+    XCTAssertEqual(self.provider.completionInputs, [
+      .init(checkoutId: encodedID, paymentIntentClientSecret: "apple-intent",
+            paymentSourceId: nil, paymentSourceReusable: false),
+      .init(checkoutId: encodedID, paymentIntentClientSecret: "card-intent",
+            paymentSourceId: .some("card"), paymentSourceReusable: true)
+    ])
+  }
+
   func testNativeCheckoutAdmissionSurvivesCancelledWaiterAndSharesRequest() async throws {
     let input = KsApi.CreateCheckoutInput(
       projectId: "p", amount: "10.00", locationId: nil, rewardIds: [], refParam: nil)

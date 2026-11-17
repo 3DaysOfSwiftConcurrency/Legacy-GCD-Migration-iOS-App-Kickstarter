@@ -1,5 +1,4 @@
 import Foundation
-import GraphAPI
 import KsApi
 import PassKit
 import Prelude
@@ -42,7 +41,7 @@ private final class PostCampaignApplePayState {
   var onStart: (() -> Void)?
   var onAuthorize: ((String) -> Void)?
   var onValidate: ((String, String, String) -> Void)?
-  var onComplete: ((GraphAPI.CompleteOnSessionCheckoutInput) -> Void)?
+  var onComplete: ((PledgeFeature.CheckoutCompletion) -> Void)?
   private var checkoutID: String?
   private var intentSecret: String?
   private var selectedSecret: String?
@@ -64,9 +63,8 @@ private final class PostCampaignApplePayState {
   }
   func validationSucceeded() {
     guard let checkoutID, let selectedSecret else { return }
-    onComplete?(GraphAPI.CompleteOnSessionCheckoutInput(
-      checkoutId: encodeToBase64("Checkout-\(checkoutID)"), paymentIntentClientSecret: selectedSecret,
-      paymentSourceId: nil, paymentSourceReusable: false, applePay: nil
+    onComplete?(PledgeFeature.CheckoutCompletion(
+      checkoutID: checkoutID, clientSecret: selectedSecret, payment: .applePay
     ))
   }
 }
@@ -92,12 +90,10 @@ private final class PostCampaignCardState {
     guard let checkoutID, let selectedCard, let selectedSecret else { return }
     onSubmit?(checkoutID, selectedCard, selectedSecret)
   }
-  func completionInput(clientSecret: String) -> GraphAPI.CompleteOnSessionCheckoutInput? {
+  func completionInput(clientSecret: String) -> PledgeFeature.CheckoutCompletion? {
     guard let checkoutID, let selectedCard else { return nil }
-    return GraphAPI.CompleteOnSessionCheckoutInput(
-      checkoutId: encodeToBase64("Checkout-\(checkoutID)"), paymentIntentClientSecret: clientSecret,
-      paymentSourceId: GraphQLNullable.someOrNil(selectedCard.savedCreditCardId),
-      paymentSourceReusable: true, applePay: nil
+    return PledgeFeature.CheckoutCompletion(
+      checkoutID: checkoutID, clientSecret: clientSecret, payment: .card(savedID: selectedCard.savedCreditCardId)
     )
   }
   var validation: PaymentSourceValidation? {
@@ -134,7 +130,7 @@ private final class PostCampaignCTAState {
 
 @MainActor
 private final class PostCampaignOpeningState {
-  var onOpen: ((KsApi.CreateCheckoutInput) -> Void)?
+  var onOpen: ((PledgeViewData) -> Void)?
   private var data: PledgeViewData?
   private var loggedIn = false
 
@@ -143,28 +139,7 @@ private final class PostCampaignOpeningState {
 
   private func openIfReady() {
     guard loggedIn, let data else { return }
-    let rewardIDs = data.rewards.first?.isNoReward == true ? [] : data.rewards.flatMap { reward in
-      [String](repeating: reward.graphID, count: data.selectedQuantities[reward.id] ?? 0)
-    }
-    onOpen?(KsApi.CreateCheckoutInput(
-      projectId: data.project.graphID, amount: String(format: "%.2f", PostCampaignAmounts(data).total),
-      locationId: data.selectedShippingRule.map { String($0.location.id) }, rewardIds: rewardIDs,
-      refParam: data.refTag?.stringTag
-    ))
-  }
-}
-
-private struct PostCampaignAmounts {
-  let rewards: Double
-  let shipping: Double
-  let total: Double
-
-  init(_ data: PledgeViewData) {
-    rewards = calculateAllRewardsTotal(addOnRewards: data.rewards, selectedQuantities: data.selectedQuantities)
-    shipping = data.selectedShippingRule.map {
-      calculateShippingTotal(shippingRule: $0, addOnRewards: data.rewards, quantities: data.selectedQuantities)
-    } ?? 0
-    total = calculatePledgeTotal(pledgeAmount: data.bonusSupport ?? 0, shippingCost: shipping, addOnRewardsTotal: rewards)
+    onOpen?(data)
   }
 }
 
@@ -278,15 +253,15 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       }
     }
 
-    openingState.onOpen = { [weak self] input in
-      guard let self, let data = self.configuredData else { return }
+    openingState.onOpen = { [weak self] data in
+      guard let self else { return }
       self.activeCheckoutData = data
       self.paymentIntentTask?.cancel()
       self.checkoutTask?.cancel()
       let session = pledgeFeature.checkoutSession
       let id = UUID()
       self.checkoutIdentity.id = id
-      let request = pledgeFeature.startOpenCheckout(input)
+      let request = pledgeFeature.startOpenCheckout(data)
       self.checkoutTask = Task { [weak self] in
         do {
           let checkout = try await request.value
@@ -355,10 +330,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
         }
       case let .success(checkout):
         guard let data = self.activeCheckoutData else { return }
-        var decodedCheckoutID = checkout.checkout.id
-        if let decoded = decodeBase64(decodedCheckoutID), let range = decoded.range(of: "Checkout-") {
-          decodedCheckoutID = String(decoded[range.upperBound...])
-        }
+        let decodedCheckoutID = PledgeFeature.checkoutID(from: checkout.checkout.id)
         cardState.setCheckoutID(decodedCheckoutID)
         appleState.setCheckoutID(decodedCheckoutID)
         self.trackingCheckoutID = decodedCheckoutID
@@ -619,7 +591,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   private let checkoutIdentity = CheckoutRequestIdentity()
   private var checkoutTask: Task<Void, Never>?
   private let completionIdentity = CheckoutRequestIdentity()
-  private var startCompletion: ((GraphAPI.CompleteOnSessionCheckoutInput) -> Void)?
+  private var startCompletion: ((PledgeFeature.CheckoutCompletion) -> Void)?
   private var completionTask: Task<Void, Never>?
   private let cardValidation: CheckoutValidationLane
   private let applePayValidation: CheckoutValidationLane

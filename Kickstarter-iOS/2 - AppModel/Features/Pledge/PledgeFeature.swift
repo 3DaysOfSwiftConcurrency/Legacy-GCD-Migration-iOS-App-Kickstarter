@@ -281,6 +281,10 @@ public final class PledgeFeature {
   public func create(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope {
     try Self.created(await self.execute(.create(input)))
   }
+  func startCreate(_ data: CreateBackingData, isApplePay: Bool) -> Task<CreateBackingEnvelope, Error> {
+    self.startCreate(CreateBackingInput.input(from: data, isApplePay: isApplePay))
+  }
+
   func startCreate(_ input: KsApi.CreateBackingInput) -> Task<CreateBackingEnvelope, Error> {
     let session = self.checkoutSession
     let command = self.request(.create(input))
@@ -292,6 +296,10 @@ public final class PledgeFeature {
   public func update(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope {
     try Self.updated(await self.execute(.update(input)))
   }
+  func startUpdate(_ data: UpdateBackingData, isApplePay: Bool) -> Task<UpdateBackingEnvelope, Error> {
+    self.startUpdate(UpdateBackingInput.input(from: data, isApplePay: isApplePay))
+  }
+
   func startUpdate(_ input: KsApi.UpdateBackingInput) -> Task<UpdateBackingEnvelope, Error> {
     let session = self.checkoutSession
     let command = self.request(.update(input))
@@ -333,6 +341,24 @@ public final class PledgeFeature {
   {
     try Self.checkout(await self.execute(.openCheckout(input)))
   }
+  func startOpenCheckout(_ data: PledgeViewData) -> Task<CreateCheckoutEnvelope, Error> {
+    let rewardIDs = data.rewards.first?.isNoReward == true ? [] : data.rewards.flatMap { reward in
+      [String](repeating: reward.graphID, count: data.selectedQuantities[reward.id] ?? 0)
+    }
+    return self.startOpenCheckout(KsApi.CreateCheckoutInput(
+      projectId: data.project.graphID,
+      amount: String(format: "%.2f", PostCampaignAmounts(data).total),
+      locationId: data.selectedShippingRule.map { String($0.location.id) },
+      rewardIds: rewardIDs,
+      refParam: data.refTag?.stringTag
+    ))
+  }
+
+  static func checkoutID(from value: String) -> String {
+    guard let decoded = decodeBase64(value), let range = decoded.range(of: "Checkout-") else { return value }
+    return String(decoded[range.upperBound...])
+  }
+
   func startOpenCheckout(_ input: KsApi.CreateCheckoutInput) -> Task<CreateCheckoutEnvelope, Error> {
     let session = self.checkoutSession
     let command = self.request(.openCheckout(input))
@@ -356,6 +382,38 @@ public final class PledgeFeature {
     return Task {
       try Self.validated(await self.awaitAdmitted(command, session: session))
     }
+  }
+
+  struct CheckoutCompletion {
+    enum Payment {
+      case applePay
+      case card(savedID: String?)
+    }
+
+    let checkoutID: String
+    let clientSecret: String
+    let payment: Payment
+  }
+
+  func startCompleteCheckout(_ completion: CheckoutCompletion) -> Task<Void, Error> {
+    let sourceID: GraphQLNullable<String>
+    let reusable: Bool
+    switch completion.payment {
+    case .applePay:
+      sourceID = nil
+      reusable = false
+    case let .card(savedID):
+      sourceID = GraphQLNullable.someOrNil(savedID)
+      reusable = true
+    }
+
+    return self.startCompleteCheckout(GraphAPI.CompleteOnSessionCheckoutInput(
+      checkoutId: encodeToBase64("Checkout-\(completion.checkoutID)"),
+      paymentIntentClientSecret: completion.clientSecret,
+      paymentSourceId: sourceID,
+      paymentSourceReusable: .some(reusable),
+      applePay: nil
+    ))
   }
 
   func startCompleteCheckout(_ input: GraphAPI.CompleteOnSessionCheckoutInput) -> Task<Void, Error> {

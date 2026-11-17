@@ -3,10 +3,6 @@ import Foundation
 import KsApi
 import Prelude
 
-public typealias SelectedRewardId = Int
-public typealias SelectedRewardQuantity = Int
-public typealias SelectedRewardQuantities = [SelectedRewardId: SelectedRewardQuantity]
-
 public enum RewardAddOnSelectionDataSourceItem: Equatable {
   case rewardAddOn(RewardAddOnCardViewData)
   case emptyState(EmptyStateViewType)
