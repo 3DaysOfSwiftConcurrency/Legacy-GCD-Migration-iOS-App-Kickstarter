@@ -47,6 +47,32 @@ final class PledgeFeatureTests: TestCase {
     XCTAssertNotEqual(feature.sessionIdentity, admitted)
   }
 
+  func testPledgeManagerBypassPolicyUsesInjectedSettingsFeature() {
+    let injectedConfigClient = MockRemoteConfigClient()
+    injectedConfigClient.features = [
+      RemoteConfigFeature.bypassPledgeManagerDecisionPolicy.rawValue: true
+    ]
+    let globalConfigClient = MockRemoteConfigClient()
+    globalConfigClient.features = [
+      RemoteConfigFeature.bypassPledgeManagerDecisionPolicy.rawValue: false
+    ]
+    let settingsFeature = SettingsFeature(
+      sessionFeature: self.session,
+      applicationSettings: .test(remoteClient: { injectedConfigClient }),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    let feature = PledgeFeature(
+      platform: .live(),
+      sessionFeature: self.session,
+      settingsFeature: settingsFeature,
+      makeProvider: { self.provider }
+    )
+
+    withEnvironment(remoteConfigClient: globalConfigClient) {
+      XCTAssertTrue(feature.allowsUnrecognizedPledgeManagerNavigation)
+    }
+  }
+
   func testEquivalentCreateSharesPendingWriteAndPreservesSCACheckout() async throws {
     let input = self.createInput()
     let first = self.feature.startCreate(input)

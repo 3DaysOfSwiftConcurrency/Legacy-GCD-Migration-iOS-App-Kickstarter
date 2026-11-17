@@ -310,6 +310,7 @@ public final class AppModel {
       pledgeFeature: PledgeFeature(
         platform: .live(),
         sessionFeature: sessionFeature,
+        settingsFeature: settingsFeature,
         makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
       ),
       paymentsFeature: PaymentsFeature(

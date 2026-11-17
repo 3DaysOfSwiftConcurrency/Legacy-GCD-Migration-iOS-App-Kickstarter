@@ -122,13 +122,18 @@ public final class PledgeFeature {
   }
 
   private let sessionFeature: SessionFeature
+  private let settingsFeature: SettingsFeature
   private let makeProvider: () -> any PledgeProvider
   private let platform: Platform
 
   public init(
-    platform: Platform, sessionFeature: SessionFeature, makeProvider: @escaping () -> any PledgeProvider
+    platform: Platform,
+    sessionFeature: SessionFeature,
+    settingsFeature: SettingsFeature,
+    makeProvider: @escaping () -> any PledgeProvider
   ) {
     self.sessionFeature = sessionFeature
+    self.settingsFeature = settingsFeature
     self.makeProvider = makeProvider
     self.platform = platform
   }
@@ -157,6 +162,9 @@ public final class PledgeFeature {
     SessionIdentity(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
   var requiresPledgeManagerSignIn: Bool { self.sessionFeature.currentUser == nil }
+  var allowsUnrecognizedPledgeManagerNavigation: Bool {
+    self.settingsFeature.isRemoteConfigurationEnabled(.bypassPledgeManagerDecisionPolicy)
+  }
 
   func viewerIsCreator(of project: Project) -> Bool {
     currentUserIsCreator(of: project, currentUser: self.sessionFeature.currentUser)

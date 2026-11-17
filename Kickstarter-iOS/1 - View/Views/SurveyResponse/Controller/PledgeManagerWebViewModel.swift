@@ -98,7 +98,7 @@ final class PledgeManagerWebViewModel {
     if nativeNavigationRequestForURLRequest(request, pledgeFeature: self.pledgeFeature) != nil { return .cancel }
     if let error = errorForUnrecognizedUrl(request: request, pledgeFeature: self.pledgeFeature) { Crashlytics.crashlytics().record(error: error) }
     if self.pledgeFeature.isKickstarterWebRequest(request) { return .cancel }
-    return featureBypassPledgeManagerDecisionPolicyEnabled() ? .allow : .cancel
+    return self.pledgeFeature.allowsUnrecognizedPledgeManagerNavigation ? .allow : .cancel
   }
 }
 

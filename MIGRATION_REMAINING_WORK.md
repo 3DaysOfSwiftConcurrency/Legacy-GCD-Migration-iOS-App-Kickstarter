@@ -47,8 +47,12 @@ Swift packages are excluded.
   SettingsFeature. RootTabBarViewController no longer supplies an Environment-backed
   closure, and the global floating-tab helper is removed. The existing live policy
   remains override, then remote client, then false.
-- Next: migrate the remaining Pledge Manager bypass runtime helper independently.
-  Project rich-text and video-feed Statsig
+- PledgeFeature now owns the Pledge Manager bypass decision through its composed
+  SettingsFeature. PledgeManagerWebViewModel asks that Feature for the result, and
+  the global bypass helper is removed. Recognized Kickstarter and Stripe navigation
+  retain their existing precedence over the fallback decision.
+- Next: remove the remaining composed global Statsig helper closures. Project
+  rich-text and video-feed Statsig
   inputs are already composed into their Features but still use global helper
   closures at composition. Bootstrap keychain reads must remain independent of
   AppModel; do not route them through SettingsFeature.

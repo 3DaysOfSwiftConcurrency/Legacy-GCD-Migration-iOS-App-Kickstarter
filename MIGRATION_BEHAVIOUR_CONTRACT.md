@@ -1516,6 +1516,13 @@ SettingsFeature on initial load and foreground entry. A local override takes
 precedence over the remote client and the absence of both remains false. The
 controller rebuilds its layout only when that effective value changes.
 
+Pledge Manager navigation continues to allow Stripe actions and prepared supported
+requests, redirect supported unprepared requests through the authenticated request
+path, route recognized native Kickstarter destinations, and cancel other
+Kickstarter URLs. An otherwise unrecognized external URL is allowed only when the
+effective Pledge Manager bypass setting is enabled; local override, remote client,
+then false remain the policy precedence.
+
 Push registrations are admitted writes: equivalent pending tokens share; changed
 tokens execute in order, without automatic retries. Stale account completions cannot
 publish. Project creator blocking cooperates with the existing DiscussionFeature;

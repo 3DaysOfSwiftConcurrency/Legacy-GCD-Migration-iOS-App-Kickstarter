@@ -123,6 +123,25 @@ extension SettingsFeature.ApplicationSettings {
   }
 }
 
+extension PledgeFeature {
+  convenience init(
+    platform: Platform,
+    sessionFeature: SessionFeature,
+    makeProvider: @escaping () -> any PledgeProvider
+  ) {
+    self.init(
+      platform: platform,
+      sessionFeature: sessionFeature,
+      settingsFeature: SettingsFeature(
+        sessionFeature: sessionFeature,
+        applicationSettings: .test(),
+        makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+      ),
+      makeProvider: makeProvider
+    )
+  }
+}
+
 @MainActor
 private struct UnusedDeepLinkSearchProvider: SearchProjectsProvider {
   func fetchPage(parameters: DiscoveryParams, cursor: String?) async throws -> SearchPageResponse {

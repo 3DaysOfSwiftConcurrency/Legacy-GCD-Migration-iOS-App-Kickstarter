@@ -292,15 +292,33 @@ final class PledgeManagerWebViewModelTests: TestCase {
   // MARK: - Decision policy tests
 
   func testDecisionPolicyBypass() {
-    let mockConfigClient = MockRemoteConfigClient()
-    mockConfigClient.features = [
+    let injectedConfigClient = MockRemoteConfigClient()
+    injectedConfigClient.features = [
       RemoteConfigFeature.bypassPledgeManagerDecisionPolicy.rawValue: true
     ]
+    let globalConfigClient = MockRemoteConfigClient()
+    globalConfigClient.features = [
+      RemoteConfigFeature.bypassPledgeManagerDecisionPolicy.rawValue: false
+    ]
+    let sessionFeature = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }
+    )
+    let settingsFeature = SettingsFeature(
+      sessionFeature: sessionFeature,
+      applicationSettings: .test(remoteClient: { injectedConfigClient }),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    let viewModel = PledgeManagerWebViewModel(pledgeFeature: PledgeFeature(
+      platform: .live(),
+      sessionFeature: sessionFeature,
+      settingsFeature: settingsFeature,
+      makeProvider: { AsyncPledgeProvider(service: MockService()) }
+    ))
 
-    withEnvironment(remoteConfigClient: mockConfigClient) {
+    withEnvironment(remoteConfigClient: globalConfigClient) {
       let navigationData = navigationData("https://www.fake.com/unrecognized-url")
       XCTAssertEqual(
-        self.vm.decidePolicyFor(navigationAction: navigationData),
+        viewModel.decidePolicyFor(navigationAction: navigationData),
         WKNavigationActionPolicy.allow
       )
     }

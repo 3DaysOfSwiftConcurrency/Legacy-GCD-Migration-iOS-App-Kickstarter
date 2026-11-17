@@ -22,11 +22,6 @@ func featureEnabled(feature: RemoteConfigFeature, environment: Environment) -> B
 }
 
 @MainActor
-public func featureBypassPledgeManagerDecisionPolicyEnabled() -> Bool {
-  return featureEnabled(feature: .bypassPledgeManagerDecisionPolicy)
-}
-
-@MainActor
 public func featureUseKeychainForOAuthTokenEnabled() -> Bool {
   featureEnabled(feature: .useKeychainForOAuthToken)
 }

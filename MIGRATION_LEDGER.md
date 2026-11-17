@@ -4561,3 +4561,31 @@ RootTabBarViewController. Pledge Manager bypass policy, composed Statsig closure
 the wider global/session audit remain. Keychain bootstrap remains deliberately
 independent of AppModel. This is not full CFA compliance. Swift packages, target
 identifiers and existing history are unchanged. No push.
+
+### Pledge owns Pledge Manager bypass policy — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgeFeature now receives the composed SettingsFeature and owns whether an
+otherwise unrecognized external Pledge Manager URL may load. PledgeManagerWebViewModel
+retains navigation ordering and asks PledgeFeature only for the final fallback
+decision. The global bypass helper is removed. Stripe, supported prepared/unprepared
+requests, native Kickstarter routes and rejected unhandled Kickstarter URLs retain
+their existing precedence and behavior.
+
+Tests compose an isolated SettingsFeature with each PledgeFeature. Both the named
+Feature test and the ViewModel navigation test provide an enabled injected client
+against a disabled global client, proving that the composed owner supplies the
+decision. The 59-test baseline passed; the first post-change selection passed 59,
+then the final focused selection passed 60 after adding the direct Feature scenario.
+The bounded AppModel, Settings, Pledge, Manage Pledge, checkout and cancellation
+selection passed 268 tests. All runs had zero failures and skips on iPhone 17 Pro Max,
+iOS 26.2. Evidence:
+`/private/tmp/kickstarter-pledge-manager-policy-final-focused.xcresult` and
+`/private/tmp/kickstarter-pledge-manager-policy-expanded.xcresult`.
+
+The CFA gate rejects global remote-policy access in PledgeFeature and
+PledgeManagerWebViewModel. Composed Statsig helper closures and the wider
+global/session audit remain. Keychain bootstrap remains deliberately independent of
+AppModel. This is not full CFA compliance. Swift packages, target identifiers and
+existing history are unchanged. No push.

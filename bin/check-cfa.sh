@@ -36,6 +36,8 @@ newsletter_cell_view_model="$app_view/Views/SettingsNewsletters/Views/Cells/Sett
 thanks_view_model="$app_view/Views/ThanksProjects/Controller/ThanksViewModel.swift"
 pledged_projects_feature="$app_model/Features/PledgedProjects"
 pledged_projects_view="$app_view/Views/PledgedProjectsOverview"
+pledge_feature="$app_model/Features/Pledge/PledgeFeature.swift"
+pledge_manager_view_model="$app_view/Views/SurveyResponse/Controller/PledgeManagerWebViewModel.swift"
 
 reject_matches 'Deep-link data resolution belongs to AppModel and its Features.' \
   'discussionFeature|discoveryFeature|activityFeature|messagingFeature|authenticationFeature|sessionFeature' \
@@ -80,6 +82,9 @@ reject_matches 'Pledged Projects rollout policy belongs to PledgedProjectsFeatur
 reject_matches 'Pledged Projects Views receive presentation-ready policy from PPOViewModel.' \
   'RemoteConfigFeature|AppEnvironment[.]current[.](config|userDefaults|remoteConfigClient)' \
   "$pledged_projects_view/PPOView.swift" "$pledged_projects_view/PPOEmptyStateView.swift"
+reject_matches 'PledgeFeature owns the Pledge Manager bypass decision.' \
+  'featureBypassPledgeManagerDecisionPolicyEnabled|featureEnabled[[:space:]]*[(]|remoteConfigClient|AppEnvironment' \
+  "$pledge_feature" "$pledge_manager_view_model"
 
 test -f "$root_view_model"
 test -f "$root_tabs"
