@@ -5,10 +5,28 @@
 	"objectVersion" = "60";
 	"archiveVersion" = "1";
 	"objects" = {
+		"9698C4E67510EEE372A58AAE" = {
+			"isa" = "PBXGroup";
+			"path" = "Onboarding";
+			"sourceTree" = "<group>";
+			"children" = (
+				"6AACDE64B10E8FB27FEE6B72",
+			);
+		};
+		"6AACDE64B10E8FB27FEE6B72" = {
+			"isa" = "PBXFileReference";
+			"path" = "OnboardingFeatureTests.swift";
+			"sourceTree" = "<group>";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"46F12FDE406F5BFAD9C744AE" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "6AACDE64B10E8FB27FEE6B72";
+		};
 		"7080852EF66D20E843717366" = {
 			"isa" = "PBXFileReference";
-			"name" = "DeepLinkTestModel.swift";
-			"path" = "ApplicationTests/Support/DeepLinkTestModel.swift";
+			"name" = "AppModelTestGraph.swift";
+			"path" = "ApplicationTests/Support/AppModelTestGraph.swift";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
 		};
@@ -4715,6 +4733,7 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				"46F12FDE406F5BFAD9C744AE",
 				"BD32CD56E62A97C13707B7A1",
 				"AAF548D72F2445C0001DB5AC",
 				"AAF548D82F2445C0001DB5AC",
@@ -12418,6 +12437,7 @@
 			"path" = "FeatureTests";
 			"isa" = "PBXGroup";
 			"children" = (
+				"9698C4E67510EEE372A58AAE",
 				"CFA031300000000000000003",
 				"CFA031100000000000000003",
 				"CFA031000000000000000003",

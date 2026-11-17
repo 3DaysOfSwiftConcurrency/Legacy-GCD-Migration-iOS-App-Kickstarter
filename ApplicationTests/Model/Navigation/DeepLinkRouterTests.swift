@@ -40,7 +40,7 @@ final class DeepLinkRouterTests: XCTestCase {
       ))
     })
     self.settingsLinks = SettingsLinkPresentation(settingsFeature: settings, responseDelay: { 0 })
-    self.model = makeDeepLinkTestModel(
+    self.model = makeTestAppModel(
       sessionFeature: session, settingsFeature: settings, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session, makeProvider: { provider }),
       discoveryFeature: DiscoveryFeature(

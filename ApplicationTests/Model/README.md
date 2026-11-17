@@ -3,7 +3,24 @@
 The real Xcode target is LibraryTests in Kickstarter.xcodeproj, using scheme
 Library-iOS. The package test stub is not the migration regression suite.
 
-## Latest checkpoint — deep-link model coordination
+## Latest checkpoint — onboarding and application permissions
+
+The final focused selection passed 28 LibraryTests: OnboardingFeatureTests,
+OnboardingViewModelTest and AppModelTests. The bounded permission/application-routing,
+delegate analytics and Root Tabs selection passed 145 PresentationTests. Both used
+iPhone 17 Pro Max, iOS 26.2, with zero failures/skips. The pre-change focused baseline
+passed 23 tests; all existing scenarios remain covered after moving Feature tests
+out of the ViewModel and AppModel files.
+
+OnboardingFeatureTests owns prompt sharing/serialization, application/onboarding
+overlap, completion during a delay, and tracking-adapter replacement/removal cases.
+AppModelTests checks forwarding to an isolated OnboardingFeature. Shared application
+composition lives in `ApplicationTests/Support/AppModelTestGraph.swift`.
+Result bundles: `/private/tmp/kickstarter-permission-ownership-verified.xcresult` and
+`/private/tmp/kickstarter-permission-ownership-presentation.xcresult`.
+Native ATT/APNs UI, visual parity, live push delivery and the full suite were not verified.
+
+## Previous checkpoint — deep-link model coordination
 
 86 focused Navigation, DeepLinkRouter, AppModel, Discovery and Project Details tests
 passed in LibraryTests. The bounded application-routing, delegate analytics and
@@ -13,7 +30,7 @@ iPhone 17 Pro Max, iOS 26.2, with no failures or skips.
 AppModelTests now checks pre-admission cancellation and a survey failure after
 session replacement followed by a successful retry. DeepLinkRouterTests exercises
 the isolated AppModel graph while retaining its sharing/replacement and presentation
-assertions. Shared test composition is in `ApplicationTests/Support/DeepLinkTestModel.swift`.
+assertions. Shared test composition is now in `ApplicationTests/Support/AppModelTestGraph.swift`.
 Result bundles: `/private/tmp/kickstarter-deep-link-model-verified.xcresult` and
 `/private/tmp/kickstarter-deep-link-model-presentation.xcresult`.
 Live delivery, visual transition parity and the full suite were not verified.

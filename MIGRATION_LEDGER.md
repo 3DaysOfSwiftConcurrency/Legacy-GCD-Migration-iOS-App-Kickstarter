@@ -4198,3 +4198,40 @@ unverified. Swift packages are unchanged. AppModel still retains consent,
 authorization, connectivity, configuration, device-registration, shortcut and
 account-refresh infrastructure. Those ownership boundaries remain outstanding;
 no lifecycle Feature or delegate ViewModel is introduced to hide them.
+
+### Onboarding owns application permission policy — Matthew Thomas
+
+OnboardingFeature now owns the permission policy previously divided between it,
+AppTrackingConsent and PushAuthorization. The latter two classes and their stored
+AppModel properties/initializer arguments are removed. AppModel forwards permission
+preparation, activation and notification refresh to the existing onboarding Feature.
+AppDelegate retains UIKit badge/onboarding presentation and analytics SDK updates.
+Native PushRegistration and AppTrackingTransparency remain device adapters.
+
+Automatic tracking consent now awaits the same Feature-owned request used by the
+onboarding screen. Application and screen calls share one pending tracking prompt;
+notification calls already share or serialize through the Feature and now use the
+same owner from both entry points. Tests also cover completion while a delay is
+pending and removal/replacement of a tracking-status adapter. No lifecycle Feature
+or delegate ViewModel is added.
+
+The Feature's existing operation tests move from the ViewModel/AppModel files into
+FeatureTests/Onboarding/OnboardingFeatureTests.swift without dropping assertions.
+The shared isolated application fixture is now AppModelTestGraph.swift because
+both permission coordination and deep-link tests use it. The ViewModel's own
+presentation tests remain in its existing suite.
+
+The 23-test focused baseline passed. The first migrated selection passed 27 tests;
+after unifying tracking prompt admission and adding its overlap case, the final
+focused selection passed 28 tests. The bounded application-routing, permission,
+delegate analytics and Root Tabs selection passed 145 tests. Both final runs had
+zero failures/skips on iPhone 17 Pro Max, iOS 26.2. Result bundles:
+`/private/tmp/kickstarter-permission-ownership-verified.xcresult` and
+`/private/tmp/kickstarter-permission-ownership-presentation.xcresult`.
+`make check-cfa` prevents restoring the removed standalone policy owners.
+
+Native permission dialogs, live APNs delivery, visual parity and the full suite
+remain unverified. Swift packages are unchanged. AppModel still stores six
+infrastructure collaborators: connectivity, remote configuration, application
+configuration, device registration, application shortcuts and account refresh.
+Their domain consumers and composition remain the next ownership audit.

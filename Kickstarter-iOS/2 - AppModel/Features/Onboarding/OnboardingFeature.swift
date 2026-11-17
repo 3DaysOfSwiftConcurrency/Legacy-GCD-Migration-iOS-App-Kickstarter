@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 import UserNotifications
 
-/// Owns onboarding completion and the system permissions requested by onboarding.
+/// Owns onboarding completion, permission eligibility, and application-scoped consent requests.
 @MainActor
 public final class OnboardingFeature {
   private struct PendingNotificationRequest {
@@ -17,9 +17,24 @@ public final class OnboardingFeature {
   private let registerNotifications: () -> Void
   private let notificationStatus: () async -> UNAuthorizationStatus
   private let shouldRequestTracking: () -> Bool
-  private let trackingAuthorization: () async -> ATTrackingManager.AuthorizationStatus
+  private let trackingAuthorization: (() async -> ATTrackingManager.AuthorizationStatus)?
   private var notificationRequest: PendingNotificationRequest?
   private var trackingRequest: Task<UInt, Never>?
+  private let pushRegistration: () -> PushRegistrationType.Type
+  private let tracking: () -> (any AppTrackingTransparencyType)?
+  private let trackingDelay: @MainActor () async throws -> Void
+  private var pushOperations: [UUID: Task<Void, Never>] = [:]
+  private var trackingChecks: [UUID: Task<Void, Never>] = [:]
+  private var hasDeniedPushAuthorization = false
+  private var hasPreparedTracking = false
+  private var latestActiveState: Bool?
+  private var lastScheduledTrackingState: Bool?
+  private var trackingObservation: (tracking: any AppTrackingTransparencyType, id: UUID)?
+
+  var onBadgeReset: (@MainActor () -> Void)?
+  var onRegistrationAttempted: (@MainActor () -> Void)?
+  var onOfferOnboarding: (@MainActor () -> Void)?
+  var onTrackingAuthorizationStatus: (@MainActor (AppTrackingAuthorization) -> Void)?
 
   public init(
     completionStore: @escaping () -> any KeyValueStoreType,
@@ -31,7 +46,10 @@ public final class OnboardingFeature {
       await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     },
     shouldRequestTracking: @escaping () -> Bool = { false },
-    trackingAuthorization: @escaping () async -> ATTrackingManager.AuthorizationStatus = { .notDetermined }
+    trackingAuthorization: (() async -> ATTrackingManager.AuthorizationStatus)? = nil,
+    pushRegistration: @escaping () -> PushRegistrationType.Type = { PushRegistration.self },
+    tracking: @escaping () -> (any AppTrackingTransparencyType)? = { nil },
+    trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
   ) {
     self.completionStore = completionStore
     self.authorizeNotifications = authorizeNotifications
@@ -39,6 +57,9 @@ public final class OnboardingFeature {
     self.notificationStatus = notificationStatus
     self.shouldRequestTracking = shouldRequestTracking
     self.trackingAuthorization = trackingAuthorization
+    self.pushRegistration = pushRegistration
+    self.tracking = tracking
+    self.trackingDelay = trackingDelay
   }
 
   public var hasSeenOnboarding: Bool { self.completionStore().hasSeenOnboarding }
@@ -70,10 +91,140 @@ public final class OnboardingFeature {
     if let task = self.trackingRequest {
       return ATTrackingManager.AuthorizationStatus(rawValue: await task.value) ?? .notDetermined
     }
-    let task = Task { [trackingAuthorization] in await trackingAuthorization().rawValue }
+    let task = Task { [trackingAuthorization, tracking] in
+      if let trackingAuthorization { return await trackingAuthorization().rawValue }
+      guard let tracking = tracking() else { return AppTrackingAuthorization.notDetermined.rawValue }
+      return await withCheckedContinuation { continuation in
+        tracking.requestAndSetAuthorizationStatus { continuation.resume(returning: $0.rawValue) }
+      }
+    }
     self.trackingRequest = task
     let value = await task.value
     self.trackingRequest = nil
     return ATTrackingManager.AuthorizationStatus(rawValue: value) ?? .notDetermined
+  }
+
+  deinit {
+    self.pushOperations.values.forEach { $0.cancel() }
+    self.trackingChecks.values.forEach { $0.cancel() }
+    if let observation = self.trackingObservation {
+      Task { @MainActor in observation.tracking.removeAuthorizationObserver(observation.id) }
+    }
+  }
+
+  func prepareNotificationAuthorization() {
+    self.checkPushAuthorizationForLaunch()
+    self.refreshNotificationAuthorization()
+  }
+
+  private final class OperationState {
+    var finished = false
+  }
+
+  private func performPushOperation(
+    _ start: (@escaping @MainActor (Bool) -> Void) -> Task<Void, Never>?,
+    completion: @escaping @MainActor (Bool) -> Void
+  ) {
+    let id = UUID()
+    let state = OperationState()
+    let task = start { [weak self] value in
+      state.finished = true
+      self?.pushOperations[id] = nil
+      completion(value)
+    }
+    if let task, !state.finished { self.pushOperations[id] = task }
+  }
+
+  private func checkPushAuthorizationForLaunch() {
+    if self.hasDeniedPushAuthorization { self.triggerOnboardingIfEligible() }
+    self.performPushOperation({ completion in
+      self.pushRegistration().hasAuthorizedNotifications(completion: completion)
+    }) { [weak self] authorized in
+      guard let self else { return }
+      if authorized {
+        self.requestNotificationAuthorization()
+      } else {
+        self.hasDeniedPushAuthorization = true
+        self.triggerOnboardingIfEligible()
+      }
+    }
+  }
+
+  func refreshNotificationAuthorization() {
+    self.performPushOperation({ completion in
+      self.pushRegistration().hasAuthorizedNotifications(completion: completion)
+    }) { [weak self] authorized in
+      if authorized { self?.onBadgeReset?() }
+    }
+  }
+
+  func requestNotificationAuthorization() {
+    self.performPushOperation({ completion in
+      self.pushRegistration().register(
+        for: [.alert, .sound, .badge],
+        requestAuthorization: { [weak self] options in
+          guard let self else { return false }
+          return await self.requestNotifications(options: options)
+        },
+        completion: completion
+      )
+    }) { [weak self] _ in self?.onRegistrationAttempted?() }
+  }
+
+  private func triggerOnboardingIfEligible() {
+    guard self.shouldOfferOnboarding else { return }
+    self.onOfferOnboarding?()
+  }
+
+  func prepareTrackingConsent() {
+    self.hasPreparedTracking = true
+    self.scheduleTrackingRequestIfNeeded()
+    self.observeAuthorization()
+  }
+
+  func setApplicationActive(_ state: Bool) {
+    self.latestActiveState = state
+    self.scheduleTrackingRequestIfNeeded()
+    self.observeAuthorization()
+  }
+
+  private func scheduleTrackingRequestIfNeeded() {
+    guard self.hasPreparedTracking, let active = self.latestActiveState,
+          self.lastScheduledTrackingState != active else { return }
+    self.lastScheduledTrackingState = active
+    guard active else { return }
+
+    let id = UUID()
+    let delay = self.trackingDelay
+    self.trackingChecks[id] = Task { [weak self] in
+      defer { self?.trackingChecks[id] = nil }
+      do {
+        try await delay()
+        try Task.checkCancellation()
+        guard let self, self.hasSeenOnboarding else { return }
+        guard let tracking = self.tracking() else { return }
+        if tracking.advertisingIdentifier == nil, tracking.shouldRequestAuthorizationStatus() {
+          _ = await self.requestTrackingAuthorization()
+        }
+      } catch { /* Cancellation ends pending consent checks. */ }
+    }
+  }
+
+  private func observeAuthorization() {
+    let tracking = self.tracking()
+    if let previous = self.trackingObservation {
+      if let tracking, (previous.tracking as AnyObject) === (tracking as AnyObject) { return }
+      previous.tracking.removeAuthorizationObserver(previous.id)
+      self.trackingObservation = nil
+    }
+    guard let tracking else { return }
+    let id = tracking.observeAuthorizationStatus { [weak self] status in
+      self?.onTrackingAuthorizationStatus?(status)
+    }
+    self.trackingObservation = (tracking, id)
+  }
+
+  func waitForTrackingChecks() async {
+    for task in Array(self.trackingChecks.values) { await task.value }
   }
 }

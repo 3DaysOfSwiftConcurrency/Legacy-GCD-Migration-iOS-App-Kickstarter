@@ -76,17 +76,15 @@ extension ProjectMediaFeature.SavePrompts {
 }
 
 extension OnboardingFeature {
-  static func live() -> OnboardingFeature {
+  static func live(
+    trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
+  ) -> OnboardingFeature {
     OnboardingFeature(
       completionStore: { AppEnvironment.current.userDefaults },
       shouldRequestTracking: { AppEnvironment.current.appTrackingTransparency.shouldRequestAuthorizationStatus() },
-      trackingAuthorization: {
-        await withCheckedContinuation { continuation in
-          AppEnvironment.current.appTrackingTransparency.requestAndSetAuthorizationStatus {
-            continuation.resume(returning: $0)
-          }
-        }
-      }
+      pushRegistration: { AppEnvironment.current.pushRegistrationType },
+      tracking: { AppEnvironment.current.appTrackingTransparency },
+      trackingDelay: trackingDelay
     )
   }
 }
@@ -370,8 +368,6 @@ public final class AppModel {
 
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
-  let trackingConsent: AppTrackingConsent
-  let pushAuthorization: PushAuthorization
   public let connectivityService: ConnectivityService
   public let remoteConfigurationService: RemoteConfigurationService
   public let applicationConfigurationService: ApplicationConfigurationService
@@ -401,8 +397,6 @@ public final class AppModel {
   public init(
     developerExamplesFeature: DeveloperExamplesFeature,
     onboardingFeature: OnboardingFeature,
-    trackingConsent: AppTrackingConsent,
-    pushAuthorization: PushAuthorization,
     connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService,
     applicationConfigurationService: ApplicationConfigurationService,
@@ -429,8 +423,6 @@ public final class AppModel {
   ) {
     self.developerExamplesFeature = developerExamplesFeature
     self.onboardingFeature = onboardingFeature
-    self.trackingConsent = trackingConsent
-    self.pushAuthorization = pushAuthorization
     self.connectivityService = connectivityService
     self.remoteConfigurationService = remoteConfigurationService
     self.applicationConfigurationService = applicationConfigurationService
@@ -468,6 +460,20 @@ public final class AppModel {
     guard !self.hasLaunched else { return }
     self.hasLaunched = true
     _ = try? await self.applicationConfigurationService.refresh().value
+  }
+
+  /// Synchronous permission preparation preserves the delegate's SDK setup order.
+  func preparePermissions() {
+    self.onboardingFeature.prepareNotificationAuthorization()
+    self.onboardingFeature.prepareTrackingConsent()
+  }
+
+  func applicationActive(state: Bool) {
+    self.onboardingFeature.setApplicationActive(state)
+  }
+
+  func refreshNotificationAuthorization() {
+    self.onboardingFeature.refreshNotificationAuthorization()
   }
 
   public func applicationWillEnterForeground() {
@@ -543,14 +549,6 @@ public final class AppModel {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
       }),
       onboardingFeature: onboarding,
-      trackingConsent: AppTrackingConsent(
-        tracking: { AppEnvironment.current.appTrackingTransparency },
-        hasSeenOnboarding: { onboarding.hasSeenOnboarding }
-      ),
-      pushAuthorization: PushAuthorization(
-        pushRegistration: { AppEnvironment.current.pushRegistrationType },
-        onboardingFeature: onboarding
-      ),
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
       remoteConfigurationService: RemoteConfigurationService(
         notificationCenter: .default,

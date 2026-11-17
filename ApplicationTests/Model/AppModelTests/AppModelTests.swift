@@ -8,74 +8,46 @@ import UserNotifications
 import XCTest
 
 @MainActor
-final class PushAuthorizationTests: XCTestCase {
-  func testAcceptedPermissionRequestsStandardOptionsAndRegistersOnce() async {
-    let store = MockKeyValueStore()
-    let finished = self.expectation(description: "Authorization finishes")
-    var requestedOptions: [UNAuthorizationOptions] = []
-    var registrationCount = 0
-    let onboarding = OnboardingFeature(
-      completionStore: { store },
-      authorizeNotifications: {
-        requestedOptions.append($0)
-        return true
-      },
-      registerNotifications: { registrationCount += 1 }
-    )
-    let authorization = PushAuthorization(pushRegistration: { PushRegistration.self }, onboardingFeature: onboarding)
-    authorization.onRegistrationAttempted = { finished.fulfill() }
-
-    authorization.requestAuthorization()
-    await self.fulfillment(of: [finished], timeout: 2)
-    XCTAssertEqual(requestedOptions, [[.alert, .sound, .badge]])
-    XCTAssertEqual(registrationCount, 1)
-  }
-}
-
-@MainActor
-final class AppTrackingConsentTests: XCTestCase {
-  func testEarlyActivationWaitsForLaunchAndDuplicateEventsShareTheDelay() async {
-    let tracking = MockAppTrackingTransparency()
-    var delayCount = 0
-    let consent = AppTrackingConsent(
-      tracking: { tracking }, hasSeenOnboarding: { true }, delay: { delayCount += 1 }
-    )
-
-    consent.applicationActive(state: true)
-    await consent.waitForRequests()
-    XCTAssertEqual(delayCount, 0)
-    consent.applicationDidFinishLaunching()
-    consent.applicationActive(state: true)
-    await consent.waitForRequests()
-    XCTAssertEqual(delayCount, 1)
-    XCTAssertEqual(tracking.requestCount, 1)
-  }
-
-  func testReplacingTheTrackingAdapterRemovesThePreviousStatusObserver() {
-    let old = MockAppTrackingTransparency()
-    let replacement = MockAppTrackingTransparency()
-    var tracking = old
-    let consent = AppTrackingConsent(tracking: { tracking }, hasSeenOnboarding: { false })
-    var statuses: [AppTrackingAuthorization] = []
-    consent.onAuthorizationStatus = { statuses.append($0) }
-
-    consent.applicationDidFinishLaunching()
-    tracking = replacement
-    consent.applicationActive(state: false)
-    old.authorizationStatusValue = .denied
-    replacement.authorizationStatusValue = .restricted
-
-    XCTAssertEqual(statuses, [.notDetermined, .notDetermined, .restricted])
-  }
-}
-
-@MainActor
 final class AppModelTests: XCTestCase {
+  func testPermissionEventsUseTheInjectedOnboardingFeature() async {
+    let oldAuthorization = MockPushRegistration.authorizedValue
+    let oldRegistration = MockPushRegistration.registerValue
+    defer {
+      MockPushRegistration.authorizedValue = oldAuthorization
+      MockPushRegistration.registerValue = oldRegistration
+    }
+    MockPushRegistration.authorizedValue = true
+    MockPushRegistration.registerValue = nil
+    let store = MockKeyValueStore()
+    store.hasSeenOnboarding = true
+    let tracking = MockAppTrackingTransparency()
+    var badgeResets = 0
+    let onboarding = OnboardingFeature(
+      completionStore: { store }, pushRegistration: { MockPushRegistration.self },
+      tracking: { tracking }, trackingDelay: {}
+    )
+    onboarding.onBadgeReset = { badgeResets += 1 }
+    let model = makeTestAppModel(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      onboardingFeature: onboarding
+    )
+
+    model.applicationActive(state: true)
+    await onboarding.waitForTrackingChecks()
+    XCTAssertEqual(tracking.requestCount, 0)
+    model.preparePermissions()
+    model.refreshNotificationAuthorization()
+    await onboarding.waitForTrackingChecks()
+
+    XCTAssertEqual(tracking.requestCount, 1)
+    XCTAssertEqual(badgeResets, 2)
+  }
+
   func testSurveyLinkRejectsLateFailureAfterSessionReplacementAndCanResolveAgain() async throws {
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     let surveys = AccountRequestGate<SurveyResponse>()
     defer { surveys.releaseAll() }
-    let model = makeDeepLinkTestModel(
+    let model = makeTestAppModel(
       sessionFeature: session,
       activityFeature: ActivityFeature(
         sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },
@@ -100,7 +72,7 @@ final class AppModelTests: XCTestCase {
   func testCancelledDeepLinkCallerDoesNotStartFeatureWork() async {
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     var surveyRequests = 0
-    let model = makeDeepLinkTestModel(
+    let model = makeTestAppModel(
       sessionFeature: session,
       activityFeature: ActivityFeature(
         sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },
@@ -254,13 +226,6 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: firstOnboarding,
-      trackingConsent: AppTrackingConsent(
-        tracking: { [tracking = MockAppTrackingTransparency()] in tracking },
-        hasSeenOnboarding: { false }
-      ),
-      pushAuthorization: PushAuthorization(
-        pushRegistration: { PushRegistration.self }, onboardingFeature: firstOnboarding
-      ),
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
       devicePushRegistrationService: DevicePushRegistrationService(register: { _ in
@@ -319,13 +284,6 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: secondOnboarding,
-      trackingConsent: AppTrackingConsent(
-        tracking: { [tracking = MockAppTrackingTransparency()] in tracking },
-        hasSeenOnboarding: { false }
-      ),
-      pushAuthorization: PushAuthorization(
-        pushRegistration: { PushRegistration.self }, onboardingFeature: secondOnboarding
-      ),
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
       devicePushRegistrationService: DevicePushRegistrationService(register: { _ in

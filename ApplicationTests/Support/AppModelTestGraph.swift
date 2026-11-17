@@ -2,10 +2,11 @@
 import Foundation
 @testable import KsApi
 
-/// Each routing suite owns an isolated graph; unrelated capabilities use inert mock services.
+/// Isolated application composition; unrelated capabilities use inert mock services.
 @MainActor
-func makeDeepLinkTestModel(
+func makeTestAppModel(
   sessionFeature: SessionFeature,
+  onboardingFeature: OnboardingFeature? = nil,
   settingsFeature: SettingsFeature? = nil,
   messagingFeature: MessagingFeature? = nil,
   discussionFeature: DiscussionFeature? = nil,
@@ -32,16 +33,12 @@ func makeDeepLinkTestModel(
   let authenticationFeature = authenticationFeature ?? AuthenticationFeature(
     sessionFeature: sessionFeature, makeProvider: { AsyncAuthenticationProvider(service: MockService()) }
   )
-  let onboarding = OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store })
+  let onboarding = onboardingFeature ?? OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store })
   return AppModel(
     developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: sessionFeature, makeProvider: {
       AsyncDeveloperExamplesProvider(service: MockService())
     }),
     onboardingFeature: onboarding,
-    trackingConsent: AppTrackingConsent(
-      tracking: { [tracking = MockAppTrackingTransparency()] in tracking }, hasSeenOnboarding: { false }
-    ),
-    pushAuthorization: PushAuthorization(pushRegistration: { PushRegistration.self }, onboardingFeature: onboarding),
     remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
     applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
     devicePushRegistrationService: DevicePushRegistrationService(register: { _ in }),

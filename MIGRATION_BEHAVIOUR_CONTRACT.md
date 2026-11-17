@@ -20,6 +20,38 @@ AppModel's remaining infrastructure properties and the wider application
 composition still need migration; this checkpoint does not establish full CFA
 compliance.
 
+## Onboarding and application permission ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+OnboardingFeature owns onboarding completion, eligibility, notification requests,
+tracking-request sharing, delayed consent checks and tracking-status observation.
+AppDelegate sends permission preparation, activation and foreground-check intents
+through AppModel. The native PushRegistration and AppTrackingTransparency adapters
+continue to handle their system APIs. Neither app lifecycle nor AppDelegate is
+represented as a Feature or ViewModel.
+
+- Preserve launch/foreground badge clearing, standard alert/sound/badge options,
+  onboarding eligibility, registration after a grant, and consent-status delivery
+  to the existing analytics SDK handlers.
+- Start automatic tracking checks only after preparation and activation. Keep the
+  existing one-second delay, onboarding-completion check, advertising-ID check
+  and native authorization-status check. Read completion when the delay finishes.
+- An application request and an onboarding request share one pending prompt of
+  the same kind. Notification requests with different options remain serialized.
+  Cancelling a screen's observation does not retract an admitted native prompt.
+- Replacing or removing the tracking adapter stops delivery from the old adapter.
+  Keep these permissions application-scoped across account/session replacement.
+- Permission preparation remains synchronous and starts owned work without
+  waiting for the native prompt or blocking root UI construction.
+
+The baseline passed 23 focused tests. The final selection passed 28 LibraryTests
+and 145 bounded PresentationTests on iPhone 17 Pro Max, iOS 26.2, with no failures
+or skips. OnboardingFeatureTests covers both application/screen overlaps and
+prompt lifetime; AppModelTests covers forwarding to an injected Feature.
+Native ATT/APNs permission UI, live push delivery and visual parity remain
+unverified. This checkpoint does not complete the wider migration.
+
 ## Deep-link model coordination — 17 November 2026
 
 Author: Matthew Thomas.

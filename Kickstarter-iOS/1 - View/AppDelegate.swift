@@ -159,15 +159,15 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { NotificationCenter.default.post(notification) }
     }
 
-    AppModel.shared.pushAuthorization.onBadgeReset = {
+    AppModel.shared.onboardingFeature.onBadgeReset = {
       DispatchQueue.main.async { UIApplication.shared.applicationIconBadgeNumber = 0 }
     }
 
-    AppModel.shared.pushAuthorization.onRegistrationAttempted = {
+    AppModel.shared.onboardingFeature.onRegistrationAttempted = {
       DispatchQueue.main.async { print("📲 [Push Registration] Push token registration started 🚀") }
     }
 
-    AppModel.shared.pushAuthorization.onOfferOnboarding = { [weak self] in
+    AppModel.shared.onboardingFeature.onOfferOnboarding = { [weak self] in
       DispatchQueue.main.async { [weak self] in
         guard let rootTabBarController = self?.rootTabBarController else { return }
 
@@ -185,7 +185,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       }
     }
 
-    AppModel.shared.trackingConsent.onAuthorizationStatus = { [weak self] status in
+    AppModel.shared.onboardingFeature.onTrackingAuthorizationStatus = { [weak self] status in
       DispatchQueue.main.async { [weak self] in self?.appTrackingAuthorizationChanged(status: status) }
     }
 
@@ -236,8 +236,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     )
     self.accountRefresh.refreshAccountAndSetup()
 
-    AppModel.shared.pushAuthorization.applicationDidFinishLaunching()
-    AppModel.shared.trackingConsent.applicationDidFinishLaunching()
+    AppModel.shared.preparePermissions()
     self.synchronizePreferences()
     self.configureAnalytics()
 
@@ -247,15 +246,15 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 
   func applicationDidBecomeActive(_: UIApplication) {
-    AppModel.shared.trackingConsent.applicationActive(state: true)
+    AppModel.shared.applicationActive(state: true)
   }
 
   func applicationWillResignActive(_: UIApplication) {
-    AppModel.shared.trackingConsent.applicationActive(state: false)
+    AppModel.shared.applicationActive(state: false)
   }
 
   func applicationWillEnterForeground(_: UIApplication) {
-    AppModel.shared.pushAuthorization.applicationWillEnterForeground()
+    AppModel.shared.refreshNotificationAuthorization()
     self.accountRefresh.refreshAccountAndSetup()
     AppModel.shared.applicationWillEnterForeground()
   }
@@ -411,7 +410,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       let presenter = (notification.userInfo?[UserInfoKeys.viewController] as? UIViewController)
         ?? self.rootTabBarController else { return }
     self.permissionAlertPresenter.schedule(context: context, presenter: presenter) {
-      AppModel.shared.pushAuthorization.requestAuthorization()
+      AppModel.shared.onboardingFeature.requestNotificationAuthorization()
     }
   }
 
