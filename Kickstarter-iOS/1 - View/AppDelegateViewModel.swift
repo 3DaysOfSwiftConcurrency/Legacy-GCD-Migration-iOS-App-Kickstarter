@@ -54,9 +54,6 @@ public protocol AppDelegateViewModelInputs {
   /// Call when the app delegate gets notice of a successful notification registration.
   func didRegisterForRemoteNotifications(withDeviceTokenData data: Data)
 
-  /// Call when the config has been updated the AppEnvironment
-  func didUpdateConfig(_ config: Config)
-
   /// Call when the Remote Config client has been updated in the AppEnvironment
   func didUpdateRemoteConfigClient()
 
@@ -175,9 +172,6 @@ public protocol AppDelegateViewModelOutputs: AnyObject {
 
   /// A preference command has already persisted; observers must not re-save its snapshot.
   var onNotificationSettingsUpdated: (() -> Void)? { get set }
-
-  /// Emits a config value that should be updated in the environment.
-  var onUpdateConfig: ((Config) -> Void)? { get set }
 }
 
 @MainActor
@@ -204,7 +198,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private let isSegmentEnabled: () -> Bool
   private let settingsPresentationDelaySeconds: () -> TimeInterval
   private let applicationShortcuts: ApplicationShortcutService
-  private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
   private let devicePushRegistration: DevicePushRegistrationService
   private let sessionFeature: SessionFeature
   private let settingsFeature: SettingsFeature
@@ -222,7 +215,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var hasLaunchEvent = false
   private var latestActiveState: Bool?
   private var lastScheduledActiveState: Bool?
-  private var configurationTask: Task<Void, Never>?
   private var lastSegmentEnabled: Bool?
   private var pushTasks: [UUID: Task<Void, Never>] = [:]
   private var hasDeniedPushAuthorization = false
@@ -238,7 +230,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     settingsPresentationDelaySeconds: @escaping () -> TimeInterval,
     authenticationFeature: AuthenticationFeature,
     applicationShortcuts: ApplicationShortcutService,
-    requestApplicationConfiguration: @escaping @MainActor () -> Task<Config, Error>,
     devicePushRegistration: DevicePushRegistrationService,
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
@@ -255,7 +246,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.isSegmentEnabled = isSegmentEnabled
     self.settingsPresentationDelaySeconds = settingsPresentationDelaySeconds
     self.applicationShortcuts = applicationShortcuts
-    self.requestApplicationConfiguration = requestApplicationConfiguration
     self.devicePushRegistration = devicePushRegistration
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
@@ -270,7 +260,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     let settingsFeature = self.settingsFeature
     self.pushTasks.values.forEach { $0.cancel() }
     self.trackingDelayTasks.values.forEach { $0.cancel() }
-    self.configurationTask?.cancel()
     let redirectObservation = self.redirectObservation
     let authenticationFeature = self.authenticationFeature
     let trackingObserver = self.trackingObserver
@@ -444,20 +433,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     }
   }
 
-  private func refreshConfiguration() {
-    self.configurationTask?.cancel()
-    let request = self.requestApplicationConfiguration()
-    self.configurationTask = Task { [weak self] in
-      do {
-        let config = try await request.value
-        try Task.checkCancellation()
-        self?.onUpdateConfig?(config)
-      } catch { /* Configuration failures leave the current configuration in place. */ }
-    }
-  }
-
-  func waitForConfiguration() async { await self.configurationTask?.value }
-
   public func resolveEmailRedirect(_ url: URL) {
     if self.redirectObservation.input == url, self.redirectObservation.task != nil { return }
     self.redirectObservation.task?.cancel()
@@ -507,7 +482,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.observeTrackingAuthorization()
     self.scheduleUserRefresh()
     self.refreshUserSetup()
-    self.refreshConfiguration()
     self.onSynchronizeUbiquitousStore?()
     self.onConfigureFirebase?()
     self.onConfigureStatsig?(statsigSDKKey(for: self.mainBundle()))
@@ -520,7 +494,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.checkPushAuthorizationForBadge()
     self.scheduleUserRefresh()
     self.refreshUserSetup()
-    self.refreshConfiguration()
   }
 
   public func applicationActive(state: Bool) {
@@ -539,10 +512,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public func configUpdatedNotificationObserved() {
-    self.publishSegmentEnabledIfChanged()
-  }
-
-  private func publishSegmentEnabledIfChanged() {
     let enabled = self.isSegmentEnabled()
     guard self.lastSegmentEnabled != enabled else { return }
     self.lastSegmentEnabled = enabled
@@ -574,11 +543,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.beginPushRegistration()
   }
 
-  public func didUpdateConfig(_ config: Config) {
-    self.publishSegmentEnabledIfChanged()
-    self.onPostNotification?(Notification(name: .ksr_configUpdated, object: nil))
-  }
-
   public func didUpdateRemoteConfigClient() {
     self.onPostNotification?(Notification(name: .ksr_remoteConfigClientConfigured, object: nil))
   }
@@ -605,7 +569,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public func userSessionEnded() {
     self.deepLinkRouter.release(route: self.navigationRoute)
     self.scheduleUserRefresh()
-    self.refreshConfiguration()
     self.onUnregisterForRemoteNotifications?()
   }
 
@@ -613,7 +576,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.deepLinkRouter.release(route: self.navigationRoute)
     self.scheduleUserRefresh()
     self.refreshUserSetup()
-    self.refreshConfiguration()
   }
 
   public func urlFromBrazeNotification(_ url: URL?) {
@@ -743,7 +705,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public var onUnregisterForRemoteNotifications: (() -> Void)?
   public var onUpdateCurrentUser: ((User) -> Void)?
   public var onNotificationSettingsUpdated: (() -> Void)?
-  public var onUpdateConfig: ((Config) -> Void)?
 }
 
 /// Handles the deeplink route with both an id and text based name for a deeplink to categories.

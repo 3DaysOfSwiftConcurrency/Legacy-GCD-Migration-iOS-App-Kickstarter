@@ -3553,3 +3553,18 @@ validates the original read revision before and after that delay. The CFA
 source check now rejects direct environment reads in SettingsFeature. All
 46 focused Settings and Session tests and 126 Settings Account and
 AppDelegate presentation tests passed on the simulator.
+
+### Application configuration ownership — Matthew Thomas
+
+AppModel starts application configuration refreshes at launch, foreground
+entry, and session replacement. ApplicationConfigurationService installs
+visitor cookies, coalesces pending reads, applies configuration, and posts
+the update notification. The delegate still observes it to update Segment.
+The legacy delegate handler no longer starts or relays the refresh, and
+`make check-cfa` guards that boundary. The handler still has navigation,
+permission, and SDK callbacks to split.
+
+Eight focused model tests passed, covering visitor cookies at launch,
+foreground entry, sign-in, and sign-out, as well as feature flag overrides
+and rejection of obsolete requests. The bounded simulator run passed 116
+delegate and 28 Root Tabs presentation tests.

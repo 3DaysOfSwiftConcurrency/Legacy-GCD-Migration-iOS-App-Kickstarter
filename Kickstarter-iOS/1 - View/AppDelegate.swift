@@ -40,7 +40,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       authenticationFeature: model.authenticationFeature,
       applicationShortcuts: model.applicationShortcuts,
-      requestApplicationConfiguration: { model.requestApplicationConfiguration() },
       devicePushRegistration: model.devicePushRegistrationService,
       sessionFeature: model.sessionFeature,
       settingsFeature: model.settingsFeature,
@@ -166,12 +165,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         guard session.isCurrent(userID: userID, generation: generation) else { return }
         AppEnvironment.logout()
         NotificationCenter.default.post(.init(name: .ksr_sessionEnded, object: nil))
-      }
-    }
-
-    self.viewModel.outputs.onUpdateConfig = { [weak self] config in
-      DispatchQueue.main.async { [weak self] in
-        self?.viewModel.inputs.didUpdateConfig(config)
       }
     }
 
@@ -378,6 +371,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func applicationWillEnterForeground(_: UIApplication) {
     self.viewModel.inputs.applicationWillEnterForeground()
+    AppModel.shared.applicationWillEnterForeground()
   }
 
   func applicationDidEnterBackground(_: UIApplication) {

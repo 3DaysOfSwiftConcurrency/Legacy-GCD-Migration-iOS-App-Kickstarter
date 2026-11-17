@@ -2,6 +2,7 @@
 import GraphAPI
 @testable import KsApi
 
+import Prelude
 import XCTest
 
 @MainActor
@@ -49,7 +50,65 @@ final class AppModelTests: XCTestCase {
     self.wait(for: [received], timeout: 0)
   }
 
-  func testGraphsRetainTheirInjectedFeaturesWithoutSharingState() {
+  func testLaunchForegroundAndSessionChangesApplyConfigurationAndInstallVisitorCookies() async throws {
+    let model = AppModel.live()
+    var publishedCountries: [String] = []
+    let observer = MainActorNotificationObservation(name: .ksr_configUpdated) { _ in
+      if let country = AppEnvironment.current.config?.countryCode {
+        publishedCountries.append(country)
+      }
+    }
+    defer { observer.cancel() }
+
+    func verifyRefresh(
+      country: String, user: User? = nil, preserveExistingCookie: Bool = true,
+      perform: @MainActor () async -> Void
+    ) async throws {
+      let config = Config.template |> Config.lens.countryCode .~ country
+      let service = MockService(fetchConfigResponse: config)
+      let apiHost = try XCTUnwrap(service.serverConfig.apiBaseUrl.host)
+      let webHost = try XCTUnwrap(service.serverConfig.webBaseUrl.host)
+      let storage = MockCookieStorage()
+      let existingCookie = try XCTUnwrap(HTTPCookie(properties: [
+        .name: "existing-cookie", .value: "existing-cookie-value", .domain: apiHost, .path: "/"
+      ]))
+      if preserveExistingCookie { storage.setCookie(existingCookie) }
+
+      await withEnvironment(apiService: service, cookieStorage: storage, currentUser: user, device: MockDevice()) {
+        await perform()
+      }
+
+      let cookies = try XCTUnwrap(storage.cookies)
+      let visitorCookies = cookies.filter { $0.name == "vis" }
+      XCTAssertEqual(visitorCookies.map(\.domain).sorted(), [apiHost, webHost].sorted())
+      XCTAssertEqual(visitorCookies.map(\.value), Array(repeating: "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF", count: 2))
+      XCTAssertEqual(cookies.filter { $0.name != "vis" }, preserveExistingCookie ? [existingCookie] : [])
+    }
+
+    try await verifyRefresh(country: "US", preserveExistingCookie: false) {
+      await model.applicationDidFinishLaunching()
+      await model.applicationDidFinishLaunching()
+    }
+    XCTAssertEqual(publishedCountries, ["US"])
+
+    try await verifyRefresh(country: "GB") {
+      model.applicationWillEnterForeground()
+      _ = await model.applicationConfigurationService.requestConfiguration().result
+    }
+
+    try await verifyRefresh(country: "CA", user: .template) {
+      model.sessionChanged()
+      _ = await model.applicationConfigurationService.requestConfiguration().result
+    }
+
+    try await verifyRefresh(country: "CZ") {
+      model.sessionChanged()
+      _ = await model.applicationConfigurationService.requestConfiguration().result
+    }
+    XCTAssertEqual(publishedCountries, ["US", "GB", "CA", "CZ"])
+  }
+
+  func testGraphsRetainTheirInjectedFeaturesWithoutSharingState() async {
     let firstProvider = NoRequestSearchProvider()
     let secondProvider = NoRequestSearchProvider()
     let firstFeature = SearchFeature(provider: firstProvider)
@@ -84,6 +143,7 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store }),
+      applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -136,6 +196,7 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store }),
+      applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -213,6 +274,7 @@ final class AppModelTests: XCTestCase {
     XCTAssertNil(first.searchFeature.parameters)
     XCTAssertNil(second.searchFeature.parameters)
     first.sessionChanged()
+    _ = await first.applicationConfigurationService.requestConfiguration().result
     XCTAssertEqual(first.sessionFeature.generation, 1)
     XCTAssertEqual(second.sessionFeature.generation, 0)
   }
@@ -257,6 +319,32 @@ final class RemoteConfigurationServiceTests: XCTestCase {
 
 @MainActor
 final class ApplicationConfigurationServiceTests: XCTestCase {
+  func testLiveRefreshPreservesDebugOverridesAndUsesServerFlagsInRelease() async {
+    let stored = Config.template |> Config.lens.features .~ [
+      "enabled_flag": true, "disabled_flag": false, "removed_flag": true
+    ]
+    let incoming = Config.template |> Config.lens.features .~ [
+      "enabled_flag": false, "disabled_flag": true, "new_flag": true
+    ]
+    let apiService = MockService(fetchConfigResponse: incoming)
+    let debugBundle = MockBundle(bundleIdentifier: KickstarterBundleIdentifier.beta.rawValue)
+
+    await withEnvironment(apiService: apiService, config: stored, cookieStorage: MockCookieStorage(),
+                          mainBundle: debugBundle) {
+      _ = await ApplicationConfigurationService.live().refresh().result
+      XCTAssertEqual(AppEnvironment.current.config?.features, [
+        "enabled_flag": true, "disabled_flag": false, "new_flag": true
+      ])
+    }
+
+    let releaseBundle = MockBundle(bundleIdentifier: KickstarterBundleIdentifier.release.rawValue)
+    await withEnvironment(apiService: apiService, config: stored, cookieStorage: MockCookieStorage(),
+                          mainBundle: releaseBundle) {
+      _ = await ApplicationConfigurationService.live().refresh().result
+      XCTAssertEqual(AppEnvironment.current.config?.features, incoming.features)
+    }
+  }
+
   func testEquivalentPrefetchesShareWithoutApplyingConfiguration() async throws {
     let gate = AccountRequestGate<Config>()
     defer { gate.releaseAll() }

@@ -143,7 +143,7 @@ public final class ApplicationConfigurationService {
     self.applyConfiguration = applyConfiguration
   }
 
-  func refresh() -> Task<Config, Error> {
+  @discardableResult func refresh() -> Task<Config, Error> {
     self.installVisitorCookies()
     return self.requestConfiguration(applyResult: true)
   }
@@ -213,7 +213,10 @@ extension ApplicationConfigurationService {
         guard let environment = AppEnvironment.current, !environment.mainBundle.isRelease else { return [:] }
         return environment.config?.features ?? [:]
       },
-      applyConfiguration: { AppEnvironment.updateConfig($0) }
+      applyConfiguration: { config in
+        AppEnvironment.updateConfig(config)
+        NotificationCenter.default.post(name: .ksr_configUpdated, object: nil)
+      }
     )
   }
 }
@@ -371,7 +374,7 @@ public final class AppModel {
     onboardingFeature: OnboardingFeature,
     connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService = RemoteConfigurationService(),
-    applicationConfigurationService: ApplicationConfigurationService = .live(),
+    applicationConfigurationService: ApplicationConfigurationService,
     devicePushRegistrationService: DevicePushRegistrationService = DevicePushRegistrationService(
       register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
     ),
@@ -431,15 +434,15 @@ public final class AppModel {
   public func applicationDidFinishLaunching() async {
     guard !self.hasLaunched else { return }
     self.hasLaunched = true
-    _ = try? await self.applicationConfigurationService.configuration()
+    _ = try? await self.applicationConfigurationService.refresh().value
+  }
+
+  public func applicationWillEnterForeground() {
+    self.applicationConfigurationService.refresh()
   }
 
   public func applicationDidEnterBackground(notificationCenter: NotificationCenter = .default) {
     notificationCenter.post(name: .ksr_applicationDidEnterBackground, object: nil)
-  }
-
-  @discardableResult public func requestApplicationConfiguration() -> Task<Config, Error> {
-    self.applicationConfigurationService.refresh()
   }
 
   public func synchronizePreferences() {
@@ -469,6 +472,7 @@ public final class AppModel {
     self.messagingFeature.reset()
     self.pledgeFeature.reset()
     self.pledgedProjectsFeature.reset()
+    self.applicationConfigurationService.refresh()
   }
 
   public static func live() -> AppModel {
@@ -505,6 +509,7 @@ public final class AppModel {
       }),
       onboardingFeature: .live(),
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
+      applicationConfigurationService: .live(),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
       }),

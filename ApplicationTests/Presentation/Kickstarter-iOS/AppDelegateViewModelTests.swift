@@ -40,7 +40,6 @@ final class AppDelegateViewModelTests: TestCase {
     ),
     sleep: { _ in try Task.checkCancellation() }
   )
-  private lazy var applicationConfigurationService = ApplicationConfigurationService.live()
   private lazy var discoveryFeature = DiscoveryFeature(
     provider: AsyncDiscoveryProvider(), currentUser: { [session = self.settingsFeature.sessionFeature] in
       session.currentUser
@@ -76,7 +75,6 @@ final class AppDelegateViewModelTests: TestCase {
   private let unregisterForRemoteNotifications = ValueRecorder<()>()
   private let updateCurrentUserInEnvironment = ValueRecorder<User>()
   private let notificationSettingsUpdated = ValueRecorder<Void>()
-  private let updateConfigInEnvironment = ValueRecorder<Config>()
 
   private var defaultRootCategoriesTemplate: RootCategoriesEnvelope {
     RootCategoriesEnvelope.template
@@ -95,7 +93,6 @@ final class AppDelegateViewModelTests: TestCase {
 
   override func tearDown() async throws {
     self.deepLinkRouter.reset()
-    self.applicationConfigurationService.reset()
     await self.deepLinkRouter.waitForOperations()
     await self.settingsFeature.waitForOperations()
     self.messagingFeature.reset()
@@ -122,7 +119,6 @@ final class AppDelegateViewModelTests: TestCase {
 
   private func makeDelegateHandler() -> AppDelegateViewModel {
     let session = self.settingsFeature.sessionFeature
-    let config = self.applicationConfigurationService
     let registration = DevicePushRegistrationService(
       register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) },
       debounce: { try Task.checkCancellation() }
@@ -144,7 +140,6 @@ final class AppDelegateViewModelTests: TestCase {
           try await discoveryFeature.hasRecommendations(for: $0)
         }
       ),
-      requestApplicationConfiguration: { config.refresh() },
       devicePushRegistration: registration,
       sessionFeature: session,
       settingsFeature: self.settingsFeature,
@@ -193,7 +188,6 @@ final class AppDelegateViewModelTests: TestCase {
     self.vm.outputs.onTriggerOnboardingFlow = { [weak self] in self?.triggerOnboardingFlow.record(()) }
     self.vm.outputs.onUnregisterForRemoteNotifications = { [weak self] in self?.unregisterForRemoteNotifications.record(()) }
     self.vm.outputs.onUpdateCurrentUser = { [weak self] in self?.updateCurrentUserInEnvironment.record($0) }
-    self.vm.outputs.onUpdateConfig = { [weak self] in self?.updateConfigInEnvironment.record($0) }
   }
 
   func testResetApplicationIconBadgeNumber_registeredForPushNotifications_WillEnterForeground() async {
@@ -334,61 +328,6 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
       self.forceLogout.assertValueCount(1)
-    }
-  }
-
-  func testConfig() async {
-    let config1 = Config.template |> Config.lens.countryCode .~ "US"
-    await withEnvironment(apiService: MockService(fetchConfigResponse: config1)) {
-      self.vm.inputs.applicationDidFinishLaunching(
-        application: UIApplication.shared,
-        launchOptions: [:]
-      )
-      await self.deepLinkRouter.waitForOperations()
-      await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
-      self.updateConfigInEnvironment.assertValues([config1])
-      XCTAssertEqual(AppEnvironment.current.config, config1)
-
-      self.vm.inputs.didUpdateConfig(config1)
-      self.postNotificationName.assertValues([.ksr_configUpdated])
-    }
-
-    let config2 = Config.template |> Config.lens.countryCode .~ "GB"
-    await withEnvironment(apiService: MockService(fetchConfigResponse: config2)) {
-      self.vm.inputs.applicationWillEnterForeground()
-      await self.deepLinkRouter.waitForOperations()
-      await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
-      self.updateConfigInEnvironment.assertValues([config1, config2])
-
-      self.vm.inputs.didUpdateConfig(config2)
-      self.postNotificationName.assertValues([.ksr_configUpdated, .ksr_configUpdated])
-    }
-
-    let config3 = Config.template |> Config.lens.countryCode .~ "CZ"
-    await withEnvironment(apiService: MockService(fetchConfigResponse: config3)) {
-      self.vm.inputs.userSessionEnded()
-      await self.deepLinkRouter.waitForOperations()
-      await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
-      self.updateConfigInEnvironment.assertValues([config1, config2, config3])
-
-      self.vm.inputs.didUpdateConfig(config3)
-      self.postNotificationName.assertValues([.ksr_configUpdated, .ksr_configUpdated, .ksr_configUpdated])
-    }
-
-    let config4 = Config.template |> Config.lens.countryCode .~ "CA"
-    await withEnvironment(apiService: MockService(fetchConfigResponse: config4)) {
-      self.vm.inputs.userSessionStarted()
-      await self.deepLinkRouter.waitForOperations()
-      await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
-      self.updateConfigInEnvironment.assertValues([config1, config2, config3, config4])
-
-      self.vm.inputs.didUpdateConfig(config4)
-      self.postNotificationName.assertValues([
-        .ksr_configUpdated,
-        .ksr_configUpdated,
-        .ksr_configUpdated,
-        .ksr_configUpdated
-      ])
     }
   }
 
@@ -1626,147 +1565,6 @@ final class AppDelegateViewModelTests: TestCase {
     }
   }
 
-  func testVisitorCookies_ApplicationDidFinishLaunching() async {
-    self.vm.inputs.applicationDidFinishLaunching(
-      application: UIApplication.shared,
-      launchOptions: [:]
-    )
-
-    XCTAssertEqual(["vis", "vis"], AppEnvironment.current.cookieStorage.cookies!.map { $0.name })
-    XCTAssertEqual(
-      ["DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF", "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF"],
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.value }
-    )
-    XCTAssertEqual(
-      [
-        AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host,
-        AppEnvironment.current.apiService.serverConfig.webBaseUrl.host
-      ]
-      .compact(),
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.domain }.sorted()
-    )
-  }
-
-  func testVisitorCookies_ApplicationWillEnterForeground() async {
-    let existingCookie = HTTPCookie(
-      properties: [
-        .name: "existing-cookie",
-        .value: "existing-cookie-value",
-        .domain: AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host as Any,
-        .path: "/",
-        .version: 0,
-        .expires: Date.distantFuture,
-        .secure: true
-      ]
-    )
-
-    AppEnvironment.current.cookieStorage.setCookie(existingCookie!)
-
-    self.vm.inputs.applicationWillEnterForeground()
-
-    XCTAssertEqual(
-      ["existing-cookie", "vis", "vis"],
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.name }.sorted()
-    )
-    XCTAssertEqual(
-      [
-        "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF",
-        "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF",
-        "existing-cookie-value"
-      ],
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.value }.sorted()
-    )
-    XCTAssertEqual(
-      [
-        AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host,
-        AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host,
-        AppEnvironment.current.apiService.serverConfig.webBaseUrl.host
-      ]
-      .compact(),
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.domain }.sorted()
-    )
-  }
-
-  func testVisitorCookies_UserSessionStarted() async {
-    let existingCookie = HTTPCookie(
-      properties: [
-        .name: "existing-cookie",
-        .value: "existing-cookie-value",
-        .domain: AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host as Any,
-        .path: "/",
-        .version: 0,
-        .expires: Date.distantFuture,
-        .secure: true
-      ]
-    )
-
-    AppEnvironment.current.cookieStorage.setCookie(existingCookie!)
-
-    self.vm.inputs.userSessionStarted()
-
-    XCTAssertEqual(
-      ["existing-cookie", "vis", "vis"],
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.name }.sorted()
-    )
-    XCTAssertEqual(
-      [
-        "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF",
-        "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF",
-        "existing-cookie-value"
-      ],
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.value }.sorted()
-    )
-    XCTAssertEqual(
-      [
-        AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host,
-        AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host,
-        AppEnvironment.current.apiService.serverConfig.webBaseUrl.host
-      ]
-      .compact(),
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.domain }.sorted()
-    )
-  }
-
-  func testVisitorCookies_UserSessionEnded() async {
-    let existingCookie = HTTPCookie(
-      properties: [
-        .name: "existing-cookie",
-        .value: "existing-cookie-value",
-        .domain: AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host as Any,
-        .path: "/",
-        .version: 0,
-        .expires: Date.distantFuture,
-        .secure: true
-      ]
-    )
-
-    AppEnvironment.current.cookieStorage.setCookie(existingCookie!)
-
-    self.vm.inputs.userSessionEnded()
-
-    XCTAssertEqual(
-      ["existing-cookie", "vis", "vis"],
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.name }.sorted()
-    )
-    XCTAssertEqual(
-      [
-        "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF",
-        "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF",
-        "existing-cookie-value"
-      ],
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.value }.sorted()
-    )
-    XCTAssertEqual(
-      [
-        AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host,
-        AppEnvironment.current.apiService.serverConfig.apiBaseUrl.host,
-        AppEnvironment.current.apiService.serverConfig.webBaseUrl.host
-      ]
-      .compact(),
-      AppEnvironment.current.cookieStorage.cookies!.map { $0.domain }.sorted()
-    )
-  }
-
   func testEmailDeepLinking() async {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
       let emailUrl = URL(string: "https://clicks.kickstarter.com/?qs=deadbeef")!
@@ -2206,86 +2004,6 @@ final class AppDelegateViewModelTests: TestCase {
     }
   }
 
-  func testFeatureFlagsRetainedInConfig_NotRelease() async {
-    let mockBundle = MockBundle(
-      bundleIdentifier: KickstarterBundleIdentifier.beta.rawValue
-    )
-
-    let config = Config.template
-      |> Config.lens.features .~ [
-        "my_enabled_feature": true,
-        "my_disabled_feature": false
-      ]
-
-    let incomingConfig = Config.template
-      |> Config.lens.features .~ [
-        "my_enabled_feature": false,
-        "my_disabled_feature": true,
-        "my_new_feature": true
-      ]
-
-    let service = MockService(fetchConfigResponse: incomingConfig)
-
-    self.updateConfigInEnvironment.assertDidNotEmitValue()
-
-    await withEnvironment(apiService: service, config: config, mainBundle: mockBundle) {
-      self.vm.inputs.applicationDidFinishLaunching(
-        application: .shared,
-        launchOptions: [:]
-      )
-
-      await self.deepLinkRouter.waitForOperations()
-      await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
-      self.updateConfigInEnvironment.assertValueCount(1)
-
-      let updatedFeatures = self.updateConfigInEnvironment.lastValue?.features
-
-      XCTAssertEqual(updatedFeatures?["my_enabled_feature"], true, "Retains stored value")
-      XCTAssertEqual(updatedFeatures?["my_disabled_feature"], false, "Retains stored value")
-      XCTAssertEqual(updatedFeatures?["my_new_feature"], true, "Uses incoming value")
-    }
-  }
-
-  func testFeatureFlagsRetainedInConfig_Release() async {
-    let mockBundle = MockBundle(
-      bundleIdentifier: KickstarterBundleIdentifier.release.rawValue
-    )
-
-    let config = Config.template
-      |> Config.lens.features .~ [
-        "my_enabled_feature": true,
-        "my_disabled_feature": false
-      ]
-
-    let incomingConfig = Config.template
-      |> Config.lens.features .~ [
-        "my_enabled_feature": false,
-        "my_disabled_feature": true,
-        "my_new_feature": true
-      ]
-
-    let service = MockService(fetchConfigResponse: incomingConfig)
-
-    self.updateConfigInEnvironment.assertDidNotEmitValue()
-
-    await withEnvironment(apiService: service, config: config, mainBundle: mockBundle) {
-      self.vm.inputs.applicationDidFinishLaunching(
-        application: .shared,
-        launchOptions: [:]
-      )
-
-      await self.deepLinkRouter.waitForOperations()
-      await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
-      self.updateConfigInEnvironment.assertValueCount(1)
-
-      let updatedFeatures = self.updateConfigInEnvironment.lastValue?.features
-
-      XCTAssertEqual(updatedFeatures?["my_enabled_feature"], false, "Uses incoming value")
-      XCTAssertEqual(updatedFeatures?["my_disabled_feature"], true, "Uses incoming value")
-      XCTAssertEqual(updatedFeatures?["my_new_feature"], true, "Uses incoming value")
-    }
-  }
-
   func testConfigureSegment_Release() async {
     let mockBundle = MockBundle(
       bundleIdentifier: KickstarterBundleIdentifier.release.rawValue
@@ -2320,14 +2038,14 @@ final class AppDelegateViewModelTests: TestCase {
     }
   }
 
-  func testSegmentIsEnabled_IsEnabled_DidUpdateConfig() async {
+  func testSegmentIsEnabled_IsEnabled_ConfigUpdatedNotificationObserved() async {
     self.segmentIsEnabled.assertDidNotEmitValue()
 
     let config = Config.template
       |> Config.lens.features .~ [Feature.segment.rawValue: true]
 
     await withEnvironment(config: config) {
-      self.vm.inputs.didUpdateConfig(config)
+      self.vm.inputs.configUpdatedNotificationObserved()
 
       self.segmentIsEnabled.assertValues([true])
     }
