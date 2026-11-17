@@ -299,6 +299,37 @@ extension ProfileFeature {
   }
 }
 
+extension SearchFeature.Platform {
+  static func test(
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
+    debounceSeconds: @escaping @MainActor () -> TimeInterval = { 0 }
+  ) -> Self {
+    Self(responseDelaySeconds: responseDelaySeconds, debounceSeconds: debounceSeconds)
+  }
+}
+
+extension SearchFeature {
+  convenience init(
+    provider: any SearchProjectsProvider,
+    lookupProvider: (any SearchLookupProvider)? = nil,
+    lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
+      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
+      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+      try Task.checkCancellation()
+    },
+    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
+      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
+      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+      try Task.checkCancellation()
+    }
+  ) {
+    self.init(
+      platform: .test(), provider: provider, lookupProvider: lookupProvider,
+      lookupSleep: lookupSleep, sleep: sleep
+    )
+  }
+}
+
 @MainActor
 private struct UnusedDeepLinkSearchProvider: SearchProjectsProvider {
   func fetchPage(parameters: DiscoveryParams, cursor: String?) async throws -> SearchPageResponse {

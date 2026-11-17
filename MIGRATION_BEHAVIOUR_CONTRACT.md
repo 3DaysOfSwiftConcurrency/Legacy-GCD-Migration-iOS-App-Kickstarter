@@ -191,6 +191,17 @@ publishing. Header concurrency and partial-session behavior, per-tab request sha
 pagination, refresh supersession, session invalidation, errors, retry and avatar task
 ownership are unchanged.
 
+## Search timing policy ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+SearchFeature receives response and debounce timing through a Platform composed by
+AppModel. Category and project responses capture the current response delay when a
+request is admitted. The first project request remains free of debounce; subsequent
+successful queries add the captured debounce, while failures retain response delay
+only. Lookup independence, cache behavior, query replacement, request sharing,
+pagination, cancellation, output order, errors and retry are unchanged.
+
 Final validation passed 144 focused LibraryTests, the separate Environment
 initialization test, 146 bounded PresentationTests and 14 signed Environment
 persistence tests on iPhone 17 Pro Max, iOS 26.2, with no failures/skips. Hardware network transitions and banner

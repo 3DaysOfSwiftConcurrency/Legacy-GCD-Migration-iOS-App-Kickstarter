@@ -14,7 +14,13 @@ internal final class SearchViewModelTests: TestCase {
 
   private let delay = ManualSearchDelay()
   private lazy var searchFeature = SearchFeature(
-    provider: AsyncSearchProjectsProvider(), lookupSleep: { _ in }, sleep: { [delay] in try await delay.sleep($0) }
+    platform: .init(
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      debounceSeconds: { AppEnvironment.current.debounceInterval.searchDelaySeconds }
+    ),
+    provider: AsyncSearchProjectsProvider(),
+    lookupSleep: { _ in },
+    sleep: { [delay] in try await delay.sleep($0) }
   )
   private let sessionFeature = SessionFeature(makeProvider: {
     AsyncSessionProvider(service: AppEnvironment.current.apiService)

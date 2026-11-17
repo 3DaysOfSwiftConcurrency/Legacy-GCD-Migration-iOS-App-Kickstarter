@@ -179,6 +179,30 @@ final class SearchFeatureTests: TestCase {
     XCTAssertNil(searchFeature.searchError)
   }
 
+  func testSearchUsesComposedResponseAndDebouncePolicy() async throws {
+    let provider = ControlledSearchProvider()
+    var sleeps: [TimeInterval] = []
+    let feature = SearchFeature(
+      platform: .test(responseDelaySeconds: { 7 }, debounceSeconds: { 11 }),
+      provider: provider,
+      sleep: { sleeps.append($0) }
+    )
+    defer { provider.releaseAll(); feature.cancelSearch() }
+
+    let first = feature.requestSearch(parameters: self.parameters("first"))
+    await provider.waitForRequestCount(1)
+    try provider.complete(0, with: self.fixture("SearchQuery_FiveResults"))
+    await first.value
+    let second = feature.requestSearch(parameters: self.parameters("second"))
+    await provider.waitForRequestCount(2)
+    try provider.complete(1, with: self.fixture("SearchQuery_AnotherFiveResults"))
+    await second.value
+
+    XCTAssertEqual(sleeps, [7, 18])
+    XCTAssertEqual(feature.parameters?.query, "second")
+    XCTAssertEqual(feature.projects.count, 5)
+  }
+
   func testReplacementClearsResultsAndSuppressesObsoleteCompletion() async throws {
     let provider = ControlledSearchProvider()
     let searchFeature = SearchFeature(provider: provider, sleep: { _ in })

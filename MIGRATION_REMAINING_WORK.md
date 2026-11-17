@@ -72,6 +72,10 @@ Swift packages are excluded.
 - ProfileFeature now receives header and project-page response-delay policy from
   AppModel. Its independent header reads remain concurrent, pages retain their
   per-tab ownership, and session replacement still rejects obsolete results.
+- SearchFeature now receives result-response and subsequent-query debounce policy
+  through a Platform composed by AppModel. Category lookup and project search no
+  longer read AppEnvironment, while first-query, error and cancellation timing retain
+  their existing distinctions.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

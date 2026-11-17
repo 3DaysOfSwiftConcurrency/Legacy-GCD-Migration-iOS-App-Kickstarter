@@ -10,6 +10,19 @@ public typealias SearchResult = SearchProjectResponse
 /// Explicit main-actor notifications report state transitions to presentation.
 @MainActor
 public final class SearchFeature {
+  public struct Platform {
+    public let responseDelaySeconds: @MainActor () -> TimeInterval
+    public let debounceSeconds: @MainActor () -> TimeInterval
+
+    public init(
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
+      debounceSeconds: @escaping @MainActor () -> TimeInterval
+    ) {
+      self.responseDelaySeconds = responseDelaySeconds
+      self.debounceSeconds = debounceSeconds
+    }
+  }
+
   public private(set) var projects: [SearchResult] = []
   public private(set) var totalCount = 0
   public private(set) var isLoading = false
@@ -76,6 +89,7 @@ public final class SearchFeature {
   private var suggestionsRequest: (id: UUID, task: Task<Void, Never>)?
 
   private let provider: any SearchProjectsProvider
+  private let platform: Platform
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var nextCursor: String?
   private var completedPageCount = 0
@@ -83,6 +97,7 @@ public final class SearchFeature {
   private var request: (id: UUID, cursor: String?, task: Task<Void, Never>)?
 
   public init(
+    platform: Platform,
     provider: any SearchProjectsProvider,
     lookupProvider: (any SearchLookupProvider)? = nil,
     lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
@@ -99,6 +114,7 @@ public final class SearchFeature {
       try Task.checkCancellation()
     }
   ) {
+    self.platform = platform
     self.provider = provider
     self.sleep = sleep
     self.lookupSleep = lookupSleep
@@ -243,7 +259,7 @@ public final class SearchFeature {
       if !cached.isEmpty { return Task {} }
     }
     let id = UUID()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     self.isLoadingCategories = true
     let task = Task { @MainActor [weak self, lookupProvider, lookupSleep] in
       defer {
@@ -338,7 +354,7 @@ public final class SearchFeature {
     self.completedPageCount = 0
     self.projects = []
     self.emit(.results([]))
-    let debounce = self.hasRequested ? AppEnvironment.current.debounceInterval.searchDelaySeconds : 0
+    let debounce = self.hasRequested ? self.platform.debounceSeconds() : 0
     self.hasRequested = true
     return self.requestPage(parameters: parameters, cursor: nil, debounce: debounce)
   }
@@ -364,7 +380,7 @@ public final class SearchFeature {
     parameters: DiscoveryParams, cursor: String?, debounce: TimeInterval
   ) -> Task<Void, Never> {
     let id = UUID()
-    let apiDelay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let apiDelay = self.platform.responseDelaySeconds()
     self.searchError = nil
     self.setLoading(true)
     let task = Task { @MainActor [weak self, provider, sleep] in

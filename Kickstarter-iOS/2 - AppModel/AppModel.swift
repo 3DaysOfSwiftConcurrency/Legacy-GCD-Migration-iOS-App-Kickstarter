@@ -340,7 +340,14 @@ public final class AppModel {
       settingsFeature: settingsFeature,
       activityFeature: activityFeature,
       profileFeature: profileFeature,
-      searchFeature: SearchFeature(provider: searchProvider, lookupProvider: AsyncSearchLookupProvider()),
+      searchFeature: SearchFeature(
+        platform: .init(
+          responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+          debounceSeconds: { AppEnvironment.current.debounceInterval.searchDelaySeconds }
+        ),
+        provider: searchProvider,
+        lookupProvider: AsyncSearchLookupProvider()
+      ),
       discoveryFeature: discoveryFeature,
       projectDetailsFeature: ProjectDetailsFeature(
         platform: .live(),

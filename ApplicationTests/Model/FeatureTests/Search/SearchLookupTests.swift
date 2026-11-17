@@ -186,6 +186,29 @@ final class SearchLookupTests: TestCase {
     XCTAssertFalse(self.feature.isLoadingDefaultLocations)
   }
 
+  func testCategoryLookupUsesComposedResponsePolicy() async throws {
+    let provider = ControlledSearchLookupProvider()
+    var sleeps: [TimeInterval] = []
+    let feature = SearchFeature(
+      platform: .test(responseDelaySeconds: { 13 }),
+      provider: AsyncSearchProjectsProvider(),
+      lookupProvider: provider,
+      lookupSleep: { sleeps.append($0) },
+      sleep: { _ in }
+    )
+    defer { feature.cancelFilterLookups(); provider.releaseAll() }
+
+    let operation = feature.requestFilterOptions()
+    await provider.categories.waitForCount(1)
+    await provider.locations.waitForCount(1)
+    try provider.categories.complete(0, .success([.art]))
+    try provider.locations.complete(0, .success([]))
+    await operation.value
+
+    XCTAssertEqual(sleeps, [13])
+    XCTAssertEqual(feature.categoryOptions, [.art])
+  }
+
   func testNonemptyCategoryCacheIsImmediateAndDoesNotFetch() async throws {
     self.provider.cachedCategories = [.art, .games]
     let operation = self.feature.requestFilterOptions()

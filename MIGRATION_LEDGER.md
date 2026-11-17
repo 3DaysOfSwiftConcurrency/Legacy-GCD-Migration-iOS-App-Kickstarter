@@ -4759,3 +4759,32 @@ failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
 The CFA gate rejects direct AppEnvironment access in ProfileFeature. Search and other
 classified global seams remain. This is not full CFA compliance. Swift packages,
 target identifiers and existing history are unchanged. No push.
+
+### Search receives timing policy from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+SearchFeature now receives result-response and subsequent-query debounce timing
+through an explicit Platform composed by AppModel. Category and project requests
+capture response policy at admission. The first project query remains undebounced;
+later successes add debounce, while failures apply response delay only. Lookup
+independence, caching, request sharing, query replacement, pagination, cancellation,
+output ordering, errors and retry are preserved. Production has no global fallback;
+test composition defaults to zero unless a timing test supplies policy explicitly.
+
+Named Feature tests prove category response timing plus first/subsequent project
+timing. Focused validation passed 36 Search Feature and lookup tests. An initial
+bounded run exposed two legacy SearchViewModel timing cases whose shared fixture had
+implicitly depended on AppEnvironment; after making that test composition explicit,
+all 38 SearchViewModel tests passed and the complete bounded AppModel, Feature,
+lookup, cancellation, filter-use-case and view-model selection passed 129 tests in
+one clean rerun. The focused RootViewModel presentation selection passed 32 tests.
+Final runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-search-policy-focused.xcresult`,
+`/private/tmp/kickstarter-search-policy-bounded-2.xcresult` and
+`/private/tmp/kickstarter-search-policy-root.xcresult`.
+
+The CFA gate rejects direct AppEnvironment access in SearchFeature. Its live lookup
+and project provider adapters remain platform integrations composed by AppModel; the
+wider ownership audit continues. This is not full CFA compliance. Swift packages,
+target identifiers and existing history are unchanged. No push.
