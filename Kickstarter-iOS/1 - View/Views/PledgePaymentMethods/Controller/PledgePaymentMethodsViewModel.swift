@@ -1,4 +1,3 @@
-import GraphAPI
 import KsApi
 import PassKit
 import Prelude
@@ -35,7 +34,10 @@ final class PledgePaymentMethodsViewModel {
     case updateAddNewCardLoading(Bool)
   }
   var onEvent: ((Event) -> Void)?
-  let stripeIntentService: StripeIntentServiceType
+  private let paymentsFeature: PaymentsFeature
+  private let responseDelay: @MainActor () -> TimeInterval
+  private let advertisingContext: @MainActor () -> (id: String, platformVersion: String)?
+  private var configuredSession: PaymentsFeature.SessionIdentity?
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var configuration: PledgePaymentMethodsValue?
   private var loaded = false
@@ -49,23 +51,43 @@ final class PledgePaymentMethodsViewModel {
   private var newCards: [UserCreditCards.CreditCard] = []
   private var lastSelection: PaymentSourceSelected?
 
-  init(stripeIntentService: StripeIntentServiceType,
-       sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-         if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-       }) {
-    self.stripeIntentService = stripeIntentService
+  init(
+    paymentsFeature: PaymentsFeature,
+    responseDelay: @escaping @MainActor () -> TimeInterval,
+    advertisingContext: @escaping @MainActor () -> (id: String, platformVersion: String)?,
+    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
+      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+    }
+  ) {
+    self.paymentsFeature = paymentsFeature
+    self.responseDelay = responseDelay
+    self.advertisingContext = advertisingContext
     self.sleep = sleep
   }
+
   deinit { self.cardsTask?.cancel(); self.setupTask?.cancel(); self.storeTask?.cancel() }
-  private struct SessionIdentity { let userID: Int?; let generation: Int }
-  private var sessionIdentity: SessionIdentity {
-    let session = self.stripeIntentService.paymentsFeature.sessionFeature
-    return SessionIdentity(userID: session.currentUser?.id, generation: session.generation)
+
+  var sessionIdentity: PaymentsFeature.SessionIdentity? {
+    guard let configuredSession, self.paymentsFeature.sessionIdentity == configuredSession else { return nil }
+    return configuredSession
   }
-  private func isCurrent(_ identity: SessionIdentity) -> Bool {
-    self.stripeIntentService.paymentsFeature.sessionFeature.isCurrent(userID: identity.userID, generation: identity.generation)
+
+  private func isCurrent(_ identity: PaymentsFeature.SessionIdentity) -> Bool {
+    self.sessionIdentity == identity
   }
+
   func configure(with value: PledgePaymentMethodsValue) {
+    let session = self.paymentsFeature.sessionIdentity
+    if let previous = self.configuredSession, previous != session {
+      self.setupTask?.cancel()
+      self.storeTask?.cancel()
+      self.shouldCancel = true
+      self.initialCards = nil
+      self.currentCards = nil
+      self.newCards = []
+      self.lastSelection = nil
+    }
+    self.configuredSession = session
     self.configuration = value
     if self.loaded { self.loadCards() }
     if self.loaded, self.cancellationKnown { self.onEvent?(.updateAddNewCardLoading(!self.shouldCancel)) }
@@ -78,11 +100,10 @@ final class PledgePaymentMethodsViewModel {
     }
   }
   private func loadCards() {
-    guard let config = self.configuration else { return }
+    guard let config = self.configuration, let identity = self.sessionIdentity else { return }
     self.cardsTask?.cancel()
-    let identity = self.sessionIdentity
     self.publish(PledgePaymentMethodsAndSelectionData(existingPaymentMethods: [], newPaymentMethods: [], selectedPaymentMethod: nil, isLoading: true, shouldReload: true))
-    let feature = self.stripeIntentService.paymentsFeature
+    let feature = self.paymentsFeature
     let sleep = self.sleep
     self.cardsTask = Task { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
@@ -104,10 +125,10 @@ final class PledgePaymentMethodsViewModel {
     }
   }
   func paymentSheetDidAdd(clientSecret: String, paymentMethod: String?) {
+    guard let identity = self.sessionIdentity else { return }
     self.storeTask?.cancel()
-    let identity = self.sessionIdentity
-    let feature = self.stripeIntentService.paymentsFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let feature = self.paymentsFeature
+    let delay = self.responseDelay()
     let sleep = self.sleep
     self.storeTask = Task { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
@@ -138,13 +159,14 @@ final class PledgePaymentMethodsViewModel {
     if self.configuration != nil, self.loaded { self.onEvent?(.updateAddNewCardLoading(!state)) }
   }
   func willSelectRowAtIndexPath(_ indexPath: IndexPath) -> IndexPath? {
-    guard let data = self.currentCards, indexPath.row >= 0 else { return nil }
+    guard self.sessionIdentity != nil, let data = self.currentCards, indexPath.row >= 0 else { return nil }
     if indexPath.section == PaymentMethodsTableViewSection.addNewCard.rawValue { return indexPath }
     guard indexPath.section == PaymentMethodsTableViewSection.paymentMethods.rawValue else { return nil }
     let enabled = data.newPaymentMethods.map(\.isEnabled) + data.existingPaymentMethods.map(\.isEnabled)
     return indexPath.row < enabled.count && enabled[indexPath.row] ? indexPath : nil
   }
   func didSelectRowAtIndexPath(_ indexPath: IndexPath) {
+    guard self.sessionIdentity != nil else { return }
     if indexPath.section == PaymentMethodsTableViewSection.addNewCard.rawValue {
       self.startSetup()
       return
@@ -171,25 +193,23 @@ final class PledgePaymentMethodsViewModel {
     self.publish(data)
   }
   private func startSetup() {
-    guard self.loaded, let config = self.configuration else { return }
+    guard self.loaded, let config = self.configuration, let identity = self.sessionIdentity else { return }
     self.shouldCancelPaymentSheetAppearance(state: false)
     self.setupTask?.cancel()
-    let identity = self.sessionIdentity
-    let service = self.stripeIntentService
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let feature = self.paymentsFeature
+    let delay = self.responseDelay()
     let sleep = self.sleep
     self.setupTask = Task { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        let context: GraphAPI.StripeIntentContextTypes = config.context == .latePledge ? .postCampaignCheckout : .crowdfundingCheckout
-        let envelope = try await service.setupIntent(for: config.project.graphID, context: context)
+        let envelope = try await feature.setupForPledge(projectID: config.project.graphID, context: config.context)
         try await sleep(1 + delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity), !self.shouldCancel else { return }
         var configuration = PaymentSheet.Configuration()
         configuration.merchantDisplayName = Strings.general_accessibility_kickstarter()
         configuration.allowsDelayedPaymentMethods = true
-        configuration.defaultBillingDetails.email = service.paymentsFeature.sessionFeature.currentUserEmail
+        configuration.defaultBillingDetails.email = feature.checkoutBillingEmail(for: identity)
         self.onEvent?(.goToAddCardViaStripeScreen((envelope.clientSecret, configuration)))
       } catch {
         do { try await sleep(delay) } catch { return }
@@ -211,15 +231,14 @@ final class PledgePaymentMethodsViewModel {
     self.onEvent?(.notifyDelegateLoadPaymentMethodsError(((error as? ErrorEnvelope) ?? .couldNotParseJSON).localizedDescription))
   }
   func stripePaymentSheetDidAppear() {
-    guard self.loaded, let config = self.configuration else { return }
-    AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
-    guard let externalId = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else { return }
-    let userId = self.stripeIntentService.paymentsFeature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
-    var extInfo = Array(repeating: "", count: 16)
-    extInfo[0] = "i2"
-    extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
-    self.stripeIntentService.paymentsFeature.recordThirdPartyEvent(.init(deviceId: externalId, eventName: ThirdPartyEventInputName.AddNewPaymentMethod.rawValue, projectId: "\(config.project.id)", pledgeAmount: nil, shipping: nil, transactionId: nil, userId: userId, appData: .init(advertiserTrackingEnabled: true, applicationTrackingEnabled: true, extinfo: extInfo), clientMutationId: ""))
+    guard self.loaded, let config = self.configuration, let identity = self.sessionIdentity,
+          let advertising = self.advertisingContext() else { return }
+    self.paymentsFeature.recordCheckoutAddCardAppearance(
+      projectID: config.project.id, advertisingID: advertising.id,
+      platformVersion: advertising.platformVersion, session: identity
+    )
   }
+
   func waitForPending() async {
     await self.cardsTask?.value
     await self.setupTask?.value

@@ -20,6 +20,26 @@ final class PaymentsFeatureTests: TestCase {
     try await super.tearDown()
   }
 
+  func testCheckoutTrackingRejectsAnObsoleteSession() {
+    var events = 0
+    let feature = PaymentsFeature(
+      sessionFeature: self.session,
+      makeProvider: { self.provider },
+      trackThirdPartyEvent: { _ in events += 1 }
+    )
+    let original = feature.sessionIdentity
+    feature.recordCheckoutAddCardAppearance(
+      projectID: 17, advertisingID: "fixture", platformVersion: "test", session: original
+    )
+    XCTAssertEqual(events, 1)
+
+    self.session.sessionChanged()
+    feature.recordCheckoutAddCardAppearance(
+      projectID: 17, advertisingID: "fixture", platformVersion: "test", session: original
+    )
+    XCTAssertEqual(events, 1)
+  }
+
   func testDuplicateSetupSharesRequestAndCanceledWaiterDoesNotCancelWrite() async throws {
     let first = Task { try await self.feature.setup(projectID: nil, context: .profileSettings) }
     let second = Task { try await self.feature.setup(projectID: nil, context: .profileSettings) }
@@ -35,8 +55,8 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testDistinctSetupContextsRemainIndependent() async throws {
-    let first = Task { try await self.feature.setup(projectID: "project", context: .crowdfundingCheckout) }
-    let second = Task { try await self.feature.setup(projectID: "project", context: .postCampaignCheckout) }
+    let first = Task { try await self.feature.setupForPledge(projectID: "project", context: .pledge) }
+    let second = Task { try await self.feature.setupForPledge(projectID: "project", context: .latePledge) }
     await self.provider.setups.waitFor(2)
     XCTAssertEqual(self.provider.setupInputs.map { $0.setupIntentContext }, [.crowdfundingCheckout, .postCampaignCheckout])
     XCTAssertEqual(self.provider.setupInputs.map { $0.projectId }, ["project", "project"])

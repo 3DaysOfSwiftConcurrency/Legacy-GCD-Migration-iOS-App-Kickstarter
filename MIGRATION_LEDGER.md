@@ -3908,3 +3908,25 @@ Payments through StripeIntentService.
 The iPhone 17 Pro Max simulator on iOS 26.2 passed 108 focused tests
 and 111 bounded pledge summary, cancellation, and checkout regressions.
 Visual parity and live payment behavior remain unverified.
+
+### Stored-card checkout composition — Matthew Thomas
+
+Stored-card checkout now calls PaymentsFeature to read and save cards
+and request setup intents. Payments assigns the
+setup context, supplies billing email, and builds the tracking event
+for the configured session. AppModel composes tracking transport.
+The controller supplies the response delay and reads permitted
+advertising context. Native PaymentSheet presentation and callbacks
+use the checkout's Payments session identity.
+
+Changing the session invalidates card actions until the checkout is
+reconfigured. The focused tests exercise that boundary, both setup
+contexts, and rejection of a stale tracking event. The first build
+caught optional environment capture in the controller. Unwrapping the
+environment fixed it. Payment Settings still uses the Stripe adapter
+and the exposed Payments session dependency.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 68 focused tests,
+99 bounded app composition, payment settings, and pledge regressions,
+and 12 PaymentSheet operation tests. Live Stripe behavior and visual
+parity remain unverified.

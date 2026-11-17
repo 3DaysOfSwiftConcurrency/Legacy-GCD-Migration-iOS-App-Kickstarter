@@ -35,30 +35,61 @@ public struct AsyncPaymentsProvider: PaymentsProvider {
 /// There is no automatic retry or claim of server-side idempotency.
 @MainActor
 public final class PaymentsFeature {
-  public func recordThirdPartyEvent(_ input: KsApi.TriggerThirdPartyEventInput) {
-    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
-  }
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any PaymentsProvider
-  public init(sessionFeature: SessionFeature, makeProvider: @escaping () -> any PaymentsProvider) {
+  private let trackThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
+
+  public init(
+    sessionFeature: SessionFeature,
+    makeProvider: @escaping () -> any PaymentsProvider,
+    trackThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void = { _ in }
+  ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.trackThirdPartyEvent = trackThirdPartyEvent
+  }
+
+  func checkoutBillingEmail(for session: SessionIdentity) -> String? {
+    guard self.sessionIdentity == session else { return nil }
+    return self.sessionFeature.currentUserEmail
+  }
+
+  func recordCheckoutAddCardAppearance(
+    projectID: Int, advertisingID: String, platformVersion: String, session: SessionIdentity
+  ) {
+    guard self.sessionIdentity == session else { return }
+    var platformInfo = Array(repeating: "", count: 16)
+    platformInfo[0] = "i2"
+    platformInfo[4] = platformVersion
+    self.trackThirdPartyEvent(.init(
+      deviceId: advertisingID, eventName: ThirdPartyEventInputName.AddNewPaymentMethod.rawValue,
+      projectId: String(projectID), pledgeAmount: nil, shipping: nil, transactionId: nil,
+      userId: session.userID.map(String.init) ?? "",
+      appData: .init(advertiserTrackingEnabled: true, applicationTrackingEnabled: true, extinfo: platformInfo),
+      clientMutationId: ""
+    ))
+  }
+
+  func setupForPledge(projectID: String, context: PledgeViewContext) async throws -> ClientSecretEnvelope {
+    try await self.setup(
+      projectID: projectID, context: context == .latePledge ? .postCampaignCheckout : .crowdfundingCheckout
+    )
   }
 
   func makePaymentMethodsSelection() -> PaymentMethodsUseCase {
     PaymentMethodsUseCase(currentUser: { [sessionFeature] in sessionFeature.currentUser })
   }
 
-  private struct Session: Hashable {
+  struct SessionIdentity: Hashable, Sendable {
     let userID: Int?
     let generation: Int
   }
-  private var session: Session {
-    Session(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
+  var sessionIdentity: SessionIdentity {
+    SessionIdentity(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
-  private func requireCurrent(_ session: Session) throws {
+  private func requireCurrent(_ session: SessionIdentity) throws {
     try Task.checkCancellation()
-    guard self.session == session else { throw CancellationError() }
+    guard self.sessionIdentity == session else { throw CancellationError() }
   }
 
   private enum Command: Hashable {
@@ -76,16 +107,16 @@ public final class PaymentsFeature {
     case setup(ClientSecretEnvelope)
     case intent(PaymentIntentEnvelope)
   }
-  private struct Identity: Hashable { let session: Session; let command: Command }
+  private struct Identity: Hashable { let session: SessionIdentity; let command: Command }
   private struct Pending { let id: UUID; let task: Task<Value, Error> }
   private var pending: [Identity: Pending] = [:]
   private var commands: [UUID: Task<Value, Error>] = [:]
-  private var cardTail: [Session: Pending] = [:]
+  private var cardTail: [SessionIdentity: Pending] = [:]
   private var cardRevision = 0
 
   private func request(_ command: Command, operation: @escaping @MainActor (any PaymentsProvider) async throws -> Value)
     -> Task<Value, Error> {
-    let identity = Identity(session: self.session, command: command)
+    let identity = Identity(session: self.sessionIdentity, command: command)
     let previous = command.changesCards ? self.cardTail[identity.session] : nil
     if let existing = self.pending[identity],
        !command.changesCards || previous?.id == existing.id { return existing.task }
@@ -117,7 +148,7 @@ public final class PaymentsFeature {
   }
 
   public func cards() async throws -> UserEnvelope<GraphUser> {
-    let session = self.session
+    let session = self.sessionIdentity
     // A reload waits for admitted card writes. If another write overtakes a
     // read, fetch again after that write rather than publishing an old list.
     while true {
@@ -137,7 +168,7 @@ public final class PaymentsFeature {
 
   public func remove(id: String) async throws -> DeletePaymentMethodEnvelope {
     try Task.checkCancellation()
-    let session = self.session
+    let session = self.sessionIdentity
     let value = try await self.request(.remove(id)) { .removed(try await $0.remove(id: id)) }.value
     try self.requireCurrent(session)
     guard case let .removed(envelope) = value else { preconditionFailure("Payment command type mismatch") }
@@ -145,7 +176,7 @@ public final class PaymentsFeature {
   }
   public func store(secret: String) async throws -> CreatePaymentSourceEnvelope {
     try Task.checkCancellation()
-    let session = self.session
+    let session = self.sessionIdentity
     let value = try await self.request(.store(secret)) { .stored(try await $0.store(secret: secret)) }.value
     try self.requireCurrent(session)
     guard case let .stored(envelope) = value else { preconditionFailure("Payment command type mismatch") }
@@ -153,7 +184,7 @@ public final class PaymentsFeature {
   }
   public func setup(projectID: String?, context: GraphAPI.StripeIntentContextTypes) async throws -> ClientSecretEnvelope {
     try Task.checkCancellation()
-    let session = self.session
+    let session = self.sessionIdentity
     let value = try await self.request(.setup(projectID, context.rawValue)) {
       .setup(try await $0.setup(input: KsApi.CreateSetupIntentInput(projectId: projectID, context: context)))
     }.value
@@ -171,7 +202,7 @@ public final class PaymentsFeature {
 
   /// Admit the intent immediately; cancellation of a screen's waiter does not cancel the write.
   public func requestIntent(projectID: String, backingID: String, checkoutID: String, total: Double) -> Task<PaymentIntentEnvelope, Error> {
-    let session = self.session
+    let session = self.sessionIdentity
     let amount = String(format: "%.2f", total)
     let request = self.request(.intent(projectID, backingID, checkoutID, amount)) {
       .intent(try await $0.intent(input: KsApi.CreatePaymentIntentInput(

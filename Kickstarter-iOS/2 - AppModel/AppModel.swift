@@ -579,9 +579,11 @@ public final class AppModel {
         sessionFeature: sessionFeature,
         makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
       ),
-      paymentsFeature: PaymentsFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncPaymentsProvider(service: AppEnvironment.current.apiService)
-      }),
+      paymentsFeature: PaymentsFeature(
+        sessionFeature: sessionFeature,
+        makeProvider: { AsyncPaymentsProvider(service: AppEnvironment.current.apiService) },
+        trackThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) }
+      ),
       messagingFeature: messagingFeature,
       sessionFeature: sessionFeature,
       authenticationFeature: AuthenticationFeature(sessionFeature: sessionFeature, makeProvider: {

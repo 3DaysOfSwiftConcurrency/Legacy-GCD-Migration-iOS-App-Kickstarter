@@ -30,7 +30,20 @@ final class PledgePaymentMethodsViewController: UIViewController {
 
   internal weak var delegate: PledgePaymentMethodsViewControllerDelegate?
   internal weak var messageDisplayingDelegate: PledgeViewControllerMessageDisplaying?
-  private let viewModel = PledgePaymentMethodsViewModel(stripeIntentService: StripeIntentService(paymentsFeature: AppModel.shared.paymentsFeature))
+  private lazy var viewModel = self.makeViewModel()
+
+  private func makeViewModel() -> PledgePaymentMethodsViewModel {
+    PledgePaymentMethodsViewModel(
+      paymentsFeature: AppModel.shared.paymentsFeature,
+      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      advertisingContext: {
+        guard let environment = AppEnvironment.current else { return nil }
+        environment.appTrackingTransparency.updateAdvertisingIdentifier()
+        guard let id = environment.appTrackingTransparency.advertisingIdentifier else { return nil }
+        return (id, environment.mainBundle.platformVersion)
+      }
+    )
+  }
   private let paymentSheet = PaymentSheetOperation()
 
   // MARK: - Lifecycle
@@ -112,19 +125,21 @@ final class PledgePaymentMethodsViewController: UIViewController {
   // MARK: - Functions
 
   private func goToPaymentSheet(data: PaymentSheetSetupData) {
-    let session = AppModel.shared.sessionFeature
-    let generation = session.generation
+    guard let session = self.viewModel.sessionIdentity else { return }
     self.paymentSheet.start(
       clientSecret: data.clientSecret, client: StripePaymentSheetClient(data: data),
       presenter: self, retrievePaymentMethod: true,
       isCurrent: { [weak self] in
-        guard let self, session.generation == generation,
+        guard let self, self.viewModel.sessionIdentity == session,
           let top = self.navigationController?.topViewController else { return false }
         return self.parent === top && (top is PledgeViewController || top is PostCampaignCheckoutViewController)
       },
-      didPresent: { [weak self] in self?.viewModel.stripePaymentSheetDidAppear() },
+      didPresent: { [weak self] in
+        guard let self, self.viewModel.sessionIdentity == session else { return }
+        self.viewModel.stripePaymentSheetDidAppear()
+      },
       completed: { [weak self] result in
-        guard let self else { return }
+        guard let self, self.viewModel.sessionIdentity == session else { return }
         self.viewModel.shouldCancelPaymentSheetAppearance(state: true)
         switch result {
         case let .completed(method):

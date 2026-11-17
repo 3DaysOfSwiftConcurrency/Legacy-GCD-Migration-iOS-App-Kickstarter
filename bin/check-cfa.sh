@@ -77,6 +77,12 @@ reject_matches 'Pledge owns managed pledge eligibility and reward amounts.' \
   "$manage_pledge_view_model"
 reject_matches 'Pledge keeps the session collaborator private to its feature.' \
   'pledgeFeature[.]sessionFeature' "$app_view"
+reject_matches 'Stored-card checkout uses Payments without environment or session access.' \
+  'AppEnvironment[.]current|AppModel[.]shared|StripeIntentService|[.]sessionFeature' \
+  "$app_view/Views/PledgePaymentMethods/Controller/PledgePaymentMethodsViewModel.swift"
+reject_matches 'The checkout PaymentSheet uses the configured Payments session.' \
+  'AppModel[.]shared[.]sessionFeature' \
+  "$app_view/Views/PledgePaymentMethods/Controller/PledgePaymentMethodsViewController.swift"
 reject_matches 'Pledge summary and web view models must receive Pledge explicitly.' \
   'AppModel[.]shared' "$app_view/Views/ManagePledge/*ViewModel.swift" \
   "$app_view/Views/PledgePaymentMethods/*ViewModel.swift" "$app_view/Views/SurveyResponse/*ViewModel.swift"
