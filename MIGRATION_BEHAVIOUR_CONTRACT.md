@@ -2202,3 +2202,14 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel, CTA and checkout coverage passes 119 tests. The bounded Rewards,
   Manage Pledge, payment-method, CTA and checkout selection passes 259 tests. Visual
   rendering and the whole Library suite remain outside this checkpoint.
+
+## Checkout reward-summary feature injection — 17 November 2026
+
+- Standard and post-campaign reward-summary controllers now require PledgeFeature and
+  pass it into their shared total child.
+- Both checkout controllers supply the exact Pledge feature from their
+  PledgeCheckoutComposition; the summary hierarchy no longer independently assembles its
+  model from application state.
+- Focused AppModel, summary and checkout coverage passes 125 tests. The bounded Rewards,
+  Manage Pledge, payment-method, CTA, summary and checkout selection passes 274 tests.
+  Visual rendering and the whole Library suite remain outside this checkpoint.

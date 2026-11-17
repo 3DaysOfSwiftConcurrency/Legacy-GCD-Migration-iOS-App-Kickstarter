@@ -305,6 +305,13 @@ reject_matches 'Pledge payment methods receives checkout policy through composit
 reject_matches 'Pledge checkout CTA receives PledgeFeature from its controller.' \
   'AppModel[.]shared|AppEnvironment[.]current' \
   "$app_view/Views/PledgeView/Views/PledgeViewCTAContainerView.swift"
+reject_matches 'Checkout reward summaries receive PledgeFeature from their controller.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/PledgePaymentMethods/Controller/PledgeRewardsSummaryViewController.swift" \
+  "$app_view/Views/PledgePaymentMethods/Controller/PostCampaignPledgeRewardsSummaryViewController.swift"
+reject_matches 'Checkout reward total constructs its model from injected PledgeFeature.' \
+  'private let viewModel[[:space:]]*=[[:space:]]*PledgeSummaryViewModel' \
+  "$app_view/Views/PledgePaymentMethods/Controller/PledgeRewardsSummaryTotalViewController.swift"
 reject_matches 'Root Tabs receives one composed feature graph.' \
   'AppModel[.]shared[.](sessionFeature|profileFeature|activityFeature|settingsFeature)|AppEnvironment[.]current' \
   "$app_view/Views/RootTabBar/RootTabBarViewController.swift"

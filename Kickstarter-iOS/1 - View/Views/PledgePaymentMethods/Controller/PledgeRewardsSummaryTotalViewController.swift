@@ -22,9 +22,22 @@ final class PledgeRewardsSummaryTotalViewController: UIViewController {
     PledgeOverTimeBadgeView(frame: .zero)
   }()
 
-  private let viewModel = PledgeSummaryViewModel(
-    pledgeFeature: AppModel.shared.pledgeFeature
-  )
+  private let viewModel: PledgeSummaryViewModel
+
+  static func instantiate(
+    pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature
+  ) -> PledgeRewardsSummaryTotalViewController {
+    PledgeRewardsSummaryTotalViewController(pledgeFeature: pledgeFeature)
+  }
+
+  private init(pledgeFeature: PledgeFeature) {
+    self.viewModel = PledgeSummaryViewModel(pledgeFeature: pledgeFeature)
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("PledgeRewardsSummaryTotalViewController must be created with a PledgeFeature")
+  }
 
   // MARK: - Lifecycle
 

@@ -5458,3 +5458,23 @@ Visual rendering and the whole Library suite remain unverified. The CFA gate rej
 restored AppModel or AppEnvironment access in PledgeViewCTAContainerView. This is not
 full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Checkout reward-summary feature injection — 17 November 2026
+
+Author: Matthew Thomas.
+
+Standard and post-campaign reward-summary controllers now require PledgeFeature, pass it
+to their shared total child and receive the exact instance owned by the parent checkout's
+PledgeCheckoutComposition. The summary hierarchy no longer independently assembles its
+model from application state.
+
+Focused AppModel, summary and checkout validation passed all 125 tests. The bounded
+Rewards, Manage Pledge, payment-method, CTA, summary and checkout selection passed all
+274 tests. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-checkout-summary-composition-focused.xcresult` and
+`/private/tmp/kickstarter-checkout-summary-composition-bounded.xcresult`.
+
+Visual rendering and the whole Library suite remain unverified. The CFA gate rejects
+restored ambient composition in the summary parents and direct property initialization
+in the total child. This is not full CFA compliance. Swift packages, target identifiers
+and existing history are unchanged. No push.

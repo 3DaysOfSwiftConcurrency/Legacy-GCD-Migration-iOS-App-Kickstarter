@@ -59,7 +59,9 @@ final class PostCampaignCheckoutViewController: UIViewController,
   }()
 
   private lazy var pledgeRewardsSummaryViewController = {
-    PostCampaignPledgeRewardsSummaryViewController.instantiate()
+    PostCampaignPledgeRewardsSummaryViewController.instantiate(
+      pledgeFeature: self.composition.pledgeFeature
+    )
   }()
 
   internal var processingView: ProcessingView? = ProcessingView(frame: .zero)

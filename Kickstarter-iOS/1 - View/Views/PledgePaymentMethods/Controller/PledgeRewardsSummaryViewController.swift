@@ -36,10 +36,24 @@ final class PledgeRewardsSummaryViewController: UIViewController {
   private lazy var separatorView: UIView = { UIView(frame: .zero) }()
 
   private lazy var pledgeTotalViewController = {
-    PledgeRewardsSummaryTotalViewController.instantiate()
+    PledgeRewardsSummaryTotalViewController.instantiate(pledgeFeature: self.pledgeFeature)
   }()
 
+  private let pledgeFeature: PledgeFeature
   private let viewModel = PostCampaignPledgeRewardsSummaryViewModel()
+
+  static func instantiate(pledgeFeature: PledgeFeature) -> PledgeRewardsSummaryViewController {
+    PledgeRewardsSummaryViewController(pledgeFeature: pledgeFeature)
+  }
+
+  private init(pledgeFeature: PledgeFeature) {
+    self.pledgeFeature = pledgeFeature
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("PledgeRewardsSummaryViewController must be created with a PledgeFeature")
+  }
 
   // MARK: - Lifecycle
 
