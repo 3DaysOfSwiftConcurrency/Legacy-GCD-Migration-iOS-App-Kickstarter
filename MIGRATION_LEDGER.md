@@ -4007,3 +4007,25 @@ callbacks when checkout is reconfigured within the same session.
 The iPhone 17 Pro Max simulator on iOS 26.2 passed 55 focused
 presentation and view-model tests and 115 Payments and checkout
 regressions. Live Stripe behavior and visual parity remain unverified.
+
+### Stored-card PaymentSheet checkout scope — Matthew Thomas
+
+Stored-card setup carries the checkout identity through native
+presentation, analytics, and completion. A different project,
+backing, checkout ID, reward, pledge context, or session replaces
+that identity and cancels presentation waits. Equivalent
+configuration updates keep the identity. The controller cancels
+native work that has not presented on a replaced route, and the
+ViewModel rechecks the identity before admitting a card write.
+
+Tests cover PaymentSheet completion after a same-session route
+change, a setup result already waiting to be presented, and
+completion on the replacement route.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 51 focused tests,
+120 bounded checkout and Payment Settings regressions, and 12 native
+PaymentSheet operation tests. An argument-order error in the new
+fixture was corrected before verification. Live Stripe behavior
+and visual parity remain unverified. The main checkout controllers
+still check session identity alone for some Apple Pay and Stripe
+confirmation callbacks.

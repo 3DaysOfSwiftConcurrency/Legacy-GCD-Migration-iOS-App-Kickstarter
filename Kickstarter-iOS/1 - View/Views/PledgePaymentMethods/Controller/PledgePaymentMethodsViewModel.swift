@@ -1,3 +1,4 @@
+import Foundation
 import KsApi
 import PassKit
 import Prelude
@@ -34,8 +35,13 @@ public struct PledgePaymentMethodsAndSelectionData {
 
 @MainActor
 final class PledgePaymentMethodsViewModel {
+  struct CheckoutIdentity: Equatable {
+    fileprivate let session: PaymentsFeature.SessionIdentity
+    fileprivate let revision: UUID
+  }
+
   enum Event {
-    case goToAddCardViaStripeScreen(PaymentSheetSetupData)
+    case goToAddCardViaStripeScreen(PaymentSheetSetupData, CheckoutIdentity)
     case notifyDelegateCreditCardSelected(PaymentSourceSelected)
     case notifyDelegateLoadPaymentMethodsError(String)
     case reloadPaymentMethods(PledgePaymentMethodsAndSelectionData)
@@ -45,7 +51,7 @@ final class PledgePaymentMethodsViewModel {
   private let paymentsFeature: PaymentsFeature
   private let responseDelay: @MainActor () -> TimeInterval
   private let advertisingContext: @MainActor () -> (id: String, platformVersion: String)?
-  private var configuredSession: PaymentsFeature.SessionIdentity?
+  private var configuredCheckout: CheckoutIdentity?
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var configuration: PledgePaymentMethodsValue?
   private var loaded = false
@@ -69,25 +75,32 @@ final class PledgePaymentMethodsViewModel {
     self.sleep = sleep
   }
 
-  var sessionIdentity: PaymentsFeature.SessionIdentity? {
-    guard let configuredSession, self.paymentsFeature.sessionIdentity == configuredSession else { return nil }
-    return configuredSession
+  var currentCheckout: CheckoutIdentity? {
+    guard let configuredCheckout,
+          self.paymentsFeature.sessionIdentity == configuredCheckout.session else { return nil }
+    return configuredCheckout
   }
 
-  private func isCurrent(_ identity: PaymentsFeature.SessionIdentity) -> Bool {
-    self.sessionIdentity == identity
+  func isCurrent(_ identity: CheckoutIdentity) -> Bool {
+    self.currentCheckout == identity
   }
 
   func configure(with value: PledgePaymentMethodsValue) {
     let session = self.paymentsFeature.sessionIdentity
-    if let previous = self.configuredSession, previous != session {
+    let previous = self.configuration
+    if self.configuredCheckout?.session != session ||
+      previous?.project.id != value.project.id ||
+      previous?.project.personalization.backing?.id != value.project.personalization.backing?.id ||
+      previous?.checkoutId != value.checkoutId || previous?.reward.id != value.reward.id ||
+      previous?.context != value.context {
+      self.configuredCheckout = CheckoutIdentity(session: session, revision: UUID())
+      self.presentationTasks.cancel(.cards)
       self.presentationTasks.cancel(.setup)
       self.presentationTasks.cancel(.store)
       self.shouldCancel = true
       self.cardSelection = CheckoutCardSelection()
       self.lastSelection = nil
     }
-    self.configuredSession = session
     self.configuration = value
     if self.loaded { self.loadCards() }
     if self.loaded, self.cancellationKnown { self.onEvent?(.updateAddNewCardLoading(!self.shouldCancel)) }
@@ -100,7 +113,7 @@ final class PledgePaymentMethodsViewModel {
     }
   }
   private func loadCards() {
-    guard let config = self.configuration, let identity = self.sessionIdentity else { return }
+    guard let config = self.configuration, let identity = self.currentCheckout else { return }
     self.cardSelection.beginLoading()
     let feature = self.paymentsFeature
     let sleep = self.sleep
@@ -113,16 +126,16 @@ final class PledgePaymentMethodsViewModel {
         guard let self, self.isCurrent(identity),
               let cards = self.cardSelection.load(result.me.storedCards.storedCards, for: config.project)
         else { return }
-        self.publish(cards)
+        self.publish(cards, checkout: identity)
       } catch {
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.publishError(error)
       }
     }
-    self.publish(.init(), isLoading: true)
+    self.publish(.init(), checkout: identity, isLoading: true)
   }
-  func paymentSheetDidAdd(clientSecret: String, paymentMethod: String?) {
-    guard let identity = self.sessionIdentity else { return }
+  func paymentSheetDidAdd(clientSecret: String, paymentMethod: String?, checkout identity: CheckoutIdentity) {
+    guard self.isCurrent(identity) else { return }
     let feature = self.paymentsFeature
     let delay = self.responseDelay()
     let sleep = self.sleep
@@ -137,7 +150,7 @@ final class PledgePaymentMethodsViewModel {
         if let cards = self.cardSelection.add(
           envelope.createPaymentSource.paymentSource, stripePaymentMethodID: paymentMethod, for: config.project
         ) {
-          self.publish(cards)
+          self.publish(cards, checkout: identity)
         }
       } catch {
         do { try await sleep(delay) } catch { return }
@@ -153,14 +166,14 @@ final class PledgePaymentMethodsViewModel {
     if self.configuration != nil, self.loaded { self.onEvent?(.updateAddNewCardLoading(!state)) }
   }
   func willSelectRowAtIndexPath(_ indexPath: IndexPath) -> IndexPath? {
-    guard self.sessionIdentity != nil, self.cardSelection.snapshot != nil, indexPath.row >= 0 else { return nil }
+    guard self.currentCheckout != nil, self.cardSelection.snapshot != nil, indexPath.row >= 0 else { return nil }
     if indexPath.section == PaymentMethodsTableViewSection.addNewCard.rawValue { return indexPath }
     guard indexPath.section == PaymentMethodsTableViewSection.paymentMethods.rawValue else { return nil }
     return self.cardSelection.canSelect(row: indexPath.row) ? indexPath : nil
   }
 
   func didSelectRowAtIndexPath(_ indexPath: IndexPath) {
-    guard self.sessionIdentity != nil else { return }
+    guard let identity = self.currentCheckout else { return }
     if indexPath.section == PaymentMethodsTableViewSection.addNewCard.rawValue {
       self.startSetup()
       return
@@ -168,11 +181,11 @@ final class PledgePaymentMethodsViewModel {
     guard indexPath.section == PaymentMethodsTableViewSection.paymentMethods.rawValue,
           let cards = self.cardSelection.select(row: indexPath.row) else { return }
     self.shouldCancelPaymentSheetAppearance(state: true)
-    self.publish(cards)
+    self.publish(cards, checkout: identity)
   }
 
   private func startSetup() {
-    guard self.loaded, let config = self.configuration, let identity = self.sessionIdentity else { return }
+    guard self.loaded, let config = self.configuration, let identity = self.currentCheckout else { return }
     let feature = self.paymentsFeature
     let delay = self.responseDelay()
     let sleep = self.sleep
@@ -186,8 +199,8 @@ final class PledgePaymentMethodsViewModel {
         var configuration = PaymentSheet.Configuration()
         configuration.merchantDisplayName = Strings.general_accessibility_kickstarter()
         configuration.allowsDelayedPaymentMethods = true
-        configuration.defaultBillingDetails.email = feature.billingEmail(for: identity)
-        self.onEvent?(.goToAddCardViaStripeScreen((envelope.clientSecret, configuration)))
+        configuration.defaultBillingDetails.email = feature.billingEmail(for: identity.session)
+        self.onEvent?(.goToAddCardViaStripeScreen((envelope.clientSecret, configuration), identity))
       } catch {
         do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
@@ -197,12 +210,15 @@ final class PledgePaymentMethodsViewModel {
     }
     self.shouldCancelPaymentSheetAppearance(state: false)
   }
-  private func publish(_ cards: CheckoutCardSelection.Snapshot, isLoading: Bool = false) {
+  private func publish(
+    _ cards: CheckoutCardSelection.Snapshot, checkout identity: CheckoutIdentity, isLoading: Bool = false
+  ) {
+    guard self.isCurrent(identity) else { return }
     self.onEvent?(.reloadPaymentMethods(.init(
       existingPaymentMethods: cards.existing, newPaymentMethods: cards.added, selectedPaymentMethod: cards.selected,
       isLoading: isLoading, shouldReload: true
     )))
-    if let selected = cards.selected, self.lastSelection != selected {
+    if self.isCurrent(identity), let selected = cards.selected, self.lastSelection != selected {
       self.lastSelection = selected
       self.onEvent?(.notifyDelegateCreditCardSelected(selected))
     }
@@ -210,12 +226,12 @@ final class PledgePaymentMethodsViewModel {
   private func publishError(_ error: Error) {
     self.onEvent?(.notifyDelegateLoadPaymentMethodsError(((error as? ErrorEnvelope) ?? .couldNotParseJSON).localizedDescription))
   }
-  func stripePaymentSheetDidAppear() {
-    guard self.loaded, let config = self.configuration, let identity = self.sessionIdentity,
+  func stripePaymentSheetDidAppear(checkout identity: CheckoutIdentity) {
+    guard self.loaded, self.isCurrent(identity), let config = self.configuration,
           let advertising = self.advertisingContext() else { return }
     self.paymentsFeature.recordCheckoutAddCardAppearance(
       projectID: config.project.id, advertisingID: advertising.id,
-      platformVersion: advertising.platformVersion, session: identity
+      platformVersion: advertising.platformVersion, session: identity.session
     )
   }
 

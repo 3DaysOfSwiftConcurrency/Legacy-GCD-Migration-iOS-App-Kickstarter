@@ -60,7 +60,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       switch event {
       case let .notifyDelegateCreditCardSelected(value): self.notifyDelegateCreditCardSelected.record(value)
       case let .notifyDelegateLoadPaymentMethodsError(value): self.notifyDelegateLoadPaymentMethodsError.record(value)
-      case let .goToAddCardViaStripeScreen(value): self.goToAddStripeCardIntent.record(value)
+      case let .goToAddCardViaStripeScreen(value, _): self.goToAddStripeCardIntent.record(value)
       case let .updateAddNewCardLoading(value): self.addNewCardLoadingState.record(value)
       case let .reloadPaymentMethods(data):
         self.reloadPaymentMethodsCards.record(data.existingPaymentMethods.map { $0.card })
@@ -137,11 +137,11 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       self.vm.configure(with: config)
       self.vm.viewDidLoad()
       await self.runPayments()
-      let original = self.vm.sessionIdentity
+      let original = self.vm.currentCheckout
       XCTAssertNotNil(original)
 
       self.sessionFeature.sessionChanged()
-      XCTAssertNil(self.vm.sessionIdentity)
+      XCTAssertNil(self.vm.currentCheckout)
       XCTAssertNil(self.vm.willSelectRowAtIndexPath(addCard))
       self.vm.didSelectRowAtIndexPath(addCard)
       await self.runPayments()
@@ -149,11 +149,89 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       self.vm.configure(with: config)
       await self.runPayments()
-      XCTAssertNotEqual(self.vm.sessionIdentity, original)
+      XCTAssertNotEqual(self.vm.currentCheckout, original)
       self.vm.didSelectRowAtIndexPath(addCard)
       await self.runPayments()
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
     }
+  }
+
+  func testPaymentSheetCompletionRequiresTheCheckoutThatRequestedSetup() async {
+    let response = UserEnvelope<GraphUser>(me: self.userTemplate)
+    let service = MockService(
+      addPaymentSheetPaymentSourceResult: .success(.paymentSourceSuccessTemplateWithId("999")),
+      createStripeSetupIntentResult: .success(ClientSecretEnvelope(clientSecret: "fixture")),
+      fetchGraphUserResult: .success(response)
+    )
+    let model = self.makeViewModel()
+    var sheet: (data: PaymentSheetSetupData, checkout: PledgePaymentMethodsViewModel.CheckoutIdentity)?
+    model.onEvent = { event in
+      if case let .goToAddCardViaStripeScreen(data, checkout) = event { sheet = (data, checkout) }
+    }
+    let addCard = IndexPath(row: 0, section: PaymentMethodsTableViewSection.addNewCard.rawValue)
+    let original: PledgePaymentMethodsValue = (.template, .template, "first", .template, .latePledge, nil)
+    var replacement = original
+    replacement.checkoutId = "second"
+
+    await withEnvironment(apiService: service, currentUser: .template) {
+      model.configure(with: original)
+      model.viewDidLoad()
+      await model.waitForPending()
+      model.didSelectRowAtIndexPath(addCard)
+      await model.waitForPending()
+      guard let oldSheet = sheet else { XCTFail("Expected checkout setup"); return }
+
+      model.configure(with: original)
+      XCTAssertTrue(model.isCurrent(oldSheet.checkout))
+      model.configure(with: replacement)
+      XCTAssertFalse(model.isCurrent(oldSheet.checkout))
+      model.paymentSheetDidAdd(clientSecret: oldSheet.data.clientSecret, paymentMethod: nil, checkout: oldSheet.checkout)
+      await model.waitForPending()
+      XCTAssertEqual(self.paymentsProvider.storeRequests, 0)
+
+      sheet = nil
+      model.didSelectRowAtIndexPath(addCard)
+      await model.waitForPending()
+      guard let newSheet = sheet else { XCTFail("Expected setup for the replacement checkout"); return }
+      XCTAssertTrue(model.isCurrent(newSheet.checkout))
+      model.paymentSheetDidAdd(clientSecret: newSheet.data.clientSecret, paymentMethod: nil, checkout: newSheet.checkout)
+      await model.waitForPending()
+      XCTAssertEqual(self.paymentsProvider.storeRequests, 1)
+    }
+  }
+
+  func testReplacingCheckoutSuppressesSetupAlreadyAwaitingPresentation() async {
+    let gate = PledgePaymentDelayGate()
+    var blockSetup = false
+    let model = self.makeViewModel(sleep: { _ in if blockSetup { try await gate.wait() } })
+    var presented = false
+    model.onEvent = { event in if case .goToAddCardViaStripeScreen = event { presented = true } }
+    let service = MockService(
+      createStripeSetupIntentResult: .success(ClientSecretEnvelope(clientSecret: "fixture")),
+      fetchGraphUserResult: .success(UserEnvelope(me: self.userTemplate))
+    )
+    let route: PledgePaymentMethodsValue = (.template, .template, "checkout", .template, .pledge, nil)
+    var replacement = route
+    replacement.context = .update
+    await withEnvironment(apiService: service, currentUser: .template) {
+      model.configure(with: route)
+      model.viewDidLoad()
+      await model.waitForPending()
+      blockSetup = true
+      model.didSelectRowAtIndexPath(IndexPath(row: 0, section: PaymentMethodsTableViewSection.addNewCard.rawValue))
+      await gate.waitUntilBlocked()
+
+      blockSetup = false
+      model.configure(with: replacement)
+      gate.resume()
+      await model.waitForPending()
+      XCTAssertFalse(presented)
+    }
+  }
+
+  private func deliverAddedCard(clientSecret: String, paymentMethod: String?) {
+    guard let checkout = self.vm.currentCheckout else { XCTFail("Expected an active checkout"); return }
+    self.vm.paymentSheetDidAdd(clientSecret: clientSecret, paymentMethod: paymentMethod, checkout: checkout)
   }
 
   // MARK: - New card added
@@ -227,11 +305,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: sampleSetupIntent,
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: sampleSetupIntent,
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -396,11 +473,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -524,11 +600,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -614,11 +689,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         isErroredPaymentMethod: false
       )
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -710,11 +784,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         isErroredPaymentMethod: false
       )
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -791,11 +864,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       let paymentOption = STPPaymentMethod.sampleStringPaymentOption(paymentMethod)
       let paymentOptionsDisplayData = STPPaymentMethod.samplePaymentOptionsDisplayData(paymentOption)
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -998,11 +1070,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       let paymentOption = STPPaymentMethod.sampleStringPaymentOption(paymentMethod)
       let paymentOptionsDisplayData = STPPaymentMethod.samplePaymentOptionsDisplayData(paymentOption)
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake_from_viewmodel"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake_from_viewmodel"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1058,11 +1129,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       let paymentOption = STPPaymentMethod.sampleStringPaymentOption(paymentMethod)
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "fake_payment_intent",
-          paymentMethod: "pm_fake_from_response"
-        )
+      self.deliverAddedCard(
+        clientSecret: "fake_payment_intent",
+        paymentMethod: "pm_fake_from_response"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1353,11 +1423,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1408,11 +1477,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1470,11 +1538,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1532,11 +1599,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1584,11 +1650,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
 
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1644,11 +1709,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       apiService: mockService1,
       currentUser: User.template
     ) {
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_fake",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_fake",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1663,11 +1727,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       apiService: mockService2,
       currentUser: User.template
     ) {
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_fake",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_fake",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1682,11 +1745,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       apiService: mockService3,
       currentUser: User.template
     ) {
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "seti_fake",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "seti_fake",
+        paymentMethod: "pm_fake"
+      )
 
       await self.advancePayments(by: .seconds(1))
 
@@ -1946,11 +2008,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(self.reloadPaymentMethodsSelectedCardId.lastValue, UserCreditCards.visa.id)
 
       // Add a new card
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "si_fake",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "si_fake",
+        paymentMethod: "pm_fake"
+      )
 
       await self.runPayments()
 
@@ -2005,11 +2066,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertNil(self.reloadPaymentMethodsSelectedCardId.lastValue ?? nil)
 
       // Add a new card
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "si_fake",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "si_fake",
+        paymentMethod: "pm_fake"
+      )
 
       await self.runPayments()
 
@@ -2070,11 +2130,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertNil(self.reloadPaymentMethodsSelectedCardId.lastValue ?? nil)
 
       // Add a new card (the visa)
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "si_fake",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "si_fake",
+        paymentMethod: "pm_fake"
+      )
 
       await self.runPayments()
 
@@ -2092,11 +2151,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
     await withEnvironment(apiService: mockService2, currentUser: User.template) {
       // Add another new card (the discover)
-      self.vm
-        .paymentSheetDidAdd(
-          clientSecret: "si_fake",
-          paymentMethod: "pm_fake"
-        )
+      self.deliverAddedCard(
+        clientSecret: "si_fake",
+        paymentMethod: "pm_fake"
+      )
 
       await self.runPayments()
 

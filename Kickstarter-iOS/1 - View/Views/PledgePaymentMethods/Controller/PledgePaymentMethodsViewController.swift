@@ -110,7 +110,7 @@ final class PledgePaymentMethodsViewController: UIViewController {
         self.messageDisplayingDelegate?.pledgeViewController(self, didErrorWith: message, error: nil)
       case let .notifyDelegateCreditCardSelected(payment):
         self.delegate?.pledgePaymentMethodsViewController(self, didSelectCreditCard: payment)
-      case let .goToAddCardViaStripeScreen(data): self.goToPaymentSheet(data: data)
+      case let .goToAddCardViaStripeScreen(data, checkout): self.goToPaymentSheet(data: data, checkout: checkout)
       case let .updateAddNewCardLoading(loading): self.updateAddNewPaymentMethodButtonLoading(state: loading)
       }
     }
@@ -119,31 +119,37 @@ final class PledgePaymentMethodsViewController: UIViewController {
   // MARK: - Configuration
 
   func configure(with value: PledgePaymentMethodsValue) {
+    let previous = self.viewModel.currentCheckout
     self.viewModel.configure(with: value)
+    if previous != self.viewModel.currentCheckout { self.paymentSheet.cancelBeforePresentation() }
   }
 
   // MARK: - Functions
 
-  private func goToPaymentSheet(data: PaymentSheetSetupData) {
-    guard let session = self.viewModel.sessionIdentity else { return }
+  private func goToPaymentSheet(
+    data: PaymentSheetSetupData, checkout: PledgePaymentMethodsViewModel.CheckoutIdentity
+  ) {
+    guard self.viewModel.isCurrent(checkout) else { return }
     self.paymentSheet.start(
       clientSecret: data.clientSecret, client: StripePaymentSheetClient(data: data),
       presenter: self, retrievePaymentMethod: true,
       isCurrent: { [weak self] in
-        guard let self, self.viewModel.sessionIdentity == session,
+        guard let self, self.viewModel.isCurrent(checkout),
           let top = self.navigationController?.topViewController else { return false }
         return self.parent === top && (top is PledgeViewController || top is PostCampaignCheckoutViewController)
       },
       didPresent: { [weak self] in
-        guard let self, self.viewModel.sessionIdentity == session else { return }
-        self.viewModel.stripePaymentSheetDidAppear()
+        guard let self, self.viewModel.isCurrent(checkout) else { return }
+        self.viewModel.stripePaymentSheetDidAppear(checkout: checkout)
       },
       completed: { [weak self] result in
-        guard let self, self.viewModel.sessionIdentity == session else { return }
+        guard let self, self.viewModel.isCurrent(checkout) else { return }
         self.viewModel.shouldCancelPaymentSheetAppearance(state: true)
         switch result {
         case let .completed(method):
-          self.viewModel.paymentSheetDidAdd(clientSecret: data.clientSecret, paymentMethod: method)
+          self.viewModel.paymentSheetDidAdd(
+            clientSecret: data.clientSecret, paymentMethod: method, checkout: checkout
+          )
         case .noSelection, .canceled: break
         case let .failed(error), let .loadFailed(error):
           self.messageDisplayingDelegate?
