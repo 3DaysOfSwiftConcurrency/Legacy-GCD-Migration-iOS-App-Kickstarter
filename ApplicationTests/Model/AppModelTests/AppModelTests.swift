@@ -214,10 +214,13 @@ final class RemoteConfigurationServiceTests: XCTestCase {
 
 @MainActor
 final class ApplicationConfigurationServiceTests: XCTestCase {
-  func testEquivalentRefreshesShareAndNextRefreshLoadsAgain() async throws {
+  func testEquivalentPrefetchesShareWithoutApplyingConfiguration() async throws {
     let gate = AccountRequestGate<Config>()
     defer { gate.releaseAll() }
-    let service = ApplicationConfigurationService(load: { try await gate.request() })
+    let service = ApplicationConfigurationService(
+      load: { try await gate.request() },
+      applyConfiguration: { _ in XCTFail("Prefetch applied configuration") }
+    )
     let first = service.requestConfiguration()
     let second = service.requestConfiguration()
     await gate.waitFor(1)
@@ -234,16 +237,41 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
   func testResetRejectsAnOldConfiguration() async throws {
     let gate = AccountRequestGate<Config>()
     defer { gate.releaseAll() }
-    let service = ApplicationConfigurationService(load: { try await gate.request() })
-    let old = service.requestConfiguration()
+    var applied: [Config] = []
+    let service = ApplicationConfigurationService(
+      load: { try await gate.request() },
+      applyConfiguration: { applied.append($0) }
+    )
+    let old = service.refresh()
     await gate.waitFor(1)
     service.reset()
-    let current = service.requestConfiguration()
+    let current = service.refresh()
     await gate.waitFor(2)
     try gate.finish(0, .success(.template))
     try gate.finish(1, .success(.template))
     if case .success = await old.result { XCTFail("Reset configuration completed") }
-    _ = try await current.value
+    let config = try await current.value
+    XCTAssertEqual(applied, [config])
+  }
+
+  func testConcurrentRefreshesApplyASharedPrefetchOnce() async throws {
+    let gate = AccountRequestGate<Config>()
+    defer { gate.releaseAll() }
+    var applied: [Config] = []
+    let service = ApplicationConfigurationService(
+      load: { try await gate.request() },
+      applyConfiguration: { applied.append($0) }
+    )
+    let prefetch = service.requestConfiguration()
+    await gate.waitFor(1)
+    let first = service.refresh()
+    let second = service.refresh()
+    try gate.finish(0, .success(.template))
+    _ = try await first.value
+    _ = try await second.value
+    let config = try await prefetch.value
+    XCTAssertEqual(gate.count, 1)
+    XCTAssertEqual(applied, [config])
   }
 }
 

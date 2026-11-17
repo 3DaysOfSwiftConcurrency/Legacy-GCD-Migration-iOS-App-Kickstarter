@@ -359,6 +359,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.deepLinkRouter.waitForOperations()
       await (self.vm as? AppDelegateViewModel)?.waitForConfiguration()
       self.updateConfigInEnvironment.assertValues([config1])
+      XCTAssertEqual(AppEnvironment.current.config, config1)
 
       self.vm.inputs.didUpdateConfig(config1)
       self.postNotificationName.assertValues([.ksr_configUpdated])

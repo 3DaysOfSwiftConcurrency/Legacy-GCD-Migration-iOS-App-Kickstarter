@@ -162,7 +162,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     self.viewModel.outputs.onUpdateConfig = { [weak self] config in
       DispatchQueue.main.async { [weak self] in
-        AppEnvironment.updateConfig(config)
         self?.viewModel.inputs.didUpdateConfig(config)
       }
     }

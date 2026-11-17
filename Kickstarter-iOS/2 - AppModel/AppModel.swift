@@ -40,21 +40,24 @@ public final class ApplicationConfigurationService {
   private let load: @MainActor () async throws -> Config
   private let installVisitorCookies: @MainActor () -> Void
   private let debugFeatureFlags: @MainActor () -> [String: Bool]
-  private var request: (id: UUID, task: Task<Config, Error>)?
+  private let applyConfiguration: @MainActor (Config) -> Void
+  private var request: (id: UUID, task: Task<Config, Error>, appliesResult: Bool)?
 
   public init(
     load: @escaping @MainActor () async throws -> Config,
     installVisitorCookies: @escaping @MainActor () -> Void = {},
-    debugFeatureFlags: @escaping @MainActor () -> [String: Bool] = { [:] }
+    debugFeatureFlags: @escaping @MainActor () -> [String: Bool] = { [:] },
+    applyConfiguration: @escaping @MainActor (Config) -> Void = { _ in }
   ) {
     self.load = load
     self.installVisitorCookies = installVisitorCookies
     self.debugFeatureFlags = debugFeatureFlags
+    self.applyConfiguration = applyConfiguration
   }
 
   func refresh() -> Task<Config, Error> {
     self.installVisitorCookies()
-    return self.requestConfiguration()
+    return self.requestConfiguration(applyResult: true)
   }
 
   public func configuration() async throws -> Config {
@@ -65,7 +68,14 @@ public final class ApplicationConfigurationService {
   }
 
   @discardableResult public func requestConfiguration() -> Task<Config, Error> {
-    if let request = self.request { return request.task }
+    self.requestConfiguration(applyResult: false)
+  }
+
+  private func requestConfiguration(applyResult: Bool) -> Task<Config, Error> {
+    if let request = self.request {
+      if applyResult { self.request?.appliesResult = true }
+      return request.task
+    }
     let id = UUID()
     let load = self.load
     let task = Task { [self] in
@@ -73,10 +83,12 @@ public final class ApplicationConfigurationService {
       try Task.checkCancellation()
       let value = try await load()
       try Task.checkCancellation()
-      guard self.request?.id == id else { throw CancellationError() }
-      return self.retainingDebugFeatureFlags(value)
+      guard let request = self.request, request.id == id else { throw CancellationError() }
+      let config = self.retainingDebugFeatureFlags(value)
+      if request.appliesResult { self.applyConfiguration(config) }
+      return config
     }
-    self.request = (id, task)
+    self.request = (id, task, applyResult)
     return task
   }
 
@@ -112,7 +124,8 @@ extension ApplicationConfigurationService {
       debugFeatureFlags: {
         guard let environment = AppEnvironment.current, !environment.mainBundle.isRelease else { return [:] }
         return environment.config?.features ?? [:]
-      }
+      },
+      applyConfiguration: { AppEnvironment.updateConfig($0) }
     )
   }
 }

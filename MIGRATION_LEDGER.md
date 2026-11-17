@@ -3369,3 +3369,9 @@ cookie installation and retained feature flags from live composition.
 Isolated service tests can supply only the loader. Three focused AppModel
 and configuration-service tests and all 125 AppDelegate presentation tests
 passed, including the four visitor-cookie and two flag-retention scenarios.
+
+ApplicationConfigurationService now applies refresh results before returning
+them to AppDelegate for notification. A prefetch only reads unless a refresh
+joins it, and a reset prevents the old request from applying its result. Four
+focused AppModel and configuration-service tests and all 125 AppDelegate
+presentation tests passed on the simulator.
