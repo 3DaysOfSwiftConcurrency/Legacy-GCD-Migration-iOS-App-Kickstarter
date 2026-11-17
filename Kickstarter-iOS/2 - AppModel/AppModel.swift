@@ -2,6 +2,26 @@ import Foundation
 import KsApi
 import Prelude
 
+extension ProjectMediaFeature.SavePrompts {
+  @MainActor
+  static func live() -> Self {
+    Self(
+      tipState: {
+        guard let environment = AppEnvironment.current else { return nil }
+        return (
+          environment.dateType.init().date,
+          environment.ubiquitousStore.hasSeenSaveProjectAlert && environment.userDefaults.hasSeenSaveProjectAlert
+        )
+      },
+      recordTip: {
+        AppEnvironment.current.ubiquitousStore.hasSeenSaveProjectAlert = true
+        AppEnvironment.current.userDefaults.hasSeenSaveProjectAlert = true
+      },
+      canShowNotification: { PushNotificationDialog.canShowDialog(for: .save) }
+    )
+  }
+}
+
 extension OnboardingFeature {
   static func live() -> OnboardingFeature {
     OnboardingFeature(
@@ -473,6 +493,7 @@ public final class AppModel {
         sessionFeature: sessionFeature,
         webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
         analytics: { AppEnvironment.current.ksrAnalytics },
+        savePrompts: .live(),
         makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) }
       )
     )

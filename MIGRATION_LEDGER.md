@@ -3403,6 +3403,13 @@ coverage, and 21 non-snapshot presentation tests passed. Updated snapshot
 fixtures compiled. The pinned iPad mini on iOS 18.6 was unavailable for
 snapshot execution.
 
+Project Media now receives save-prompt time, storage and notification
+eligibility from composition. WatchProjectViewModel receives analytics and
+response timing from its owning view. The CFA source check guards both
+files against direct environment reads. All 55 focused Project Media,
+Watch Project and push-dialog tests and 103 Project Page and Discovery
+card regression tests passed on the simulator.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

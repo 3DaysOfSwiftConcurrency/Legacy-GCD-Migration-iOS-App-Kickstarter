@@ -55,7 +55,9 @@ final class ProjectPageNavigation {
 
   private let shareViewModel = ShareViewModel()
   private let watchProjectViewModel = WatchProjectViewModel(
-    projectMediaFeature: AppModel.shared.projectMediaFeature
+    projectMediaFeature: AppModel.shared.projectMediaFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
 
   private lazy var navigationShareButton: UIButton = { UIButton(type: .custom) }()

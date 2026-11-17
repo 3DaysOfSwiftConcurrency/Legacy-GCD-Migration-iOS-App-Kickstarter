@@ -17,7 +17,9 @@ internal protocol DiscoveryPostcardCellDelegate: AnyObject {
 internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
   fileprivate let viewModel = DiscoveryPostcardViewModel()
   private let watchProjectViewModel = WatchProjectViewModel(
-    projectMediaFeature: AppModel.shared.projectMediaFeature
+    projectMediaFeature: AppModel.shared.projectMediaFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
   internal weak var delegate: DiscoveryPostcardCellDelegate?
 

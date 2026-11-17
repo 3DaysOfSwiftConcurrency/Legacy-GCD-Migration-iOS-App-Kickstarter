@@ -33,8 +33,24 @@ public struct AsyncProjectMediaProvider: ProjectMediaProvider {
 @MainActor
 public final class ProjectMediaFeature {
   public var webBaseURL: URL { self.readWebBaseURL() }
+  public struct SavePrompts {
+    let tipState: @MainActor () -> (today: Date, hasSeenTip: Bool)?
+    let recordTip: @MainActor () -> Void
+    let canShowNotification: @MainActor () -> Bool
+
+    public init(
+      tipState: @escaping @MainActor () -> (today: Date, hasSeenTip: Bool)?,
+      recordTip: @escaping @MainActor () -> Void,
+      canShowNotification: @escaping @MainActor () -> Bool
+    ) {
+      self.tipState = tipState
+      self.recordTip = recordTip
+      self.canShowNotification = canShowNotification
+    }
+  }
   private let readWebBaseURL: @MainActor () -> URL
   private let analytics: @MainActor () -> KSRAnalytics?
+  private let savePrompts: SavePrompts?
   private struct ImageKey: Hashable { let route: UUID; let url: URL }
   private var images: [ImageKey: (id: UUID, task: Task<UIImage, Error>)] = [:]
   private let loadImage: @MainActor (URL) async throws -> UIImage
@@ -255,24 +271,17 @@ public final class ProjectMediaFeature {
     self.savedProjects.setObject(NSNumber(value: saved), forKey: NSNumber(value: id))
   }
   public func claimSaveProjectTip(for project: Project) -> Bool {
-    guard let environment = AppEnvironment.current else { return false }
-    guard !project.endsIn48Hours(today: environment.dateType.init().date),
-          !environment.ubiquitousStore.hasSeenSaveProjectAlert ||
-          !environment.userDefaults.hasSeenSaveProjectAlert else { return false }
-    self.recordSaveProjectTip()
+    guard let savePrompts = self.savePrompts, let state = savePrompts.tipState(),
+          !project.endsIn48Hours(today: state.today), !state.hasSeenTip else { return false }
+    savePrompts.recordTip()
     return true
   }
 
   public func claimSaveNotificationPrompt() -> Bool {
-    guard PushNotificationDialog.canShowDialog(for: .save),
+    guard let savePrompts = self.savePrompts, savePrompts.canShowNotification(),
           self.sessionFeature.currentUser?.stats.starredProjectsCount == 0 else { return false }
-    self.recordSaveProjectTip()
+    savePrompts.recordTip()
     return true
-  }
-
-  private func recordSaveProjectTip() {
-    AppEnvironment.current.ubiquitousStore.hasSeenSaveProjectAlert = true
-    AppEnvironment.current.userDefaults.hasSeenSaveProjectAlert = true
   }
 
   public func prepareWatch(projectID: String, watched: Bool, previous: Bool) -> WatchIntent {
@@ -417,6 +426,7 @@ public final class ProjectMediaFeature {
     sessionFeature: SessionFeature,
     webBaseURL: @escaping @MainActor () -> URL = { ServerConfig.production.webBaseUrl },
     analytics: @escaping @MainActor () -> KSRAnalytics? = { nil },
+    savePrompts: SavePrompts? = nil,
     loadImage: (@MainActor (URL) async throws -> UIImage)? = nil,
     preparePlayback: (@MainActor (URL, URL?) async throws -> PreparedProjectMedia)? = nil,
     makeProvider: @escaping () -> any ProjectMediaProvider
@@ -426,6 +436,7 @@ public final class ProjectMediaFeature {
     self.sessionFeature = sessionFeature
     self.readWebBaseURL = webBaseURL
     self.analytics = analytics
+    self.savePrompts = savePrompts
     self.makeProvider = makeProvider
   }
 

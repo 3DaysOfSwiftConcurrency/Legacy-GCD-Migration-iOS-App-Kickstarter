@@ -47,7 +47,9 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
 
   private let viewModel = DiscoveryProjectCardViewModel()
   private let watchProjectViewModel = WatchProjectViewModel(
-    projectMediaFeature: AppModel.shared.projectMediaFeature
+    projectMediaFeature: AppModel.shared.projectMediaFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
 
   // MARK: - Notification Observers
