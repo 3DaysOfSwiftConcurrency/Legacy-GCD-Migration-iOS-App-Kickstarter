@@ -240,6 +240,8 @@ reject_matches 'Apple Pay request policy belongs to PaymentsFeature composition.
   'AppEnvironment[.]current' "$app_model/Features/Payments/PKPaymentRequest+Helpers.swift"
 reject_matches 'Pledged Projects card formatting receives locale from its Feature.' \
   'AppEnvironment[.]current' "$app_model/Features/PledgedProjects/PPOProjectCardModel+Parsing.swift"
+reject_matches 'Settings presentation receives application metadata from SettingsFeature.' \
+  'AppEnvironment[.]current' "$app_model/Features/Settings/SettingsCellType.swift"
 reject_matches 'Creator Drafts receives response policy from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/CreatorDrafts/CreatorDraftsFeature.swift"
 reject_matches 'Pledge receives environment dependencies from composition.' \

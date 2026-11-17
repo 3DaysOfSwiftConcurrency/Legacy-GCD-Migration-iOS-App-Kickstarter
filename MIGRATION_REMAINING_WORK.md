@@ -91,6 +91,9 @@ Swift packages are excluded.
   longer reads the global environment.
 - PledgedProjectsFeature now captures locale at request admission and supplies it to
   pledged-card parsing. Card currency formatting no longer reads AppEnvironment.
+- SettingsFeature now receives application-version metadata from AppModel. The
+  Settings view model formats the footer; section metadata no longer reads the
+  process environment.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

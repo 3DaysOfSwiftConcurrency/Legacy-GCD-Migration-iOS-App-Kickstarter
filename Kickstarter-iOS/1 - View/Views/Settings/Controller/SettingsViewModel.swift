@@ -26,6 +26,11 @@ public final class SettingsViewModel {
   public func currentUserUpdated() { self.loadUser() }
   public func viewWillAppear() {}
 
+  public func footerText(for section: SettingsSectionType) -> String? {
+    guard section == .ratingAppVersion else { return nil }
+    return "\(Strings.App_version()) \(self.settings.appVersionString)"
+  }
+
   private func loadUser() {
     if let user = self.settings.sessionFeature.currentUser { self.display(user) }
     let id = UUID()

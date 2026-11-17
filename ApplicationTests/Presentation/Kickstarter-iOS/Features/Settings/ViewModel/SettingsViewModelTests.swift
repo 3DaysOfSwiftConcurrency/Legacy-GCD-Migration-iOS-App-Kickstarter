@@ -15,6 +15,18 @@ final class SettingsViewModelTests: TestCase {
   private lazy var vm = SettingsViewModel({ type in type == .notifications ? UIViewController() : nil },
                                            settingsFeature: self.feature)
 
+  func testFooterUsesApplicationVersionComposedIntoSettingsFeature() {
+    let settings = SettingsFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      applicationVersion: { "9.8.7 #654" },
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    let vm = SettingsViewModel({ _ in nil }, settingsFeature: settings)
+
+    XCTAssertEqual(vm.footerText(for: .ratingAppVersion), "App version 9.8.7 #654")
+    XCTAssertNil(vm.footerText(for: .help))
+  }
+
   func testRatingUsesTheInjectedSettingsDestinationAndPreservesMissingDestinationFallback() {
     let destination = "https://example.test/application"
     var config: Config? = Config.template |> \.iTunesLink .~ destination

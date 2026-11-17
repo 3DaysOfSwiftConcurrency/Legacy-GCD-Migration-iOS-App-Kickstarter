@@ -4930,3 +4930,25 @@ The CFA gate rejects restored AppEnvironment access in pledged-card parsing. Liv
 account data, visual parity and the whole Library suite remain unverified. This is not
 full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Settings receives application metadata from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now composes the installed application version into SettingsFeature.
+SettingsViewModel formats the localized footer from that Feature value, while
+SettingsSectionType is again static layout metadata and no longer reads
+AppEnvironment. Footer visibility and the displayed production version are preserved.
+
+Focused SettingsViewModel validation passed all 4 tests. The bounded SettingsFeature
+and AppModel selection passed all 50 tests, and the bounded Settings view-model and
+data-source selection passed all 6 tests. All runs had zero failures and skips on
+iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-settings-version-focused.xcresult`,
+`/private/tmp/kickstarter-settings-version-library.xcresult` and
+`/private/tmp/kickstarter-settings-version-presentation.xcresult`.
+
+The CFA gate rejects restored AppEnvironment access in SettingsCellType. Visual
+rendering, release-bundle metadata and the whole Library suite remain unverified.
+This is not full CFA compliance. Swift packages, target identifiers and existing
+history are unchanged. No push.

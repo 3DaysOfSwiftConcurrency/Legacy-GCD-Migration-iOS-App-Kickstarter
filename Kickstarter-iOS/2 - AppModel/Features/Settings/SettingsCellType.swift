@@ -56,16 +56,6 @@ public enum SettingsSectionType: Int, CaseIterable {
     }
   }
 
-  @MainActor
-  public var footerText: String? {
-    switch self {
-    case .ratingAppVersion:
-      let appVersionString = AppEnvironment.current.mainBundle.appVersionString
-      return "\(Strings.App_version()) \(appVersionString)"
-    default:
-      return nil
-    }
-  }
 }
 
 // TODO: When the decision to add the Facebook friends feature back in is confirmed, refer to this PR:

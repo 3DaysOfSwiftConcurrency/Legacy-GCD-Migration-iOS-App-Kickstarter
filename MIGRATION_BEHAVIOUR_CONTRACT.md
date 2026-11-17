@@ -1919,3 +1919,15 @@ safe for arbitrary concurrent environment mutation.
 - Controlled coverage proves two supplied locales produce their corresponding currency
   presentations. Live account data, visual parity and the whole Library suite remain
   outside this checkpoint.
+
+## Settings application-version ownership — 17 November 2026
+
+- AppModel supplies the installed application version to SettingsFeature. The
+  Settings view model combines that raw metadata with the localized footer label;
+  SettingsSectionType remains static section-layout metadata.
+- The existing footer visibility policy and version text are unchanged. Other
+  settings destinations, refreshes and preference writes retain their existing
+  Feature ownership and task behavior.
+- Controlled coverage proves the supplied version reaches the rating footer and
+  unrelated sections have no footer text. Visual rendering and release-bundle
+  metadata remain outside this checkpoint.

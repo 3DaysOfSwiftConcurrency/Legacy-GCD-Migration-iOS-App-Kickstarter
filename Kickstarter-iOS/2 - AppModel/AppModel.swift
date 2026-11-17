@@ -276,6 +276,7 @@ public final class AppModel {
       sessionFeature: sessionFeature,
       applicationSettings: .live(configuration: applicationConfiguration, remoteConfiguration: remoteConfiguration),
       hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
+      applicationVersion: { AppEnvironment.current.mainBundle.appVersionString },
       responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
     )

@@ -168,7 +168,7 @@ extension SettingsViewController: UITableViewDelegate {
 
     let section = SettingsSectionType(rawValue: section)
 
-    footerView?.configure(with: section?.footerText ?? "")
+    footerView?.configure(with: section.flatMap(self.viewModel.footerText(for:)) ?? "")
 
     return footerView
   }
