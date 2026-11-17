@@ -7,7 +7,9 @@ import UIKit
 final class CommentPostFailedCell: UITableViewCell, ValueCell {
   // MARK: - Properties
 
-  private let viewModel = CommentCellViewModel()
+  private let viewModel = CommentCellViewModel(
+    discussionFeature: AppModel.shared.discussionFeature
+  )
 
   private lazy var bodyTextView: UITextView = { UITextView(frame: .zero) }()
   private lazy var commentCellHeaderStackView: CommentCellHeaderStackView = {

@@ -13,16 +13,11 @@ final class CommentCellViewModel {
 
   var onEvent: ((Event) -> Void)?
   private let discussionFeature: DiscussionFeature
-  private let sessionFeature: SessionFeature
   private var comment: Comment?
   private var lastProjectAccess: Bool?
 
-  init(
-    discussionFeature: DiscussionFeature? = nil,
-    sessionFeature: SessionFeature? = nil
-  ) {
-    self.discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
-    self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
+  init(discussionFeature: DiscussionFeature) {
+    self.discussionFeature = discussionFeature
   }
 
   func configureWith(comment: Comment, project: Project?) {
@@ -38,7 +33,7 @@ final class CommentCellViewModel {
     self.onEvent?(.flagButtonIsHidden(true))
     if let project { self.lastProjectAccess = userIsBackingCreatorOrCollaborator(project) }
     if let allowed = self.lastProjectAccess {
-      let hidden = self.sessionFeature.currentUser == nil || !allowed
+      let hidden = self.discussionFeature.sessionFeature.currentUser == nil || !allowed
       self.onEvent?(.replyButtonIsHidden(hidden))
       self.onEvent?(.bottomRowStackViewIsHidden(hidden || comment.isReply))
     }
@@ -54,7 +49,7 @@ final class CommentCellViewModel {
 
   private func badge(for comment: Comment) -> Comment.AuthorBadge {
     if comment.author.isBlocked { return .backer }
-    return comment.author.id == self.sessionFeature.currentUser?.id.description ? .you : comment.authorBadge
+    return comment.author.id == self.discussionFeature.sessionFeature.currentUser?.id.description ? .you : comment.authorBadge
   }
 
   private func publishStatus(_ status: Comment.Status) {

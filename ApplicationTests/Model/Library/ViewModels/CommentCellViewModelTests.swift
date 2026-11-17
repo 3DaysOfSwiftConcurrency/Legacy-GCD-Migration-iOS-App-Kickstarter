@@ -13,7 +13,10 @@ private enum Constants {
 internal final class CommentCellViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
-  let vm = CommentCellViewModel()
+  let vm = CommentCellViewModel(discussionFeature: DiscussionFeature(
+    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    makeProvider: { AsyncDiscussionProvider(service: MockService()) }
+  ))
 
   private let authorBadge = CommentRecorder<Comment.AuthorBadge>()
   private let authorImageURL = CommentRecorder<URL?>()

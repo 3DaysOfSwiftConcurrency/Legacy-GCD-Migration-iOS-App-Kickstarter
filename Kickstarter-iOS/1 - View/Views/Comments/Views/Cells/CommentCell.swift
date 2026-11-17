@@ -30,7 +30,9 @@ final class CommentCell: UITableViewCell, ValueCell {
       |> \.isUserInteractionEnabled .~ true
   }()
 
-  private let viewModel = CommentCellViewModel()
+  private let viewModel = CommentCellViewModel(
+    discussionFeature: AppModel.shared.discussionFeature
+  )
 
   private lazy var rootStackView = {
     UIStackView(frame: .zero)

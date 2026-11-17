@@ -36,7 +36,9 @@ final class RootCommentCell: UITableViewCell, ValueCell {
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
-  private let viewModel = CommentCellViewModel()
+  private let viewModel = CommentCellViewModel(
+    discussionFeature: AppModel.shared.discussionFeature
+  )
 
   // MARK: - Lifecycle
 

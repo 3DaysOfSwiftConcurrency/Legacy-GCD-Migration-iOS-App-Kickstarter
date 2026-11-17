@@ -18,7 +18,9 @@ final class CommentRepliesViewController: UITableViewController, MessageBannerVi
   // MARK: Properties
 
   private let dataSource = CommentRepliesDataSource()
-  internal let viewModel: CommentRepliesViewModelType = CommentRepliesViewModel()
+  internal let viewModel: CommentRepliesViewModelType = CommentRepliesViewModel(
+    discussionFeature: AppModel.shared.discussionFeature
+  )
 
   public var messageBannerViewController: MessageBannerViewController?
   weak var delegate: CommentRepliesViewControllerDelegate?

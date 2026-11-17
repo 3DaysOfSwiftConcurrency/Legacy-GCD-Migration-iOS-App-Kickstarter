@@ -21,7 +21,9 @@ internal final class CommentCellHeaderStackView: UIStackView {
   }()
 
   private(set) lazy var postTimeLabel: UILabel = { UILabel(frame: .zero) }()
-  private let viewModel = CommentCellViewModel()
+  private let viewModel = CommentCellViewModel(
+    discussionFeature: AppModel.shared.discussionFeature
+  )
 
   override init(frame: CGRect) {
     super.init(frame: frame)

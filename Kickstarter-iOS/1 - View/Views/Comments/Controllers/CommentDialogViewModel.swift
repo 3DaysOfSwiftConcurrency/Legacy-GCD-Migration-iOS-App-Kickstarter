@@ -32,10 +32,10 @@ final class CommentDialogViewModel {
   private var enabled: Bool?
   private var postTask: Task<Void, Never>?
 
-  init(feature: DiscussionFeature? = nil, sleep: @escaping @MainActor () async throws -> Void = {
+  init(feature: DiscussionFeature, sleep: @escaping @MainActor () async throws -> Void = {
     try await Task.sleep(for: .seconds(1))
   }) {
-    self.discussionFeature = feature ?? AppModel.shared.discussionFeature
+    self.discussionFeature = feature
     self.sleep = sleep
   }
 

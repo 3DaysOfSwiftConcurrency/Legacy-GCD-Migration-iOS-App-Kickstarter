@@ -40,7 +40,9 @@ internal final class CommentsViewController: UITableViewController, MessageBanne
     return refreshControl
   }()
 
-  internal let viewModel: CommentsViewModelType = CommentsViewModel()
+  internal let viewModel: CommentsViewModelType = CommentsViewModel(
+    discussionFeature: AppModel.shared.discussionFeature
+  )
   private let dataSource = CommentsDataSource()
 
   public var messageBannerViewController: MessageBannerViewController?

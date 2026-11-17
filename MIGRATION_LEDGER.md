@@ -3276,3 +3276,8 @@ Activity now composes Activity, Friends and Settings at its controller and
 cell boundaries. The project-status cell supplies a current-user lookup
 for creator labels. The focused Activity feature and view-model suites passed
 37 simulator tests, and `make check-cfa` guards Activity view models.
+
+Comment dialogs, lists, replies and cells now receive Discussion explicitly.
+Comment cells use Discussion's session for author badges and access checks.
+Five focused Discussion and comment suites passed 124 simulator tests.
+`make check-cfa` now guards the Comments view models.

@@ -120,8 +120,7 @@ public final class CommentsViewModel: CommentsViewModelType,
   private var lastViewedReplyComment: Comment?
   private var lastReplyComment: Comment?
 
-  public init(discussionFeature: DiscussionFeature? = nil) {
-    let discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
+  public init(discussionFeature: DiscussionFeature) {
     self.discussionFeature = discussionFeature
     self.blockAnalytics.onInitiate = { project, blockedUserId in
       AppEnvironment.current.ksrAnalytics.trackBlockedUser(

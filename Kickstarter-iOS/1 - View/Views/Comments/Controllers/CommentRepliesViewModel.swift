@@ -110,8 +110,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   private let route = UUID()
   private(set) var loadingTask: Task<Void, Never>?
 
-  public init(discussionFeature: DiscussionFeature? = nil) {
-    let discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
+  public init(discussionFeature: DiscussionFeature) {
     self.discussionFeature = discussionFeature
     let route = self.route
     self.blockAnalytics.onInitiate = { project, blockedUserId in

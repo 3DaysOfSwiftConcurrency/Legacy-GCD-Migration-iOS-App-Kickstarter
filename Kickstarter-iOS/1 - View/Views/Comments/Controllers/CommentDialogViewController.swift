@@ -11,7 +11,9 @@ internal protocol CommentDialogDelegate: AnyObject {
 
 internal final class CommentDialogViewController: UIViewController {
   private var keyboardObservation: Keyboard.Observation?
-  fileprivate let viewModel = CommentDialogViewModel()
+  fileprivate let viewModel = CommentDialogViewModel(
+    feature: AppModel.shared.discussionFeature
+  )
   internal weak var delegate: CommentDialogDelegate?
 
   @IBOutlet fileprivate var bottomConstraint: NSLayoutConstraint!
