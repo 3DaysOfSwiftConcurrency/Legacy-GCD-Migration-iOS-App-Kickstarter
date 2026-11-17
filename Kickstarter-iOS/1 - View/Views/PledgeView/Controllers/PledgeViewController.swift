@@ -132,7 +132,9 @@ final class PledgeViewController: UIViewController,
   private var sessionStartedObserver: MainActorNotificationObservation?
   private let pledgeFeature = AppModel.shared.pledgeFeature
   private lazy var viewModel: PledgeViewModelType = PledgeViewModel(
-    feature: self.pledgeFeature,
+    pledgeFeature: self.pledgeFeature,
+    authenticationFeature: AppModel.shared.authenticationFeature,
+    paymentsFeature: AppModel.shared.paymentsFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
     currencyContext: { .live() },
     hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },

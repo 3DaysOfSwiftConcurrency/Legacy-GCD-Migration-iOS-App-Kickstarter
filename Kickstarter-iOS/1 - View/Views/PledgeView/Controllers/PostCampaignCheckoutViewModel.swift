@@ -213,21 +213,20 @@ public protocol PostCampaignCheckoutViewModelType {
 public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   PostCampaignCheckoutViewModelInputs,
   PostCampaignCheckoutViewModelOutputs {
-  let stripeIntentService: StripeIntentServiceType
   private let analytics: () -> KSRAnalytics
   private let currencyContext: @MainActor () -> PledgeCurrencyContext
   private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
 
   public init(
-    stripeIntentService: StripeIntentServiceType,
     pledgeFeature: PledgeFeature,
+    authenticationFeature: AuthenticationFeature,
+    paymentsFeature: PaymentsFeature,
     analytics: @escaping () -> KSRAnalytics,
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
     hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
     responseDelay: @escaping @MainActor () -> TimeInterval,
     stripePublishableKey: @escaping () -> String
   ) {
-    self.stripeIntentService = stripeIntentService
     self.analytics = analytics
     self.currencyContext = currencyContext
     self.hasEligibleApplePayCard = hasEligibleApplePayCard
@@ -238,10 +237,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     let cardState = self.cardState
     let appleState = self.applePayState
 
-    self.loginSignupUseCase = LoginSignupUseCase(
-      withLoginIntent: .backProject,
-      currentUser: { pledgeFeature.sessionFeature.currentUser }
-    )
+    self.loginSignupUseCase = authenticationFeature.makeLoginSignup(intent: .backProject)
     let login = self.loginSignupUseCase
     let openingState = PostCampaignOpeningState()
     login.onLoginState = { value in
@@ -249,7 +245,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       openingState.setLoggedIn(value)
     }
 
-    self.paymentMethodsUseCase = PaymentMethodsUseCase(currentUser: { pledgeFeature.sessionFeature.currentUser })
+    self.paymentMethodsUseCase = paymentsFeature.makePaymentMethodsSelection()
     let paymentMethods = self.paymentMethodsUseCase
     paymentMethods.onSelected = { value in
       cardState.select(value)
@@ -369,9 +365,9 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
         self.hasTrackingCheckoutResult = true
         self.trackPageIfReady()
         self.paymentIntentTask?.cancel()
-        let request = self.stripeIntentService.createPaymentIntent(
-          for: data.project.graphID, backingId: checkout.checkout.backingId, checkoutId: decodedCheckoutID,
-          pledgeTotal: PostCampaignAmounts(data).total
+        let request = paymentsFeature.requestIntent(
+          projectID: data.project.graphID, backingID: checkout.checkout.backingId, checkoutID: decodedCheckoutID,
+          total: PostCampaignAmounts(data).total
         )
         let checkoutIdentity = self.checkoutIdentity.id
         let session = pledgeFeature.checkoutSession

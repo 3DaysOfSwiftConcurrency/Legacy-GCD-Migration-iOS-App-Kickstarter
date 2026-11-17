@@ -19,7 +19,11 @@ final class PaymentMethodsUseCaseTests: TestCase {
 
   override func setUp() async throws {
     try await super.setUp()
-    self.useCase = PaymentMethodsUseCase(currentUser: { AppEnvironment.current.currentUser })
+    let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    let paymentsFeature = PaymentsFeature(
+      sessionFeature: sessionFeature, makeProvider: { AsyncPaymentsProvider(service: MockService()) }
+    )
+    self.useCase = paymentsFeature.makePaymentMethodsSelection()
     self.useCase.onHidden = { [weak self] in self?.paymentMethodsViewHidden.record($0) }
     self.useCase.onConfiguration = { [weak self] in self?.configureWithValue.record($0) }
     self.useCase.onSelected = { [weak self] in self?.selectedPaymentSource.record($0) }

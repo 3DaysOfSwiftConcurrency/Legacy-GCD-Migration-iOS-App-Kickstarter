@@ -140,6 +140,10 @@ public final class AuthenticationFeature {
     self.appleAppID = appleAppID
   }
 
+  func makeLoginSignup(intent: LoginIntent) -> LoginSignupUseCase {
+    LoginSignupUseCase(withLoginIntent: intent, currentUser: { [session] in session.currentUser })
+  }
+
   /// One replaceable email-link read per navigation route. URL is Sendable;
   /// the session and operation identity are checked again after every waiter resumes.
   public func firstRedirect(_ url: URL, route: UUID) async throws -> URL? {

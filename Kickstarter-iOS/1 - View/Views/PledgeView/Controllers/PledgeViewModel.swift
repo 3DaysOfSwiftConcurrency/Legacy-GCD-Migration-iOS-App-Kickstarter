@@ -118,7 +118,9 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
 
   public init(
-    feature: PledgeFeature,
+    pledgeFeature: PledgeFeature,
+    authenticationFeature: AuthenticationFeature,
+    paymentsFeature: PaymentsFeature,
     analytics: @escaping () -> KSRAnalytics,
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
     hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
@@ -137,13 +139,10 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     let requestState = PledgeRequestState()
     formState.onChange = { ctaState.setEnabled($0) }
 
-    self.loginSignupUseCase = LoginSignupUseCase(
-      withLoginIntent: .backProject,
-      currentUser: { feature.sessionFeature.currentUser }
-    )
+    self.loginSignupUseCase = authenticationFeature.makeLoginSignup(intent: .backProject)
     let login = self.loginSignupUseCase
 
-    self.paymentMethodsUseCase = PaymentMethodsUseCase(currentUser: { feature.sessionFeature.currentUser })
+    self.paymentMethodsUseCase = paymentsFeature.makePaymentMethodsSelection()
     let paymentMethods = self.paymentMethodsUseCase
     paymentMethods.onSelected = { value in
       ctaState.selectPayment(value)
@@ -161,7 +160,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
 
     // MARK: Pledge Over Time
 
-    self.pledgeOverTimeUseCase = PledgeOverTimeUseCase(pledgeFeature: feature)
+    self.pledgeOverTimeUseCase = PledgeOverTimeUseCase(pledgeFeature: pledgeFeature)
     let planUseCase = self.pledgeOverTimeUseCase
     planUseCase.onLoading = { formState.setPlanLoading($0) }
 
@@ -173,7 +172,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       guard let self else { return }
       let identity = isCreate ? self.createIdentity : self.updateIdentity
       guard identity.id == id else { return }
-      guard feature.checkoutSession == session else {
+      guard pledgeFeature.checkoutSession == session else {
         identity.id = UUID()
         processingState.setHidden(true)
         return
@@ -281,10 +280,10 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       guard let self else { return }
       let input = CreateBackingInput.input(from: data, isApplePay: isApplePay)
       self.createTask?.cancel()
-      let session = feature.checkoutSession
+      let session = pledgeFeature.checkoutSession
       let id = UUID()
       self.createIdentity.id = id
-      let request = feature.startCreate(input)
+      let request = pledgeFeature.startCreate(input)
       processingState.setHidden(false)
       self.createTask = Task { [weak self] in
         do {
@@ -304,10 +303,10 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       guard let self else { return }
       let input = UpdateBackingInput.input(from: data, isApplePay: isApplePay)
       self.updateTask?.cancel()
-      let session = feature.checkoutSession
+      let session = pledgeFeature.checkoutSession
       let id = UUID()
       self.updateIdentity.id = id
-      let request = feature.startUpdate(input)
+      let request = pledgeFeature.startUpdate(input)
       processingState.setHidden(false)
       self.updateTask = Task { [weak self] in
         do {

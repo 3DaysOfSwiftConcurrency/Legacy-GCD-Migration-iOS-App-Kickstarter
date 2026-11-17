@@ -12,10 +12,11 @@ final class LoginSignupUseCaseTests: TestCase {
 
   override func setUp() async throws {
     try await super.setUp()
-    self.useCase = LoginSignupUseCase(
-      withLoginIntent: .generic,
-      currentUser: { AppEnvironment.current.currentUser }
+    let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    let authenticationFeature = AuthenticationFeature(
+      sessionFeature: sessionFeature, makeProvider: { AsyncAuthenticationProvider(service: MockService()) }
     )
+    self.useCase = authenticationFeature.makeLoginSignup(intent: .generic)
     self.useCase.onSessionChanged = { [weak self] in self?.sessions += 1 }
     self.useCase.onLogin = { [weak self] in self?.intents.append($0) }
     self.useCase.onLoginState = { [weak self] in self?.loginStates.append($0) }

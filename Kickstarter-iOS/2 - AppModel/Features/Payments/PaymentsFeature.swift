@@ -45,6 +45,10 @@ public final class PaymentsFeature {
     self.makeProvider = makeProvider
   }
 
+  func makePaymentMethodsSelection() -> PaymentMethodsUseCase {
+    PaymentMethodsUseCase(currentUser: { [sessionFeature] in sessionFeature.currentUser })
+  }
+
   private struct Session: Hashable {
     let userID: Int?
     let generation: Int

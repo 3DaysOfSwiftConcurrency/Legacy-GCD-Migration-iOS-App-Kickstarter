@@ -41,9 +41,16 @@ final class PledgeViewModelTests: TestCase {
   }
 
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let feature = PledgeFeature(
+  private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+  private lazy var authenticationFeature = AuthenticationFeature(
+    sessionFeature: self.sessionFeature, makeProvider: { AsyncAuthenticationProvider(service: MockService()) }
+  )
+  private lazy var paymentsFeature = PaymentsFeature(
+    sessionFeature: self.sessionFeature, makeProvider: { AsyncPaymentsProvider(service: MockService()) }
+  )
+  private lazy var feature = PledgeFeature(
     platform: .live(),
-    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    sessionFeature: self.sessionFeature,
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
@@ -51,7 +58,9 @@ final class PledgeViewModelTests: TestCase {
   )
   private let delayGate = PledgeTestDelayGate()
   private lazy var vm: PledgeViewModelType = PledgeViewModel(
-    feature: self.feature,
+    pledgeFeature: self.feature,
+    authenticationFeature: self.authenticationFeature,
+    paymentsFeature: self.paymentsFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
     currencyContext: { .live() },
     hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },

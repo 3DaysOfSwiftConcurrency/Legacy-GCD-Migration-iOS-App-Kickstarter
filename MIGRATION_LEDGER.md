@@ -3762,3 +3762,22 @@ tests. The initial presentation run also selected the legacy Stripe status
 mapping suite, whose shared setup requires iPad mini (A17 Pro) on iOS 18.6.
 That runtime was unavailable. The callback-only rerun passed with the
 snapshot check intact. Live payment integrations remain unverified.
+
+### Checkout Authentication and Payments dependencies — Matthew Thomas
+
+Both checkout ViewModels now receive Authentication, Payments, and
+Pledge from the application's composition. Authentication provides
+the login flow, and Payments provides an independent payment selection
+for each screen and admits post-campaign payment intent requests
+directly. The production features share the session composed by
+AppModel. The source check prevents the checkout ViewModels from
+reaching through those features to the session or constructing the
+payment and login collaborators themselves.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 143 focused
+Authentication, Payments, and checkout tests and 134 bounded Pledge,
+stored-card, payment settings, and backing-management tests. The
+post-campaign tests now count payment and setup intent requests at the
+provider boundary. Live payments and visual parity were outside this run.
+The checkout ViewModels still calculate pledge totals, and post-campaign
+checkout constructs the open-checkout input in the View layer.
