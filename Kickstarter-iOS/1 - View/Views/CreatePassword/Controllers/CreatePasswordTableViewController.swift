@@ -57,7 +57,9 @@ protocol CreatePasswordTableViewControllerDelegate: AnyObject {
 final class CreatePasswordTableViewController: UITableViewController {
   // MARK: - Properties
 
-  private let viewModel = CreatePasswordViewModel()
+  private let viewModel = CreatePasswordViewModel(
+    settingsFeature: AppModel.shared.settingsFeature
+  )
   weak var delegate: CreatePasswordTableViewControllerDelegate?
   private weak var newPasswordTextField: UITextField?
   private weak var newPasswordConfirmationTextField: UITextField?

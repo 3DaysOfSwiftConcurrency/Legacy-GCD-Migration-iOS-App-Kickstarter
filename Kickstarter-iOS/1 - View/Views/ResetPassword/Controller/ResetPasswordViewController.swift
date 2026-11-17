@@ -10,7 +10,9 @@ internal final class ResetPasswordViewController: UIViewController {
   @IBOutlet private var resetPasswordButton: UIButton!
   @IBOutlet private var rootStackView: UIStackView!
 
-  fileprivate let viewModel = ResetPasswordViewModel()
+  fileprivate let viewModel = ResetPasswordViewModel(
+    authenticationFeature: AppModel.shared.authenticationFeature
+  )
 
   internal static func configuredWith(email: String?) -> ResetPasswordViewController {
     let vc = Storyboard.Login.instantiate(ResetPasswordViewController.self)

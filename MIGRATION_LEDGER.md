@@ -3263,3 +3263,7 @@ Login, Login Tout, Facebook Confirmation and Facebook Reset Password now receive
 Authentication from their controllers. The four view-model suites and
 AuthenticationFeature passed 59 focused simulator tests. `make check-cfa` guards
 these sign-in view models against direct AppModel singleton access.
+
+Change Password and Create Password now receive Settings from their controllers.
+Reset Password receives Authentication. The password, Settings and Authentication
+suites passed 61 focused simulator tests, and `make check-cfa` covers these screens.

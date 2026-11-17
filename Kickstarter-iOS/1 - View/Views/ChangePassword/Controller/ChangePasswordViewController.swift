@@ -21,7 +21,9 @@ final class ChangePasswordViewController: UIViewController, MessageBannerViewCon
   private var saveButtonView: LoadingBarButtonItemView!
   internal var messageBannerViewController: MessageBannerViewController?
 
-  private let viewModel = ChangePasswordViewModel()
+  private let viewModel = ChangePasswordViewModel(
+    settingsFeature: AppModel.shared.settingsFeature
+  )
 
   internal static func instantiate() -> ChangePasswordViewController {
     return Storyboard.Settings.instantiate(ChangePasswordViewController.self)

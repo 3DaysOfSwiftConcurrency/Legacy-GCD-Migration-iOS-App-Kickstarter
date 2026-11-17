@@ -14,8 +14,8 @@ public final class ResetPasswordViewModel {
   private var resetTask: Task<Void, Never>?
   private var revision = 0
 
-  public init(authenticationFeature: AuthenticationFeature? = nil) {
-    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
+  public init(authenticationFeature: AuthenticationFeature) {
+    self.authenticationFeature = authenticationFeature
   }
   public func viewDidLoad() { self.formIsValid = isValidEmail(self.email ?? "") }
   public func emailChanged(_ email: String?) {
