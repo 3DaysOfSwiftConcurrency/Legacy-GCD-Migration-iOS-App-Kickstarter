@@ -210,20 +210,17 @@ public struct ManagePledgeComposition {
 
 public struct PledgedProjectsComposition {
   public let pledgedProjectsFeature: PledgedProjectsFeature
-  public let pledgeFeature: PledgeFeature
   public let activityFeature: ActivityFeature
-  public let paymentsFeature: PaymentsFeature
+  public let managePledge: ManagePledgeComposition
 
   public init(
     pledgedProjectsFeature: PledgedProjectsFeature,
-    pledgeFeature: PledgeFeature,
     activityFeature: ActivityFeature,
-    paymentsFeature: PaymentsFeature
+    managePledge: ManagePledgeComposition
   ) {
     self.pledgedProjectsFeature = pledgedProjectsFeature
-    self.pledgeFeature = pledgeFeature
     self.activityFeature = activityFeature
-    self.paymentsFeature = paymentsFeature
+    self.managePledge = managePledge
   }
 }
 
@@ -306,9 +303,8 @@ public final class AppModel {
   public var pledgedProjectsComposition: PledgedProjectsComposition {
     PledgedProjectsComposition(
       pledgedProjectsFeature: self.pledgedProjectsFeature,
-      pledgeFeature: self.pledgeFeature,
       activityFeature: self.activityFeature,
-      paymentsFeature: self.paymentsFeature
+      managePledge: self.managePledgeComposition
     )
   }
 

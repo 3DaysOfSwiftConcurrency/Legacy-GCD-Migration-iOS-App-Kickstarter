@@ -344,6 +344,9 @@ reject_matches 'Pledged Projects analytics belong to PledgedProjectsFeature comp
 reject_matches 'Pledged Projects receives one composed feature graph.' \
   'AppModel[.]shared|AppEnvironment[.]current|sessionFeature' \
   "$app_view/Views/PledgedProjectsOverview/PPOContainerViewController.swift"
+reject_matches 'Pledged Projects forwards its composed Manage Pledge graph.' \
+  'ManagePledgeViewController[.]controller[(]with: data, delegate: self[)]' \
+  "$app_view/Views/PledgedProjectsOverview/PPOContainerViewController.swift"
 reject_matches 'Settings presentation receives application metadata from SettingsFeature.' \
   'AppEnvironment[.]current' "$app_model/Features/Settings/SettingsCellType.swift"
 reject_matches 'Creator Drafts receives response policy from AppModel composition.' \

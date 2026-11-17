@@ -10,17 +10,19 @@ import SwiftUI
 public class PPOContainerViewController: PagedContainerViewController<PPOContainerViewController.Page>,
   MessageBannerViewControllerPresenting {
   private let confirmation = StripeConfirmationOperation()
+  private let managePledgeComposition: ManagePledgeComposition
   private let paymentsFeature: PaymentsFeature
   private let pledgedProjectsFeature: PledgedProjectsFeature
   private let viewModel: PPOContainerViewModel
 
   public init(composition: PledgedProjectsComposition) {
-    self.paymentsFeature = composition.paymentsFeature
+    self.managePledgeComposition = composition.managePledge
+    self.paymentsFeature = composition.managePledge.paymentsFeature
     self.pledgedProjectsFeature = composition.pledgedProjectsFeature
     self.viewModel = PPOContainerViewModel(
-      pledgeFeature: composition.pledgeFeature,
+      pledgeFeature: composition.managePledge.pledgeFeature,
       activityFeature: composition.activityFeature,
-      paymentsFeature: composition.paymentsFeature
+      paymentsFeature: composition.managePledge.paymentsFeature
     )
     super.init(nibName: nil, bundle: nil)
   }
@@ -202,7 +204,11 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
 
   private func openNativeManagePledge(projectId: Int, backingId: Int) {
     let data = (projectParam: Param.id(projectId), backingParam: Param.id(backingId))
-    let vc = ManagePledgeViewController.controller(with: data, delegate: self)
+    let vc = ManagePledgeViewController.controller(
+      with: data,
+      delegate: self,
+      composition: self.managePledgeComposition
+    )
     vc.presentationController?.delegate = self
     self.navigationController?.present(vc, animated: true)
   }

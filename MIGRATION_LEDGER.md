@@ -5586,3 +5586,26 @@ mini (A17 Pro) simulator running iOS 18.6, which is not installed. The whole Lib
 Presentation suites remain unverified. The CFA gate rejects restored ambient composition
 in either child controller. This is not full CFA compliance. Swift packages, target
 identifiers and existing history are unchanged. No push.
+
+### Pledged Projects to Manage Pledge composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgedProjectsComposition now nests the AppModel-owned ManagePledgeComposition rather
+than carrying parallel PledgeFeature and PaymentsFeature references. PPOContainerViewController
+uses that nested graph for pledge/payment presentation and passes the same graph to
+ManagePledgeViewController when a project alert opens native pledge management. This
+keeps the transition inside one feature graph instead of silently selecting the process
+singleton at the destination factory.
+
+AppModelTests passed all 8 focused tests, including identity checks for the nested Pledge,
+Payments and Rewards features. PPOContainerViewModelTests and RootTabsNavigationTests
+passed all 12 focused Presentation tests. Both runs had zero failures and skips on iPhone
+17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-ppo-manage-composition-library.xcresult` and
+`/private/tmp/kickstarter-ppo-manage-composition-presentation.xcresult`.
+
+The whole Library and Presentation suites remain unverified. The CFA gate rejects the
+former default-composition Manage Pledge launch from PPOContainerViewController. This is
+not full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.

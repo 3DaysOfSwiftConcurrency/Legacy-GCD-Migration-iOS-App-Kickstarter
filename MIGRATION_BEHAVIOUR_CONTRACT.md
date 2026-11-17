@@ -2264,3 +2264,12 @@ safe for arbitrary concurrent environment mutation.
 - Focused Manage Pledge model coverage passes 68 tests. The PresentationTests target
   builds for testing; snapshot execution still requires the unavailable iPad mini
   (A17 Pro) simulator running iOS 18.6.
+
+## Pledged Projects to Manage Pledge composition — 17 November 2026
+
+- PledgedProjectsComposition now contains one nested ManagePledgeComposition instead of
+  duplicating standalone Pledge and Payments feature references.
+- PPOContainerViewController uses the nested graph for its own pledge/payment behavior
+  and forwards that exact graph when it presents Manage Pledge.
+- Focused AppModel composition coverage passes 8 tests, and focused Pledged Projects and
+  root-navigation coverage passes 12 tests.
