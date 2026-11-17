@@ -119,6 +119,21 @@ final class SimilarProjectsUseCaseTests: TestCase {
     }
   }
 
+  func testSessionChangeClearsLoadedRecommendationsAndAllowsTheSameProjectToReload() async {
+    await withEnvironment(apiService: self.mockService) {
+      self.useCase.projectIDLoaded(projectID: "1")
+      await self.useCase.loadingTask?.value
+      guard case .loaded = self.useCase.similarProjects else { return XCTFail("Expected recommendations") }
+
+      self.useCase.sessionChanged()
+      guard case .loading = self.useCase.similarProjects else { return XCTFail("Expected fresh state") }
+
+      self.useCase.projectIDLoaded(projectID: "1")
+      await self.useCase.loadingTask?.value
+      guard case .loaded = self.useCase.similarProjects else { return XCTFail("Expected replacement recommendations") }
+    }
+  }
+
   // MARK: - SimilarProject Parsing Tests
 
   func testSimilarProjectParsing_ValidData_Success() async throws {

@@ -388,7 +388,10 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
         self?.didBackProject()
       },
       MainActorNotificationObservation(name: .ksr_sessionStarted) { [weak self] _ in
-        self?.userSessionStarted()
+        self?.userSessionChanged()
+      },
+      MainActorNotificationObservation(name: .ksr_sessionEnded) { [weak self] _ in
+        self?.userSessionChanged()
       },
       MainActorNotificationObservation(name: .ksr_applicationDidEnterBackground) { [weak self] _ in
         self?.appBackgrounded()
@@ -922,8 +925,9 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
     self.viewModel.inputs.pledgeRetryButtonTapped()
   }
 
-  @objc private func userSessionStarted() {
-    self.viewModel.inputs.userSessionStarted()
+  private func userSessionChanged() {
+    // AppModel processes the session notification before the page admits a replacement read.
+    Task { @MainActor [weak self] in self?.viewModel.inputs.userSessionChanged() }
   }
 
   @objc private func appBackgrounded() {

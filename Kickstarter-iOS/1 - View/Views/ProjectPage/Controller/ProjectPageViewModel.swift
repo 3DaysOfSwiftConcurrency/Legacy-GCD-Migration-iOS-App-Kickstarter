@@ -113,7 +113,7 @@ public protocol ProjectPageViewModelInputs {
   func tappedReportProject()
 
   /// Call when the user session starts and we want to reload the data source.
-  func userSessionStarted()
+  func userSessionChanged()
 
   /// Call when the view did appear, and pass the animated parameter.
   func viewDidAppear(animated: Bool)
@@ -298,7 +298,6 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   private let projectRoute = UUID()
   private var latestProject: Project?
   private var hasLoadedView = false
-  private var latestBackedProject: (Project, Backing)?
   private var latestProjectRefTag: RefTag?
   private var latestImageElements: [ImageViewElement]?
   private var latestImageIndexPath: IndexPath?
@@ -365,7 +364,8 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     // MARK: Similar Projects
 
     self.rewardsUseCase.onRewards = { [weak self] in
-      guard let self, let project = self.latestProject, let config = self.configData else { return }
+      guard let self, let project = self.projectDetailsFeature.snapshot(for: self.projectRoute).project,
+            let config = self.configData else { return }
       self.onGoToRewards?((project, self.latestProjectRefTag, config.2))
     }
     self.rewardsUseCase.onLogin = { [weak self] in self?.onGoToLoginWithIntent?($0) }
@@ -389,9 +389,6 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
         switch result {
         case let .success(project):
           self.latestProject = project
-          if project.personalization.isBacking ?? false, let backing = project.personalization.backing {
-            self.latestBackedProject = (project, backing)
-          }
           self.latestProjectRefTag = self.requestRefTag
           self.onProjectFlagged?(project.flagging ?? false)
           self.onConfigurePledgeCTA?(.project(project))
@@ -428,7 +425,11 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     let projectID = "\(project.id)"
     if self.lastRelatedProjectID != projectID {
       self.lastRelatedProjectID = projectID
+      let session = self.projectDetailsFeature.sessionFeature
+      let userID = session.currentUser?.id
+      let generation = session.generation
       DispatchQueue.main.async { [weak self] in
+        guard session.isCurrent(userID: userID, generation: generation) else { return }
         self?.similarProjectsUseCase.projectIDLoaded(projectID: projectID)
       }
     }
@@ -592,12 +593,14 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     case .pledge, .viewRewards, .viewYourRewards:
       self.rewardsUseCase.goToRewardsTapped()
     case .pledgeManager:
-      guard let project = self.latestProject else { return }
+      guard let project = self.projectDetailsFeature.snapshot(for: self.projectRoute).project else { return }
       self.onGoToPledgeManager?(
         self.projectDetailsFeature.redemptionURL(for: project)
       )
     case .fix, .viewBacking, .manage:
-      guard let (project, backing) = self.latestBackedProject else { return }
+      guard let project = self.projectDetailsFeature.snapshot(for: self.projectRoute).project,
+            project.personalization.isBacking == true,
+            let backing = project.personalization.backing else { return }
       switch pledgeDestination(project: project, backing: backing) {
       case let .native(params): self.onGoToManagePledge?(params)
       case let .web(url): self.onGoToPledgeManagementPledgeView?(url)
@@ -682,7 +685,10 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     self.onGoToReportProject?((project.flagging ?? false, "\(project.graphID)", project.urls.web.project))
   }
 
-  public func userSessionStarted() {
+  public func userSessionChanged() {
+    self.lastRelatedProjectID = nil
+    self.similarProjectsUseCase.sessionChanged()
+    self.relatedState = .loading
     self.loadProject(force: true)
   }
 

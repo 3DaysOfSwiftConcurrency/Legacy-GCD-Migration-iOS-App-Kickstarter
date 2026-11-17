@@ -167,14 +167,20 @@ public final class ProjectDetailsFeature {
   }
 
   private final class RelatedPage {
+    let session: RequestSession
     var snapshot = RelatedSnapshot()
-    var request: (id: UUID, projectID: String, session: RequestSession, task: Task<Void, Never>)?
+    var request: (id: UUID, projectID: String, task: Task<Void, Never>)?
+
+    init(session: RequestSession) { self.session = session }
   }
 
   private var relatedPages: [UUID: RelatedPage] = [:]
 
   public func relatedSnapshot(for route: UUID) -> RelatedSnapshot {
-    self.relatedPages[route]?.snapshot ?? RelatedSnapshot()
+    guard let page = self.relatedPages[route], page.session.isCurrent(in: self.sessionFeature) else {
+      return RelatedSnapshot()
+    }
+    return page.snapshot
   }
 
   public func loadRelated(route: UUID, projectID: String) async {
@@ -188,9 +194,10 @@ public final class ProjectDetailsFeature {
   public func requestRelated(route: UUID, projectID: String) -> Task<Void, Never> {
     let sessionFeature = self.sessionFeature
     let session = RequestSession(sessionFeature)
-    let page = self.relatedPages[route] ?? RelatedPage()
+    if let old = self.relatedPages[route], old.session != session { self.releaseRelated(route: route) }
+    let page = self.relatedPages[route] ?? RelatedPage(session: session)
     self.relatedPages[route] = page
-    if let request = page.request, request.projectID == projectID, request.session == session {
+    if let request = page.request, request.projectID == projectID {
       return request.task
     }
     page.request?.task.cancel()
@@ -220,7 +227,7 @@ public final class ProjectDetailsFeature {
         page.snapshot.error = failure
       }
     }
-    page.request = (requestID, projectID, session, task)
+    page.request = (requestID, projectID, task)
     return task
   }
 
@@ -245,8 +252,11 @@ public final class ProjectDetailsFeature {
   }
 
   private final class Page {
+    let session: RequestSession
     var snapshot = Snapshot()
     var request: (id: UUID, identity: Identity, task: Task<Void, Never>)?
+
+    init(session: RequestSession) { self.session = session }
   }
 
   private enum ProjectPart: Sendable {
@@ -297,7 +307,12 @@ public final class ProjectDetailsFeature {
     self.sleep = sleep
   }
 
-  public func snapshot(for route: UUID) -> Snapshot { self.pages[route]?.snapshot ?? Snapshot() }
+  public func snapshot(for route: UUID) -> Snapshot {
+    guard let page = self.pages[route], page.session.isCurrent(in: self.sessionFeature) else {
+      return Snapshot()
+    }
+    return page.snapshot
+  }
 
   public func load(route: UUID, param: Param, secretRewardToken: String? = nil, force: Bool = false) async {
     guard !Task.isCancelled else { return }
@@ -313,7 +328,11 @@ public final class ProjectDetailsFeature {
       param: param, token: secretRewardToken, session: RequestSession(self.sessionFeature),
       fast: self.useFastLoading(), richText: self.includeRichText()
     )
-    let page = self.pages[route] ?? Page()
+    if let old = self.pages[route], old.session != identity.session {
+      old.request?.task.cancel()
+      self.pages[route] = nil
+    }
+    let page = self.pages[route] ?? Page(session: identity.session)
     self.pages[route] = page
     if !force, let request = page.request, request.identity == identity { return request.task }
     page.request?.task.cancel()

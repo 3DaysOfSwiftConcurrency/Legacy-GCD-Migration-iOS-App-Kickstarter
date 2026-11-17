@@ -3731,3 +3731,17 @@ The simulator passed 31 focused Project Details and AppModel tests and
 112 bounded Project Page, creator, related-project, and media tests.
 New cases cover policy replacement, late project completion, and a
 related-project retry after a same-user session change.
+
+### Project Page snapshots across sessions — Matthew Thomas
+
+Project Details keeps completed project and related-project snapshots
+within the session that loaded them. A failed refresh can retain a
+snapshot within its own session. The Project Page reads the current
+snapshot for backing, pledge management, and rewards actions. Sign-in
+and sign-out replace the page request and clear related-project state
+before the refreshed project requests recommendations.
+
+The simulator passed 30 focused snapshot and backing tests and 82
+bounded Project Page, creator, and recommendation tests. These checks
+exercise session replacement and the page refresh commands with
+controlled providers.

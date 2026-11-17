@@ -936,6 +936,46 @@ final class ProjectPageViewModelTests: TestCase {
     }
   }
 
+  func testManagePledgeUsesOnlyTheCurrentBackingSnapshot() async throws {
+    let feature = Self.isolatedFeature()
+    let vm = Self.makeViewModel(
+      details: feature,
+      media: ProjectMediaFeature(sessionFeature: feature.sessionFeature, makeProvider: {
+        AsyncProjectMediaProvider(service: MockService())
+      })
+    )
+    let project = Project.cosmicSurgery
+    let reward = try XCTUnwrap(project.rewards.first)
+    let backing = Backing.template
+      |> Backing.lens.reward .~ reward
+      |> Backing.lens.rewardId .~ reward.id
+    var openedBackings: [Param?] = []
+    var backingPresence: [Bool] = []
+    vm.onGoToManagePledge = { openedBackings.append($0.1) }
+    vm.onConfigureProject = { backingPresence.append($0.0.personalization.backing != nil) }
+
+    await withEnvironment(config: .template, currentUser: .template) {
+      await Self.mockNetworkRequests(project: project, backing: backing) {
+        vm.configureAndLoad(.left(project))
+        await vm.loadingTask?.value
+        vm.inputs.pledgeCTAButtonTapped(with: .manage)
+        XCTAssertEqual(openedBackings, [.id(backing.id)])
+
+        feature.sessionFeature.sessionChanged()
+        vm.inputs.pledgeCTAButtonTapped(with: .manage)
+        XCTAssertEqual(openedBackings, [.id(backing.id)])
+      }
+
+      await Self.mockNetworkRequests(project: project) {
+        vm.inputs.userSessionChanged()
+        await vm.loadingTask?.value
+        XCTAssertEqual(backingPresence, [true, false])
+        vm.inputs.pledgeCTAButtonTapped(with: .manage)
+        XCTAssertEqual(openedBackings, [.id(backing.id)])
+      }
+    }
+  }
+
   func testGoToUpdates() async {
     await ProjectPageViewModelTests.mockNetworkRequests {
       self.vm.inputs.configureWith(projectOrParam: .left(.template), refInfo: RefInfo(.discovery))
@@ -1310,7 +1350,7 @@ final class ProjectPageViewModelTests: TestCase {
         self.showProjectPageTabWithDataProject.assertDidEmitValue()
 
         await withEnvironment(currentUser: .template) {
-          self.vm.inputs.userSessionStarted()
+          self.vm.inputs.userSessionChanged()
 
           self.showProjectPageTabWithDataProject.assertDidEmitValue()
         }

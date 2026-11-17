@@ -467,6 +467,41 @@ final class ProjectDetailsFeatureTests: TestCase {
     XCTAssertEqual(feature.snapshot(for: route).project?.id, 2)
   }
 
+  func testCompletedProjectSnapshotDoesNotSurviveSameUserSessionReplacement() async {
+    let provider = ControlledProjectDetailsProvider()
+    provider.backingID = 42
+    let feature = self.feature(provider)
+    let route = UUID()
+
+    await withEnvironment(currentUser: .template) {
+      await feature.load(route: route, param: .id(1))
+      XCTAssertNotNil(feature.snapshot(for: route).project?.personalization.backing)
+
+      feature.sessionFeature.sessionChanged()
+      XCTAssertNil(feature.snapshot(for: route).project)
+
+      provider.failAt = "project"
+      await feature.load(route: route, param: .id(1))
+      XCTAssertNil(feature.snapshot(for: route).project)
+      XCTAssertNotNil(feature.snapshot(for: route).error)
+    }
+  }
+
+  func testCompletedRelatedErrorDoesNotSurviveSameUserSessionReplacement() async {
+    let provider = ControlledProjectDetailsProvider()
+    provider.failAt = "related:1"
+    let feature = self.feature(provider)
+    let route = UUID()
+
+    await withEnvironment(currentUser: .template) {
+      await feature.loadRelated(route: route, projectID: "1")
+      XCTAssertNotNil(feature.relatedSnapshot(for: route).error)
+
+      feature.sessionFeature.sessionChanged()
+      XCTAssertNil(feature.relatedSnapshot(for: route).error)
+    }
+  }
+
   func testFastPathStartsBothDependenciesAndWaitsForBoth() async throws {
     let provider = ControlledProjectDetailsProvider()
     provider.pauseBase = true

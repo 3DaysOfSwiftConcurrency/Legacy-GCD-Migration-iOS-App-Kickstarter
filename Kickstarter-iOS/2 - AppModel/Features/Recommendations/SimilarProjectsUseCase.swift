@@ -26,6 +26,14 @@ public final class SimilarProjectsUseCase {
 
   public func projectTapped(project: ProjectCardProperties) { self.onNavigate?(project) }
 
+  func sessionChanged() {
+    self.loadingTask?.cancel()
+    self.loadingTask = nil
+    self.revision = UUID()
+    self.projectDetailsFeature.releaseRelated(route: self.route)
+    self.similarProjects = .loading
+  }
+
   public func projectIDLoaded(projectID: String) {
     self.loadingTask?.cancel()
     let revision = UUID()
@@ -34,11 +42,12 @@ public final class SimilarProjectsUseCase {
     let route = self.route
     let sessionFeature = feature.sessionFeature
     let userID = sessionFeature.currentUser?.id
+    let generation = sessionFeature.generation
     let command = feature.requestRelated(route: route, projectID: projectID)
     self.loadingTask = Task { [weak self] in
       await command.value
       guard !Task.isCancelled, let self, self.revision == revision,
-            userID == sessionFeature.currentUser?.id else { return }
+            sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
       let snapshot = feature.relatedSnapshot(for: route)
       let state: SimilarProjectsState
       if let error = snapshot.error { state = .error(error: error) }
