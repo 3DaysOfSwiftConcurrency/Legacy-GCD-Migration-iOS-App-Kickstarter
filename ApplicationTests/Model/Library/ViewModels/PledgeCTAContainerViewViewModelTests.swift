@@ -9,7 +9,10 @@ import XCTest
 @MainActor
 internal final class PledgeCTAContainerViewViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  let vm = PledgeCTAContainerViewViewModel(sleep: { try Task.checkCancellation() })
+  let vm = PledgeCTAContainerViewViewModel(
+    currentUser: { AppEnvironment.current.currentUser },
+    sleep: { try Task.checkCancellation() }
+  )
 
   let activityIndicatorIsHidden = PledgeCTARecorder<Bool>()
   let buttonStyleType = PledgeCTARecorder<ButtonStyleType>()

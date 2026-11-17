@@ -42,6 +42,10 @@ reject_matches 'The delegate handler must receive application dependencies expli
   'AppModel[.]shared' "$delegate_handler"
 reject_matches 'Checkout view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$pledge_view_model" "$post_campaign_view_model"
+reject_matches 'Pledge CTA and shipping view models must receive their dependencies explicitly.' \
+  'AppModel[.]shared' "$app_view/Shared Views/PledgeCTAContainerViewViewModel.swift" \
+  "$app_view/Views/DesignSystem/Views/PledgeViewCTAContainerViewModel.swift" \
+  "$app_view/Views/PledgeShippingLocation/*ViewModel.swift"
 reject_matches 'Pledge management view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$manage_pledge_view_model" "$cancel_pledge_view_model"
 reject_matches 'Pledge summary and web view models must receive Pledge explicitly.' \

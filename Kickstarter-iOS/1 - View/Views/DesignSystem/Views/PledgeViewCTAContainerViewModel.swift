@@ -18,8 +18,8 @@ public final class PledgeViewCTAContainerViewModel {
   public var onSubmit: (() -> Void)?
   public var onHelp: ((HelpType) -> Void)?
 
-  public init(pledgeFeature: PledgeFeature? = nil) {
-    self.pledgeFeature = pledgeFeature ?? AppModel.shared.pledgeFeature
+  public init(pledgeFeature: PledgeFeature) {
+    self.pledgeFeature = pledgeFeature
   }
 
   public func configureWith(value: PledgeViewCTAContainerViewData) -> Display {

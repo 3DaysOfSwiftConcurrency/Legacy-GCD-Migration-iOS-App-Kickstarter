@@ -19,7 +19,7 @@ final class PledgeShippingLocationViewController: UIViewController {
   // MARK: - Properties
 
   public weak var delegate: PledgeShippingLocationViewControllerDelegate?
-  private let viewModel = PledgeShippingLocationViewModel()
+  private let viewModel = PledgeShippingLocationViewModel(rewardsFeature: AppModel.shared.rewardsFeature)
 
   private lazy var adaptableStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var shippingLocationButton: UIButton = { UIButton(frame: .zero) }()

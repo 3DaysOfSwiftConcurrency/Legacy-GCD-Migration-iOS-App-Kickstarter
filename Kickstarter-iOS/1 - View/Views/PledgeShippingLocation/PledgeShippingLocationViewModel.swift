@@ -52,12 +52,12 @@ final class PledgeShippingLocationViewModel {
   internal private(set) var dismissTask: Task<Void, Never>?
 
   init(
-    rewardsFeature: RewardsFeature? = nil,
+    rewardsFeature: RewardsFeature,
     dismissDelay: @escaping @MainActor () async throws -> Void = {
       try await Task.sleep(for: .milliseconds(300))
     }
   ) {
-    self.rewardsFeature = rewardsFeature ?? AppModel.shared.rewardsFeature
+    self.rewardsFeature = rewardsFeature
     self.dismissDelay = dismissDelay
   }
 

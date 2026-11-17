@@ -56,7 +56,7 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
   PledgeCTAContainerViewViewModelInputs, PledgeCTAContainerViewViewModelOutputs {
   public var onEvent: ((PledgeCTAEvent) -> Void)?
   private let sleep: @MainActor () async throws -> Void
-  private let sessionFeature: SessionFeature
+  private let currentUser: () -> User?
   private var savedProjectTask: Task<Void, Never>?
   private var latestProject: Project?
   private var pledgeState: PledgeStateCTAType?
@@ -64,11 +64,11 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
   private var retryHidden: Bool?
 
   public init(
-    sessionFeature: SessionFeature = AppModel.shared.sessionFeature,
+    currentUser: @escaping () -> User?,
     sleep: @escaping @MainActor () async throws -> Void = {
     try await Task.sleep(for: .milliseconds(100))
   }) {
-    self.sessionFeature = sessionFeature
+    self.currentUser = currentUser
     self.sleep = sleep
   }
 
@@ -117,7 +117,7 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
     let next = pledgeCTA(
       project: project,
       backing: backing,
-      currentUser: self.sessionFeature.currentUser
+      currentUser: self.currentUser()
     )
     guard self.pledgeState != next else { return }
     self.pledgeState = next

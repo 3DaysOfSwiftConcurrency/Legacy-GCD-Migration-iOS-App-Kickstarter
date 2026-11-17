@@ -65,7 +65,7 @@ final class PledgeViewCTAContainerView: UIView {
 
   weak var delegate: PledgeViewCTAContainerViewDelegate?
 
-  private let viewModel = PledgeViewCTAContainerViewModel()
+  private let viewModel = PledgeViewCTAContainerViewModel(pledgeFeature: AppModel.shared.pledgeFeature)
 
   // MARK: - Lifecycle
 

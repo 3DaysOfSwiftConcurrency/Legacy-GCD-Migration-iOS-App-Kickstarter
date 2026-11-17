@@ -3329,3 +3329,8 @@ Rewards Collection and Add-on Selection now receive Rewards from their
 controllers. Reward cards and their containers receive a current-user lookup
 for creator-specific display. The focused Rewards suites passed 125 simulator
 tests and `make check-cfa` guards both view-model directories.
+
+Pledge shipping location now receives Rewards from its controller. The two
+pledge CTA view models receive a current-user lookup and Pledge respectively
+from their owning views. All 41 focused simulator tests passed, and the CFA
+source check guards all three view models.

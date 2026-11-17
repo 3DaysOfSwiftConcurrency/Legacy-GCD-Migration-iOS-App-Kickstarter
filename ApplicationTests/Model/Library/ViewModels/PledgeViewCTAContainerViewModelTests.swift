@@ -9,7 +9,10 @@ import XCTest
 @MainActor
 internal final class PledgeViewCTAContainerViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  let vm = PledgeViewCTAContainerViewModel()
+  let vm = PledgeViewCTAContainerViewModel(pledgeFeature: PledgeFeature(
+    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    makeProvider: { AsyncPledgeProvider(service: MockService()) }
+  ))
   private let applePayButtonIsHidden = Recorder<Bool>()
   private let continueButtonIsHidden = Recorder<Bool>()
   private let notifyDelegateApplePayButtonTapped = Recorder<Void>()
