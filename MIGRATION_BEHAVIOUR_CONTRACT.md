@@ -1969,3 +1969,15 @@ safe for arbitrary concurrent environment mutation.
 - Controlled Feature coverage proves composed tracking and delay policy. Focused and
   bounded Pledge, AppModel and Manage Pledge tests preserve existing behavior. Live account
   mutation, visual rendering and the whole Library suite remain outside this checkpoint.
+
+## Manage Pledge presentation composition — 17 November 2026
+
+- PledgeFeature receives Manage Pledge page-view tracking from AppModel composition.
+  ManagePledgeViewModel reports the loaded project, reward and checkout properties
+  through that Feature instead of accepting a global analytics accessor.
+- ManagePledgeViewController no longer reads AppEnvironment. Its iPad form-sheet
+  choice remains presentation-owned and reads UIKit's current device idiom directly;
+  navigation, modal style and analytics payload behavior are unchanged.
+- Controlled Feature and view-model coverage proves the composed tracking path and
+  preserves the existing page-view event. Live analytics delivery, visual rendering
+  and the whole Library suite remain outside this checkpoint.

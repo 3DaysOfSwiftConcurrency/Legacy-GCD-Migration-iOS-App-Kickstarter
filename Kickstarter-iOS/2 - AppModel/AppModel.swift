@@ -329,6 +329,11 @@ public final class AppModel {
           AppEnvironment.current.ksrAnalytics.trackRewardReceivedToggled(
             toggleOn: isOn, project: project, context: .managePledgeScreen
           )
+        },
+        trackManagePledgePageView: { project, reward, checkoutData in
+          AppEnvironment.current.ksrAnalytics.trackManagePledgePageViewed(
+            project: project, reward: reward, checkoutData: checkoutData
+          )
         }
       ),
       paymentsFeature: PaymentsFeature(

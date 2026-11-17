@@ -17,8 +17,7 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
   weak var delegate: ManagePledgeViewControllerDelegate?
   private let viewModel: ManagePledgeViewModelType = ManagePledgeViewModel(
     pledgeFeature: AppModel.shared.pledgeFeature,
-    paymentsFeature: AppModel.shared.paymentsFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics }
+    paymentsFeature: AppModel.shared.paymentsFeature
   )
 
   // MARK: - Properties
@@ -585,7 +584,7 @@ extension ManagePledgeViewController {
       rootViewController: managePledgeViewController
     )
 
-    if AppEnvironment.current.device.userInterfaceIdiom == .pad {
+    if UIDevice.current.userInterfaceIdiom == .pad {
       _ = navigationController
         |> \.modalPresentationStyle .~ .pageSheet
     }

@@ -67,6 +67,11 @@ internal final class ManagePledgeViewModelTests: TestCase {
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService, "Tests require MockService")
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
+    },
+    trackManagePledgePageView: { project, reward, checkoutData in
+      AppEnvironment.current.ksrAnalytics.trackManagePledgePageViewed(
+        project: project, reward: reward, checkoutData: checkoutData
+      )
     })
   private lazy var paymentsFeature = PaymentsFeature(
     sessionFeature: self.sessionFeature,
@@ -109,7 +114,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm = ManagePledgeViewModel(
         pledgeFeature: self.pledgeFeature,
         paymentsFeature: self.paymentsFeature,
-        analytics: { AppEnvironment.current.ksrAnalytics },
         schedule: { [clock] delay, action in clock.schedule(delay, action: action) }
       )
 

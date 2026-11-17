@@ -103,6 +103,9 @@ Swift packages are excluded.
 - PledgeFeature now owns the reward-received toggle's analytics and presentation-delay
   policy as part of the admitted mutation. Its controller only supplies the composed
   Feature, and the view model only observes the session-checked result.
+- PledgeFeature now also owns Manage Pledge page-view analytics. The controller no
+  longer reads AppEnvironment; its iPad modal decision remains local UIKit
+  presentation policy and uses the current device idiom directly.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

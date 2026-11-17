@@ -253,6 +253,10 @@ reject_matches 'Checkout presentation policy belongs to PaymentsFeature composit
 reject_matches 'Reward-received mutation policy belongs to PledgeFeature composition.' \
   'AppEnvironment[.]current|apiDelayInterval|trackRewardReceivedToggled' \
   "$app_view/Views/ManagePledge/Controllers/ManageViewPledgeRewardReceivedViewController.swift"
+reject_matches 'Manage Pledge receives analytics through PledgeFeature composition.' \
+  'AppEnvironment[.]current|analytics:[[:space:]]*[{]' \
+  "$app_view/Views/ManagePledge/Controllers/ManagePledgeViewController.swift" \
+  "$app_view/Views/ManagePledge/Controllers/ManagePledgeViewModel.swift"
 reject_matches 'Pledged Projects card formatting receives locale from its Feature.' \
   'AppEnvironment[.]current' "$app_model/Features/PledgedProjects/PPOProjectCardModel+Parsing.swift"
 reject_matches 'Settings presentation receives application metadata from SettingsFeature.' \

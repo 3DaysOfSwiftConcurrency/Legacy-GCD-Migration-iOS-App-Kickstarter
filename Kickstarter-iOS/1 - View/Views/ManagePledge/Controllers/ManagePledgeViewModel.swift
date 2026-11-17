@@ -96,13 +96,11 @@ public final class ManagePledgeViewModel:
       pledgeFeature.releaseRead(route: backingRoute)
     }
   }
-  private let analytics: () -> KSRAnalytics
   private let paymentsFeature: PaymentsFeature
 
   public init(
     pledgeFeature: PledgeFeature,
     paymentsFeature: PaymentsFeature,
-    analytics: @escaping () -> KSRAnalytics,
     schedule: @escaping @MainActor (TimeInterval, @escaping @MainActor @Sendable () -> Void) -> (@Sendable () -> Void) = { delay, action in
       let task = Task { @MainActor in
         guard !delay.isInfinite else { return }
@@ -115,7 +113,6 @@ public final class ManagePledgeViewModel:
   ) {
     self.pledgeFeature = pledgeFeature
     self.paymentsFeature = paymentsFeature
-    self.analytics = analytics
     self.schedule = schedule
   }
 
@@ -162,7 +159,7 @@ public final class ManagePledgeViewModel:
         isApplePay: backing.paymentSource?.paymentType == .applePay,
         hasEligibleApplePayCard: self.paymentsFeature.hasEligibleApplePayCard(for: project)
       )
-      self.analytics().trackManagePledgePageViewed(
+      self.pledgeFeature.trackManagePledgePageViewed(
         project: project, reward: reward, checkoutData: checkout
       )
     }

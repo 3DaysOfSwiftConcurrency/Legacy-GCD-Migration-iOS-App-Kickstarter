@@ -132,7 +132,8 @@ extension PledgeFeature {
     platform: Platform,
     sessionFeature: SessionFeature,
     makeProvider: @escaping () -> any PledgeProvider,
-    trackRewardReceivedToggle: @escaping @MainActor (Bool, Project) -> Void = { _, _ in }
+    trackRewardReceivedToggle: @escaping @MainActor (Bool, Project) -> Void = { _, _ in },
+    trackManagePledgePageView: @escaping @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData) -> Void = { _, _, _ in }
   ) {
     self.init(
       platform: platform,
@@ -143,7 +144,8 @@ extension PledgeFeature {
         makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
       ),
       makeProvider: makeProvider,
-      trackRewardReceivedToggle: trackRewardReceivedToggle
+      trackRewardReceivedToggle: trackRewardReceivedToggle,
+      trackManagePledgePageView: trackManagePledgePageView
     )
   }
 }

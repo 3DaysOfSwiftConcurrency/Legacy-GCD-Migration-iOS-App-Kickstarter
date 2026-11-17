@@ -126,19 +126,22 @@ public final class PledgeFeature {
   private let makeProvider: () -> any PledgeProvider
   private let platform: Platform
   private let trackRewardReceivedToggle: @MainActor (Bool, Project) -> Void
+  private let trackManagePledgePageView: @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData) -> Void
 
   public init(
     platform: Platform,
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
     makeProvider: @escaping () -> any PledgeProvider,
-    trackRewardReceivedToggle: @escaping @MainActor (Bool, Project) -> Void = { _, _ in }
+    trackRewardReceivedToggle: @escaping @MainActor (Bool, Project) -> Void = { _, _ in },
+    trackManagePledgePageView: @escaping @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData) -> Void = { _, _, _ in }
   ) {
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
     self.makeProvider = makeProvider
     self.platform = platform
     self.trackRewardReceivedToggle = trackRewardReceivedToggle
+    self.trackManagePledgePageView = trackManagePledgePageView
   }
 
   public func preparedWebRequest(from request: URLRequest) -> URLRequest { self.platform.prepareWebRequest(request) }
@@ -171,6 +174,12 @@ public final class PledgeFeature {
 
   func viewerIsCreator(of project: Project) -> Bool {
     currentUserIsCreator(of: project, currentUser: self.sessionFeature.currentUser)
+  }
+
+  func trackManagePledgePageViewed(
+    project: Project, reward: Reward, checkoutData: KSRAnalytics.CheckoutPropertiesData
+  ) {
+    self.trackManagePledgePageView(project, reward, checkoutData)
   }
 
   enum SummaryViewer {

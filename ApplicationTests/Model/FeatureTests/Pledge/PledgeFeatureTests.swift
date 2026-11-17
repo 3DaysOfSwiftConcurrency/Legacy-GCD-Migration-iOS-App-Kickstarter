@@ -228,6 +228,46 @@ final class PledgeFeatureTests: TestCase {
     XCTAssertEqual(slept, 3)
   }
 
+  func testManagePledgePageViewUsesComposedTracking() {
+    var trackedProjectID: Int?
+    var trackedRewardID: Int?
+    var trackedCheckout: KSRAnalytics.CheckoutPropertiesData?
+    let feature = PledgeFeature(
+      platform: .live(),
+      sessionFeature: self.session,
+      makeProvider: { self.provider },
+      trackManagePledgePageView: { project, reward, checkout in
+        trackedProjectID = project.id
+        trackedRewardID = reward.id
+        trackedCheckout = checkout
+      }
+    )
+    let checkout = KSRAnalytics.CheckoutPropertiesData(
+      addOnsCountTotal: 0,
+      addOnsCountUnique: 0,
+      addOnsMinimumUsd: 0,
+      bonusAmountInUsd: 0,
+      checkoutId: nil,
+      estimatedDelivery: Reward.template.estimatedDeliveryOn,
+      paymentType: nil,
+      revenueInUsd: 10,
+      rewardId: String(Reward.template.id),
+      rewardMinimumUsd: 10,
+      rewardTitle: Reward.template.title,
+      shippingEnabled: false,
+      shippingAmountUsd: nil,
+      userHasStoredApplePayCard: false
+    )
+
+    feature.trackManagePledgePageViewed(
+      project: .template, reward: .template, checkoutData: checkout
+    )
+
+    XCTAssertEqual(trackedProjectID, Project.template.id)
+    XCTAssertEqual(trackedRewardID, Reward.template.id)
+    XCTAssertEqual(trackedCheckout, checkout)
+  }
+
   func testSessionChangeRejectsOldErrorAndQueuedWrite() async throws {
     let old = self.feature.startCreate(self.createInput())
     let queued = self.feature.startUpdate(self.updateInput())

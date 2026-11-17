@@ -5026,3 +5026,24 @@ Live account mutation, visual rendering and the whole Library suite remain unver
 CFA gate rejects restored environment, delay or analytics composition in the controller.
 This is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
+
+### Manage Pledge presentation composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgeFeature now receives Manage Pledge page-view analytics from AppModel composition.
+ManagePledgeViewModel reports the existing project, reward and checkout-properties payload
+through that Feature rather than accepting a global analytics accessor. The controller no
+longer reads AppEnvironment; its form-sheet choice remains UIKit presentation policy and
+uses the current device idiom directly.
+
+Focused PledgeFeature and Manage Pledge view-model validation passed all 98 tests. The
+bounded AppModel, PledgeFeature and Manage Pledge selection passed all 124 tests. Both runs
+had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-manage-pledge-composition-focused-2.xcresult` and
+`/private/tmp/kickstarter-manage-pledge-composition-bounded.xcresult`.
+
+Live analytics delivery, visual rendering and the whole Library suite remain unverified.
+The CFA gate rejects restored environment or analytics-constructor access in the Manage
+Pledge controller and view model. This is not full CFA compliance. Swift packages, target
+identifiers and existing history are unchanged. No push.
