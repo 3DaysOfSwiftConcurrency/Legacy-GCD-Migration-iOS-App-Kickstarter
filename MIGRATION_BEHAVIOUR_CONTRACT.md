@@ -2171,3 +2171,14 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel coverage passes 8 tests and focused Root Tabs presentation coverage
   passes 32 tests. Broader presentation, visual and whole Library suites remain outside
   this checkpoint.
+
+## Manage Pledge feature graph — 17 November 2026
+
+- AppModel exposes one ManagePledgeComposition containing the exact Pledge, Payments and
+  Rewards features plus the nested PledgeCheckoutComposition owned by the application.
+- ManagePledgeViewController constructs its model from that graph, sends reward changes
+  through its Rewards feature and carries the same checkout graph into payment changes.
+  Existing factories retain AppModel composition defaults for legacy callers.
+- Focused AppModel and Manage Pledge coverage passes 58 tests. The bounded AppModel,
+  Rewards, Manage Pledge and checkout selection passes 214 tests. Controller snapshots
+  and the whole Library suite remain outside this checkpoint.

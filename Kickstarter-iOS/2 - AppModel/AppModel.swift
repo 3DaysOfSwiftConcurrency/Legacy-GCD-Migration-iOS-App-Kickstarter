@@ -180,6 +180,25 @@ public struct RootTabComposition {
   }
 }
 
+public struct ManagePledgeComposition {
+  public let pledgeFeature: PledgeFeature
+  public let paymentsFeature: PaymentsFeature
+  public let rewardsFeature: RewardsFeature
+  public let checkout: PledgeCheckoutComposition
+
+  public init(
+    pledgeFeature: PledgeFeature,
+    paymentsFeature: PaymentsFeature,
+    rewardsFeature: RewardsFeature,
+    checkout: PledgeCheckoutComposition
+  ) {
+    self.pledgeFeature = pledgeFeature
+    self.paymentsFeature = paymentsFeature
+    self.rewardsFeature = rewardsFeature
+    self.checkout = checkout
+  }
+}
+
 @MainActor
 public final class AppModel {
   public static let shared = AppModel.live()
@@ -236,6 +255,15 @@ public final class AppModel {
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
+    )
+  }
+
+  public var managePledgeComposition: ManagePledgeComposition {
+    ManagePledgeComposition(
+      pledgeFeature: self.pledgeFeature,
+      paymentsFeature: self.paymentsFeature,
+      rewardsFeature: self.rewardsFeature,
+      checkout: self.pledgeCheckoutComposition
     )
   }
 

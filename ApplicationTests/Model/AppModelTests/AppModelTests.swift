@@ -398,6 +398,12 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(first.rootTabComposition.profileFeature === first.profileFeature)
     XCTAssertTrue(first.rootTabComposition.activityFeature === first.activityFeature)
     XCTAssertTrue(first.rootTabComposition.settingsFeature === first.settingsFeature)
+    XCTAssertTrue(first.managePledgeComposition.pledgeFeature === first.pledgeFeature)
+    XCTAssertTrue(first.managePledgeComposition.paymentsFeature === first.paymentsFeature)
+    XCTAssertTrue(first.managePledgeComposition.rewardsFeature === first.rewardsFeature)
+    XCTAssertTrue(
+      first.managePledgeComposition.checkout.pledgeFeature === first.pledgeFeature
+    )
     XCTAssertTrue(first.discoveryFeature.snapshot(for: .magic).projects.isEmpty)
     XCTAssertEqual(firstProvider.requestCount, 0)
     XCTAssertEqual(secondProvider.requestCount, 0)

@@ -15,10 +15,27 @@ protocol ManagePledgeViewControllerDelegate: AnyObject {
 
 final class ManagePledgeViewController: UIViewController, MessageBannerViewControllerPresenting {
   weak var delegate: ManagePledgeViewControllerDelegate?
-  private let viewModel: ManagePledgeViewModelType = ManagePledgeViewModel(
-    pledgeFeature: AppModel.shared.pledgeFeature,
-    paymentsFeature: AppModel.shared.paymentsFeature
-  )
+  private let composition: ManagePledgeComposition
+  private let viewModel: ManagePledgeViewModelType
+
+  static func instantiate(
+    composition: ManagePledgeComposition = AppModel.shared.managePledgeComposition
+  ) -> ManagePledgeViewController {
+    ManagePledgeViewController(composition: composition)
+  }
+
+  private init(composition: ManagePledgeComposition) {
+    self.composition = composition
+    self.viewModel = ManagePledgeViewModel(
+      pledgeFeature: composition.pledgeFeature,
+      paymentsFeature: composition.paymentsFeature
+    )
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("ManagePledgeViewController must be created with a ManagePledgeComposition")
+  }
 
   // MARK: - Properties
 
@@ -470,7 +487,7 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
       with: project,
       refTag: nil,
       context: .managePledge,
-      rewardsFeature: AppModel.shared.rewardsFeature
+      rewardsFeature: self.composition.rewardsFeature
     )
     vc.pledgeViewDelegate = self
 
@@ -486,7 +503,7 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
   }
 
   private func goToChangePaymentMethod(data: PledgeViewData) {
-    let vc = PledgeViewController.instantiate()
+    let vc = PledgeViewController.instantiate(composition: self.composition.checkout)
     vc.configure(with: data)
     vc.delegate = self
 
@@ -494,7 +511,7 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
   }
 
   private func goToFixPaymentMethod(data: PledgeViewData) {
-    let vc = PledgeViewController.instantiate()
+    let vc = PledgeViewController.instantiate(composition: self.composition.checkout)
     vc.configure(with: data)
     vc.delegate = self
 
@@ -563,10 +580,11 @@ extension ManagePledgeViewController: MessageDialogViewControllerDelegate {
 extension ManagePledgeViewController {
   public static func controller(
     with params: ManagePledgeViewParamConfigData,
-    delegate: ManagePledgeViewControllerDelegate? = nil
+    delegate: ManagePledgeViewControllerDelegate? = nil,
+    composition: ManagePledgeComposition = AppModel.shared.managePledgeComposition
   ) -> UINavigationController {
     let managePledgeViewController = ManagePledgeViewController
-      .instantiate()
+      .instantiate(composition: composition)
     managePledgeViewController.configureWith(params: params)
     managePledgeViewController.delegate = delegate
 

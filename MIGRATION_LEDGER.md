@@ -5398,3 +5398,24 @@ Broader presentation, visual and whole Library suites remain unverified. The CFA
 rejects restored individual AppModel feature lookups or AppEnvironment reads in the Root
 Tabs controller. This is not full CFA compliance. Swift packages, target identifiers and
 existing history are unchanged. No push.
+
+### Manage Pledge feature graph — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes ManagePledgeComposition as the explicit graph for Pledge, Payments,
+Rewards and the nested checkout graph. ManagePledgeViewController constructs its model
+from those exact shared features, uses the composed Rewards feature for reward changes
+and passes the same checkout graph into change- and fix-payment flows. Existing factories
+retain AppModel composition defaults for legacy callers while accepting explicit graphs.
+
+Focused AppModel and Manage Pledge validation passed all 58 tests. The bounded AppModel,
+Rewards, Reward Add-On Selection, Manage Pledge and checkout selection passed all 214
+tests. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-manage-pledge-graph-focused.xcresult` and
+`/private/tmp/kickstarter-manage-pledge-graph-bounded.xcresult`.
+
+Controller snapshots and the whole Library suite remain unverified. The CFA gate rejects
+restored individual AppModel feature lookups or AppEnvironment reads in the Manage Pledge
+controller. This is not full CFA compliance. Swift packages, target identifiers and
+existing history are unchanged. No push.
