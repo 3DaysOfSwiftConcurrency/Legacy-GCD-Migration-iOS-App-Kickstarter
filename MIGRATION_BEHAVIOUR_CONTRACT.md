@@ -1,5 +1,22 @@
 # Kickstarter migration behaviour contract
 
+## Application entry and ViewModel boundaries — 17 November 2026
+
+Author: Matthew Thomas. Architecture direction confirmed by the developer.
+
+AppDelegate is a UIKit application entry point, not a View. It has no ViewModel.
+Lifecycle events do not constitute a product Feature. AppDelegate forwards app
+events to AppModel; AppModel coordinates the relevant Features, which own their
+rules, requests and authoritative state. UIKit navigation adapters apply the
+resulting presentation actions. Preserve URL, universal-link, push and shortcut
+behavior while migrating those responsibilities.
+
+The current source has removed AppDelegateViewModel and AppLifecycleFeature.
+DeepLinkRouter currently lives in the navigation layer and is called directly
+by AppDelegate. It still coordinates multiple Features; completing that ownership
+review is outstanding. Removing the former names does not prove that application
+composition or deep-link routing fully conforms to CFA.
+
 ## Project Page related projects — 17 November 2026
 
 Author: Matthew Thomas.
@@ -217,10 +234,10 @@ remain open. No visual redesign or language-mode conversion is part of this chan
 - Equivalent pending prompts share; a different prompt replaces the pending request.
   Backgrounding, owner release or removal of the requesting screen prevents late
   presentation. Do not present over another modal. Suppression is not a denial.
-- AppLifecycleFeature owns one lazily created connectivity monitor across account
+- ConnectivityService owns one lazily created connectivity monitor across account
   resets. Preserve synchronous initial delivery to main-thread compatibility
   subscribers and the existing SystemConfiguration WWAN/reachable/none mapping.
-- Native callbacks yield immutable values to a Feature-owned async consumer. Retain
+- Native callbacks yield immutable values to the service-owned async consumer. Retain
   and unregister the native handle/context on release; observer disposal does not
   stop application-wide monitoring. Search/Discovery use injected connection state.
 - The page-controller compatibility helper remains synchronous on MainActor. All

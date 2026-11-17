@@ -4146,3 +4146,18 @@ These results cover this checkpoint, not the complete migration. Live networking
 visual parity and the full Library-iOS suite remain unverified. Swift packages
 were not changed. Project Page controller presentation still contains deferred
 main-queue callbacks that need a separate lifetime audit.
+
+### Application entry boundary clarification — Matthew Thomas
+
+AppDelegate is not a View and must not have a ViewModel. Application lifecycle
+events are received by AppModel and coordinated with relevant owners; lifecycle
+is not itself a product Feature. AppDelegateViewModel and AppLifecycleFeature
+were already removed in earlier checkpoints. Current source checks reject both
+names in the two in-scope production directories.
+
+The current AppDelegate constructs and calls DeepLinkRouter in the navigation
+layer. That router still coordinates several Features directly. Its ownership
+and AppModel's remaining infrastructure properties require further review;
+the removed ViewModel name is not proof of full CFA compliance. The behavior
+contract's obsolete connectivity owner is corrected to ConnectivityService.
+Earlier ledger entries retain their historical descriptions.
