@@ -42,6 +42,7 @@ final class PledgeViewModelTests: TestCase {
 
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = PledgeFeature(
+    platform: .live(),
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)

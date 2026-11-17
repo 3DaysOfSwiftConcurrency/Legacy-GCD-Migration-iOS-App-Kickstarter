@@ -10,6 +10,7 @@ import XCTest
 final class PledgeOverTimeUseCaseTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = PledgeFeature(
+    platform: .live(),
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) })
   override func tearDown() async throws {

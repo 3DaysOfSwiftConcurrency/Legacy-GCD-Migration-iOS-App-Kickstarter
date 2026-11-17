@@ -10,6 +10,7 @@ import XCTest
 internal final class PledgeViewCTAContainerViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   let vm = PledgeViewCTAContainerViewModel(pledgeFeature: PledgeFeature(
+    platform: .live(),
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncPledgeProvider(service: MockService()) }
   ))

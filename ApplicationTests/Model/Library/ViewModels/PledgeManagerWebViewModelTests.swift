@@ -10,6 +10,7 @@ import XCTest
 final class PledgeManagerWebViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = PledgeFeature(
+    platform: .live(),
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) })
   private lazy var vm: PledgeManagerWebViewModel = PledgeManagerWebViewModel(

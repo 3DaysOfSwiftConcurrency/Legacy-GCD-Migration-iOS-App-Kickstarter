@@ -3426,6 +3426,13 @@ injected IDs and timestamps, and the CFA check rejects direct environment
 reads in DiscussionFeature. All 118 focused tests and 130 AppDelegate and
 Update presentation tests passed on the simulator.
 
+Pledge now receives checkout host configuration, web-request preparation
+and validation, and cancellation presentation timing from composition.
+The delay test suspends delivery explicitly and verifies that a replacement
+session cannot receive the old failure. The CFA check rejects direct
+environment reads in PledgeFeature. All 58 focused tests, 144 bounded
+checkout regressions, and five Pledged Projects presentation tests passed.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

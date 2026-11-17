@@ -91,6 +91,7 @@ final class PPOContainerViewModelTests: XCTestCase {
   }
   private func feature(_ service: MockService) -> PledgeFeature {
     PledgeFeature(
+      platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: service) }),
       makeProvider: { AsyncPledgeProvider(service: service) })
   }

@@ -14,6 +14,7 @@ final class PledgeFeatureTests: TestCase {
     makeProvider: { AsyncSessionProvider(service: MockService()) },
     currentUser: { .template }, updateUser: { _ in })
   private lazy var feature = PledgeFeature(
+    platform: .live(),
     sessionFeature: self.session, makeProvider: { self.provider })
   override func tearDown() async throws {
     self.session.sessionChanged()
@@ -202,17 +203,31 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testSessionChangeSuppressesDelayedFailure() async throws {
-    await withEnvironment(apiDelayInterval: .seconds(1)) {
-      let operation = Task { try await self.feature.cancelWithPresentationDelay(
-        .init(backingId: "backing", cancellationReason: nil)) }
-      await self.provider.cancellations.waitFor(1)
-      do { try self.provider.cancellations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON)) }
-      catch { XCTFail("Missing fixture") }
-      await self.feature.waitForOperations()
-      self.session.sessionChanged()
-      do { try await operation.value; XCTFail("Old session must not receive a result") }
-      catch { XCTAssertTrue(error is CancellationError) }
-    }
+    let delay = AccountRequestGate<Void>()
+    defer { delay.releaseAll() }
+    let feature = PledgeFeature(
+      platform: .init(
+        serverConfig: { ServerConfig.staging },
+        prepareWebRequest: { $0 },
+        isPreparedWebRequest: { _ in false },
+        responseDelaySeconds: { 1 },
+        sleep: { seconds in
+          XCTAssertEqual(seconds, 1)
+          try await delay.request()
+        }
+      ),
+      sessionFeature: self.session,
+      makeProvider: { self.provider }
+    )
+    let operation = Task { try await feature.cancelWithPresentationDelay(
+      .init(backingId: "backing", cancellationReason: nil)) }
+    await self.provider.cancellations.waitFor(1)
+    try self.provider.cancellations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
+    await delay.waitFor(1)
+    self.session.sessionChanged()
+    try delay.finish(0, .success(()))
+    do { try await operation.value; XCTFail("Old session must not receive a result") }
+    catch { XCTAssertTrue(error is CancellationError) }
   }
 
   func testPublicDemoRejectsAllPledgeMutations() async {

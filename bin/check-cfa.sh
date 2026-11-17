@@ -102,6 +102,8 @@ reject_matches 'Session must receive storage from composition.' \
   'AppEnvironment[.]' "$app_model/Features/Session/SessionFeature.swift"
 reject_matches 'Discussion receives environment dependencies from composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Discussion/DiscussionFeature.swift"
+reject_matches 'Pledge receives environment dependencies from composition.' \
+  'AppEnvironment[.]current' "$app_model/Features/Pledge/PledgeFeature.swift"
 reject_matches 'Project Media and its watch view model receive environment dependencies from composition.' \
   'AppEnvironment[.]current' "$app_model/Features/ProjectMedia/ProjectMediaFeature.swift" \
   "$app_view/Views/ProjectPage/Views/WatchProjectViewModel.swift"

@@ -9,6 +9,7 @@ import XCTest
 internal final class PledgeSummaryViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let vm = PledgeSummaryViewModel(pledgeFeature: PledgeFeature(
+    platform: .live(),
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
   ))

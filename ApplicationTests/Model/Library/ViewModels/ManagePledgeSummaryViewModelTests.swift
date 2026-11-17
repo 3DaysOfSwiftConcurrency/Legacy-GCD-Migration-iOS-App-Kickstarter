@@ -11,6 +11,7 @@ final class ManagePledgeSummaryViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
   private let vm = ManagePledgeSummaryViewModel(pledgeFeature: PledgeFeature(
+    platform: .live(),
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
   ))

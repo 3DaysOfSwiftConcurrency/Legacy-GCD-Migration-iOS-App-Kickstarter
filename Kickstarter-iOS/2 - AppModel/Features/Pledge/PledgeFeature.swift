@@ -96,45 +96,57 @@ public struct AsyncPledgeProvider: PledgeProvider {
 /// create/update/cancel screens. There is no automatic retry of a financial write.
 @MainActor
 public final class PledgeFeature {
+  public struct Platform {
+    let serverConfig: @MainActor () -> any ServerConfigType
+    let prepareWebRequest: @MainActor (URLRequest) -> URLRequest
+    let isPreparedWebRequest: @MainActor (URLRequest) -> Bool
+    let responseDelaySeconds: @MainActor () -> TimeInterval
+    let sleep: @MainActor (TimeInterval) async throws -> Void
+
+    public init(
+      serverConfig: @escaping @MainActor () -> any ServerConfigType,
+      prepareWebRequest: @escaping @MainActor (URLRequest) -> URLRequest,
+      isPreparedWebRequest: @escaping @MainActor (URLRequest) -> Bool,
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
+      sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { delay in
+        if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
+        else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
+      }
+    ) {
+      self.serverConfig = serverConfig
+      self.prepareWebRequest = prepareWebRequest
+      self.isPreparedWebRequest = isPreparedWebRequest
+      self.responseDelaySeconds = responseDelaySeconds
+      self.sleep = sleep
+    }
+  }
+
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any PledgeProvider
-  private let prepareWebRequest: (URLRequest) -> URLRequest
-  private let preparedWebRequest: (URLRequest) -> Bool
-  private let webBaseURL: () -> URL
-  private let apiBaseURL: () -> URL
+  private let platform: Platform
 
   public init(
-    sessionFeature: SessionFeature, makeProvider: @escaping () -> any PledgeProvider,
-    prepareWebRequest: @escaping (URLRequest) -> URLRequest = {
-      AppEnvironment.current.apiService.preparedRequest(forRequest: $0)
-    },
-    preparedWebRequest: @escaping (URLRequest) -> Bool = {
-      AppEnvironment.current.apiService.isPrepared(request: $0)
-    },
-    webBaseURL: @escaping () -> URL = { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
-    apiBaseURL: @escaping () -> URL = { AppEnvironment.current.apiService.serverConfig.apiBaseUrl }
+    platform: Platform, sessionFeature: SessionFeature, makeProvider: @escaping () -> any PledgeProvider
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
-    self.prepareWebRequest = prepareWebRequest
-    self.preparedWebRequest = preparedWebRequest
-    self.webBaseURL = webBaseURL
-    self.apiBaseURL = apiBaseURL
+    self.platform = platform
   }
 
-  public func preparedWebRequest(from request: URLRequest) -> URLRequest { self.prepareWebRequest(request) }
-  public func isPreparedWebRequest(_ request: URLRequest) -> Bool { self.preparedWebRequest(request) }
+  public func preparedWebRequest(from request: URLRequest) -> URLRequest { self.platform.prepareWebRequest(request) }
+  public func isPreparedWebRequest(_ request: URLRequest) -> Bool { self.platform.isPreparedWebRequest(request) }
   public func isKickstarterWebRequest(_ request: URLRequest) -> Bool {
-    request.url?.host() == self.webBaseURL().host()
+    request.url?.host() == self.platform.serverConfig().webBaseUrl.host()
   }
   public func navigationMatch(_ request: URLRequest) -> Navigation? {
-    request.url.flatMap { Navigation.match($0, apiBaseURL: self.apiBaseURL(), webBaseURL: self.webBaseURL()) }
+    let config = self.platform.serverConfig()
+    return request.url.flatMap { Navigation.match($0, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl) }
   }
   public func helpType(for url: URL) -> HelpType? {
-    HelpType.helpType(from: url, baseURL: self.webBaseURL())
+    HelpType.helpType(from: url, baseURL: self.platform.serverConfig().webBaseUrl)
   }
   public func helpURL(_ type: HelpType) -> String? {
-    type.url(withBaseUrl: self.webBaseURL())?.absoluteString
+    type.url(withBaseUrl: self.platform.serverConfig().webBaseUrl)?.absoluteString
   }
 
   private struct Session: Hashable {
@@ -294,12 +306,11 @@ public final class PledgeFeature {
   /// Keep the existing presentation delay and suppress results from a replaced session.
   func cancelWithPresentationDelay(_ input: KsApi.CancelBackingInput) async throws {
     let session = self.session
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     let result: Result<Void, Error>
     do { try await self.cancel(input); result = .success(()) }
     catch { result = .failure(error) }
-    if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-    else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
+    try await self.platform.sleep(delay)
     try self.requireCurrent(session)
     try result.get()
   }

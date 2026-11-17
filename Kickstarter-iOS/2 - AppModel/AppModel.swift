@@ -2,6 +2,18 @@ import Foundation
 import KsApi
 import Prelude
 
+extension PledgeFeature.Platform {
+  @MainActor
+  static func live() -> Self {
+    Self(
+      serverConfig: { AppEnvironment.current.apiService.serverConfig },
+      prepareWebRequest: { AppEnvironment.current.apiService.preparedRequest(forRequest: $0) },
+      isPreparedWebRequest: { AppEnvironment.current.apiService.isPrepared(request: $0) },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    )
+  }
+}
+
 extension DiscussionFeature.Platform {
   @MainActor
   static func live() -> Self {
@@ -481,9 +493,11 @@ public final class AppModel {
       pledgedProjectsFeature: PledgedProjectsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
       }),
-      pledgeFeature: PledgeFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncPledgeProvider(service: AppEnvironment.current.apiService)
-      }),
+      pledgeFeature: PledgeFeature(
+        platform: .live(),
+        sessionFeature: sessionFeature,
+        makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
+      ),
       paymentsFeature: PaymentsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncPaymentsProvider(service: AppEnvironment.current.apiService)
       }),
