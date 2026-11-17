@@ -3430,3 +3430,10 @@ on a queued invalid-token logout. All 48 focused Settings, Session and
 AppModel tests passed after retrying a simulator launch rejection, and all
 123 AppDelegate presentation tests passed, including legacy credential
 restoration.
+
+Settings owns confirmed project-notification overrides in a cache scoped
+to the user ID and session generation. The cache preserves the existing
+combined email/mobile display and no longer reads the global app cache.
+The regression covers a committed override followed by same-user session
+replacement. Fourteen focused tests and 46 bounded list view-model,
+Settings and Session tests passed on the simulator.

@@ -121,6 +121,8 @@ public final class SettingsFeature {
   private var notificationTails: [Int: NotificationWrite] = [:]
   private var notificationWrites: [UUID: Task<ProjectNotification, Error>] = [:]
   private var notificationRevision = 0
+  private let confirmedProjectNotifications = NSCache<NSNumber, NSNumber>()
+  private var projectNotificationCacheSession: (userID: Int, generation: Int)?
 
   private let session: SessionFeature
   private let makeProvider: () -> any AccountPreferencesProvider
@@ -604,8 +606,14 @@ public final class SettingsFeature {
         let saved = try await provider.saveProjectNotification(notification)
         guard self.session.isCurrent(userID: userID, generation: generation), saved.id == notification.id
         else { throw CancellationError() }
-        // Preserve the existing cache/key and store only confirmed state.
-        AppEnvironment.current.cache[self.notificationCacheKey(saved)] = saved.email && saved.mobile
+        if self.projectNotificationCacheSession?.userID != userID
+          || self.projectNotificationCacheSession?.generation != generation {
+          self.confirmedProjectNotifications.removeAllObjects()
+          self.projectNotificationCacheSession = (userID, generation)
+        }
+        self.confirmedProjectNotifications.setObject(
+          NSNumber(value: saved.email && saved.mobile), forKey: NSNumber(value: saved.id)
+        )
         result = .success(saved)
       } catch {
         result = .failure(self.session.isCurrent(userID: userID, generation: generation)
@@ -624,13 +632,12 @@ public final class SettingsFeature {
     return pending
   }
 
-  private func notificationCacheKey(_ notification: ProjectNotification) -> String {
-    "project_notification_view_model_notification_\(notification.id)"
-  }
-
   public func cachedProjectNotification(_ notification: ProjectNotification) -> ProjectNotification {
-    guard let on = AppEnvironment.current.cache[self.notificationCacheKey(notification)] as? Bool
+    guard let owner = self.projectNotificationCacheSession,
+          self.session.isCurrent(userID: owner.userID, generation: owner.generation),
+          let cached = self.confirmedProjectNotifications.object(forKey: NSNumber(value: notification.id))
     else { return notification }
+    let on = cached.boolValue
     return notification |> ProjectNotification.lens.email .~ on |> ProjectNotification.lens.mobile .~ on
   }
 

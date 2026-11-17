@@ -81,6 +81,22 @@ final class SettingsProjectNotificationsTests: TestCase {
     XCTAssertFalse(self.feature.cachedProjectNotification(source).email)
   }
 
+  func testConfirmedPreferenceDoesNotCarryOverToReplacementSession() async throws {
+    let off = ProjectNotification.template
+      |> ProjectNotification.lens.email .~ false |> ProjectNotification.lens.mobile .~ false
+    let on = off |> ProjectNotification.lens.email .~ true |> ProjectNotification.lens.mobile .~ true
+    let save = try self.feature.requestProjectNotificationSave(on)
+    await self.provider.writes.waitFor(1)
+    try self.provider.writes.finish(0, .success(on))
+    _ = try await save.value
+    XCTAssertTrue(self.feature.cachedProjectNotification(off).email)
+
+    self.session.sessionChanged()
+    let value = self.feature.cachedProjectNotification(off)
+    XCTAssertFalse(value.email)
+    XCTAssertFalse(value.mobile)
+  }
+
   func testReadOvertakenByWriteCannotPublishAndFreshReadWorks() async throws {
     let source = ProjectNotification.template
     let read = Task { try await self.feature.projectNotifications() }
