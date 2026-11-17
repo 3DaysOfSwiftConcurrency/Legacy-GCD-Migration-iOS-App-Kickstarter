@@ -46,7 +46,9 @@ final class RewardAddOnSelectionViewControllerTests: TestCase {
         apiService: mockService,
         language: language
       ) {
-        let controller = RewardAddOnSelectionViewController.instantiate()
+        let controller = RewardAddOnSelectionViewController.instantiate(
+          rewardsFeature: AppModel.shared.rewardsFeature
+        )
         controller.overrideUserInterfaceStyle = style
 
         let data = PledgeViewData(
@@ -90,7 +92,9 @@ final class RewardAddOnSelectionViewControllerTests: TestCase {
         apiService: mockService,
         language: language
       ) {
-        let controller = RewardAddOnSelectionViewController.instantiate()
+        let controller = RewardAddOnSelectionViewController.instantiate(
+          rewardsFeature: AppModel.shared.rewardsFeature
+        )
 
         let data = PledgeViewData(
           project: project,
@@ -129,7 +133,9 @@ final class RewardAddOnSelectionViewControllerTests: TestCase {
         apiService: mockService,
         language: language
       ) {
-        let controller = RewardAddOnSelectionViewController.instantiate()
+        let controller = RewardAddOnSelectionViewController.instantiate(
+          rewardsFeature: AppModel.shared.rewardsFeature
+        )
 
         let data = PledgeViewData(
           project: project,
@@ -220,7 +226,9 @@ final class RewardAddOnSelectionViewControllerTests: TestCase {
         apiService: mockService,
         language: language
       ) {
-        let controller = RewardAddOnSelectionViewController.instantiate()
+        let controller = RewardAddOnSelectionViewController.instantiate(
+          rewardsFeature: AppModel.shared.rewardsFeature
+        )
         let data = PledgeViewData(
           project: project,
           rewards: [reward],
@@ -260,7 +268,9 @@ final class RewardAddOnSelectionViewControllerTests: TestCase {
         apiService: mockService,
         language: language
       ) {
-        let controller = RewardAddOnSelectionViewController.instantiate()
+        let controller = RewardAddOnSelectionViewController.instantiate(
+          rewardsFeature: AppModel.shared.rewardsFeature
+        )
 
         let data = PledgeViewData(
           project: project,
@@ -311,7 +321,9 @@ final class RewardAddOnSelectionViewControllerTests: TestCase {
         apiService: mockService,
         language: language
       ) {
-        let controller = RewardAddOnSelectionViewController.instantiate()
+        let controller = RewardAddOnSelectionViewController.instantiate(
+          rewardsFeature: AppModel.shared.rewardsFeature
+        )
 
         let data = PledgeViewData(
           project: project,
@@ -362,7 +374,9 @@ final class RewardAddOnSelectionViewControllerTests: TestCase {
         apiService: mockService,
         language: language
       ) {
-        let controller = RewardAddOnSelectionViewController.instantiate()
+        let controller = RewardAddOnSelectionViewController.instantiate(
+          rewardsFeature: AppModel.shared.rewardsFeature
+        )
 
         let data = PledgeViewData(
           project: project,

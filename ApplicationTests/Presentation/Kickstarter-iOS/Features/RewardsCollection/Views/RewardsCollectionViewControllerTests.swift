@@ -31,7 +31,8 @@ final class RewardsCollectionViewControllerTests: TestCase {
     withEnvironment(apiService: mockService) {
       forEachScreenshotType { type in
         let vc = RewardsCollectionViewController.instantiate(
-          with: project, refTag: nil, context: .createPledge
+          with: project, refTag: nil, context: .createPledge,
+          rewardsFeature: AppModel.shared.rewardsFeature
         )
 
         vc.pledgeShippingLocationViewController(PledgeShippingLocationViewController(), didSelect: .usa)
@@ -84,7 +85,8 @@ final class RewardsCollectionViewControllerTests: TestCase {
     withEnvironment(apiService: mockService) {
       forEachScreenshotType { type in
         let vc = RewardsCollectionViewController.instantiate(
-          with: project, refTag: nil, context: .managePledge
+          with: project, refTag: nil, context: .managePledge,
+          rewardsFeature: AppModel.shared.rewardsFeature
         )
 
         vc.pledgeShippingLocationViewController(PledgeShippingLocationViewController(), didSelect: .usa)

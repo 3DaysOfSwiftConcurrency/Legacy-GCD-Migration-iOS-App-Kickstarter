@@ -2102,3 +2102,15 @@ safe for arbitrary concurrent environment mutation.
 - Focused RewardsFeature and presentation-model coverage passes 54 tests. The bounded
   AppModel, PaymentsFeature and pledge-flow selection passes 178 tests. Live analytics
   delivery, visual rendering and the whole Library suite remain outside this checkpoint.
+
+## Rewards controller composition — 17 November 2026
+
+- Rewards Collection requires its owning RewardsFeature at construction and passes that
+  same instance into Reward Add-On Selection. Neither controller resolves AppModel.shared
+  or AppEnvironment; the navigation factory also receives device idiom as an input.
+- Project Page and Manage Pledge remain the current flow-composition callers. Controller
+  presentation, navigation and feature behavior are otherwise unchanged.
+- Focused RewardsFeature and screen-model coverage passes 54 tests. The bounded Project
+  Page and Manage Pledge selection passes 114 tests. Both PresentationTests controller
+  suites compile, but their snapshot harness requires an unavailable iPad mini (A17 Pro)
+  simulator on iOS 18.6; visual snapshots remain unverified in this checkpoint.

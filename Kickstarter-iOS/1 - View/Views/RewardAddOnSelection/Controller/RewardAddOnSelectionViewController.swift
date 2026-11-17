@@ -39,9 +39,20 @@ final class RewardAddOnSelectionViewController: UIViewController {
       |> \.tableHeaderView .~ self.headerView
   }()
 
-  private let viewModel: RewardAddOnSelectionViewModelType = RewardAddOnSelectionViewModel(
-    rewardsFeature: AppModel.shared.rewardsFeature
-  )
+  private let viewModel: RewardAddOnSelectionViewModelType
+
+  static func instantiate(rewardsFeature: RewardsFeature) -> RewardAddOnSelectionViewController {
+    RewardAddOnSelectionViewController(rewardsFeature: rewardsFeature)
+  }
+
+  private init(rewardsFeature: RewardsFeature) {
+    self.viewModel = RewardAddOnSelectionViewModel(rewardsFeature: rewardsFeature)
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("RewardAddOnSelectionViewController must be created with a RewardsFeature")
+  }
 
   // MARK: - Lifecycle
 

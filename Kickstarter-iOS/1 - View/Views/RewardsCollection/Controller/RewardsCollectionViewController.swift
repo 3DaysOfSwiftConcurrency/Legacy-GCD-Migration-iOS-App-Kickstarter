@@ -47,15 +47,17 @@ final class RewardsCollectionViewController: UICollectionViewController {
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
-  private let viewModel = RewardsCollectionViewModel(rewardsFeature: AppModel.shared.rewardsFeature)
+  private let rewardsFeature: RewardsFeature
+  private let viewModel: RewardsCollectionViewModel
 
   static func instantiate(
     with project: Project,
     refTag: RefTag?,
     context: RewardsCollectionViewContext,
-    secretRewardToken: String? = nil
+    secretRewardToken: String? = nil,
+    rewardsFeature: RewardsFeature
   ) -> RewardsCollectionViewController {
-    let rewardsCollectionVC = RewardsCollectionViewController()
+    let rewardsCollectionVC = RewardsCollectionViewController(rewardsFeature: rewardsFeature)
     rewardsCollectionVC.viewModel.configure(
       with: project,
       refTag: refTag,
@@ -69,12 +71,14 @@ final class RewardsCollectionViewController: UICollectionViewController {
     return rewardsCollectionVC
   }
 
-  init() {
+  init(rewardsFeature: RewardsFeature) {
+    self.rewardsFeature = rewardsFeature
+    self.viewModel = RewardsCollectionViewModel(rewardsFeature: rewardsFeature)
     super.init(collectionViewLayout: self.layout)
   }
 
   required init?(coder aDecoder: NSCoder) {
-    super.init(coder: aDecoder)
+    fatalError("RewardsCollectionViewController must be created with a RewardsFeature")
   }
 
   override func viewDidLoad() {
@@ -252,7 +256,7 @@ final class RewardsCollectionViewController: UICollectionViewController {
   }
 
   private func goToAddOnSelection(data: PledgeViewData) {
-    let vc = RewardAddOnSelectionViewController.instantiate()
+    let vc = RewardAddOnSelectionViewController.instantiate(rewardsFeature: self.rewardsFeature)
     vc.pledgeViewDelegate = self.pledgeViewDelegate
     vc.configure(with: data)
     self.navigationController?.pushViewController(vc, animated: true)
@@ -352,28 +356,33 @@ extension RewardsCollectionViewController {
   public static func rewardsController(
     with project: Project,
     refTag: RefTag?,
-    secretRewardToken: String?
+    secretRewardToken: String?,
+    rewardsFeature: RewardsFeature
   ) -> UIViewController {
     return RewardsCollectionViewController
       .instantiate(
         with: project,
         refTag: refTag,
         context: .createPledge,
-        secretRewardToken: secretRewardToken
+        secretRewardToken: secretRewardToken,
+        rewardsFeature: rewardsFeature
       )
   }
 
   public static func navigationController(
     with project: Project,
     refTag: RefTag?,
-    secretRewardToken: String?
+    secretRewardToken: String?,
+    rewardsFeature: RewardsFeature,
+    userInterfaceIdiom: UIUserInterfaceIdiom
   ) -> UINavigationController {
     let rewardsCollectionViewController = RewardsCollectionViewController
       .instantiate(
         with: project,
         refTag: refTag,
         context: .createPledge,
-        secretRewardToken: secretRewardToken
+        secretRewardToken: secretRewardToken,
+        rewardsFeature: rewardsFeature
       )
 
     let closeButton = UIBarButtonItem(
@@ -391,7 +400,7 @@ extension RewardsCollectionViewController {
       rootViewController: rewardsCollectionViewController
     )
 
-    if AppEnvironment.current.device.userInterfaceIdiom == .pad {
+    if userInterfaceIdiom == .pad {
       navigationController.modalPresentationStyle = .pageSheet
     }
 

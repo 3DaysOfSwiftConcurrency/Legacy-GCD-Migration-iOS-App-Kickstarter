@@ -469,7 +469,8 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
     let vc = RewardsCollectionViewController.instantiate(
       with: project,
       refTag: nil,
-      context: .managePledge
+      context: .managePledge,
+      rewardsFeature: AppModel.shared.rewardsFeature
     )
     vc.pledgeViewDelegate = self
 

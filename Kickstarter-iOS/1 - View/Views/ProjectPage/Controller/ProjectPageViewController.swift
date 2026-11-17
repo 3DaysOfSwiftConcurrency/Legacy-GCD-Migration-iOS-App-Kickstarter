@@ -752,7 +752,8 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
     let vc = RewardsCollectionViewController.rewardsController(
       with: project,
       refTag: refTag,
-      secretRewardToken: secretRewardToken
+      secretRewardToken: secretRewardToken,
+      rewardsFeature: AppModel.shared.rewardsFeature
     )
 
     assert(

@@ -5267,3 +5267,26 @@ Live analytics delivery, visual rendering and the whole Library suite remain unv
 The CFA gate rejects restored analytics and tracking globals in both reward-selection
 screen models. This is not full CFA compliance. Swift packages, target identifiers and
 existing history are unchanged. No push.
+
+### Rewards controller composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+RewardsCollectionViewController now requires RewardsFeature through its factory and
+forwards that same instance when it creates RewardAddOnSelectionViewController. Both
+controllers construct their screen models from the supplied Feature instead of resolving
+AppModel.shared. The navigation-controller factory also receives user-interface idiom
+explicitly rather than reading AppEnvironment.
+
+Focused RewardsFeature, Rewards Collection and Reward Add-On Selection model validation
+passed all 54 tests on iPhone 17 Pro, iOS 26.2. The bounded Project Page and Manage Pledge
+selection passed all 114 tests on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-rewards-controller-composition-main-focused.xcresult` and
+`/private/tmp/kickstarter-rewards-controller-composition-bounded-2.xcresult`.
+
+The focused PresentationTests controller target compiled successfully, but its snapshot
+harness deliberately terminated because it requires an iPad mini (A17 Pro) on iOS 18.6;
+that simulator is not installed. Visual snapshots and the whole Library suite therefore
+remain unverified. The CFA gate rejects restored ambient composition in both controllers.
+This is not full CFA compliance. Swift packages, target identifiers and existing history
+are unchanged. No push.
