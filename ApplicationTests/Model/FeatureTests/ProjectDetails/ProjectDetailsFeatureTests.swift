@@ -115,6 +115,35 @@ final class ProjectDetailsFeatureTests: TestCase {
     }
   }
 
+  func testRelatedRequestDoesNotShareAcrossSameUserSessionReplacement() async {
+    let provider = ControlledProjectDetailsProvider()
+    provider.pauseRelated = true
+    defer { provider.releaseAll() }
+    let feature = self.feature(provider)
+    let route = UUID()
+
+    await withEnvironment(currentUser: .template) {
+      let previous = feature.requestRelated(route: route, projectID: "1")
+      await provider.waitFor("related:1")
+      feature.sessionFeature.sessionChanged()
+      let current = feature.requestRelated(route: route, projectID: "1")
+      await provider.waitFor("related:1", count: 2)
+
+      do {
+        try provider.finishRelated(0, error: .graphError("previous session"))
+        await previous.value
+        XCTAssertTrue(feature.relatedSnapshot(for: route).isLoading)
+        XCTAssertNil(feature.relatedSnapshot(for: route).error)
+        try provider.finishRelated(1, error: nil)
+        await current.value
+        XCTAssertTrue(previous.isCancelled)
+        XCTAssertFalse(feature.relatedSnapshot(for: route).isLoading)
+      } catch {
+        XCTFail("Could not complete related project fixtures: \(error)")
+      }
+    }
+  }
+
   func testAttributionSharesOneEventPerRouteAndPreservesPayload() async throws {
     let provider = ControlledProjectDetailsProvider()
     provider.pauseAttribution = true
@@ -181,6 +210,7 @@ final class ProjectDetailsFeatureTests: TestCase {
   private func feature(
     _ provider: ControlledProjectDetailsProvider,
     fast: Bool = false,
+    includeRichText: @escaping @MainActor () -> Bool = { true },
     platform: ProjectDetailsFeature.Platform = .live()
   ) -> ProjectDetailsFeature {
     ProjectDetailsFeature(
@@ -189,7 +219,7 @@ final class ProjectDetailsFeatureTests: TestCase {
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }),
       makeProvider: { provider },
       useFastLoading: { fast },
-      includeRichText: { true },
+      includeRichText: includeRichText,
       sleep: { _ in try Task.checkCancellation() }
     )
   }
@@ -388,6 +418,53 @@ final class ProjectDetailsFeatureTests: TestCase {
       XCTAssertEqual(provider.calls, ["project"])
       XCTAssertNil(feature.snapshot(for: route).error)
     }
+  }
+
+  func testSameUserSessionReplacementRejectsResultBeforeBackingOrRewards() async {
+    let provider = ControlledProjectDetailsProvider()
+    provider.pauseProjects = true
+    provider.backingID = 42
+    defer { provider.releaseAll() }
+    let feature = self.feature(provider)
+    let route = UUID()
+
+    await withEnvironment(currentUser: .template) {
+      let task = feature.requestLoad(route: route, param: .id(1))
+      await provider.waitFor("project")
+      feature.sessionFeature.sessionChanged()
+      do { try provider.finishProject(0, id: 1) }
+      catch { XCTFail("Could not complete project fixture: \(error)") }
+      await task.value
+
+      XCTAssertEqual(provider.calls, ["project"])
+      XCTAssertNil(feature.snapshot(for: route).project)
+      XCTAssertNil(feature.snapshot(for: route).error)
+      XCTAssertFalse(feature.snapshot(for: route).isLoading)
+    }
+  }
+
+  func testRichTextPolicyChangeReplacesAnEquivalentProjectRead() async throws {
+    let provider = ControlledProjectDetailsProvider()
+    provider.pauseProjects = true
+    defer { provider.releaseAll() }
+    var includeRichText = false
+    let feature = self.feature(provider, includeRichText: { includeRichText })
+    let route = UUID()
+
+    let previous = feature.requestLoad(route: route, param: .id(1))
+    await provider.waitFor("project")
+    XCTAssertFalse(feature.includesRichTextStory)
+    includeRichText = true
+    let current = feature.requestLoad(route: route, param: .id(1))
+    await provider.waitFor("project", count: 2)
+    XCTAssertTrue(feature.includesRichTextStory)
+    XCTAssertEqual(provider.richTextValues, [false, true])
+
+    try provider.finishProject(1, id: 2)
+    await current.value
+    try provider.finishProject(0, id: 1)
+    await previous.value
+    XCTAssertEqual(feature.snapshot(for: route).project?.id, 2)
   }
 
   func testFastPathStartsBothDependenciesAndWaitsForBoth() async throws {

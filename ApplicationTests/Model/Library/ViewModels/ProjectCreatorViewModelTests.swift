@@ -13,7 +13,9 @@ final class ProjectCreatorViewModelTests: TestCase {
     platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }),
-      makeProvider: { AsyncProjectDetailsProvider(service: MockService()) }
+      makeProvider: { AsyncProjectDetailsProvider(service: MockService()) },
+      useFastLoading: { false },
+      includeRichText: { false }
     ))
 
   fileprivate let goBackToProject = Recorder<()>()

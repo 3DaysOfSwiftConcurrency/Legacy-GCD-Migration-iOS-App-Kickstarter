@@ -2106,6 +2106,10 @@ final class ProjectPageViewModelTests: TestCase {
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }),
       makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) },
+      useFastLoading: {
+        InstantPledgeButtonExperiment().boolValue(forKey: .instant_pledge_enabled) == true
+      },
+      includeRichText: { featureProjectStoryRichTextEnabled() },
       sleep: { _ in try Task.checkCancellation() }
     )
   }

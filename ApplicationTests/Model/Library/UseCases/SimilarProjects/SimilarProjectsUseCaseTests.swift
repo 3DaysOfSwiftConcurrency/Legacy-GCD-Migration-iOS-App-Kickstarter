@@ -42,7 +42,9 @@ final class SimilarProjectsUseCaseTests: TestCase {
         platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }),
-      makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) }
+      makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) },
+      useFastLoading: { false },
+      includeRichText: { false }
       ))
       self.states = [self.useCase.similarProjects]
       self.useCase.onState = { [weak self] in self?.states.append($0) }

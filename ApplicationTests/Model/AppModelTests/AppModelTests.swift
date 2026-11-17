@@ -183,12 +183,14 @@ final class AppModelTests: XCTestCase {
     let firstDetails =
       ProjectDetailsFeature(platform: .live(), sessionFeature: firstSession,
       discussionFeature: firstDiscussion,
-      makeProvider: { AsyncProjectDetailsProvider(service: MockService()) })
+      makeProvider: { AsyncProjectDetailsProvider(service: MockService()) },
+      useFastLoading: { false }, includeRichText: { false })
     let secondDiscussion = DiscussionFeature(platform: .live(), sessionFeature: secondSession, makeProvider: { AsyncDiscussionProvider(service: MockService()) })
     let secondDetails =
       ProjectDetailsFeature(platform: .live(), sessionFeature: secondSession,
       discussionFeature: secondDiscussion,
-      makeProvider: { AsyncProjectDetailsProvider(service: MockService()) })
+      makeProvider: { AsyncProjectDetailsProvider(service: MockService()) },
+      useFastLoading: { false }, includeRichText: { false })
     let firstSettings = SettingsFeature(sessionFeature: firstSession, makeProvider: {
         AsyncAccountPreferencesProvider(service: MockService())
       })

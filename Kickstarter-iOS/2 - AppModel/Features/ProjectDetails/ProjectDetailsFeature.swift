@@ -1,4 +1,3 @@
-import Experimentation
 import Foundation
 import GraphAPI
 import KsApi
@@ -153,9 +152,23 @@ public final class ProjectDetailsFeature {
     public fileprivate(set) var error: ErrorEnvelope?
   }
 
+  private struct RequestSession: Equatable {
+    let userID: Int?
+    let generation: Int
+
+    @MainActor init(_ session: SessionFeature) {
+      self.userID = session.currentUser?.id
+      self.generation = session.generation
+    }
+
+    @MainActor func isCurrent(in session: SessionFeature) -> Bool {
+      session.isCurrent(userID: self.userID, generation: self.generation)
+    }
+  }
+
   private final class RelatedPage {
     var snapshot = RelatedSnapshot()
-    var request: (id: UUID, projectID: String, userID: Int?, task: Task<Void, Never>)?
+    var request: (id: UUID, projectID: String, session: RequestSession, task: Task<Void, Never>)?
   }
 
   private var relatedPages: [UUID: RelatedPage] = [:]
@@ -173,11 +186,11 @@ public final class ProjectDetailsFeature {
   /// Equivalent requests share work; a changed project replaces only this route.
   @discardableResult
   public func requestRelated(route: UUID, projectID: String) -> Task<Void, Never> {
-    let userID = self.sessionFeature.currentUser?.id
     let sessionFeature = self.sessionFeature
+    let session = RequestSession(sessionFeature)
     let page = self.relatedPages[route] ?? RelatedPage()
     self.relatedPages[route] = page
-    if let request = page.request, request.projectID == projectID, request.userID == userID {
+    if let request = page.request, request.projectID == projectID, request.session == session {
       return request.task
     }
     page.request?.task.cancel()
@@ -193,21 +206,21 @@ public final class ProjectDetailsFeature {
         }
       }
       do {
-        try Self.checkSession(userID, sessionFeature: sessionFeature)
+        try Self.checkSession(session, sessionFeature: sessionFeature)
         let projects = try await provider.relatedProjects(projectID: projectID)
-        try Self.checkSession(userID, sessionFeature: sessionFeature)
+        try Self.checkSession(session, sessionFeature: sessionFeature)
         guard let self, self.relatedPages[route]?.request?.id == requestID else { return }
         page.snapshot.projects = projects
       } catch is CancellationError {
         // Keep cancellation distinct from the existing visible error state.
       } catch {
-        guard !Task.isCancelled, userID == sessionFeature.currentUser?.id,
+        guard !Task.isCancelled, session.isCurrent(in: sessionFeature),
               let self, self.relatedPages[route]?.request?.id == requestID else { return }
         let failure = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
         page.snapshot.error = failure
       }
     }
-    page.request = (requestID, projectID, userID, task)
+    page.request = (requestID, projectID, session, task)
     return task
   }
 
@@ -226,7 +239,7 @@ public final class ProjectDetailsFeature {
   private struct Identity: Equatable {
     let param: Param
     let token: String?
-    let userID: Int?
+    let session: RequestSession
     let fast: Bool
     let richText: Bool
   }
@@ -267,10 +280,8 @@ public final class ProjectDetailsFeature {
     sessionFeature: SessionFeature,
     discussionFeature: DiscussionFeature,
     makeProvider: @escaping @MainActor () -> any ProjectDetailsProvider,
-    useFastLoading: @escaping @MainActor () -> Bool = {
-      InstantPledgeButtonExperiment().boolValue(forKey: .instant_pledge_enabled) == true
-    },
-    includeRichText: @escaping @MainActor () -> Bool = { featureProjectStoryRichTextEnabled() },
+    useFastLoading: @escaping @MainActor () -> Bool,
+    includeRichText: @escaping @MainActor () -> Bool,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -299,7 +310,7 @@ public final class ProjectDetailsFeature {
     route: UUID, param: Param, secretRewardToken: String? = nil, force: Bool = false
   ) -> Task<Void, Never> {
     let identity = Identity(
-      param: param, token: secretRewardToken, userID: self.sessionFeature.currentUser?.id,
+      param: param, token: secretRewardToken, session: RequestSession(self.sessionFeature),
       fast: self.useFastLoading(), richText: self.includeRichText()
     )
     let page = self.pages[route] ?? Page()
@@ -322,12 +333,12 @@ public final class ProjectDetailsFeature {
         }
       }
       do {
-        try Self.checkSession(identity.userID, sessionFeature: sessionFeature)
+        try Self.checkSession(identity.session, sessionFeature: sessionFeature)
         // Keep enrollment before reads, including its existing configured delay.
-        if identity.userID != nil, let token = identity.token, !token.isEmpty {
+        if identity.session.userID != nil, let token = identity.token, !token.isEmpty {
           try await provider.enroll(token: token, param: param)
           try await sleep(delay)
-          try Self.checkSession(identity.userID, sessionFeature: sessionFeature)
+          try Self.checkSession(identity.session, sessionFeature: sessionFeature)
         }
         let project: Project
         if identity.fast {
@@ -349,29 +360,29 @@ public final class ProjectDetailsFeature {
           }
         } else {
           let pamphlet = try await provider.project(param: param, richText: identity.richText)
-          try Self.checkSession(identity.userID, sessionFeature: sessionFeature)
+          try Self.checkSession(identity.session, sessionFeature: sessionFeature)
           var loaded = pamphlet.project
           if let backingID = pamphlet.backingId {
             let envelope = try await provider.backing(id: backingID)
-            try Self.checkSession(identity.userID, sessionFeature: sessionFeature)
+            try Self.checkSession(identity.session, sessionFeature: sessionFeature)
             loaded.personalization.backing = envelope.backing
             loaded.personalization.isBacking = true
           }
           let rewards = try await provider.rewards(projectID: loaded.id)
-          try Self.checkSession(identity.userID, sessionFeature: sessionFeature)
+          try Self.checkSession(identity.session, sessionFeature: sessionFeature)
           // Preserve the synthetic no-reward entry and shipping-rule data.
           loaded.rewardData.rewards = Array(loaded.rewardData.rewards.prefix(1)) + rewards
           project = loaded
         }
         try await sleep(delay)
-        try Self.checkSession(identity.userID, sessionFeature: sessionFeature)
+        try Self.checkSession(identity.session, sessionFeature: sessionFeature)
         guard let self, self.pages[route]?.request?.id == requestID else { return }
         page.snapshot.project = project
         self.emit(.completion(route, .success(project)))
       } catch is CancellationError {
         // Cancellation is not a product failure and never publishes stale data.
       } catch {
-        guard !Task.isCancelled, identity.userID == sessionFeature.currentUser?.id,
+        guard !Task.isCancelled, identity.session.isCurrent(in: sessionFeature),
               let self, self.pages[route]?.request?.id == requestID else { return }
         let failure = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
         page.snapshot.error = failure
@@ -398,8 +409,8 @@ public final class ProjectDetailsFeature {
     self.pages.removeValue(forKey: route)
   }
 
-  private static func checkSession(_ userID: Int?, sessionFeature: SessionFeature) throws {
+  private static func checkSession(_ session: RequestSession, sessionFeature: SessionFeature) throws {
     try Task.checkCancellation()
-    guard userID == sessionFeature.currentUser?.id else { throw CancellationError() }
+    guard session.isCurrent(in: sessionFeature) else { throw CancellationError() }
   }
 }

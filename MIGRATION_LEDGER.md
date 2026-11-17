@@ -3718,3 +3718,16 @@ The simulator passed 64 focused header, selector, updates, and video
 tests and 119 bounded Project Page, Project Details, and Project Media
 tests. The new tests exercise the supplied countdown clock and the
 prelaunch campaign tab's story policy.
+
+### Project Details request policy and session identity — Matthew Thomas
+
+AppModel supplies the fast-load and rich-text policies. Project Details
+captures both at request admission and includes them in the request
+identity. Project and related-project reads also capture the session
+generation. Replacing a session under the same user ID prevents sharing
+the old request or publishing its late result or failure.
+
+The simulator passed 31 focused Project Details and AppModel tests and
+112 bounded Project Page, creator, related-project, and media tests.
+New cases cover policy replacement, late project completion, and a
+related-project retry after a same-user session change.

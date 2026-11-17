@@ -1,3 +1,4 @@
+import Experimentation
 import Foundation
 import KsApi
 import Prelude
@@ -595,7 +596,11 @@ public final class AppModel {
         platform: .live(),
         sessionFeature: sessionFeature,
         discussionFeature: discussionFeature,
-        makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) }
+        makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) },
+        useFastLoading: {
+          InstantPledgeButtonExperiment().boolValue(forKey: .instant_pledge_enabled) == true
+        },
+        includeRichText: { featureProjectStoryRichTextEnabled() }
       ),
       rewardsFeature: RewardsFeature(
         platform: .live(),
