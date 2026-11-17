@@ -7,9 +7,6 @@ import Prelude
 public protocol AppLifecycleProvider {
   func categories() async throws -> RootCategoriesEnvelope
   func survey(id: Int) async throws -> SurveyResponse
-  func project(param: Param) async throws -> Project
-  func update(id: Int, project: Param) async throws -> Update
-  func replies(id: String) async throws -> CommentRepliesEnvelope
 }
 
 @MainActor
@@ -21,15 +18,6 @@ public struct AsyncAppLifecycleProvider: AppLifecycleProvider {
   }
   public func survey(id: Int) async throws -> SurveyResponse {
     try await self.service.applicationSurvey(id: id)
-  }
-  public func project(param: Param) async throws -> Project {
-    try await self.service.discussionProject(param: param)
-  }
-  public func update(id: Int, project: Param) async throws -> Update {
-    try await self.service.projectUpdate(id: id, project: project)
-  }
-  public func replies(id: String) async throws -> CommentRepliesEnvelope {
-    try await self.service.discussionReplies(id: id, cursor: nil)
   }
 }
 
@@ -62,6 +50,7 @@ public final class AppLifecycleFeature {
     let session: Session
     let task: Task<Value, Error>
   }
+  private let discussionFeature: DiscussionFeature
   private let makeProvider: () -> any AppLifecycleProvider
   private let sleep: (TimeInterval) async throws -> Void
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
@@ -69,6 +58,7 @@ public final class AppLifecycleFeature {
 
   public init(
     sessionFeature: SessionFeature, messagingFeature: MessagingFeature,
+    discussionFeature: DiscussionFeature,
     makeProvider: @escaping () -> any AppLifecycleProvider,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -76,6 +66,7 @@ public final class AppLifecycleFeature {
   ) {
     self.sessionFeature = sessionFeature
     self.messagingFeature = messagingFeature
+    self.discussionFeature = discussionFeature
     self.makeProvider = makeProvider
     self.sleep = sleep
   }
@@ -158,7 +149,7 @@ public final class AppLifecycleFeature {
     case .project(_, .pledgeManagerWebview(let url), _, _):
       return .survey(url)
     case .project(let param, let subpage, let refInfo, let token):
-      let project = try await provider.project(param: param)
+      let project = try await self.discussionFeature.projectContext(param: param)
       try self.requireCurrent(session)
       // Prelaunch projects only expose their root, as before.
       guard project.displayPrelaunch != true || subpage == .root else { return nil }
@@ -166,12 +157,12 @@ public final class AppLifecycleFeature {
       var replies: CommentRepliesEnvelope?
       switch subpage {
       case .commentThread(let id?, _):
-        replies = try await provider.replies(id: id)
+        replies = try await self.discussionFeature.initialReplies(id: id)
       case .update(let id, let child):
-        update = try await provider.update(id: id, project: .id(project.id))
+        update = try await self.discussionFeature.updateContext(id: id, project: .id(project.id))
         try self.requireCurrent(session)
         if case .commentThread(let commentID?, _) = child {
-          replies = try await provider.replies(id: commentID)
+          replies = try await self.discussionFeature.initialReplies(id: commentID)
         }
       default: break
       }

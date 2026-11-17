@@ -509,6 +509,20 @@ public final class DiscussionFeature {
   private var updates: [UUID: (identity: UpdateIdentity, id: UUID, task: Task<Update?, Never>)] = [:]
   private var projects: [UUID: (param: Param, userID: Int?, id: UUID, task: Task<Project?, Never>)] = [:]
 
+  // Deep-link navigation owns the enclosing task and validates the session
+  // across the full destination load. Keep transport in Discussion.
+  func projectContext(param: Param) async throws -> Project {
+    try await self.makeProvider().project(param: param)
+  }
+
+  func updateContext(id: Int, project: Param) async throws -> Update {
+    try await self.makeProvider().update(id: id, project: project)
+  }
+
+  func initialReplies(id: String) async throws -> CommentRepliesEnvelope {
+    try await self.makeProvider().replies(id: id, cursor: nil)
+  }
+
   public func loadUpdate(route: UUID, id: Int, project: Param) async -> Update? {
     guard !Task.isCancelled else { return nil }
     return await self.requestUpdate(route: route, id: id, project: project).value

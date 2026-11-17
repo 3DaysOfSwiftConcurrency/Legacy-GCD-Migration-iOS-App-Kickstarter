@@ -31,6 +31,7 @@ final class AppLifecycleFeatureTests: XCTestCase {
     })
     self.feature = AppLifecycleFeature(
       sessionFeature: session, messagingFeature: messaging,
+      discussionFeature: DiscussionFeature(sessionFeature: session, makeProvider: { provider }),
       makeProvider: { provider },
       sleep: { _ in try Task.checkCancellation() })
   }
@@ -244,7 +245,7 @@ final class AppLifecycleFeatureTests: XCTestCase {
 }
 
 @MainActor
-private final class ControlledLifecycleProvider: AppLifecycleProvider {
+private final class ControlledLifecycleProvider: AppLifecycleProvider, DiscussionProvider {
   let permissions = AccountRequestGate<Bool>()
   let tracking = AccountRequestGate<UInt>()
   var permissionOptions: [UInt] = []
@@ -273,7 +274,12 @@ private final class ControlledLifecycleProvider: AppLifecycleProvider {
     self.updateInputs.append((id, project))
     return try await self.updates.request()
   }
-  func replies(id: String) async throws -> CommentRepliesEnvelope {
+  func comments(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope {
+    throw CancellationError()
+  }
+  func post(input: PostCommentInput) async throws -> Comment { throw CancellationError() }
+  func block(id: String) async throws -> EmptyResponseEnvelope { throw CancellationError() }
+  func replies(id: String, cursor: String?) async throws -> CommentRepliesEnvelope {
     try await self.repliesGate.request()
   }
   func releaseAll() {
