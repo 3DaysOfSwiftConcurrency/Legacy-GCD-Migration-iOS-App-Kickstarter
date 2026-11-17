@@ -11,7 +11,7 @@ final class SettingsAccountViewController: UIViewController, MessageBannerViewCo
   private let dataSource = SettingsAccountDataSource()
   internal var messageBannerViewController: MessageBannerViewController?
 
-  fileprivate let viewModel = SettingsAccountViewModel()
+  fileprivate let viewModel = SettingsAccountViewModel(settingsFeature: AppModel.shared.settingsFeature)
 
   internal static func instantiate() -> SettingsAccountViewController {
     return Storyboard.Settings.instantiate(SettingsAccountViewController.self)

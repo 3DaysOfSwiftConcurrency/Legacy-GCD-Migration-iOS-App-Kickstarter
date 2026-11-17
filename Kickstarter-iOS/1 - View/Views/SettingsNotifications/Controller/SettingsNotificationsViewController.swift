@@ -8,7 +8,7 @@ internal final class SettingsNotificationsViewController: UIViewController {
   @IBOutlet fileprivate var emailFrequencyPickerView: UIPickerView!
   @IBOutlet fileprivate var emailPickerViewTopConstraint: NSLayoutConstraint!
 
-  private let viewModel = SettingsNotificationsViewModel()
+  private let viewModel = SettingsNotificationsViewModel(settingsFeature: AppModel.shared.settingsFeature)
   private let dataSource: SettingsNotificationsDataSource = SettingsNotificationsDataSource()
 
   internal static func instantiate() -> SettingsNotificationsViewController {

@@ -11,7 +11,7 @@ protocol SettingsNewslettersTopCellDelegate: AnyObject {
 }
 
 internal final class SettingsNewslettersTopCell: UITableViewCell, ValueCell {
-  private let viewModel = SettingsNewsletterCellViewModel()
+  private let viewModel = SettingsNewsletterCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
 
   @IBOutlet fileprivate var descriptionLabel: UILabel!
   @IBOutlet fileprivate var newsletterSwitch: UISwitch!

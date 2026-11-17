@@ -24,10 +24,10 @@ public final class SettingsAccountViewModel {
   private var revision = 0
   private var appeared = false
 
-  public init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature
     self.sleep = sleep
   }
   public func viewDidLoad() { self.load() }

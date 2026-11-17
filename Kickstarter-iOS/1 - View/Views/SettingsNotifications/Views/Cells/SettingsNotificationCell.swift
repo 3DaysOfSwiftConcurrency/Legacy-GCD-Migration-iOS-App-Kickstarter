@@ -20,7 +20,7 @@ final class SettingsNotificationCell: UITableViewCell, NibLoading, ValueCell {
 
   weak var delegate: SettingsNotificationCellDelegate?
 
-  private let viewModel = SettingsNotificationCellViewModel()
+  private let viewModel = SettingsNotificationCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
   private lazy var tapGesture: UITapGestureRecognizer = {
     UITapGestureRecognizer(target: self, action: #selector(self.cellBackgroundTapped))
   }()

@@ -3295,3 +3295,8 @@ and `make check-cfa` guards both view models.
 Curated Projects and Thanks now receive Recommendations from their controllers.
 Both view-model suites and RecommendationsFeature passed 36 focused simulator
 tests. The CFA source check guards both view-model boundaries.
+
+Settings, Account, Privacy, Newsletters and Notifications now compose Settings
+at their controller and cell boundaries. The focused simulator runs passed
+43 model tests and five presentation tests. `make check-cfa` checks the
+Settings view-model directories for direct AppModel singleton access.

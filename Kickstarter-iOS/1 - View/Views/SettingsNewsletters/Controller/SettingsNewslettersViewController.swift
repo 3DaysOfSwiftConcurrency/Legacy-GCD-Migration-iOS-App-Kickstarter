@@ -6,7 +6,7 @@ import UIKit
 
 internal final class SettingsNewslettersViewController: UIViewController {
   fileprivate let dataSource = SettingsNewslettersDataSource()
-  fileprivate let viewModel = SettingsNewslettersViewModel()
+  fileprivate let viewModel = SettingsNewslettersViewModel(settingsFeature: AppModel.shared.settingsFeature)
 
   @IBOutlet fileprivate var tableView: UITableView!
 

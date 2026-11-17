@@ -10,8 +10,8 @@ public final class SettingsNewslettersViewModel {
   private var lastLoadedUser: User?
   private var reads: [UUID: Task<Void, Never>] = [:]
 
-  public init(settingsFeature: SettingsFeature? = nil) {
-    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
+  public init(settingsFeature: SettingsFeature) {
+    self.settingsFeature = settingsFeature
   }
 
   public func viewDidLoad() {

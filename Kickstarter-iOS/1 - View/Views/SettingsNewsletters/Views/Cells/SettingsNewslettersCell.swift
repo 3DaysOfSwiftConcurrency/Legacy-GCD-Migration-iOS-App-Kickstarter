@@ -12,7 +12,7 @@ internal protocol SettingsNewslettersCellDelegate: AnyObject {
 }
 
 internal final class SettingsNewslettersCell: UITableViewCell, ValueCell {
-  private let viewModel = SettingsNewsletterCellViewModel()
+  private let viewModel = SettingsNewsletterCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
 
   @IBOutlet fileprivate var newslettersDescriptionLabel: UILabel!
   @IBOutlet fileprivate var newslettersLabel: UILabel!

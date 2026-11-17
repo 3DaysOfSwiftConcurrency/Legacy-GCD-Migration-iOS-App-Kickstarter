@@ -22,10 +22,10 @@ public final class SettingsNotificationCellViewModel {
   private var revision = 0
   private var saves: [UUID: Task<Void, Never>] = [:]
 
-  public init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature
     self.sleep = sleep
   }
 

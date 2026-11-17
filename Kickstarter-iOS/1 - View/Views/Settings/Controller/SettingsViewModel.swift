@@ -17,9 +17,9 @@ public final class SettingsViewModel {
   private var reads: [UUID: Task<Void, Never>] = [:]
 
   public init(_ viewControllerFactory: @escaping @MainActor (SettingsCellType) -> UIViewController?,
-              settingsFeature: SettingsFeature? = nil) {
+              settingsFeature: SettingsFeature) {
     self.viewControllerFactory = viewControllerFactory
-    self.settings = settingsFeature ?? AppModel.shared.settingsFeature
+    self.settings = settingsFeature
   }
 
   public func viewDidLoad() { self.loadUser() }

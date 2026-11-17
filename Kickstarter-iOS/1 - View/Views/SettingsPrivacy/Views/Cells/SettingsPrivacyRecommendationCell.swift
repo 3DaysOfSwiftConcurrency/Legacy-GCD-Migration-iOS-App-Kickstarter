@@ -6,7 +6,7 @@ import Observation
 import UIKit
 
 internal final class SettingsPrivacyRecommendationCell: UITableViewCell, ValueCell {
-  fileprivate let viewModel = SettingsRecommendationsCellViewModel()
+  fileprivate let viewModel = SettingsRecommendationsCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
 
   @IBOutlet fileprivate var recommendationsLabel: UILabel!
   @IBOutlet fileprivate var recommendationsSwitch: UISwitch!

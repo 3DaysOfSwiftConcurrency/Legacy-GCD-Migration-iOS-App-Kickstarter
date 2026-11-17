@@ -9,7 +9,8 @@ final class SettingsViewController: UIViewController {
   private let dataSource = SettingsDataSource()
   private var userUpdatedObserver: MainActorNotificationObservation?
   private let viewModel = SettingsViewModel(
-    SettingsViewController.viewController(for:)
+    SettingsViewController.viewController(for:),
+    settingsFeature: AppModel.shared.settingsFeature
   )
 
   internal static func instantiate() -> SettingsViewController {
