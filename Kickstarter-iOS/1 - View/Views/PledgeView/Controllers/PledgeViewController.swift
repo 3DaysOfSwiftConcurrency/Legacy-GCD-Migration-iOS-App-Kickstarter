@@ -99,7 +99,7 @@ final class PledgeViewController: UIViewController,
     ))
 
   private lazy var pledgeCTAContainerView: PledgeViewCTAContainerView = {
-    PledgeViewCTAContainerView(frame: .zero)
+    PledgeViewCTAContainerView(frame: .zero, pledgeFeature: self.composition.pledgeFeature)
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
       |> \.delegate .~ self
   }()

@@ -65,11 +65,12 @@ final class PledgeViewCTAContainerView: UIView {
 
   weak var delegate: PledgeViewCTAContainerViewDelegate?
 
-  private let viewModel = PledgeViewCTAContainerViewModel(pledgeFeature: AppModel.shared.pledgeFeature)
+  private let viewModel: PledgeViewCTAContainerViewModel
 
   // MARK: - Lifecycle
 
-  override init(frame: CGRect) {
+  init(frame: CGRect, pledgeFeature: PledgeFeature) {
+    self.viewModel = PledgeViewCTAContainerViewModel(pledgeFeature: pledgeFeature)
     super.init(frame: frame)
 
     self.configureSubviews()

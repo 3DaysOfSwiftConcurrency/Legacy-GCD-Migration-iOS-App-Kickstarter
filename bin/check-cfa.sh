@@ -302,6 +302,9 @@ reject_matches 'Pledge checkout controllers receive one composed feature graph.'
 reject_matches 'Pledge payment methods receives checkout policy through composition.' \
   'AppModel[.]shared[.]paymentsFeature|AppEnvironment[.]current' \
   "$app_view/Views/PledgePaymentMethods/Controller/PledgePaymentMethodsViewController.swift"
+reject_matches 'Pledge checkout CTA receives PledgeFeature from its controller.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/PledgeView/Views/PledgeViewCTAContainerView.swift"
 reject_matches 'Root Tabs receives one composed feature graph.' \
   'AppModel[.]shared[.](sessionFeature|profileFeature|activityFeature|settingsFeature)|AppEnvironment[.]current' \
   "$app_view/Views/RootTabBar/RootTabBarViewController.swift"

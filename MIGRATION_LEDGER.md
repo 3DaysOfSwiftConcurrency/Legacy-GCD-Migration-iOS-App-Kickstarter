@@ -5439,3 +5439,22 @@ Controller snapshots and the whole Library suite remain unverified. The CFA gate
 restored PaymentsFeature or AppEnvironment lookup in PledgePaymentMethodsViewController.
 This is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
+
+### Checkout CTA feature injection — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgeViewCTAContainerView now requires PledgeFeature at construction. Both standard and
+post-campaign checkout controllers pass the exact Pledge feature held by their shared
+PledgeCheckoutComposition, eliminating the CTA view's independent AppModel resolution.
+
+Focused AppModel, CTA and checkout validation passed all 119 tests. The bounded Rewards,
+Manage Pledge, payment-method, CTA and checkout selection passed all 259 tests. Both runs
+had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-checkout-cta-composition-focused.xcresult` and
+`/private/tmp/kickstarter-checkout-cta-composition-bounded.xcresult`.
+
+Visual rendering and the whole Library suite remain unverified. The CFA gate rejects
+restored AppModel or AppEnvironment access in PledgeViewCTAContainerView. This is not
+full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.

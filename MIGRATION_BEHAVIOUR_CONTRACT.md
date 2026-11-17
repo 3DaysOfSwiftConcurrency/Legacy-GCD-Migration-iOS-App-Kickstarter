@@ -2192,3 +2192,13 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel, payment-method and checkout coverage passes 146 tests. The bounded
   Rewards, Manage Pledge, payment-method and checkout selection passes 250 tests.
   Controller snapshots and the whole Library suite remain outside this checkpoint.
+
+## Checkout CTA feature injection — 17 November 2026
+
+- PledgeViewCTAContainerView now requires PledgeFeature at construction instead of
+  resolving AppModel.shared.
+- Both standard and post-campaign checkout controllers pass the Pledge feature from their
+  shared PledgeCheckoutComposition into the CTA view.
+- Focused AppModel, CTA and checkout coverage passes 119 tests. The bounded Rewards,
+  Manage Pledge, payment-method, CTA and checkout selection passes 259 tests. Visual
+  rendering and the whole Library suite remain outside this checkpoint.
