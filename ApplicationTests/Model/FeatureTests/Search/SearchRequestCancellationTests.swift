@@ -149,20 +149,22 @@ final class SearchRequestCancellationTests: TestCase {
 
   func testAsyncProviderUsesMockDataAndRecoversAfterFailure() async throws {
     let expected = try self.fixture()
-    let provider = AsyncSearchProjectsProvider()
+    let failingProvider = AsyncSearchProjectsProvider(service: MockService())
     await self.withEnvironment(apiService: MockService()) {
       do {
-        _ = try await provider.fetchPage(parameters: .defaults, cursor: nil)
+        _ = try await failingProvider.fetchPage(parameters: .defaults, cursor: nil)
         XCTFail("Expected missing mock response to fail")
       } catch {
         XCTAssertTrue(error is ErrorEnvelope)
       }
     }
-    await self.withEnvironment(apiService: MockService(fetchGraphQLResponses: [
+    let recoveringService = MockService(fetchGraphQLResponses: [
       (GraphAPI.SearchQuery.self, expected)
-    ])) {
+    ])
+    let recoveringProvider = AsyncSearchProjectsProvider(service: recoveringService)
+    await self.withEnvironment(apiService: MockService()) {
       do {
-        let data = try await provider.fetchPage(parameters: .defaults, cursor: nil)
+        let data = try await recoveringProvider.fetchPage(parameters: .defaults, cursor: nil)
         XCTAssertEqual(data.totalCount, expected.projects?.totalCount ?? 0)
       } catch {
         XCTFail("Expected recovery: \(error)")
@@ -175,7 +177,9 @@ final class SearchRequestCancellationTests: TestCase {
     await self.withEnvironment(
       apiService: MockService(fetchGraphQLResponses: [(GraphAPI.SearchQuery.self, expected)])
     ) {
-      let feature = SearchFeature(provider: AsyncSearchProjectsProvider())
+      let feature = SearchFeature(
+        provider: AsyncSearchProjectsProvider(service: AppEnvironment.current.apiService)
+      )
       let loaded = self.expectation(description: "async Feature result")
       let observation = feature.observe { update in
         guard case let .page(projects) = update else { return }

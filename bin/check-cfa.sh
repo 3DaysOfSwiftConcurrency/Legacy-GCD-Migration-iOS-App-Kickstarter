@@ -232,6 +232,7 @@ reject_matches 'Profile receives response policy from AppModel composition.' \
 reject_matches 'Search receives timing, transport and cache policy from AppModel composition.' \
   'AppEnvironment[.]current' \
   "$app_model/Features/Search/SearchFeature.swift" \
+  "$app_model/Features/Search/AsyncSearchProjectsProvider.swift" \
   "$app_model/Features/Search/SearchLookupProvider.swift" \
   "$app_model/Features/Search/FetchCategoriesUseCase.swift"
 reject_matches 'Discovery filters receive category loading through DiscoveryFeature composition.' \

@@ -6,10 +6,10 @@ import KsApi
 public final class AsyncSearchProjectsProvider: SearchProjectsProvider {
   private let requestPage: @MainActor (DiscoveryParams, String?) async throws -> SearchPageResponse
 
-  public init() {
+  public init(service: any ServiceType) {
     self.requestPage = { parameters, cursor in
       let query = GraphAPI.SearchQuery.from(discoveryParams: parameters, withCursor: cursor)
-      return try await AppEnvironment.current.apiService.fetchSearchPage(query: query)
+      return try await service.fetchSearchPage(query: query)
     }
   }
 

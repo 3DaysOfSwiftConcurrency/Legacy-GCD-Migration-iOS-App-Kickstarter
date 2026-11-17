@@ -18,7 +18,10 @@ internal final class SearchViewModelTests: TestCase {
       responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       debounceSeconds: { AppEnvironment.current.debounceInterval.searchDelaySeconds }
     ),
-    provider: AsyncSearchProjectsProvider(),
+    provider: AsyncSearchProjectsProvider { parameters, cursor in
+      let query = GraphAPI.SearchQuery.from(discoveryParams: parameters, withCursor: cursor)
+      return try await AppEnvironment.current.apiService.fetchSearchPage(query: query)
+    },
     lookupSleep: { _ in },
     sleep: { [delay] in try await delay.sleep($0) }
   )

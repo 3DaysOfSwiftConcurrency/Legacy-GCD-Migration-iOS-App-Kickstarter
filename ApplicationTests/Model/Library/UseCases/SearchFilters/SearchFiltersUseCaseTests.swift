@@ -9,7 +9,9 @@ import XCTest
 final class SearchFiltersUseCaseTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
-  private lazy var searchFeature = SearchFeature(provider: AsyncSearchProjectsProvider())
+  private lazy var searchFeature = SearchFeature(
+    provider: AsyncSearchProjectsProvider(service: MockService())
+  )
   private var useCase: SearchFiltersUseCase!
   private var selectionObservation: MainActorObservation?
 

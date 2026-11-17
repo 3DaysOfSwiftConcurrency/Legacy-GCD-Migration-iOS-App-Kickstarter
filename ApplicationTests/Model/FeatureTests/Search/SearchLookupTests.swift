@@ -12,7 +12,7 @@ final class SearchLookupTests: TestCase {
 
   private let provider = ControlledSearchLookupProvider()
   private lazy var feature = SearchFeature(
-    provider: AsyncSearchProjectsProvider(), lookupProvider: self.provider,
+    provider: AsyncSearchProjectsProvider(service: MockService()), lookupProvider: self.provider,
     lookupSleep: { _ in }, sleep: { _ in }
   )
 
@@ -191,7 +191,7 @@ final class SearchLookupTests: TestCase {
     var sleeps: [TimeInterval] = []
     let feature = SearchFeature(
       platform: .test(responseDelaySeconds: { 13 }),
-      provider: AsyncSearchProjectsProvider(),
+      provider: AsyncSearchProjectsProvider(service: MockService()),
       lookupProvider: provider,
       lookupSleep: { sleeps.append($0) },
       sleep: { _ in }

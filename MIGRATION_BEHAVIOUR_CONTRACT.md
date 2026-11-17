@@ -2053,3 +2053,15 @@ safe for arbitrary concurrent environment mutation.
   single appearance tracking and response-delay ordering are unchanged. Focused and
   bounded Authentication selections pass; live providers and visual behavior remain
   outside this checkpoint.
+
+## Search request transport composition — 17 November 2026
+
+- AppModel supplies AsyncSearchProjectsProvider with the authenticated service at the
+  composition boundary. The provider no longer resolves AppEnvironment when a request
+  begins.
+- Search query mapping, cancellation checks, response conversion, pagination and stale
+  result ownership are unchanged. Test-only request closures remain explicit seams for
+  controlled overlap and environment-fixture scenarios.
+- Focused Search provider, lookup, filter and view-model coverage passes 100 tests; the
+  bounded SearchFeature and AppModel selection passes 29 tests. Live service behavior,
+  visual rendering and the whole Library suite remain outside this checkpoint.

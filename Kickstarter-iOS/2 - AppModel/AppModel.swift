@@ -266,7 +266,7 @@ public final class AppModel {
 
   public static func live() -> AppModel {
     let connectivity = ConnectivityService(makeMonitor: { SystemReachabilityMonitor() })
-    let searchProvider = AsyncSearchProjectsProvider()
+    let searchProvider = AsyncSearchProjectsProvider(service: AppEnvironment.current.apiService)
     let sessionFeature = SessionFeature.live()
     let activityFeature = ActivityFeature(
       platform: .init(

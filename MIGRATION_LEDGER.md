@@ -5175,3 +5175,25 @@ Live authentication providers, analytics delivery, visual rendering and the whol
 Library suite remain unverified. The CFA gate rejects restored global access in Login
 Tout presentation. This is not full CFA compliance. Swift packages, target identifiers
 and existing history are unchanged. No push.
+
+### Search request transport composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now constructs AsyncSearchProjectsProvider with its authenticated service.
+The provider retains that explicit transport and no longer reads AppEnvironment when
+mapping or starting a Search request. SearchFeature continues to own request admission,
+cancellation, pagination, publication and stale-result rejection.
+
+Focused Search provider, lookup, filter and view-model validation passed all 100 tests
+across two successful selections. The bounded SearchFeature and AppModel composition
+selection passed all 29 tests. All successful runs had zero failures and skips on
+iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-search-provider-focused-supporting.xcresult`,
+`/private/tmp/kickstarter-search-provider-viewmodel-rerun.xcresult` and
+`/private/tmp/kickstarter-search-provider-composition-bounded.xcresult`.
+
+Live Search transport, visual rendering and the whole Library suite remain unverified.
+The CFA gate rejects restored ambient environment access in the Search provider. This
+is not full CFA compliance. Swift packages, target identifiers and existing history
+are unchanged. No push.
