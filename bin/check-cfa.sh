@@ -20,6 +20,7 @@ reject_matches() {
 app_view='Kickstarter-iOS/1 - View'
 app_model='Kickstarter-iOS/2 - AppModel'
 root_view_model="$app_view/Views/RootTabBar/RootViewModel.swift"
+root_tabs="$app_view/Views/RootTabBar/RootTabBarViewController.swift"
 account_refresh="$app_model/Composition/AccountRefreshCoordinator.swift"
 pledge_view_model="$app_view/Views/PledgeView/Controllers/PledgeViewModel.swift"
 post_campaign_view_model="$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewModel.swift"
@@ -29,6 +30,7 @@ project_page_view_model="$app_view/Views/ProjectPage/Controller/ProjectPageViewM
 discovery_feature="$app_model/Features/Discovery/DiscoveryFeature.swift"
 
 test -f "$root_view_model"
+test -f "$root_tabs"
 test -f "$account_refresh"
 test -f "$pledge_view_model"
 test -f "$post_campaign_view_model"
@@ -38,6 +40,8 @@ test -f "$project_page_view_model"
 test -f "$discovery_feature"
 reject_matches 'RootViewModel must receive its dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$root_view_model"
+reject_matches 'Root Tabs owns and orders deferred UIKit presentation.' \
+  'DispatchQueue[.]main' "$root_tabs"
 reject_matches 'The app delegate uses its composed owners directly.' \
   'AppDelegateViewModel' "$app_view" "$app_model"
 reject_matches 'Account refresh receives its dependencies from composition.' \

@@ -19,6 +19,8 @@ extension TabBarControllerScrollable where Self: UIViewController {
 }
 
 public final class RootTabBarViewController: UITabBarController, MessageBannerViewControllerPresenting {
+  private typealias PresentationUpdate = @MainActor (RootTabBarViewController) -> Void
+
   private var applicationWillEnterForegroundObserver: MainActorNotificationObservation?
   public var messageBannerViewController: MessageBannerViewController?
   private var sessionEndedObserver: MainActorNotificationObservation?
@@ -27,6 +29,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   private var userLocalePreferencesChangedObserver: MainActorNotificationObservation?
   private var voiceOverStatusDidChangeObserver: MainActorNotificationSignalObservation?
 
+  private let sessionFeature = AppModel.shared.sessionFeature
   fileprivate let viewModel: RootViewModelType = RootViewModel(
     profileFeature: AppModel.shared.profileFeature,
     activityFeature: AppModel.shared.activityFeature,
@@ -40,6 +43,12 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   private var isFloatingTabBarEnabled: Bool = false
   private var lastTabBarItemsData: TabBarItemsData?
   private var standardTabBar: UITabBar?
+  private var presentationTask: Task<Void, Never>?
+  private var pendingPresentation: [PresentationUpdate] = []
+
+  deinit {
+    self.presentationTask?.cancel()
+  }
 
   public override func viewDidLoad() {
     super.viewDidLoad()
@@ -102,24 +111,27 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     super.bindViewModel()
 
     self.viewModel.outputs.onFloatingTabBarEnabled = { [weak self] enabled in
-      DispatchQueue.main.async { [weak self] in self?.applyFloatingTabBar(enabled: enabled) }
+      self?.enqueuePresentation { $0.applyFloatingTabBar(enabled: enabled) }
     }
 
     self.viewModel.outputs.onSetViewControllers = { [weak self] data in
-      DispatchQueue.main.async { [weak self] in
-        let controllers = data.map { RootTabBarViewController.viewController(from: $0) }.compact()
-        self?.setViewControllers(controllers.map(UINavigationController.init(rootViewController:)), animated: false)
+      self?.enqueuePresentation { controller in
+        let tabs = data.compactMap(RootTabBarViewController.viewController(from:))
+        controller.setViewControllers(tabs.map(UINavigationController.init(rootViewController:)), animated: false)
       }
     }
 
     self.viewModel.outputs.onSelectedIndex = { [weak self] index in
-      DispatchQueue.main.async { [weak self] in self?.selectedIndex = index }
+      self?.enqueuePresentation { controller in
+        guard controller.viewControllers?.indices.contains(index) == true else { return }
+        controller.selectedIndex = index
+      }
     }
 
     self.viewModel.outputs.onScrollToTop = { [weak self] index in
-      DispatchQueue.main.async { [weak self] in
-        guard let vcs = self?.viewControllers, !vcs.isEmpty else { return }
-        scrollToTop(extractViewController(vcs[clamp(0, vcs.count - 1)(index)]))
+      self?.enqueuePresentation { controller in
+        guard let tabs = controller.viewControllers, tabs.indices.contains(index) else { return }
+        scrollToTop(extractViewController(tabs[index]))
       }
     }
 
@@ -137,22 +149,44 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
       }
 
     self.viewModel.outputs.onTabBarItemsData = { [weak self] data in
-      DispatchQueue.main.async { [weak self] in self?.setTabBarItemStyles(withData: data) }
+      self?.enqueuePresentation { $0.setTabBarItemStyles(withData: data) }
     }
 
     self.viewModel.outputs.onFilterDiscovery = { [weak self] data in
       let (index, params) = data
-      DispatchQueue.main.async { [weak self] in
-        let destination: (DiscoveryViewController, DiscoveryParams)? = self?.viewControllerAndParam(with: index, param: params)
-        guard let (controller, params) = destination else { return }
-        controller.filter(with: params)
+      self?.enqueuePresentation { controller in
+        guard
+          let tabs = controller.viewControllers, tabs.indices.contains(index),
+          let navigation = tabs[index] as? UINavigationController,
+          let discovery = navigation.viewControllers.first as? DiscoveryViewController
+        else { return }
+        discovery.filter(with: params)
       }
     }
 
     self.viewModel.outputs.onSetBadgeValue = { [weak self] data in
       let (value, index) = data
-      DispatchQueue.main.async { [weak self] in self?.tabBarItem(atIndex: index)?.badgeValue = value }
+      self?.enqueuePresentation { $0.tabBarItem(atIndex: index)?.badgeValue = value }
     }
+  }
+
+  // Apply updates after UIKit finishes its current callback, in the order the ViewModel emitted them.
+  private func enqueuePresentation(_ update: @escaping PresentationUpdate) {
+    self.pendingPresentation.append(update)
+    guard self.presentationTask == nil else { return }
+    self.presentationTask = Task { [weak self] in
+      guard let self, !Task.isCancelled else { return }
+      while !self.pendingPresentation.isEmpty {
+        let updates = self.pendingPresentation
+        self.pendingPresentation.removeAll(keepingCapacity: true)
+        for update in updates { update(self) }
+      }
+      self.presentationTask = nil
+    }
+  }
+
+  func waitForPresentation() async {
+    await self.presentationTask?.value
   }
 
   public func switchToActivities() {
@@ -175,22 +209,22 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     self.viewModel.inputs.switchToSearch()
   }
 
-  private func viewControllerAndParam<T, P>(with index: RootViewControllerIndex, param: P) -> (T, P)? {
-    guard
-      let vcs = self.viewControllers,
-      let nav = vcs[clamp(0, vcs.count - 1)(index)] as? UINavigationController,
-      let vc = nav.children.first as? T
-    else { return nil }
-
-    return (vc, param)
-  }
-
   public func switchToMessageThread(_ messageThread: MessageThread) {
+    guard let userID = self.sessionFeature.currentUser?.id else { return }
+    let generation = self.sessionFeature.generation
+    self.loadViewIfNeeded()
     self.switchToProfile()
 
+    self.enqueuePresentation { controller in
+      guard controller.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+      controller.showMessageThread(messageThread)
+    }
+  }
+
+  private func showMessageThread(_ messageThread: MessageThread) {
     guard
-      let profileNav = self.selectedViewController as? UINavigationController,
-      let profileVC = profileNav.viewControllers.first
+      let profileNav = self.viewControllers?.last as? UINavigationController,
+      let profileVC = profileNav.viewControllers.first as? BackerDashboardViewController
     else { return }
 
     let threadsVC = MessageThreadsViewController.configuredWith(project: nil, refTag: nil)
@@ -198,7 +232,10 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
 
     self.presentedViewController?.dismiss(animated: false, completion: nil)
 
-    profileNav.setViewControllers([profileVC, threadsVC, messageThreadVC], animated: true)
+    profileNav.setViewControllers(
+      [profileVC, threadsVC, messageThreadVC],
+      animated: profileNav.viewIfLoaded?.window != nil
+    )
   }
 
   private func configureFloatingTabBarItems(with data: TabBarItemsData) {
@@ -271,12 +308,8 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   }
 
   fileprivate func tabBarItem(atIndex index: Int) -> UITabBarItem? {
-    if (self.tabBar.items?.count ?? 0) > index {
-      if let item = self.tabBar.items?[index] {
-        return item
-      }
-    }
-    return nil
+    guard let items = self.tabBar.items, items.indices.contains(index) else { return nil }
+    return items[index]
   }
 
   static func viewController(from data: RootViewControllerData) -> UIViewController? {

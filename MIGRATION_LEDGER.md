@@ -4050,3 +4050,26 @@ through DispatchQueue.main.
 The iPhone 17 Pro Max simulator on iOS 26.2 passed 147 focused tests,
 71 saved-card regressions, and 15 native payment callback tests.
 Live Stripe, Apple Pay, and visual parity remain unverified.
+
+### Root Tabs presentation and message routing — Matthew Thomas
+
+The Root Tabs controller owns one main-actor task that applies deferred
+UIKit updates in order. The controller cancels the task at release.
+AppDelegate forwards a resolved thread directly to Root Tabs. Root Tabs
+prepares the initial layout for a cold link, selects Profile, then
+applies the stack to the Profile navigation controller. It rechecks the
+account generation before opening the thread and preserves the previous
+tab's stack.
+
+The first focused run showed the selected UIKit controller was an
+unreliable destination during the pending transition. The route now
+addresses the Profile stack directly and animates when it is onscreen.
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 31 focused Root Tabs
+tests, 109 application-routing regressions, and 54 router, Activity,
+Profile and Session regressions. `make check-cfa` passed with a gate
+against GCD presentation in the Root Tabs controller. Visual transition
+parity remains unverified.
+
+The floating layout still reuses tab slots that the ViewModel addresses
+by fixed index. Search and Activity badge delivery need to follow the
+active layout.

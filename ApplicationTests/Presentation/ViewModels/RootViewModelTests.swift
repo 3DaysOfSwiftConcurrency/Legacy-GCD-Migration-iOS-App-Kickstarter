@@ -791,6 +791,59 @@ final class RootViewModelTests: TestCase {
   }
 }
 
+@MainActor
+final class RootTabsNavigationTests: TestCase {
+  override var requiresSnapshotReferenceSimulator: Bool { false }
+
+  func testMessageLinkOpensOnProfileAndPreservesDiscoveryStack() async throws {
+    AppEnvironment.replaceCurrentEnvironment(currentUser: .template)
+    let root = Storyboard.Main.instantiate(RootTabBarViewController.self)
+    root.loadViewIfNeeded()
+    await root.waitForPresentation()
+    let discovery = try XCTUnwrap(root.selectedViewController as? UINavigationController)
+    let discoveryRoot = try XCTUnwrap(discovery.viewControllers.first)
+    XCTAssertTrue(discoveryRoot is DiscoveryViewController)
+
+    root.switchToMessageThread(.template)
+    await root.waitForPresentation()
+
+    let profile = try XCTUnwrap(root.selectedViewController as? UINavigationController)
+    XCTAssertTrue(profile.viewControllers.first is BackerDashboardViewController)
+    XCTAssertEqual(profile.viewControllers.count, 3)
+    XCTAssertTrue(profile.viewControllers.dropFirst().first is MessageThreadsViewController)
+    XCTAssertTrue(profile.topViewController is MessagesViewController)
+    XCTAssertEqual(discovery.viewControllers, [discoveryRoot])
+  }
+
+  func testMessageLinkCanOpenBeforeTheTabsLoad() async throws {
+    AppEnvironment.replaceCurrentEnvironment(currentUser: .template)
+    let root = Storyboard.Main.instantiate(RootTabBarViewController.self)
+    XCTAssertFalse(root.isViewLoaded)
+
+    root.switchToMessageThread(.template)
+    await root.waitForPresentation()
+
+    let profile = try XCTUnwrap(root.selectedViewController as? UINavigationController)
+    XCTAssertTrue(profile.viewControllers.first is BackerDashboardViewController)
+    XCTAssertTrue(profile.topViewController is MessagesViewController)
+  }
+
+  func testQueuedMessageLinkDoesNotOpenAfterSessionEnds() async throws {
+    AppEnvironment.replaceCurrentEnvironment(currentUser: .template)
+    let root = Storyboard.Main.instantiate(RootTabBarViewController.self)
+    root.loadViewIfNeeded()
+    await root.waitForPresentation()
+    let profile = try XCTUnwrap(root.viewControllers?.last as? UINavigationController)
+    XCTAssertTrue(profile.viewControllers.first is BackerDashboardViewController)
+
+    root.switchToMessageThread(.template)
+    AppEnvironment.replaceCurrentEnvironment(currentUser: nil)
+    await root.waitForPresentation()
+
+    XCTAssertEqual(profile.viewControllers.count, 1)
+  }
+}
+
 private func extractRootNames(_ vcs: [RootViewControllerData]) -> [String] {
   return vcs
     .map(RootTabBarViewController.viewController(from:))

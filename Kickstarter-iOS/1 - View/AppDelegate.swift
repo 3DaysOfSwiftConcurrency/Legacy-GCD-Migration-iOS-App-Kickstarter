@@ -352,7 +352,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     case let .showDiscovery(params):
       DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToDiscovery(params: params) }
     case let .showMessageThread(thread):
-      DispatchQueue.main.async { [weak self] in self?.goToMessageThread(thread) }
+      self.rootTabBarController?.switchToMessageThread(thread)
     case let .showViewController(controller):
       DispatchQueue.main.async { [weak self] in
         self?.rootTabBarController?.dismiss(animated: true, completion: nil)
@@ -418,10 +418,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       navigation.modalPresentationStyle = .formSheet
       root.present(navigation, animated: true, completion: nil)
     }
-  }
-
-  private func goToMessageThread(_ messageThread: MessageThread) {
-    self.rootTabBarController?.switchToMessageThread(messageThread)
   }
 
   private func appTrackingAuthorizationChanged(status: AppTrackingAuthorization) {

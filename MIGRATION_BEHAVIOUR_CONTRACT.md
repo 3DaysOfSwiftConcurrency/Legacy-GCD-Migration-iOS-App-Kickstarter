@@ -370,6 +370,10 @@ app-wide validation are still open.
   and suppress delayed presentation after session changes.
 - MSG-06: Keep native endpoint/query/body encoding and reject account messaging
   in the fictional demo. Deep links use the same MessagingFeature.
+- MSG-07: A resolved message link selects Profile and opens the thread above
+  the Profile and inbox screens. Preserve the previous tab's navigation stack.
+  Cold-launch links can apply after the initial tab layout is ready. Recheck
+  the account before applying the message stack.
 
 Baseline 36 original tests passed. Final 1,063 integrated tests passed, zero
 failures/skips, and app build succeeded. Includes 15 new Feature/lifetime cases,
