@@ -4788,3 +4788,30 @@ The CFA gate rejects direct AppEnvironment access in SearchFeature. Its live loo
 and project provider adapters remain platform integrations composed by AppModel; the
 wider ownership audit continues. This is not full CFA compliance. Swift packages,
 target identifiers and existing history are unchanged. No push.
+
+### Activity receives platform dependencies from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+ActivityFeature now receives survey resolution, application-badge access and page
+response-delay policy through an explicit Platform composed by AppModel. Page and
+survey tasks remain independent. Pagination, sorting, empty refresh, retry, logged-out
+admission, session replacement and late-result rejection behavior are preserved.
+Production has no global fallback; test composition defaults to inert dependencies
+unless a scenario declares the platform behavior it needs.
+
+A named Feature test proves all three injected dependencies reach their owned
+behavior. Focused validation passed 8 ActivityFeature tests. The bounded Activity,
+screen adapter, AppModel, deep-link and shared Friends selection passed 67 tests.
+The first presentation run correctly exposed two shared fixtures that still relied
+on implicit survey and badge globals; after declaring those dependencies explicitly,
+the complete ApplicationRouting, PPOContainerViewModel and RootViewModel selection
+passed 145 tests. Final runs had zero failures and skips on iPhone 17 Pro Max,
+iOS 26.2. Evidence:
+`/private/tmp/kickstarter-activity-platform-focused.xcresult`,
+`/private/tmp/kickstarter-activity-platform-library.xcresult` and
+`/private/tmp/kickstarter-activity-platform-presentation-3.xcresult`.
+
+The CFA gate rejects direct AppEnvironment access in ActivityFeature. The wider
+in-scope ownership audit continues. This is not full CFA compliance. Swift packages,
+target identifiers and existing history are unchanged. No push.

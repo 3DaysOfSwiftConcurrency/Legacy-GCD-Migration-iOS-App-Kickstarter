@@ -76,6 +76,9 @@ Swift packages are excluded.
   through a Platform composed by AppModel. Category lookup and project search no
   longer read AppEnvironment, while first-query, error and cancellation timing retain
   their existing distinctions.
+- ActivityFeature now receives survey resolution, application-badge access and page
+  response policy through a Platform composed by AppModel. Page and survey work remain
+  independent, while pagination, retry and session-replacement behavior are preserved.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

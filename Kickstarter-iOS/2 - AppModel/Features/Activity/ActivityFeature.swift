@@ -24,6 +24,22 @@ public struct AsyncActivityProvider: ActivityProvider {
 /// Refresh retains accumulated history unless the first returned page is empty.
 @MainActor @Observable
 public final class ActivityFeature {
+  public struct Platform {
+    public let loadSurvey: @MainActor (Int) async throws -> SurveyResponse
+    public let applicationBadgeNumber: @MainActor () -> Int
+    public let responseDelaySeconds: @MainActor () -> TimeInterval
+
+    public init(
+      loadSurvey: @escaping @MainActor (Int) async throws -> SurveyResponse,
+      applicationBadgeNumber: @escaping @MainActor () -> Int,
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval
+    ) {
+      self.loadSurvey = loadSurvey
+      self.applicationBadgeNumber = applicationBadgeNumber
+      self.responseDelaySeconds = responseDelaySeconds
+    }
+  }
+
   public let sessionFeature: SessionFeature
   public private(set) var activities: [Activity] = []
   public private(set) var surveys: [SurveyResponse] = []
@@ -31,8 +47,7 @@ public final class ActivityFeature {
   public private(set) var surveyError: Error?
   public private(set) var isLoading = false
   private let makeProvider: () -> any ActivityProvider
-  private let loadSurvey: @MainActor (Int) async throws -> SurveyResponse
-  private let applicationBadgeNumber: () -> Int
+  private let platform: Platform
   private let sleep: (TimeInterval) async throws -> Void
   private var accountID: Int?
   private var generation: Int?
@@ -57,30 +72,24 @@ public final class ActivityFeature {
   }
 
   public init(
+    platform: Platform,
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any ActivityProvider,
-    loadSurvey: @escaping @MainActor (Int) async throws -> SurveyResponse = {
-      try await AppEnvironment.current.apiService.applicationSurvey(id: $0)
-    },
-    applicationBadgeNumber: @escaping () -> Int = {
-      AppEnvironment.current.application.applicationIconBadgeNumber
-    },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
+    self.platform = platform
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
-    self.loadSurvey = loadSurvey
-    self.applicationBadgeNumber = applicationBadgeNumber
     self.sleep = sleep
   }
 
   /// The Activity tab owns the presentation value for its unread badge.
-  public var currentApplicationBadgeNumber: Int { self.applicationBadgeNumber() }
+  public var currentApplicationBadgeNumber: Int { self.platform.applicationBadgeNumber() }
   var unseenActivityCount: Int? { self.sessionFeature.currentUser?.unseenActivityCount }
 
   func surveyURL(id: Int) async throws -> String {
-    try await self.loadSurvey(id).urls.web.survey
+    try await self.platform.loadSurvey(id).urls.web.survey
   }
 
   private func synchronizeAccount() {
@@ -122,7 +131,7 @@ public final class ActivityFeature {
     let userID = self.accountID
     let generation = self.sessionFeature.generation
     let provider = self.makeProvider()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     self.isLoading = true
     self.error = nil
     let task = Task { [weak self, sleep] in

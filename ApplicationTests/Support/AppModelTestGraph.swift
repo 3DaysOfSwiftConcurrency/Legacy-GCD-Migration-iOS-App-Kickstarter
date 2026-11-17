@@ -330,6 +330,46 @@ extension SearchFeature {
   }
 }
 
+extension ActivityFeature.Platform {
+  static func test(
+    loadSurvey: @escaping @MainActor (Int) async throws -> SurveyResponse = { _ in
+      throw ErrorEnvelope.couldNotParseJSON
+    },
+    applicationBadgeNumber: @escaping @MainActor () -> Int = { 0 },
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 }
+  ) -> Self {
+    Self(
+      loadSurvey: loadSurvey,
+      applicationBadgeNumber: applicationBadgeNumber,
+      responseDelaySeconds: responseDelaySeconds
+    )
+  }
+}
+
+extension ActivityFeature {
+  convenience init(
+    sessionFeature: SessionFeature,
+    makeProvider: @escaping () -> any ActivityProvider,
+    loadSurvey: @escaping @MainActor (Int) async throws -> SurveyResponse = { _ in
+      throw ErrorEnvelope.couldNotParseJSON
+    },
+    applicationBadgeNumber: @escaping @MainActor () -> Int = { 0 },
+    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+    }
+  ) {
+    self.init(
+      platform: .test(
+        loadSurvey: loadSurvey,
+        applicationBadgeNumber: applicationBadgeNumber
+      ),
+      sessionFeature: sessionFeature,
+      makeProvider: makeProvider,
+      sleep: sleep
+    )
+  }
+}
+
 @MainActor
 private struct UnusedDeepLinkSearchProvider: SearchProjectsProvider {
   func fetchPage(parameters: DiscoveryParams, cursor: String?) async throws -> SearchPageResponse {

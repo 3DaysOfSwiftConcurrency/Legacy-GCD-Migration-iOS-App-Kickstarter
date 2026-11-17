@@ -255,6 +255,11 @@ public final class AppModel {
     let searchProvider = AsyncSearchProjectsProvider()
     let sessionFeature = SessionFeature.live()
     let activityFeature = ActivityFeature(
+      platform: .init(
+        loadSurvey: { try await AppEnvironment.current.apiService.applicationSurvey(id: $0) },
+        applicationBadgeNumber: { AppEnvironment.current.application.applicationIconBadgeNumber },
+        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      ),
       sessionFeature: sessionFeature,
       makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
     )

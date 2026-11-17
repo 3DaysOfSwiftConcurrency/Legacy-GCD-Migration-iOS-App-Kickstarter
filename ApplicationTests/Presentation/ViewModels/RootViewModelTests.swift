@@ -35,7 +35,10 @@ final class RootViewModelTests: TestCase {
       profileFeature: profileFeature,
       activityFeature: ActivityFeature(
         sessionFeature: profileFeature.sessionFeature,
-        makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
+        makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) },
+        applicationBadgeNumber: {
+          AppEnvironment.current.application.applicationIconBadgeNumber
+        }
       ),
       settingsFeature: settingsFeature ?? self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },

@@ -1840,3 +1840,20 @@ callers to supply resolved locale/time-zone/currency inputs without the global E
 Analytics project calculations now receive captured Date/Calendar values from the actor.
 The legacy formatting convenience APIs still read Environment and are not certified as
 safe for arbitrary concurrent environment mutation.
+
+## Activity platform composition — 17 November 2026
+
+- ActivityFeature receives survey resolution, application-badge access and page
+  response timing through an explicit Platform composed by AppModel. The Feature no
+  longer reaches into AppEnvironment for those dependencies.
+- Page pagination and survey resolution remain independently owned tasks. Existing
+  sorting, empty-page refresh, retry, logged-out admission, session replacement and
+  late-result rejection behavior is unchanged.
+- Response timing is captured when a page is admitted and applied after a successful
+  provider response before publication. Survey requests and badge reads retain their
+  existing timing and presentation boundaries.
+- Controlled Feature coverage proves all three injected policies reach the owned
+  behavior. Bounded Library and presentation selections cover the AppModel graph,
+  screen adapter, routing, shared following state and root presentation consumers.
+- This checkpoint does not establish live survey, push-badge, visual or whole-suite
+  behavior, and it is not a claim of full CFA compliance.

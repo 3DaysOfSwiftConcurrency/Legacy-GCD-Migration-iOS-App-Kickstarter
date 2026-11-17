@@ -30,6 +30,35 @@ final class ActivityFeatureTests: TestCase {
     XCTAssertEqual(feature.currentApplicationBadgeNumber, 7)
   }
 
+  func testPlatformComposesSurveyBadgeAndResponsePolicy() async throws {
+    let provider = ControlledActivityProvider()
+    defer { provider.releaseAll() }
+    var surveyIDs: [Int] = []
+    var sleeps: [TimeInterval] = []
+    let feature = ActivityFeature(
+      platform: .test(
+        loadSurvey: { surveyIDs.append($0); return .template },
+        applicationBadgeNumber: { 7 },
+        responseDelaySeconds: { 11 }
+      ),
+      sessionFeature: self.session(),
+      makeProvider: { provider },
+      sleep: { sleeps.append($0) }
+    )
+
+    let page = feature.requestPage()
+    await provider.pages.waitFor(1)
+    try provider.pages.finish(0, .success(self.page([4])))
+    await page?.value
+    let surveyURL = try await feature.surveyURL(id: 42)
+
+    XCTAssertEqual(sleeps, [11])
+    XCTAssertEqual(feature.activities.map(\.id), [4])
+    XCTAssertEqual(surveyIDs, [42])
+    XCTAssertEqual(surveyURL, SurveyResponse.template.urls.web.survey)
+    XCTAssertEqual(feature.currentApplicationBadgeNumber, 7)
+  }
+
   func testNativeObservationTracksLoadingAndActivityChanges() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }

@@ -94,7 +94,11 @@ final class ApplicationRoutingTests: TestCase {
     discoveryFeature: self.discoveryFeature,
     activityFeature: ActivityFeature(
       sessionFeature: self.settingsFeature.sessionFeature,
-      makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
+      makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) },
+      loadSurvey: { try await AppEnvironment.current.apiService.applicationSurvey(id: $0) },
+      applicationBadgeNumber: {
+        AppEnvironment.current.application.applicationIconBadgeNumber
+      }
     ),
     authenticationFeature: AuthenticationFeature(
       sessionFeature: self.settingsFeature.sessionFeature,
