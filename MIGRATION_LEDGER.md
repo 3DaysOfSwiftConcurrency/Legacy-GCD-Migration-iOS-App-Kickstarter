@@ -5378,3 +5378,23 @@ Controller visual snapshots and the whole Library suite remain unverified. The C
 rejects restored individual AppModel feature lookups or AppEnvironment reads in both
 checkout controllers. This is not full CFA compliance. Swift packages, target identifiers
 and existing history are unchanged. No push.
+
+### Root Tabs feature graph — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes RootTabComposition as the explicit graph for Session, Profile,
+Activity, Settings, analytics, badge timing and accessibility policy. The storyboard-built
+RootTabBarViewController derives its session access and RootViewModel from that single
+graph instead of resolving seven application globals independently.
+
+Focused AppModel validation passed all 8 tests and focused RootViewModel presentation
+validation passed all 32 tests. Both runs had zero failures and skips on iPhone 17 Pro
+Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-root-tab-graph-main-focused.xcresult` and
+`/private/tmp/kickstarter-root-tab-graph-presentation-focused.xcresult`.
+
+Broader presentation, visual and whole Library suites remain unverified. The CFA gate
+rejects restored individual AppModel feature lookups or AppEnvironment reads in the Root
+Tabs controller. This is not full CFA compliance. Swift packages, target identifiers and
+existing history are unchanged. No push.

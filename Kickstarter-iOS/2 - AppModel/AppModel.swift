@@ -152,6 +152,34 @@ public struct PledgeCheckoutComposition {
   }
 }
 
+public struct RootTabComposition {
+  public let sessionFeature: SessionFeature
+  public let profileFeature: ProfileFeature
+  public let activityFeature: ActivityFeature
+  public let settingsFeature: SettingsFeature
+  public let analytics: () -> KSRAnalytics
+  public let badgePresentationDelay: () -> TimeInterval
+  public let isVoiceOverRunning: () -> Bool
+
+  public init(
+    sessionFeature: SessionFeature,
+    profileFeature: ProfileFeature,
+    activityFeature: ActivityFeature,
+    settingsFeature: SettingsFeature,
+    analytics: @escaping () -> KSRAnalytics,
+    badgePresentationDelay: @escaping () -> TimeInterval,
+    isVoiceOverRunning: @escaping () -> Bool
+  ) {
+    self.sessionFeature = sessionFeature
+    self.profileFeature = profileFeature
+    self.activityFeature = activityFeature
+    self.settingsFeature = settingsFeature
+    self.analytics = analytics
+    self.badgePresentationDelay = badgePresentationDelay
+    self.isVoiceOverRunning = isVoiceOverRunning
+  }
+}
+
 @MainActor
 public final class AppModel {
   public static let shared = AppModel.live()
@@ -196,6 +224,18 @@ public final class AppModel {
       authenticationFeature: self.authenticationFeature,
       paymentsFeature: self.paymentsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics }
+    )
+  }
+
+  public var rootTabComposition: RootTabComposition {
+    RootTabComposition(
+      sessionFeature: self.sessionFeature,
+      profileFeature: self.profileFeature,
+      activityFeature: self.activityFeature,
+      settingsFeature: self.settingsFeature,
+      analytics: { AppEnvironment.current.ksrAnalytics },
+      badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
     )
   }
 

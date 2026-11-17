@@ -2161,3 +2161,13 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel and checkout-model coverage passes 110 tests. The bounded AppModel,
   Rewards, Manage Pledge and checkout selection passes 214 tests. Visual snapshots and
   the whole Library suite remain outside this checkpoint.
+
+## Root Tabs feature graph — 17 November 2026
+
+- AppModel exposes one RootTabComposition containing the exact Session, Profile, Activity
+  and Settings feature instances plus analytics, badge timing and accessibility policy.
+- RootTabBarViewController preserves storyboard construction and creates RootViewModel
+  from that one composition instead of independently resolving seven application globals.
+- Focused AppModel coverage passes 8 tests and focused Root Tabs presentation coverage
+  passes 32 tests. Broader presentation, visual and whole Library suites remain outside
+  this checkpoint.

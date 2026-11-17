@@ -29,15 +29,16 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   private var userLocalePreferencesChangedObserver: MainActorNotificationObservation?
   private var voiceOverStatusDidChangeObserver: MainActorNotificationSignalObservation?
 
-  private let sessionFeature = AppModel.shared.sessionFeature
-  fileprivate let viewModel: RootViewModelType = RootViewModel(
-    sessionFeature: AppModel.shared.sessionFeature,
-    profileFeature: AppModel.shared.profileFeature,
-    activityFeature: AppModel.shared.activityFeature,
-    settingsFeature: AppModel.shared.settingsFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics },
-    badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-    isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
+  private let composition = AppModel.shared.rootTabComposition
+  private var sessionFeature: SessionFeature { self.composition.sessionFeature }
+  fileprivate lazy var viewModel: RootViewModelType = RootViewModel(
+    sessionFeature: self.composition.sessionFeature,
+    profileFeature: self.composition.profileFeature,
+    activityFeature: self.composition.activityFeature,
+    settingsFeature: self.composition.settingsFeature,
+    analytics: self.composition.analytics,
+    badgePresentationDelay: self.composition.badgePresentationDelay,
+    isVoiceOverRunning: self.composition.isVoiceOverRunning
   )
 
   /// Keep the applied tab bar mode in sync with the ViewModel (single source of truth)
