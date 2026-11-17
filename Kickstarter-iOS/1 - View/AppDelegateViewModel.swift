@@ -211,7 +211,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private let deepLinkRouter: DeepLinkRouter
   private let discoveryFeature: DiscoveryFeature
   private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
-  private let requestDevicePushRegistration: @MainActor (String) -> Task<String, Error>
+  private let devicePushRegistration: DevicePushRegistrationService
   private let sessionFeature: SessionFeature
   private let settingsFeature: SettingsFeature
   private let onboardingFeature: OnboardingFeature
@@ -223,7 +223,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     func cancel() { self.task?.cancel(); self.task = nil; self.input = nil; self.id = nil }
   }
   private let redirectObservation = RedirectObservation()
-  private let pushDebounce: @MainActor () async throws -> Void
   private let userDebounce: @MainActor () async throws -> Void
   private let trackingDelay: @MainActor () async throws -> Void
   private var trackingDelayTasks: [UUID: Task<Void, Never>] = [:]
@@ -233,8 +232,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var userDebounceTask: Task<Void, Never>?
   private var userReadTask: Task<Void, Never>?
   private var userRequest: Task<User, Error>?
-  private var pushDebounceTask: Task<Void, Never>?
-  private var pushPresentationTask: Task<Void, Never>?
   private var configurationTask: Task<Void, Never>?
   private var shortcutTask: Task<Void, Never>?
   private var setupRequest: Task<GraphUserSetup, Error>?
@@ -249,22 +246,20 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     authenticationFeature: AuthenticationFeature,
     discoveryFeature: DiscoveryFeature,
     requestApplicationConfiguration: @escaping @MainActor () -> Task<Config, Error>,
-    requestDevicePushRegistration: @escaping @MainActor (String) -> Task<String, Error>,
+    devicePushRegistration: DevicePushRegistrationService,
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
     onboardingFeature: OnboardingFeature,
-    pushDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
     userDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
     trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
   ) {
-    self.pushDebounce = pushDebounce
     self.userDebounce = userDebounce
     self.trackingDelay = trackingDelay
     self.authenticationFeature = authenticationFeature
     self.deepLinkRouter = deepLinkRouter
     self.discoveryFeature = discoveryFeature
     self.requestApplicationConfiguration = requestApplicationConfiguration
-    self.requestDevicePushRegistration = requestDevicePushRegistration
+    self.devicePushRegistration = devicePushRegistration
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
     self.onboardingFeature = onboardingFeature
@@ -274,8 +269,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   deinit {
     self.notificationTasks.values.forEach { $0.cancel() }
     self.verificationTask?.cancel()
-    self.pushDebounceTask?.cancel()
-    self.pushPresentationTask?.cancel()
+    let devicePushRegistration = self.devicePushRegistration
     self.userDebounceTask?.cancel()
     self.userReadTask?.cancel()
     self.userRequest?.cancel()
@@ -291,6 +285,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     let feature = self.deepLinkRouter
     let route = self.navigationRoute
     Task { @MainActor in
+      devicePushRegistration.cancelScheduledDelivery()
       redirectObservation.cancel()
       if let (tracking, id) = trackingObserver { tracking.removeAuthorizationObserver(id) }
       authenticationFeature.releaseEmailRedirect(route: route)
@@ -614,30 +609,13 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func didRegisterForRemoteNotifications(withDeviceTokenData data: Data) {
     self.onRegisterPushTokenInBraze?(data)
-    self.pushDebounceTask?.cancel()
-    let token = deviceToken(fromData: data)
-    let debounce = self.pushDebounce
-    self.pushDebounceTask = Task { [weak self] in
-      do {
-        try await debounce()
-        try Task.checkCancellation()
-        guard let self else { return }
-        self.pushPresentationTask?.cancel()
-        let request = self.requestDevicePushRegistration(token)
-        self.pushPresentationTask = Task { [weak self] in
-          do {
-            let registeredToken = try await request.value
-            try Task.checkCancellation()
-            self?.onPushTokenSuccessfullyRegistered?(registeredToken)
-          } catch { /* Keep registration failures silent. */ }
-        }
-      } catch { /* A newer token superseded this debounce. */ }
+    self.devicePushRegistration.schedule(token: deviceToken(fromData: data)) { [weak self] token in
+      self?.onPushTokenSuccessfullyRegistered?(token)
     }
   }
 
   func waitForPushRegistration() async {
-    await self.pushDebounceTask?.value
-    await self.pushPresentationTask?.value
+    await self.devicePushRegistration.waitForScheduledDelivery()
   }
 
   public func didAcceptReceivingRemoteNotifications() {

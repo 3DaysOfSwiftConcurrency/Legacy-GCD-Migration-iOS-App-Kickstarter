@@ -35,7 +35,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       authenticationFeature: model.authenticationFeature,
       discoveryFeature: model.discoveryFeature,
       requestApplicationConfiguration: { model.requestApplicationConfiguration() },
-      requestDevicePushRegistration: { model.requestDevicePushRegistration(token: $0) },
+      devicePushRegistration: model.devicePushRegistrationService,
       sessionFeature: model.sessionFeature,
       settingsFeature: model.settingsFeature,
       onboardingFeature: model.onboardingFeature

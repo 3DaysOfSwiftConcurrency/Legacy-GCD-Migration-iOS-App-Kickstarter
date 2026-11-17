@@ -249,6 +249,22 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
 
 @MainActor
 final class DevicePushRegistrationServiceTests: XCTestCase {
+  func testSessionChangePreventsDebouncedRegistration() async throws {
+    let gate = AccountRequestGate<Void>()
+    defer { gate.releaseAll() }
+    var registeredTokens: [String] = []
+    let service = DevicePushRegistrationService(
+      register: { registeredTokens.append($0) },
+      debounce: { try await gate.request() }
+    )
+    service.schedule(token: "previous-session") { _ in XCTFail("Unexpected registration delivery") }
+    await gate.waitFor(1)
+    service.sessionChanged()
+    try gate.finish(0, .success(()))
+    await service.waitForScheduledDelivery()
+    XCTAssertTrue(registeredTokens.isEmpty)
+  }
+
   func testDuplicatesShareAndChangedTokensExecuteInOrderAfterFailure() async throws {
     let gate = AccountRequestGate<Void>()
     var tokens: [String] = []

@@ -97,11 +97,51 @@ public final class ApplicationConfigurationService {
 @MainActor
 public final class DevicePushRegistrationService {
   private let register: @MainActor (String) async throws -> Void
+  private let debounce: @MainActor () async throws -> Void
+  private var debounceTask: Task<Void, Never>?
+  private var deliveryTask: Task<Void, Never>?
   private var generation = 0
   private var tail: (token: String, generation: Int, id: UUID, task: Task<String, Error>)?
 
-  public init(register: @escaping @MainActor (String) async throws -> Void) {
+  public init(
+    register: @escaping @MainActor (String) async throws -> Void,
+    debounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) }
+  ) {
     self.register = register
+    self.debounce = debounce
+  }
+
+  func schedule(token: String, onRegistered: @escaping @MainActor (String) -> Void) {
+    self.debounceTask?.cancel()
+    let debounce = self.debounce
+    let generation = self.generation
+    self.debounceTask = Task { [weak self] in
+      do {
+        try await debounce()
+        try Task.checkCancellation()
+        guard let self, self.generation == generation else { return }
+        self.deliveryTask?.cancel()
+        let request = self.request(token: token)
+        self.deliveryTask = Task { [weak self] in
+          do {
+            let registeredToken = try await request.value
+            try Task.checkCancellation()
+            guard self?.generation == generation else { return }
+            onRegistered(registeredToken)
+          } catch { /* Keep registration failures silent. */ }
+        }
+      } catch { /* A newer token superseded this debounce. */ }
+    }
+  }
+
+  func cancelScheduledDelivery() {
+    self.debounceTask?.cancel()
+    self.deliveryTask?.cancel()
+  }
+
+  func waitForScheduledDelivery() async {
+    await self.debounceTask?.value
+    await self.deliveryTask?.value
   }
 
   @discardableResult public func request(token: String) -> Task<String, Error> {
@@ -124,7 +164,10 @@ public final class DevicePushRegistrationService {
     return task
   }
 
-  public func sessionChanged() { self.generation += 1 }
+  public func sessionChanged() {
+    self.generation += 1
+    self.cancelScheduledDelivery()
+  }
 }
 
 /// Application composition root. Features own shared state and directly awaitable workflows.
@@ -232,10 +275,6 @@ public final class AppModel {
 
   public func synchronizePreferences() {
     _ = AppEnvironment.current.ubiquitousStore.synchronize()
-  }
-
-  @discardableResult public func requestDevicePushRegistration(token: String) -> Task<String, Error> {
-    self.devicePushRegistrationService.request(token: token)
   }
 
   @discardableResult public func requestRemoteConfiguration(

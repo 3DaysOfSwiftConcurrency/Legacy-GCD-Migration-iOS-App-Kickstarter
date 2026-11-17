@@ -123,7 +123,8 @@ final class AppDelegateViewModelTests: TestCase {
     let session = self.settingsFeature.sessionFeature
     let config = self.applicationConfigurationService
     let registration = DevicePushRegistrationService(
-      register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
+      register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) },
+      debounce: { try Task.checkCancellation() }
     )
     return AppDelegateViewModel(
       deepLinkRouter: self.deepLinkRouter,
@@ -132,11 +133,10 @@ final class AppDelegateViewModelTests: TestCase {
       }),
       discoveryFeature: self.discoveryFeature,
       requestApplicationConfiguration: { config.refresh() },
-      requestDevicePushRegistration: { registration.request(token: $0) },
+      devicePushRegistration: registration,
       sessionFeature: session,
       settingsFeature: self.settingsFeature,
       onboardingFeature: OnboardingFeature(),
-      pushDebounce: { try Task.checkCancellation() },
       userDebounce: { try Task.checkCancellation() },
       trackingDelay: { try Task.checkCancellation() }
     )
