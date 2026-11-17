@@ -54,6 +54,9 @@ reject_matches 'Settings link completion tasks belong to Navigation presentation
   "$delegate_handler"
 reject_matches 'Settings link presentation receives its dependencies from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Navigation/SettingsLinkPresentation.swift"
+reject_matches 'AppTrackingConsent owns tracking requests and observation.' \
+  'AppTrackingTransparencyType|onTrackingAuthorizationStatus|onRequestTrackingAuthorization|trackingDelay|applicationActive\(' \
+  "$delegate_handler"
 reject_matches 'DeepLinkRouter receives platform dependencies from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Navigation/DeepLinkRouter.swift"
 reject_matches 'Navigation owns incoming URL, push envelope, and shortcut routing decisions.' \

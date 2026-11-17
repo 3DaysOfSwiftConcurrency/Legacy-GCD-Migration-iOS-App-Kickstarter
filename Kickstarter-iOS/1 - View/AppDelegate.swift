@@ -40,7 +40,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     return AppDelegateViewModel(
       deepLinkRouter: router,
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
-      trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
       applicationShortcuts: model.applicationShortcuts,
       devicePushRegistration: model.devicePushRegistrationService,
       sessionFeature: model.sessionFeature,
@@ -249,7 +248,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { UIApplication.shared.unregisterForRemoteNotifications() }
     }
 
-    self.viewModel.outputs.onTrackingAuthorizationStatus = { [weak self] status in
+    AppModel.shared.trackingConsent.onAuthorizationStatus = { [weak self] status in
       DispatchQueue.main.async { [weak self] in self?.appTrackingAuthorizationChanged(status: status) }
     }
 
@@ -304,6 +303,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    AppModel.shared.trackingConsent.applicationDidFinishLaunching()
     self.synchronizePreferences()
     self.configureAnalytics()
 
@@ -313,11 +313,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 
   func applicationDidBecomeActive(_: UIApplication) {
-    self.viewModel.inputs.applicationActive(state: true)
+    AppModel.shared.trackingConsent.applicationActive(state: true)
   }
 
   func applicationWillResignActive(_: UIApplication) {
-    self.viewModel.inputs.applicationActive(state: false)
+    AppModel.shared.trackingConsent.applicationActive(state: false)
   }
 
   func applicationWillEnterForeground(_: UIApplication) {

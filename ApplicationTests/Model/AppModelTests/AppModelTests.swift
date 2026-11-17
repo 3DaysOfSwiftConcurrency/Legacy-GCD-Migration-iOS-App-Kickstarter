@@ -1,9 +1,47 @@
+import AppTrackingTransparency
 @testable import Kickstarter_iOS
 import GraphAPI
 @testable import KsApi
 
 import Prelude
 import XCTest
+
+@MainActor
+final class AppTrackingConsentTests: XCTestCase {
+  func testEarlyActivationWaitsForLaunchAndDuplicateEventsShareTheDelay() async {
+    let tracking = MockAppTrackingTransparency()
+    var delayCount = 0
+    let consent = AppTrackingConsent(
+      tracking: { tracking }, hasSeenOnboarding: { true }, delay: { delayCount += 1 }
+    )
+
+    consent.applicationActive(state: true)
+    await consent.waitForRequests()
+    XCTAssertEqual(delayCount, 0)
+    consent.applicationDidFinishLaunching()
+    consent.applicationActive(state: true)
+    await consent.waitForRequests()
+    XCTAssertEqual(delayCount, 1)
+    XCTAssertEqual(tracking.requestCount, 1)
+  }
+
+  func testReplacingTheTrackingAdapterRemovesThePreviousStatusObserver() {
+    let old = MockAppTrackingTransparency()
+    let replacement = MockAppTrackingTransparency()
+    var tracking = old
+    let consent = AppTrackingConsent(tracking: { tracking }, hasSeenOnboarding: { false })
+    var statuses: [AppTrackingAuthorization] = []
+    consent.onAuthorizationStatus = { statuses.append($0) }
+
+    consent.applicationDidFinishLaunching()
+    tracking = replacement
+    consent.applicationActive(state: false)
+    old.authorizationStatusValue = .denied
+    replacement.authorizationStatusValue = .restricted
+
+    XCTAssertEqual(statuses, [.notDetermined, .notDetermined, .restricted])
+  }
+}
 
 @MainActor
 final class AppModelTests: XCTestCase {
@@ -143,6 +181,10 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store }),
+      trackingConsent: AppTrackingConsent(
+        tracking: { [tracking = MockAppTrackingTransparency()] in tracking },
+        hasSeenOnboarding: { false }
+      ),
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: firstSession, makeProvider: {
@@ -197,6 +239,10 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store }),
+      trackingConsent: AppTrackingConsent(
+        tracking: { [tracking = MockAppTrackingTransparency()] in tracking },
+        hasSeenOnboarding: { false }
+      ),
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: secondSession, makeProvider: {

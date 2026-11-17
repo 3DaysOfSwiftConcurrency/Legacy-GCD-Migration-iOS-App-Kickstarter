@@ -71,6 +71,11 @@ final class AppDelegateViewModelTests: TestCase {
     sessionFeature: self.settingsFeature.sessionFeature,
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
+  private let trackingConsent = AppTrackingConsent(
+    tracking: { AppEnvironment.current.appTrackingTransparency },
+    hasSeenOnboarding: { AppEnvironment.current.userDefaults.hasSeenOnboarding },
+    delay: { try Task.checkCancellation() }
+  )
   private var settingsLinkDelay: @MainActor (TimeInterval) async throws -> Void = { _ in
     try Task.checkCancellation()
   }
@@ -129,7 +134,6 @@ final class AppDelegateViewModelTests: TestCase {
   private let pushRegistrationStarted = ValueRecorder<()>()
   private let pushTokenSuccessfullyRegistered = ValueRecorder<String>()
   private let registerPushTokenInBraze = ValueRecorder<Data>()
-  private let requestATTrackingAuthorizationStatus = ValueRecorder<Void>()
   private let setApplicationShortcutItems = ValueRecorder<[ShortcutItem]>()
   private let showAlert = ValueRecorder<Notification>()
   private let trackingAuthorizationStatus = ValueRecorder<AppTrackingAuthorization>()
@@ -188,7 +192,6 @@ final class AppDelegateViewModelTests: TestCase {
     return AppDelegateViewModel(
       deepLinkRouter: self.deepLinkRouter,
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
-      trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
       applicationShortcuts: ApplicationShortcutService(
         session: session,
         hasRecommendations: { [discoveryFeature = self.discoveryFeature] in
@@ -198,8 +201,7 @@ final class AppDelegateViewModelTests: TestCase {
       devicePushRegistration: registration,
       sessionFeature: session,
       settingsFeature: self.settingsFeature,
-      onboardingFeature: .live(),
-      trackingDelay: { try Task.checkCancellation() }
+      onboardingFeature: .live()
     )
   }
 
@@ -227,12 +229,9 @@ final class AppDelegateViewModelTests: TestCase {
     self.vm.outputs.onPushTokenRegistrationStarted = { [weak self] in self?.pushRegistrationStarted.record(()) }
     self.vm.outputs.onPushTokenSuccessfullyRegistered = { [weak self] in self?.pushTokenSuccessfullyRegistered.record($0) }
     self.vm.outputs.onRegisterPushTokenInBraze = { [weak self] in self?.registerPushTokenInBraze.record($0) }
-    self.vm.outputs.onRequestTrackingAuthorization = { [weak self] in
-      self?.requestATTrackingAuthorizationStatus.record(())
-    }
     self.vm.outputs.onSetApplicationShortcutItems = { [weak self] in self?.setApplicationShortcutItems.record($0) }
     self.vm.outputs.onShowAlert = { [weak self] in self?.showAlert.record($0) }
-    self.vm.outputs.onTrackingAuthorizationStatus = { [weak self] in
+    self.trackingConsent.onAuthorizationStatus = { [weak self] in
       self?.trackingAuthorizationStatus.record($0)
     }
     self.vm.outputs.onTriggerOnboardingFlow = { [weak self] in self?.triggerOnboardingFlow.record(()) }
@@ -2083,18 +2082,19 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(
       appTrackingTransparency: appTrackingTransparency
     ) {
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
-      await (self.vm as? AppDelegateViewModel)?.waitForTrackingRequests()
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertEqual(appTrackingTransparency.advertisingIdentifier, "advertisingIdentifier")
-      self.requestATTrackingAuthorizationStatus.assertValueCount(1)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 1)
     }
   }
 
@@ -2107,18 +2107,19 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(
       appTrackingTransparency: appTrackingTransparency
     ) {
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
-      await (self.vm as? AppDelegateViewModel)?.waitForTrackingRequests()
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
     }
   }
 
@@ -2131,18 +2132,19 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(
       appTrackingTransparency: appTrackingTransparency
     ) {
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
-      await (self.vm as? AppDelegateViewModel)?.waitForTrackingRequests()
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
     }
   }
 
@@ -2157,18 +2159,19 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(
       appTrackingTransparency: appTrackingTransparency
     ) {
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
-      await (self.vm as? AppDelegateViewModel)?.waitForTrackingRequests()
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
-      self.requestATTrackingAuthorizationStatus.assertValueCount(1)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
     }
   }
 
@@ -2191,15 +2194,17 @@ final class AppDelegateViewModelTests: TestCase {
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
 
       self.triggerOnboardingFlow.assertValueCount(1)
     }
@@ -2220,9 +2225,11 @@ final class AppDelegateViewModelTests: TestCase {
     ) {
       self.triggerOnboardingFlow.assertValueCount(0)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2245,9 +2252,11 @@ final class AppDelegateViewModelTests: TestCase {
     ) {
       self.triggerOnboardingFlow.assertValueCount(0)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2269,9 +2278,11 @@ final class AppDelegateViewModelTests: TestCase {
     ) {
       self.triggerOnboardingFlow.assertValueCount(0)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2300,15 +2311,17 @@ final class AppDelegateViewModelTests: TestCase {
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
       XCTAssertEqual(appTrackingTransparency.advertisingIdentifier, "advertisingIdentifier")
-      self.requestATTrackingAuthorizationStatus.assertValueCount(1)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 1)
 
       self.triggerOnboardingFlow.assertValueCount(0)
     }
@@ -2333,15 +2346,17 @@ final class AppDelegateViewModelTests: TestCase {
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
 
       XCTAssertFalse(userDefaults.bool(forKey: AppKeys.hasSeenOnboarding.rawValue))
 
@@ -2358,18 +2373,19 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(
       appTrackingTransparency: appTrackingTransparency
     ) {
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
-      await (self.vm as? AppDelegateViewModel)?.waitForTrackingRequests()
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
-      self.requestATTrackingAuthorizationStatus.assertValueCount(0)
+      XCTAssertEqual(appTrackingTransparency.requestCount, 0)
     }
   }
 
@@ -2378,8 +2394,9 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(
       appTrackingTransparency: appTrackingTransparency
     ) {
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.trackingConsent.applicationDidFinishLaunching()
 
       appTrackingTransparency.authorizationStatusValue = .notDetermined
       XCTAssertEqual(self.trackingAuthorizationStatus.values, [.notDetermined])
@@ -2394,9 +2411,11 @@ final class AppDelegateViewModelTests: TestCase {
   func testTrackingObservationDoesNotDuplicateAcrossLifecycleEvents() async {
     let tracking = MockAppTrackingTransparency()
     await withEnvironment(appTrackingTransparency: tracking) {
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-      self.vm.inputs.applicationActive(state: true)
+      self.trackingConsent.applicationDidFinishLaunching()
+      self.trackingConsent.applicationActive(state: true)
+      await self.trackingConsent.waitForRequests()
       tracking.authorizationStatusValue = .denied
       XCTAssertEqual(self.trackingAuthorizationStatus.values, [.notDetermined, .denied])
     }
@@ -2407,8 +2426,9 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(
       appTrackingTransparency: appTrackingTransparency
     ) {
-      self.vm.inputs.applicationActive(state: false)
+      self.trackingConsent.applicationActive(state: false)
       self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.trackingConsent.applicationDidFinishLaunching()
 
       appTrackingTransparency.authorizationStatusValue = .notDetermined
       XCTAssertEqual(self.trackingAuthorizationStatus.values, [.notDetermined])

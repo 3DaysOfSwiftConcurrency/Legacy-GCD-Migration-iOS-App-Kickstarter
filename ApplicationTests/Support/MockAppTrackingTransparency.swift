@@ -5,6 +5,7 @@ import Foundation
 @MainActor
 class MockAppTrackingTransparency: AppTrackingTransparencyType {
   public private(set) var advertisingIdentifier: String?
+  private(set) var requestCount = 0
   public var requestAndSetAuthorizationStatusFlag = false
   public var authorizationStatusValue: AppTrackingAuthorization = .notDetermined {
     didSet {
@@ -20,6 +21,7 @@ class MockAppTrackingTransparency: AppTrackingTransparencyType {
     self.advertisingIdentifier = self.shouldRequestAuthStatus ? "advertisingIdentifer" : nil
   }
   func requestAndSetAuthorizationStatus(_ completion: ((ATTrackingManager.AuthorizationStatus) -> Void)? = nil) {
+    self.requestCount += 1
     self.authorizationStatusValue = .authorized
     self.advertisingIdentifier = self.requestAndSetAuthorizationStatusFlag ? "advertisingIdentifier" : nil
     completion?(.authorized)

@@ -23,9 +23,6 @@ public protocol AppDelegateViewModelInputs {
   /// Call when the application will enter foreground.
   func applicationWillEnterForeground()
 
-  /// Call when the application becomes active `UIApplicationStateActive` and `UIApplicationStateInactive`
-  func applicationActive(state: Bool)
-
   /// Call to open a url that was sent to the app
   func applicationOpenUrl(
     application: UIApplication?,
@@ -115,17 +112,11 @@ public protocol AppDelegateViewModelOutputs: AnyObject {
   /// Emits when we should register the device push token in Braze.
   var onRegisterPushTokenInBraze: ((Data) -> Void)? { get set }
 
-  /// Emits when application didFinishLaunchingWithOptions.
-  var onRequestTrackingAuthorization: (() -> Void)? { get set }
-
   /// Emits an array of short cut items to put into the shared application.
   var onSetApplicationShortcutItems: (([ShortcutItem]) -> Void)? { get set }
 
   /// Emits when an alert should be shown.
   var onShowAlert: ((Notification) -> Void)? { get set }
-
-  /// Emits immediately and when the user's authorization status changes
-  var onTrackingAuthorizationStatus: ((AppTrackingAuthorization) -> Void)? { get set }
 
   /// Emits when application didFinishLaunchingWithOptions and the Onboarding Flow feature flag is enabled.
   var onTriggerOnboardingFlow: (() -> Void)? { get set }
@@ -151,37 +142,26 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   AppDelegateViewModelOutputs {
   private let deepLinkRouter: DeepLinkRouter
   private let pushRegistration: () -> PushRegistrationType.Type
-  private let trackingAdapter: () -> any AppTrackingTransparencyType
   private let applicationShortcuts: ApplicationShortcutService
   private let devicePushRegistration: DevicePushRegistrationService
   private let sessionFeature: SessionFeature
   private let settingsFeature: SettingsFeature
   private let onboardingFeature: OnboardingFeature
   private let navigationRoute = UUID()
-  private let trackingDelay: @MainActor () async throws -> Void
-  private var trackingDelayTasks: [UUID: Task<Void, Never>] = [:]
-  private var hasLaunchEvent = false
-  private var latestActiveState: Bool?
-  private var lastScheduledActiveState: Bool?
   private var pushTasks: [UUID: Task<Void, Never>] = [:]
   private var hasDeniedPushAuthorization = false
-  private var trackingObserver: ((any AppTrackingTransparencyType), UUID)?
 
   init(
     deepLinkRouter: DeepLinkRouter,
     pushRegistration: @escaping () -> PushRegistrationType.Type,
-    trackingAdapter: @escaping () -> any AppTrackingTransparencyType,
     applicationShortcuts: ApplicationShortcutService,
     devicePushRegistration: DevicePushRegistrationService,
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
-    onboardingFeature: OnboardingFeature,
-    trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
+    onboardingFeature: OnboardingFeature
   ) {
-    self.trackingDelay = trackingDelay
     self.deepLinkRouter = deepLinkRouter
     self.pushRegistration = pushRegistration
-    self.trackingAdapter = trackingAdapter
     self.applicationShortcuts = applicationShortcuts
     self.devicePushRegistration = devicePushRegistration
     self.sessionFeature = sessionFeature
@@ -194,15 +174,12 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     let devicePushRegistration = self.devicePushRegistration
     let settingsFeature = self.settingsFeature
     self.pushTasks.values.forEach { $0.cancel() }
-    self.trackingDelayTasks.values.forEach { $0.cancel() }
-    let trackingObserver = self.trackingObserver
     let feature = self.deepLinkRouter
     let route = self.navigationRoute
     Task { @MainActor in
       devicePushRegistration.cancelScheduledDelivery()
       settingsFeature.cancelScheduledAccountRefresh()
       settingsFeature.cancelAccountSetupRefresh()
-      if let (tracking, id) = trackingObserver { tracking.removeAuthorizationObserver(id) }
       feature.release(route: route)
     }
   }
@@ -288,43 +265,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.onTriggerOnboardingFlow?()
   }
 
-  private func scheduleTrackingRequestIfNeeded() {
-    guard self.hasLaunchEvent, let active = self.latestActiveState,
-          self.lastScheduledActiveState != active else { return }
-    self.lastScheduledActiveState = active
-    let id = UUID()
-    let delay = self.trackingDelay
-    self.trackingDelayTasks[id] = Task { [weak self] in
-      defer { self?.trackingDelayTasks[id] = nil }
-      do {
-        try await delay()
-        try Task.checkCancellation()
-        guard active, let self, self.onboardingFeature.hasSeenOnboarding else { return }
-        let tracking = self.trackingAdapter()
-        if tracking.advertisingIdentifier == nil, tracking.shouldRequestAuthorizationStatus() {
-          tracking.requestAndSetAuthorizationStatus(nil)
-        }
-        self.onRequestTrackingAuthorization?()
-      } catch { /* Cancellation ends pending presentation. */ }
-    }
-  }
-
-  func waitForTrackingRequests() async {
-    for task in self.trackingDelayTasks.values { await task.value }
-  }
-
-  private func observeTrackingAuthorization() {
-    let tracking = self.trackingAdapter()
-    if let (previous, id) = self.trackingObserver {
-      if (previous as AnyObject) === (tracking as AnyObject) { return }
-      previous.removeAuthorizationObserver(id)
-    }
-    let id = tracking.observeAuthorizationStatus { [weak self] status in
-      self?.onTrackingAuthorizationStatus?(status)
-    }
-    self.trackingObserver = (tracking, id)
-  }
-
   private func scheduleUserRefresh() {
     self.settingsFeature.scheduleAccountRefresh { [weak self] result in
       guard let self else { return }
@@ -381,9 +321,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     }
     self.checkPushAuthorizationForLaunch()
     self.checkPushAuthorizationForBadge()
-    self.hasLaunchEvent = true
-    self.scheduleTrackingRequestIfNeeded()
-    self.observeTrackingAuthorization()
     self.scheduleUserRefresh()
     self.refreshUserSetup()
   }
@@ -392,12 +329,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.checkPushAuthorizationForBadge()
     self.scheduleUserRefresh()
     self.refreshUserSetup()
-  }
-
-  public func applicationActive(state: Bool) {
-    self.latestActiveState = state
-    self.scheduleTrackingRequestIfNeeded()
-    self.observeTrackingAuthorization()
   }
 
   public func applicationPerformActionForShortcutItem(_ item: UIApplicationShortcutItem) {
@@ -499,10 +430,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public var onPushTokenRegistrationStarted: (() -> Void)?
   public var onPushTokenSuccessfullyRegistered: ((String) -> Void)?
   public var onRegisterPushTokenInBraze: ((Data) -> Void)?
-  public var onRequestTrackingAuthorization: (() -> Void)?
   public var onSetApplicationShortcutItems: (([ShortcutItem]) -> Void)?
   public var onShowAlert: ((Notification) -> Void)?
-  public var onTrackingAuthorizationStatus: ((AppTrackingAuthorization) -> Void)?
   public var onTriggerOnboardingFlow: (() -> Void)?
   public var onUnregisterForRemoteNotifications: (() -> Void)?
   public var onUpdateCurrentUser: ((User) -> Void)?

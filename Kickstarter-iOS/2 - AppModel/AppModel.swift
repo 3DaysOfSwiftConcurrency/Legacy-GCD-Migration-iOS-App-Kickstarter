@@ -359,6 +359,7 @@ public final class AppModel {
 
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
+  let trackingConsent: AppTrackingConsent
   public let connectivityService: ConnectivityService
   public let remoteConfigurationService: RemoteConfigurationService
   public let applicationConfigurationService: ApplicationConfigurationService
@@ -387,6 +388,7 @@ public final class AppModel {
   public init(
     developerExamplesFeature: DeveloperExamplesFeature,
     onboardingFeature: OnboardingFeature,
+    trackingConsent: AppTrackingConsent,
     connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService,
     applicationConfigurationService: ApplicationConfigurationService,
@@ -415,6 +417,7 @@ public final class AppModel {
   ) {
     self.developerExamplesFeature = developerExamplesFeature
     self.onboardingFeature = onboardingFeature
+    self.trackingConsent = trackingConsent
     self.connectivityService = connectivityService
     self.remoteConfigurationService = remoteConfigurationService
     self.applicationConfigurationService = applicationConfigurationService
@@ -518,11 +521,16 @@ public final class AppModel {
     let discoveryFeature = DiscoveryFeature(
       provider: AsyncDiscoveryProvider(), currentUser: { sessionFeature.currentUser }
     )
+    let onboarding = OnboardingFeature.live()
     return AppModel(
       developerExamplesFeature: DeveloperExamplesFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
       }),
-      onboardingFeature: .live(),
+      onboardingFeature: onboarding,
+      trackingConsent: AppTrackingConsent(
+        tracking: { AppEnvironment.current.appTrackingTransparency },
+        hasSeenOnboarding: { onboarding.hasSeenOnboarding }
+      ),
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
       remoteConfigurationService: RemoteConfigurationService(
         notificationCenter: .default,

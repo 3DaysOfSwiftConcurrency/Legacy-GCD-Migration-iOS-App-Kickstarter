@@ -3643,3 +3643,17 @@ The simulator passed 51 focused Navigation and Settings tests and 137
 bounded delegate and Root Tabs tests. Coverage includes verification
 feedback, superseded notification-setting feedback, and preservation of
 newer account data through the presentation delay.
+
+### Tracking consent lifecycle — Matthew Thomas
+
+AppTrackingConsent owns the delayed authorization check and status
+subscription. AppModel supplies the tracking adapter and onboarding
+completion policy. UIKit sends launch and activation signals directly
+and continues to apply consent to the analytics SDKs. The legacy
+delegate handler has no tracking adapter, task, or status relay. The
+source check guards that boundary.
+
+The simulator passed eight focused AppModel, consent, and onboarding
+use-case tests, 14 onboarding view-model tests, and 137 bounded
+delegate and Root Tabs regressions. The consent checks use an injected
+tracking adapter. Physical-device authorization UI remains unverified.
