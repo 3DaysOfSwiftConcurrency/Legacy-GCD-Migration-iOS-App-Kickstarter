@@ -81,14 +81,16 @@ public final class DiscussionFeature {
   private final class PageRoute {
     var source: Source
     let userID: Int?
+    let generation: Int
     var nextSource: Source?
     var cursor: String?
     var snapshot = PageSnapshot()
     var hasReceivedPage = false
     var request: (id: UUID, task: Task<Void, Never>)?
-    init(source: Source, userID: Int?) {
+    init(source: Source, userID: Int?, generation: Int) {
       self.source = source
       self.userID = userID
+      self.generation = generation
     }
   }
 
@@ -372,7 +374,11 @@ public final class DiscussionFeature {
   }
 
   public func snapshot(for route: UUID) -> PageSnapshot {
-    self.pages[route]?.snapshot ?? PageSnapshot()
+    guard let page = self.pages[route],
+          self.sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else {
+      return PageSnapshot()
+    }
+    return page.snapshot
   }
 
   public func loadFirstPage(route: UUID, source: Source, refresh: Bool = false) async {
@@ -385,21 +391,25 @@ public final class DiscussionFeature {
   @discardableResult
   public func requestFirstPage(route: UUID, source: Source, refresh: Bool = false) -> Task<Void, Never> {
     let userID = self.sessionFeature.currentUser?.id
+    let generation = self.sessionFeature.generation
     let previous = self.pages[route]
     if !refresh, let previous, previous.source == source, previous.userID == userID,
+       previous.generation == generation,
        let request = previous.request { return request.task }
     previous?.request?.task.cancel()
-    let page = PageRoute(source: source, userID: userID)
+    let page = PageRoute(source: source, userID: userID, generation: generation)
     self.pages[route] = page
     // paginate(clearOnNewRequest:) suppressed the first clear but emitted later clears.
     if let previous {
       if case .replies = source {
         // The reply adapter's total-count signal had no value until the first
         // successful envelope. A retry after an initial failure emitted no clear.
-        page.hasReceivedPage = previous.hasReceivedPage
-        page.snapshot.totalCount = previous.snapshot.totalCount
+        if self.sessionFeature.isCurrent(userID: previous.userID, generation: previous.generation) {
+          page.hasReceivedPage = previous.hasReceivedPage
+          page.snapshot.totalCount = previous.snapshot.totalCount
+        }
         if previous.hasReceivedPage {
-          self.emitPage(.page(route, [], previous.snapshot.totalCount))
+          self.emitPage(.page(route, [], page.snapshot.totalCount))
         }
       } else {
         self.emitPage(.page(route, [], 0))
@@ -416,7 +426,7 @@ public final class DiscussionFeature {
   @discardableResult
   public func requestNextPage(route: UUID) -> Task<Void, Never>? {
     guard let page = self.pages[route],
-          page.userID == self.sessionFeature.currentUser?.id else { return nil }
+          self.sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return nil }
     if let request = page.request { return request.task }
     guard let source = page.nextSource else { return nil }
     return self.startPage(route: route, page: page, source: source, cursor: page.cursor)
@@ -442,7 +452,8 @@ public final class DiscussionFeature {
       }
       do {
         try Task.checkCancellation()
-        guard page.userID == sessionFeature.currentUser?.id else { throw CancellationError() }
+        guard sessionFeature.isCurrent(userID: page.userID, generation: page.generation)
+        else { throw CancellationError() }
         let comments: [Comment]
         let count: Int
         let nextSource: Source?
@@ -471,7 +482,7 @@ public final class DiscussionFeature {
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.pages[route]?.request?.id == requestID,
-              page.userID == sessionFeature.currentUser?.id else { return }
+              sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return }
         page.snapshot.comments = comments
         page.hasReceivedPage = true
         page.snapshot.totalCount = count
@@ -487,7 +498,7 @@ public final class DiscussionFeature {
       } catch {
         do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, let self, self.pages[route]?.request?.id == requestID,
-              page.userID == sessionFeature.currentUser?.id else { return }
+              sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return }
         let failure = (error as? ErrorEnvelope) ?? .couldNotParseJSON
         page.snapshot.error = failure
         self.emitPage(.error(route, failure))
@@ -504,10 +515,11 @@ public final class DiscussionFeature {
     let project: Param
     let id: Int
     let userID: Int?
+    let generation: Int
   }
 
   private var updates: [UUID: (identity: UpdateIdentity, id: UUID, task: Task<Update?, Never>)] = [:]
-  private var projects: [UUID: (param: Param, userID: Int?, id: UUID, task: Task<Project?, Never>)] = [:]
+  private var projects: [UUID: (param: Param, userID: Int?, generation: Int, id: UUID, task: Task<Project?, Never>)] = [:]
 
   // Deep-link navigation owns the enclosing task and validates the session
   // across the full destination load. Keep transport in Discussion.
@@ -530,7 +542,10 @@ public final class DiscussionFeature {
 
   @discardableResult
   public func requestUpdate(route: UUID, id: Int, project: Param) -> Task<Update?, Never> {
-    let identity = UpdateIdentity(project: project, id: id, userID: self.sessionFeature.currentUser?.id)
+    let identity = UpdateIdentity(
+      project: project, id: id, userID: self.sessionFeature.currentUser?.id,
+      generation: self.sessionFeature.generation
+    )
     if let existing = self.updates[route], existing.identity == identity { return existing.task }
     self.updates[route]?.task.cancel()
     let provider = self.makeProvider()
@@ -540,11 +555,11 @@ public final class DiscussionFeature {
       defer { if self?.updates[route]?.id == token { self?.updates[route] = nil } }
       do {
         try Task.checkCancellation()
-        guard identity.userID == sessionFeature.currentUser?.id else { return nil }
+        guard sessionFeature.isCurrent(userID: identity.userID, generation: identity.generation) else { return nil }
         let update = try await provider.update(id: id, project: project)
         try Task.checkCancellation()
         guard let self, self.updates[route]?.id == token,
-              identity.userID == sessionFeature.currentUser?.id else { return nil }
+              sessionFeature.isCurrent(userID: identity.userID, generation: identity.generation) else { return nil }
         return update
       } catch {
         // Existing navigation silently demotes lookup errors.
@@ -563,7 +578,9 @@ public final class DiscussionFeature {
   @discardableResult
   public func requestProject(route: UUID, param: Param) -> Task<Project?, Never> {
     let userID = self.sessionFeature.currentUser?.id
-    if let existing = self.projects[route], existing.param == param, existing.userID == userID {
+    let generation = self.sessionFeature.generation
+    if let existing = self.projects[route], existing.param == param, existing.userID == userID,
+       existing.generation == generation {
       return existing.task
     }
     self.projects[route]?.task.cancel()
@@ -574,18 +591,18 @@ public final class DiscussionFeature {
       defer { if self?.projects[route]?.id == token { self?.projects[route] = nil } }
       do {
         try Task.checkCancellation()
-        guard userID == sessionFeature.currentUser?.id else { return nil }
+        guard sessionFeature.isCurrent(userID: userID, generation: generation) else { return nil }
         let project = try await provider.project(param: param)
         try Task.checkCancellation()
         guard let self, self.projects[route]?.id == token,
-              userID == sessionFeature.currentUser?.id else { return nil }
+              sessionFeature.isCurrent(userID: userID, generation: generation) else { return nil }
         return project
       } catch {
         // Preserve the legacy context lookup's silent error delivery.
         return nil
       }
     }
-    self.projects[route] = (param, userID, token, task)
+    self.projects[route] = (param, userID, generation, token, task)
     return task
   }
 

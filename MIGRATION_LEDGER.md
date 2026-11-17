@@ -3410,6 +3410,15 @@ files against direct environment reads. All 55 focused Project Media,
 Watch Project and push-dialog tests and 103 Project Page and Discovery
 card regression tests passed on the simulator.
 
+Discussion binds comment pagination, snapshots and project/update route
+lookups to the Session generation. A replacement session cannot consume an
+old page cursor or share an old update lookup, even with the same user ID.
+The final simulator run passed 105 Discussion, Comments, Comment Replies,
+Deep Link Router and Project Updates tests, including both signed-in
+replacement-session regressions. Discussion still reads URL configuration,
+request preparation, optimistic comment metadata and response timing from
+the environment.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

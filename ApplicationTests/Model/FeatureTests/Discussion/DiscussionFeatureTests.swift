@@ -529,6 +529,32 @@ final class DiscussionFeatureTests: TestCase {
     XCTAssertEqual(provider.requests.count, 2)
   }
 
+  func testSameUserSessionReplacementDiscardsPageAndCursor() async throws {
+    AppEnvironment.login(.init(accessToken: "discussion-fixture", user: .template))
+    let provider = ControlledDiscussionProvider()
+    let feature = self.feature(provider)
+    let route = UUID()
+    defer { provider.releaseAll() }
+    provider.envelope.cursor = "old-session"
+    await feature.loadFirstPage(route: route, source: .project("test"))
+    XCTAssertFalse(feature.snapshot(for: route).comments.isEmpty)
+
+    provider.pause = true
+    let pending = try XCTUnwrap(feature.requestNextPage(route: route))
+    await provider.waitForRequests(2)
+    feature.sessionFeature.sessionChanged()
+    XCTAssertTrue(feature.snapshot(for: route).comments.isEmpty)
+    XCTAssertNil(feature.requestNextPage(route: route))
+    try provider.finish(0, envelope: .multipleCommentTemplate)
+    await pending.value
+    XCTAssertTrue(feature.snapshot(for: route).comments.isEmpty)
+
+    provider.pause = false
+    await feature.loadFirstPage(route: route, source: .project("test"))
+    XCTAssertEqual(provider.requests.map(\.cursor), [nil, "old-session", nil])
+    XCTAssertFalse(feature.snapshot(for: route).comments.isEmpty)
+  }
+
   func testMissingEnvelopeDoesNotInventEmptyPageOrVisibleError() async {
     let provider = ControlledDiscussionProvider()
     let feature = self.feature(provider)
@@ -587,6 +613,26 @@ final class DiscussionFeatureTests: TestCase {
     XCTAssertNil(firstValue)
     XCTAssertNil(duplicateValue)
     XCTAssertEqual(provider.updateIDs, [1, 2])
+  }
+
+  func testUpdateRequestsAreIndependentAcrossSameUserSessions() async throws {
+    AppEnvironment.login(.init(accessToken: "discussion-fixture", user: .template))
+    let provider = ControlledDiscussionProvider()
+    provider.pauseUpdates = true
+    defer { provider.releaseAll() }
+    let feature = self.feature(provider)
+    let route = UUID()
+    let stale = feature.requestUpdate(route: route, id: 1, project: .slug("test"))
+    await provider.waitForUpdates(1)
+    feature.sessionFeature.sessionChanged()
+    let current = feature.requestUpdate(route: route, id: 1, project: .slug("test"))
+    await provider.waitForUpdates(2)
+    try provider.finishUpdate(0, id: 1)
+    try provider.finishUpdate(1, id: 1)
+    let staleValue = await stale.value
+    let currentValue = await current.value
+    XCTAssertNil(staleValue)
+    XCTAssertEqual(currentValue?.id, 1)
   }
 
   func testContextAndUpdateRoutesAreIndependentAndFailuresStaySilent() async {
