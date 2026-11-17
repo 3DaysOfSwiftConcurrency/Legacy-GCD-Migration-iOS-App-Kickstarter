@@ -3401,3 +3401,10 @@ AppDelegate supplies the feature to OnboardingView and records completion
 directly when dismissing onboarding for login. The existing launch push
 authorization and presentation timing are preserved. All 18 focused
 Onboarding and AppModel tests and 124 AppDelegate presentation tests passed.
+
+The onboarding login action now calls its presenting boundary directly.
+AppDelegate uses the same login presenter for onboarding and deep-link
+intents. The app-wide onboarding login notification and legacy forwarding
+input were removed. All 29 focused model tests and 123 AppDelegate
+presentation tests passed. The presentation suite passed on retry after a
+busy simulator initially rejected the runner launch.

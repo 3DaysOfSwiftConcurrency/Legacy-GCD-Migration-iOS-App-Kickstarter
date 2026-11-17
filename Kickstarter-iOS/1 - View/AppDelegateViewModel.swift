@@ -64,9 +64,6 @@ public protocol AppDelegateViewModelInputs {
   func resolveEmailRedirect(_ url: URL)
   func foundRedirectUrl(_ url: URL)
 
-  /// Call when the users taps 'Log in or Sign up' from the onboarding flow (`OnboardingView`).
-  func goToLoginSignup(from intent: LoginIntent)
-
   /// Call when Remote Config configuration has failed
   func remoteConfigClientConfigurationFailed()
 
@@ -581,10 +578,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func foundRedirectUrl(_ url: URL) {
     self.handleURL(url)
-  }
-
-  public func goToLoginSignup(from intent: LoginIntent) {
-    self.onGoToLoginWithIntent?(intent)
   }
 
   public func applicationOpenUrl(

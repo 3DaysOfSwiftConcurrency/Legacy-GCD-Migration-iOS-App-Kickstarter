@@ -23,14 +23,16 @@ public struct OnboardingView: View {
   @Namespace private var animation
   @State private var currentIndex: Int = 0
   @State private var onboardingItems: [OnboardingItem] = []
+  private let onLogin: @MainActor () -> Void
 
   private var progress: Double {
     let onboardingItemsCount = self.onboardingItems.isEmpty ? 1 : Double(self.onboardingItems.count)
     return Double(self.currentIndex + 1) / onboardingItemsCount
   }
 
-  public init(onboardingFeature: OnboardingFeature) {
+  public init(onboardingFeature: OnboardingFeature, onLogin: @escaping @MainActor () -> Void) {
     self._viewModel = State(initialValue: OnboardingViewModel(onboardingFeature: onboardingFeature))
+    self.onLogin = onLogin
   }
 
   public var body: some View {
@@ -119,8 +121,7 @@ public struct OnboardingView: View {
     case .allowTracking:
       self.viewModel.allowTrackingTapped()
     case .loginSignUp:
-      /// Triggers the `goToLoginFromOnboarding` notification to inform the AppDelegate to dismiss this view and launch the login/signup flow.
-      NotificationCenter.default.post(name: .ksr_goToLoginFromOnboarding, object: nil)
+      self.onLogin()
       self.viewModel.goToLoginSignupTapped()
     }
   }

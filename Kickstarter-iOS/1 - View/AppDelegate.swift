@@ -186,20 +186,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     self.viewModel.outputs.onGoToLoginWithIntent = { [weak self] intent in
-      DispatchQueue.main.async { [weak self] in
-        /// Dismiss OnboardingView if present so that we can correctly present the LoginToutViewController.
-        if let onboardingView = self?.rootTabBarController?
-          .presentedViewController as? UIHostingController<OnboardingView> {
-          onboardingView.dismiss(animated: true)
-          AppModel.shared.onboardingFeature.recordCompletion()
-        }
-
-        let vc = LoginToutViewController.configuredWith(loginIntent: intent)
-        let nav = UINavigationController(rootViewController: vc)
-        nav.modalPresentationStyle = .formSheet
-
-        self?.rootTabBarController?.present(nav, animated: true, completion: nil)
-      }
+      self?.presentLogin(with: intent)
     }
 
     self.viewModel.outputs.onGoToMessageThread = { [weak self] thread in
@@ -235,7 +222,9 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         guard let rootTabBarController = self?.rootTabBarController else { return }
 
         let onboardingVC = UIHostingController(
-          rootView: OnboardingView(onboardingFeature: AppModel.shared.onboardingFeature)
+          rootView: OnboardingView(onboardingFeature: AppModel.shared.onboardingFeature) { [weak self] in
+            self?.presentLogin(with: .onboarding)
+          }
         )
         /// Onboarding flow should not respond to light/dark mode preference.
         onboardingVC.overrideUserInterfaceStyle = .light
@@ -245,17 +234,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         rootTabBarController.present(onboardingVC, animated: true, completion: nil)
       }
     }
-
-    NotificationCenter.default
-      .addObserver(
-        forName: Notification.Name.ksr_goToLoginFromOnboarding,
-        object: nil,
-        queue: .main
-      ) { [weak self] _ in
-        MainActor.assumeIsolated {
-          self?.viewModel.inputs.goToLoginSignup(from: .onboarding)
-        }
-      }
 
     self.viewModel.outputs.onShowAlert = { [weak self] notification in
       DispatchQueue.main.async { [weak self] in self?.presentContextualPermissionAlert(notification) }
@@ -457,6 +435,21 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         ?? self.rootTabBarController else { return }
     self.permissionAlertPresenter.schedule(context: context, presenter: presenter) { [weak self] in
       self?.viewModel.inputs.didAcceptReceivingRemoteNotifications()
+    }
+  }
+
+  private func presentLogin(with intent: LoginIntent) {
+    DispatchQueue.main.async { [weak self] in
+      guard let root = self?.rootTabBarController else { return }
+      if let onboarding = root.presentedViewController as? UIHostingController<OnboardingView> {
+        onboarding.dismiss(animated: true)
+        AppModel.shared.onboardingFeature.recordCompletion()
+      }
+
+      let controller = LoginToutViewController.configuredWith(loginIntent: intent)
+      let navigation = UINavigationController(rootViewController: controller)
+      navigation.modalPresentationStyle = .formSheet
+      root.present(navigation, animated: true, completion: nil)
     }
   }
 
