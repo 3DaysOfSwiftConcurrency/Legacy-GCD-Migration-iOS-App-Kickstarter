@@ -72,7 +72,7 @@ reject_matches 'Pledge CTA and shipping view models must receive their dependenc
 reject_matches 'Pledge management view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$manage_pledge_view_model" "$cancel_pledge_view_model"
 reject_matches 'Pledge owns managed pledge eligibility and reward amounts.' \
-  'ManagePledgeAlertAction[.]allCases|[.]isPledgeOverTimeAllowed|[.]status == [.]errored|[.]paymentIncrements[.]isEmpty|[.]addingCurrency[(]' \
+  'ManagePledgeAlertAction[.]allCases|[.]isPledgeOverTimeAllowed|[.]status == [.]errored|[.]paymentIncrements[.]isEmpty|[.]addingCurrency[(]|Project[.]lens[.]personalization[.]backing' \
   "$manage_pledge_view_model"
 reject_matches 'Pledge keeps the session collaborator private to its feature.' \
   'pledgeFeature[.]sessionFeature' "$app_view"

@@ -1,4 +1,5 @@
 import KsApi
+import Prelude
 
 public enum ManagePledgeAction: CaseIterable {
   case editPledgeOverTimePledge
@@ -46,5 +47,34 @@ struct ManagedPledge {
       total.addingCurrency(addOn.minimum)
     }
     return baseRewardAmount + addOnAmount
+  }
+}
+
+struct ManagedPledgeDetails {
+  let project: Project
+  let pledge: ManagedPledge
+  let viewerIsCreator: Bool
+
+  func paymentSelection(context: PledgeViewContext) -> PledgeViewData {
+    PledgeViewData(
+      project: self.project,
+      rewards: self.pledge.rewards,
+      bonusSupport: nil,
+      selectedShippingRule: nil,
+      selectedQuantities: selectedRewardQuantities(in: self.pledge.backing),
+      selectedLocationId: self.pledge.backing.locationId,
+      refTag: nil,
+      context: context
+    )
+  }
+}
+
+extension PledgeFeature {
+  func managedPledgeDetails(project: Project, backing: Backing) -> ManagedPledgeDetails {
+    ManagedPledgeDetails(
+      project: project |> Project.lens.personalization.backing .~ backing,
+      pledge: ManagedPledge(backing: backing),
+      viewerIsCreator: self.viewerIsCreator(of: project)
+    )
   }
 }

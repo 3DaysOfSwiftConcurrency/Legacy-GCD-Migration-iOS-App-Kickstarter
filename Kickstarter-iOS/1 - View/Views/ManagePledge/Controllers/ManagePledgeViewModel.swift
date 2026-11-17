@@ -68,19 +68,10 @@ public final class ManagePledgeViewModel:
   private var loadedSession: PledgeFeature.SessionIdentity?
   private var configuredParams: ManagePledgeViewParamConfigData?
   private var hasLoadedView = false
-  private var configuredBackingWasProvided = false
-  private var currentBackingParam: Param?
   private var rightBarHidden: Bool?
   private var paymentMethodHidden: Bool?
-  private var visibilityBacking: Backing?
-  private var visibilityIsCreator: Bool?
-  private var backingHasLoaded = false
-  private var currentProject: Project?
   private var loadedProject: Project?
   private var loadedBacking: Backing?
-  private var titleProject: Project?
-  private var titleIsCreator: Bool?
-  private var currentRewards: [Reward]?
   private var hasSeenDisallowedCancellation = false
   private let projectRoute = UUID()
   private var projectReadTask: Task<Void, Never>?
@@ -125,20 +116,22 @@ public final class ManagePledgeViewModel:
     self.schedule = schedule
   }
 
-  private func presentCombined() {
-    guard let loadedProject, let backing = self.loadedBacking else { return }
-    let project = loadedProject |> Project.lens.personalization.backing .~ backing
-    let rewards = ManagedPledge(backing: backing).rewards
-    let isCreator = self.pledgeFeature.viewerIsCreator(of: project)
-    self.currentProject = project
-    self.currentRewards = rewards
+  private var displayedPledge: ManagedPledgeDetails? {
+    guard self.presentsCurrentSession, let project = self.loadedProject, let backing = self.loadedBacking
+    else { return nil }
+    return self.pledgeFeature.managedPledgeDetails(project: project, backing: backing)
+  }
+
+  private func presentCombined(paymentMethodAlreadyPresented: Bool) {
+    guard let details = self.displayedPledge else { return }
+    let project = details.project
+    let backing = details.pledge.backing
+    let rewards = details.pledge.rewards
+    let isCreator = details.viewerIsCreator
     self.onLoadProjectAndRewards?(project, rewards)
     self.setRightBarHidden(false)
-    self.titleProject = project
-    self.titleIsCreator = isCreator
-    self.updateTitle()
-    self.visibilityIsCreator = isCreator
-    self.updatePaymentMethodVisibility()
+    self.onTitle?(navigationBarTitle(with: project, userIsCreatorOfProject: isCreator))
+    if paymentMethodAlreadyPresented { self.updatePaymentMethodVisibility() }
     self.onPledgeDetailsLabel?(isCreator ? Strings.Pledge_details() : Strings.Your_pledge_details())
 
     let latestDelivery = rewards.compactMap(\.estimatedDeliveryOn).reduce(0, max)
@@ -172,12 +165,10 @@ public final class ManagePledgeViewModel:
     }
   }
 
-  private func presentBacking(_ backing: Backing) {
+  private func presentBacking(_ backing: Backing, replacingBacking: Bool) {
     if !backing.cancelable { self.hasSeenDisallowedCancellation = true }
-    if self.backingHasLoaded { self.onFinish?(nil) }
-    self.backingHasLoaded = true
+    if replacingBacking { self.onFinish?(nil) }
     self.onPaymentMethod?(managePledgePaymentMethodViewData(with: backing))
-    self.visibilityBacking = backing
     self.updatePaymentMethodVisibility()
     let enabled = ManagedPledge(backing: backing).hasPaymentSchedule
     self.onPlotScheduleHidden?(!enabled)
@@ -215,9 +206,10 @@ public final class ManagePledgeViewModel:
         self?.scheduleReadResult { [weak self] in
           guard let self, self.backingReadIdentity.id == id,
                 pledgeFeature.sessionIdentity == session else { return }
+          let replacingBacking = self.loadedBacking != nil
           self.loadedBacking = backing
-          self.presentCombined()
-          self.presentBacking(backing)
+          self.presentCombined(paymentMethodAlreadyPresented: false)
+          self.presentBacking(backing, replacingBacking: replacingBacking)
           self.scheduleRefreshEnd(session: session)
         }
       } catch is CancellationError {
@@ -249,12 +241,11 @@ public final class ManagePledgeViewModel:
         self?.scheduleReadResult { [weak self] in
           guard let self, self.projectReadIdentity.id == id,
                 pledgeFeature.sessionIdentity == session else { return }
-          if !self.configuredBackingWasProvided, let backingID = project.personalization.backing?.id {
-            self.currentBackingParam = .id(backingID)
+          self.loadedProject = project
+          if self.configuredParams?.backingParam == nil, let backingID = project.personalization.backing?.id {
             self.loadBacking(backingID)
           }
-          self.loadedProject = project
-          self.presentCombined()
+          self.presentCombined(paymentMethodAlreadyPresented: true)
         }
       } catch is CancellationError {
         return
@@ -274,22 +265,17 @@ public final class ManagePledgeViewModel:
 
   private func prepareSession() {
     guard !self.presentsCurrentSession else { return }
+    self.resetLoadedPledge()
+  }
+
+  private func resetLoadedPledge() {
     self.loadedSession = self.pledgeFeature.sessionIdentity
     self.projectReadTask?.cancel()
     self.projectReadIdentity.id = nil
     self.backingReadTask?.cancel()
     self.backingReadIdentity.id = nil
-    self.currentBackingParam = self.configuredParams?.backingParam
-    self.configuredBackingWasProvided = self.currentBackingParam != nil
     self.loadedProject = nil
     self.loadedBacking = nil
-    self.currentProject = nil
-    self.currentRewards = nil
-    self.titleProject = nil
-    self.titleIsCreator = nil
-    self.visibilityBacking = nil
-    self.visibilityIsCreator = nil
-    self.backingHasLoaded = false
     self.hasSeenDisallowedCancellation = false
     self.setRightBarHidden(true)
   }
@@ -298,49 +284,43 @@ public final class ManagePledgeViewModel:
     self.prepareSession()
     self.onStartRefreshing?()
     self.fetchProjectIfNeeded()
-    if let id = self.currentBackingParam?.id { self.loadBacking(id) }
+    if let backingParam = self.configuredParams?.backingParam {
+      if let id = backingParam.id { self.loadBacking(id) }
+    } else if let id = self.loadedProject?.personalization.backing?.id {
+      self.loadBacking(id)
+    }
   }
 
   public func configureWith(_ params: ManagePledgeViewParamConfigData) {
+    let previous = self.configuredParams
     self.configuredParams = params
+    if self.hasLoadedView, let previous,
+       previous.projectParam != params.projectParam || previous.backingParam != params.backingParam {
+      self.resetLoadedPledge()
+    }
     self.publishParamsWhenReady()
   }
 
   private func publishParamsWhenReady() {
     guard self.hasLoadedView, let params = self.configuredParams else { return }
     self.prepareSession()
-    if let backing = params.backingParam {
-      self.configuredBackingWasProvided = true
-      self.currentBackingParam = backing
-      if let id = backing.id { self.loadBacking(id) }
-    }
+    if let id = params.backingParam?.id { self.loadBacking(id) }
     self.setRightBarHidden(true)
     self.onStartRefreshing?()
     self.fetchProjectIfNeeded()
   }
 
-  private func updateTitle() {
-    guard let project = self.titleProject, let isCreator = self.titleIsCreator else { return }
-    self.onTitle?(navigationBarTitle(with: project, userIsCreatorOfProject: isCreator))
-  }
-
   private func handleLoadError() {
-    if !self.backingHasLoaded {
+    if self.loadedBacking == nil {
       self.onLoadRefreshHeader?()
       self.setRightBarHidden(true)
     }
     self.onShowError?(Strings.Something_went_wrong_please_try_again())
   }
 
-  private func paymentMethodData(context: PledgeViewContext) -> PledgeViewData? {
-    guard let project = self.currentProject, let backing = self.visibilityBacking,
-          let rewards = self.currentRewards else { return nil }
-    return pledgeViewData(project: project, backing: backing, rewards: rewards, context: context)
-  }
-
   private func updatePaymentMethodVisibility() {
-    guard let backing = self.visibilityBacking, let isCreator = self.visibilityIsCreator else { return }
-    let hidden = !ManagedPledge(backing: backing).showsPaymentMethod(viewerIsCreator: isCreator)
+    guard let details = self.displayedPledge else { return }
+    let hidden = !details.pledge.showsPaymentMethod(viewerIsCreator: details.viewerIsCreator)
     guard self.paymentMethodHidden != hidden else { return }
     self.paymentMethodHidden = hidden
     self.onPaymentMethodHidden?(hidden)
@@ -362,33 +342,30 @@ public final class ManagePledgeViewModel:
   }
 
   public func fixButtonTapped() {
-    guard self.presentsCurrentSession else { return }
-    guard let data = self.paymentMethodData(context: .fixPaymentMethod) else { return }
-    self.onFixPaymentMethod?(data)
+    guard let details = self.displayedPledge else { return }
+    self.onFixPaymentMethod?(details.paymentSelection(context: .fixPaymentMethod))
   }
 
   public func menuButtonTapped() {
-    guard self.presentsCurrentSession else { return }
-    guard let project = self.currentProject, let backing = self.visibilityBacking,
-          let isCreator = self.visibilityIsCreator else { return }
-    self.onShowMenu?(ManagedPledge(backing: backing).availableActions(for: project, viewerIsCreator: isCreator))
+    guard let details = self.displayedPledge else { return }
+    self.onShowMenu?(details.pledge.availableActions(for: details.project, viewerIsCreator: details.viewerIsCreator))
   }
 
   public func menuOptionSelected(with action: ManagePledgeAlertAction) {
-    guard self.presentsCurrentSession else { return }
+    guard let details = self.displayedPledge else { return }
+    let project = details.project
     switch action {
     case .chooseAnotherReward, .viewRewards:
-      if let project = self.currentProject { self.onRewards?(project) }
+      self.onRewards?(project)
     case .editPledgeOverTimePledge:
-      if let project = self.currentProject { self.onEditPledgeOverTime?(project) }
+      self.onEditPledgeOverTime?(project)
     case .contactCreator:
-      if let project = self.currentProject {
-        self.onContactCreator?(.project(id: project.id, name: project.name), .backerModal)
-      }
+      self.onContactCreator?(.project(id: project.id, name: project.name), .backerModal)
     case .changePaymentMethod:
-      if let data = self.paymentMethodData(context: .changePaymentMethod) { self.onChangePaymentMethod?(data) }
+      self.onChangePaymentMethod?(details.paymentSelection(context: .changePaymentMethod))
     case .cancelPledge:
-      if let project = self.currentProject, let backing = self.visibilityBacking, backing.cancelable {
+      let backing = details.pledge.backing
+      if backing.cancelable {
         self.onCancelPledge?(cancelPledgeViewData(with: project, backing: backing))
       }
       if self.hasSeenDisallowedCancellation {
@@ -440,24 +417,6 @@ public final class ManagePledgeViewModel:
 }
 
 // MARK: - Functions
-
-private func pledgeViewData(
-  project: Project,
-  backing: Backing,
-  rewards: [Reward],
-  context: PledgeViewContext
-) -> PledgeViewData {
-  return PledgeViewData(
-    project: project,
-    rewards: rewards,
-    bonusSupport: nil,
-    selectedShippingRule: nil,
-    selectedQuantities: selectedRewardQuantities(in: backing),
-    selectedLocationId: backing.locationId,
-    refTag: nil,
-    context: context
-  )
-}
 
 private func navigationBarTitle(
   with project: Project,

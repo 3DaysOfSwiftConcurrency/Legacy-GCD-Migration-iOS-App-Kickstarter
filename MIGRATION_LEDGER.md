@@ -3853,3 +3853,20 @@ reward receipt, cancellation, and checkout regressions. New model tests
 verify menu order and repair eligibility. Visual parity and live
 payment behavior remain unverified. The Manage Pledge ViewModel still
 stores overlapping copies of loaded and displayed pledge data.
+
+### Manage Pledge loaded data and navigation — Matthew Thomas
+
+The Manage Pledge ViewModel keeps one loaded project and backing.
+Pledge combines them into the details used for the title, summary,
+menu, and payment navigation. A different route or session clears the
+loaded pair before actions become available. A checkout action triggered
+while presenting a refreshed backing receives that backing's location
+and project.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 103 focused Manage
+Pledge and Pledge Feature tests and 118 bounded checkout, reward,
+installment, and cancellation regressions. The first focused run
+caught a change in refresh completion after a failed read. Restoring the
+existing refresh completion behavior resolved the failure. The remaining
+Manage Pledge task ownership gap is the unretained presentation delay.
+Live payments and visual parity remain unverified.

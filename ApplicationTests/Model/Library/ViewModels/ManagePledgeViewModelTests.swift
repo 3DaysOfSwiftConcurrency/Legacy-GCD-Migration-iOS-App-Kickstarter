@@ -232,6 +232,62 @@ internal final class ManagePledgeViewModelTests: TestCase {
     }
   }
 
+  func testReplacingRouteReloadsProjectAndBackingBeforeShowingActions() async {
+    let original = MockService(
+      fetchManagePledgeViewBackingResult: .success(.template),
+      fetchProjectResult: .success(.template),
+      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
+    )
+    let nextProject = Project.template |> Project.lens.name .~ "Next pledge"
+    let nextBacking = Backing.template |> Backing.lens.locationId .~ .some(54321)
+    let replacement = MockService(
+      fetchManagePledgeViewBackingResult: .success(nextBacking),
+      fetchProjectResult: .success(nextProject),
+      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
+    )
+
+    await withEnvironment(apiService: original, currentUser: .template) {
+      self.vm.inputs.configureWith((.slug("original"), .id(1)))
+      self.vm.inputs.viewDidLoad()
+      await self.runPledges()
+
+      await withEnvironment(apiService: replacement) {
+        self.vm.inputs.configureWith((.slug("replacement"), .id(2)))
+        self.vm.inputs.menuButtonTapped()
+        self.showActionSheetMenuWithOptions.assertDidNotEmitValue()
+
+        await self.runPledges()
+        self.vm.inputs.fixButtonTapped()
+        XCTAssertEqual(self.goToFixPaymentMethod.lastValue?.project.name, nextProject.name)
+        XCTAssertEqual(self.goToFixPaymentMethod.lastValue?.selectedLocationId, nextBacking.locationId)
+      }
+    }
+  }
+
+  func testCheckoutNavigationDuringRefreshUsesTheBackingBeingPresented() async {
+    let original = MockService(
+      fetchManagePledgeViewBackingResult: .success(.template),
+      fetchProjectResult: .success(.template),
+      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
+    )
+    let changedBacking = Backing.template |> Backing.lens.locationId .~ .some(54321)
+    let refresh = MockService(fetchManagePledgeViewBackingResult: .success(changedBacking))
+
+    await withEnvironment(apiService: original, currentUser: .template) {
+      self.vm.inputs.configureWith((.slug("project"), .id(1)))
+      self.vm.inputs.viewDidLoad()
+      await self.runPledges()
+
+      self.vm.outputs.onLoadProjectAndRewards = { [weak self] _, _ in self?.vm.inputs.fixButtonTapped() }
+      await withEnvironment(apiService: refresh) {
+        self.vm.inputs.beginRefresh()
+        await self.runPledges()
+        XCTAssertEqual(self.goToFixPaymentMethod.lastValue?.selectedLocationId, changedBacking.locationId)
+        XCTAssertEqual(self.goToFixPaymentMethod.lastValue?.project.personalization.backing, changedBacking)
+      }
+    }
+  }
+
   func testNavigationBarTitle_FinishedProject() async {
     self.title.assertDidNotEmitValue()
 
