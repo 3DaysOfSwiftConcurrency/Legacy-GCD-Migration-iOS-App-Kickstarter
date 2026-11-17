@@ -432,7 +432,12 @@ public final class AppModel {
       rewardsFeature: RewardsFeature(
         platform: .live(),
         sessionFeature: sessionFeature,
-        makeProvider: { AsyncRewardsProvider(service: AppEnvironment.current.apiService) }
+        makeProvider: { AsyncRewardsProvider(service: AppEnvironment.current.apiService) },
+        hasEligibleApplePayCard: {
+          AppEnvironment.current.applePayCapabilities.applePayCapable(
+            for: $0, launchedCountries: AppEnvironment.current.launchedCountries
+          )
+        }
       ),
       discussionFeature: discussionFeature,
       projectMediaFeature: ProjectMediaFeature(

@@ -230,6 +230,7 @@ public final class RewardsFeature {
   private let platform: Platform
   private let fastCheckout: @MainActor () -> Bool
   private let moveNoReward: @MainActor () -> Bool
+  private let applePayEligibility: @MainActor (Project) -> Bool
   private let sleep: @MainActor (TimeInterval) async throws -> Void
 
   public init(
@@ -243,6 +244,7 @@ public final class RewardsFeature {
       MoveNoRewardOptionExperiment().boolValue(forKey: .show_no_reward_after_available_rewards)
         == true
     },
+    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool = { _ in false },
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite {
         try await Task.sleep(nanoseconds: UInt64.max)
@@ -257,7 +259,12 @@ public final class RewardsFeature {
     self.platform = platform
     self.fastCheckout = fastCheckout
     self.moveNoReward = moveNoReward
+    self.applePayEligibility = hasEligibleApplePayCard
     self.sleep = sleep
+  }
+
+  public func hasEligibleApplePayCard(for project: Project) -> Bool {
+    self.applePayEligibility(project)
   }
 
   public func snapshot(for route: UUID) -> Snapshot {

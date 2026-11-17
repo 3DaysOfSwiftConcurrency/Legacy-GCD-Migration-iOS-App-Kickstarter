@@ -57,7 +57,6 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
   RewardAddOnSelectionViewModelOutputs
 {
   private let rewardsFeature: RewardsFeature
-  private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
   private var pendingConfiguration: PledgeViewData?
   private var isLoaded = false
   private let addOnsRoute = UUID()
@@ -111,9 +110,8 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
     let route = self.addOnsRoute
     Task { @MainActor in rewardsFeature.releaseAddOns(route: route) }
   }
-  public init(rewardsFeature: RewardsFeature, hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool) {
+  public init(rewardsFeature: RewardsFeature) {
     self.rewardsFeature = rewardsFeature
-    self.hasEligibleApplePayCard = hasEligibleApplePayCard
   }
 
   private func applyConfiguration(_ data: PledgeViewData) {
@@ -194,7 +192,7 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
       from: project, baseReward: reward, addOnRewards: rewards,
       selectedQuantities: config.selectedQuantities, additionalPledgeAmount: bonus,
       pledgeTotal: total, shippingTotal: 0, isApplePay: nil,
-      hasEligibleApplePayCard: self.hasEligibleApplePayCard(project)
+      hasEligibleApplePayCard: self.rewardsFeature.hasEligibleApplePayCard(for: project)
     )
     AppEnvironment.current.ksrAnalytics.trackAddOnsPageViewed(
       project: project, reward: reward, checkoutData: data, refTag: config.refTag
@@ -352,7 +350,7 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
       from: config.project, baseReward: reward, addOnRewards: rewards,
       selectedQuantities: quantities, additionalPledgeAmount: bonus,
       pledgeTotal: total, shippingTotal: 0, isApplePay: nil,
-      hasEligibleApplePayCard: self.hasEligibleApplePayCard(config.project)
+      hasEligibleApplePayCard: self.rewardsFeature.hasEligibleApplePayCard(for: config.project)
     )
     AppEnvironment.current.ksrAnalytics.trackAddOnsContinueButtonClicked(
       project: config.project, reward: reward, checkoutData: data, refTag: config.refTag

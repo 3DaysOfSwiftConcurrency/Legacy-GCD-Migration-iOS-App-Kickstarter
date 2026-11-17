@@ -14,13 +14,15 @@ final class RewardAddOnSelectionViewModelTests: TestCase {
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncRewardsProvider(service: AppEnvironment.current.apiService)
-    })
-  private lazy var vm: RewardAddOnSelectionViewModelType = RewardAddOnSelectionViewModel(
-    rewardsFeature: self.feature, hasEligibleApplePayCard: {
+    },
+    hasEligibleApplePayCard: {
       AppEnvironment.current.applePayCapabilities.applePayCapable(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
     })
+  private lazy var vm: RewardAddOnSelectionViewModelType = RewardAddOnSelectionViewModel(
+    rewardsFeature: self.feature
+  )
   private func advanceAddOns() async {
     await self.feature.waitForAddOns()
 

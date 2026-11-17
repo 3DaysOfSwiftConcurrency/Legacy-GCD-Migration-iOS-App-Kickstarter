@@ -18,7 +18,6 @@ final class RewardsCollectionViewModel {
   }
   var onEvent: ((Event) -> Void)?
   private let rewardsFeature: RewardsFeature
-  private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
   private let route = UUID()
   internal private(set) var loadingTask: Task<Void, Never>?
   private var loadingGeneration = UUID()
@@ -35,9 +34,8 @@ final class RewardsCollectionViewModel {
   private var pendingPledge: (PledgeViewData, Bool)?
   private var showDivider: Bool?
 
-  init(rewardsFeature: RewardsFeature, hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool) {
+  init(rewardsFeature: RewardsFeature) {
     self.rewardsFeature = rewardsFeature
-    self.hasEligibleApplePayCard = hasEligibleApplePayCard
   }
   deinit {
     self.loadingTask?.cancel()
@@ -187,7 +185,7 @@ final class RewardsCollectionViewModel {
       from: project, baseReward: reward, addOnRewards: backing?.addOns ?? [], selectedQuantities: [:],
       additionalPledgeAmount: backing?.bonusAmount ?? 0, pledgeTotal: backing?.amount ?? reward.minimum,
       shippingTotal: shippingTotal ?? 0, isApplePay: nil,
-      hasEligibleApplePayCard: self.hasEligibleApplePayCard(project)
+      hasEligibleApplePayCard: self.rewardsFeature.hasEligibleApplePayCard(for: project)
     )
     AppEnvironment.current.ksrAnalytics.trackRewardsViewed(project: project, checkoutPropertiesData: properties, refTag: refTag)
   }
@@ -197,7 +195,7 @@ final class RewardsCollectionViewModel {
       from: project, baseReward: reward, addOnRewards: backing?.addOns ?? [], selectedQuantities: [reward.id: 1],
       additionalPledgeAmount: backing?.bonusAmount ?? 0, pledgeTotal: backing?.amount ?? reward.minimum,
       shippingTotal: shippingTotal ?? 0, isApplePay: nil,
-      hasEligibleApplePayCard: self.hasEligibleApplePayCard(project)
+      hasEligibleApplePayCard: self.rewardsFeature.hasEligibleApplePayCard(for: project)
     )
     AppEnvironment.current.ksrAnalytics.trackRewardClicked(project: project, reward: reward, checkoutPropertiesData: properties, refTag: refTag)
   }

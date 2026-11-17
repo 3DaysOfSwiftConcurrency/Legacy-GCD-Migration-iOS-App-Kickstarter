@@ -5224,3 +5224,24 @@ Live Apple Pay authorization, physical-device behavior, visual rendering and the
 Library suite remain unverified. The CFA gate rejects restored ambient environment access
 in reusable payment-country policy. This is not full CFA compliance. Swift packages,
 target identifiers and existing history are unchanged. No push.
+
+### Rewards Apple Pay eligibility composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now supplies Apple Pay eligibility to RewardsFeature. RewardsCollectionViewModel
+and RewardAddOnSelectionViewModel ask that owning Feature when producing pledge navigation
+data; they no longer accept parallel policy closures. Their controllers no longer reach
+into AppEnvironment for Apple Pay capability composition.
+
+Focused RewardsFeature, Rewards Collection and Reward Add-On Selection validation passed
+all 53 tests. The bounded AppModel, PaymentsFeature, Manage Pledge, pledge checkout and
+post-campaign checkout selection passed all 178 tests. Both successful runs had zero
+failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-rewards-apple-pay-composition-focused.xcresult` and
+`/private/tmp/kickstarter-rewards-apple-pay-composition-bounded.xcresult`.
+
+Live Apple Pay authorization, visual rendering and the whole Library suite remain
+unverified. The CFA gate rejects restored platform composition in the two reward-selection
+screens. This is not full CFA compliance. Swift packages, target identifiers and existing
+history are unchanged. No push.

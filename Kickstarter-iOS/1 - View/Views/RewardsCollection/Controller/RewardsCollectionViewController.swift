@@ -47,14 +47,7 @@ final class RewardsCollectionViewController: UICollectionViewController {
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
-  private let viewModel = RewardsCollectionViewModel(
-    rewardsFeature: AppModel.shared.rewardsFeature,
-    hasEligibleApplePayCard: {
-      AppEnvironment.current.applePayCapabilities.applePayCapable(
-        for: $0, launchedCountries: AppEnvironment.current.launchedCountries
-      )
-    }
-  )
+  private let viewModel = RewardsCollectionViewModel(rewardsFeature: AppModel.shared.rewardsFeature)
 
   static func instantiate(
     with project: Project,

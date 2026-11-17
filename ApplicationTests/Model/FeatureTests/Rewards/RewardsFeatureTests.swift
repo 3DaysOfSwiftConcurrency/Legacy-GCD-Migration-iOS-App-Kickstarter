@@ -22,6 +22,18 @@ final class RewardsFeatureTests: TestCase {
     )
   }
 
+  func testApplePayEligibilityUsesComposedPolicy() {
+    let feature = RewardsFeature(
+      platform: .live(),
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      makeProvider: { ControlledRewardsProvider() },
+      hasEligibleApplePayCard: { $0.id == 42 }
+    )
+
+    XCTAssertTrue(feature.hasEligibleApplePayCard(for: Project.template |> Project.lens.id .~ 42))
+    XCTAssertFalse(feature.hasEligibleApplePayCard(for: Project.template |> Project.lens.id .~ 7))
+  }
+
   func testPreservesOrderAndShippingRulesAndFiltersFutureRewards() async {
     let provider = ControlledRewardsProvider()
     let future = Reward.template |> Reward.lens.startsAt .~ Date.distantFuture.timeIntervalSince1970
@@ -510,7 +522,7 @@ extension RewardsFeatureTests {
   func testAddOnCardsDoNotCombineOldRewardsWithNewProject() async throws {
     let fixture = AddOnsFixture()
     defer { fixture.provider.gate.releaseAll() }
-    let vm = RewardAddOnSelectionViewModel(rewardsFeature: fixture.feature, hasEligibleApplePayCard: { _ in false })
+    let vm = RewardAddOnSelectionViewModel(rewardsFeature: fixture.feature)
     var cards: [RewardAddOnCardViewData] = []
     vm.outputs.onLoadAndReloadRewards = {
       cards.append(contentsOf: $0.compactMap(\.rewardAddOnCardViewData))

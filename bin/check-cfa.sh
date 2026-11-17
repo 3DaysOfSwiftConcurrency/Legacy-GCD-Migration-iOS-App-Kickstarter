@@ -259,6 +259,12 @@ reject_matches 'Apple Pay request policy belongs to PaymentsFeature composition.
   "$app_model/Features/Payments/ApplePayCapabilities.swift" \
   "$app_model/Features/Payments/PKPaymentRequest+Helpers.swift" \
   "$app_model/Features/Pledge/ProjectAndPledgeRules.swift"
+reject_matches 'Reward selection receives Apple Pay policy through RewardsFeature.' \
+  'applePayCapabilities|hasEligibleApplePayCard:[[:space:]]*[{]' \
+  "$app_view/Views/RewardsCollection/Controller/RewardsCollectionViewController.swift" \
+  "$app_view/Views/RewardsCollection/Controller/RewardsCollectionViewModel.swift" \
+  "$app_view/Views/RewardAddOnSelection/Controller/RewardAddOnSelectionViewController.swift" \
+  "$app_view/Views/RewardAddOnSelection/Controller/RewardAddOnSelectionViewModel.swift"
 reject_matches 'Payment presentation reads Stripe policy through PaymentsFeature.' \
   'environmentType[.]stripePublishableKey' \
   "$app_view/Views/PledgedProjectsOverview/PPOContainerViewModel.swift" \

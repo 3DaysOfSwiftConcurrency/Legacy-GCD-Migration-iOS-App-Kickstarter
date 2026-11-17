@@ -2078,3 +2078,15 @@ safe for arbitrary concurrent environment mutation.
   the bounded AppModel plus pledge/reward presentation selection passes 220 tests, and
   final PaymentsFeature/AppModel composition verification passes 26 tests. Live Apple
   Pay authorization and physical-device behavior remain outside this checkpoint.
+
+## Rewards Apple Pay eligibility composition — 17 November 2026
+
+- AppModel supplies Apple Pay eligibility to RewardsFeature alongside its reward-loading
+  platform policy. Rewards Collection and Reward Add-On Selection ask that Feature for
+  eligibility when constructing pledge navigation data.
+- Both screen models retain presentation and navigation state but no longer accept an
+  independent platform closure. Their controllers no longer read AppEnvironment for
+  Apple Pay policy.
+- Focused RewardsFeature and presentation-model coverage passes 53 tests. The bounded
+  AppModel, PaymentsFeature and pledge-flow selection passes 178 tests. Live Apple Pay
+  authorization, visual rendering and the whole Library suite remain outside this checkpoint.
