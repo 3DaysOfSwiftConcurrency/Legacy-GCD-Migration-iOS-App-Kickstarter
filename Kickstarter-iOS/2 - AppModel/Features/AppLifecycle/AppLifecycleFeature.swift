@@ -33,9 +33,8 @@ public struct AsyncAppLifecycleProvider: AppLifecycleProvider {
   }
 }
 
-/// Owns startup reads, ordered push registrations and complete deep-link loads.
-/// UIKit remains a renderer of resolved destinations; a partial project/update/
-/// reply chain never escapes this owner. Settings and messages retain their stores.
+/// Resolves deep-link destinations before UIKit presents them.
+/// Project links publish only after the complete project, update and reply chain loads.
 @MainActor
 public final class AppLifecycleFeature {
   public let sessionFeature: SessionFeature

@@ -25,7 +25,7 @@ final class AppDelegateViewModelTests: TestCase {
   )
   private lazy var lifecycleFeature = AppLifecycleFeature(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
-    settingsFeature: self.settingsFeature, messagingFeature: self.messagingFeature,
+    messagingFeature: self.messagingFeature,
     makeProvider: { AsyncAppLifecycleProvider(service: AppEnvironment.current.apiService) },
     sleep: { _ in try Task.checkCancellation() }
   )
