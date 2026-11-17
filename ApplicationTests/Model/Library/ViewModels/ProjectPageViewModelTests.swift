@@ -2149,7 +2149,7 @@ final class ProjectPageViewModelTests: TestCase {
       useFastLoading: {
         InstantPledgeButtonExperiment().boolValue(forKey: .instant_pledge_enabled) == true
       },
-      includeRichText: { featureProjectStoryRichTextEnabled() },
+      includeRichText: { statsigFeatureEnabled(feature: .projectStoryRichText) },
       sleep: { _ in try Task.checkCancellation() }
     )
   }

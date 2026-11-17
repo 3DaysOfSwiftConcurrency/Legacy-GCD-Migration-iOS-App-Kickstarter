@@ -1,4 +1,5 @@
 @testable import Kickstarter_iOS
+import Experimentation
 import Foundation
 import GraphAPI
 @testable import KsApi
@@ -474,6 +475,36 @@ final class ProjectDetailsFeatureTests: TestCase {
     try provider.finishProject(0, id: 1)
     await previous.value
     XCTAssertEqual(feature.snapshot(for: route).project?.id, 2)
+  }
+
+  func testRichTextPolicyUsesInjectedSettingsFeature() {
+    let sessionFeature = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }
+    )
+    let injectedStatsigClient = MockStatsigWrapper()
+    injectedStatsigClient.features[.projectStoryRichText] = true
+    let globalStatsigClient = MockStatsigWrapper()
+    globalStatsigClient.features[.projectStoryRichText] = false
+    let settingsFeature = SettingsFeature(
+      sessionFeature: sessionFeature,
+      applicationSettings: .test(statsigClient: { injectedStatsigClient }),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    let feature = ProjectDetailsFeature(
+      platform: .live(),
+      sessionFeature: sessionFeature,
+      settingsFeature: settingsFeature,
+      discussionFeature: DiscussionFeature(
+        platform: .live(), sessionFeature: sessionFeature,
+        makeProvider: { AsyncDiscussionProvider(service: MockService()) }
+      ),
+      makeProvider: { ControlledProjectDetailsProvider() },
+      useFastLoading: { false }
+    )
+
+    withEnvironment(statsigClient: globalStatsigClient) {
+      XCTAssertTrue(feature.includesRichTextStory)
+    }
   }
 
   func testCompletedProjectSnapshotDoesNotSurviveSameUserSessionReplacement() async {

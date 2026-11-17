@@ -120,6 +120,26 @@ settings and connectivity state directly.
 - Preserve native reachability flag classification, including cellular precedence.
   Keep the platform callback bridge separate from domain eligibility and tests.
 
+## Project-story rich-text policy — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProjectDetailsFeature reads the effective project-story rich-text decision from its
+injected SettingsFeature. The effective decision retains the same stored-override,
+current Statsig-client, false-fallback precedence as other runtime Statsig settings.
+AppModel composes the same SettingsFeature used by the rest of the application; it
+does not pass a global rich-text closure.
+
+- Capture the current rich-text decision in each project-request identity and pass it
+  to the provider. A changed decision replaces an otherwise equivalent pending read.
+- Keep the current decision live for presentation through `includesRichTextStory`;
+  do not cache a second flag in ProjectDetailsFeature.
+- Rich-text eligibility does not itself decide whether the returned story has rich
+  content. Project Page keeps the existing fallback to its table presentation when
+  rich content is absent, and still returns to table presentation outside Campaign.
+- The independent instant-pledge experiment remains a separate request-loading input;
+  moving the rich-text setting does not change its enrollment or fast-loading policy.
+
 Final validation passed 144 focused LibraryTests, the separate Environment
 initialization test, 146 bounded PresentationTests and 14 signed Environment
 persistence tests on iPhone 17 Pro Max, iOS 26.2, with no failures/skips. Hardware network transitions and banner

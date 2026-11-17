@@ -20,12 +20,6 @@ public func statsigFeatureEnabled(feature: StatsigFeature) -> Bool {
   return false
 }
 
-/// Returns whether the project story rich text feature is enabled for the current user.
-@MainActor
-public func featureProjectStoryRichTextEnabled() -> Bool {
-  statsigFeatureEnabled(feature: .projectStoryRichText)
-}
-
 extension StatsigClientType {
   /* Returns all features the app knows about */
 

@@ -278,8 +278,8 @@ public final class ProjectDetailsFeature {
 
   private var pages: [UUID: Page] = [:]
   private let makeProvider: @MainActor () -> any ProjectDetailsProvider
+  private let settingsFeature: SettingsFeature
   private let useFastLoading: @MainActor () -> Bool
-  private let includeRichText: @MainActor () -> Bool
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   internal enum Update {
     case loading(UUID, Bool)
@@ -296,15 +296,15 @@ public final class ProjectDetailsFeature {
     for observer in self.observers { observer.callback(update) }
   }
 
-  var includesRichTextStory: Bool { self.includeRichText() }
+  var includesRichTextStory: Bool { self.settingsFeature.isStatsigEnabled(.projectStoryRichText) }
 
   public init(
     platform: Platform,
     sessionFeature: SessionFeature,
+    settingsFeature: SettingsFeature,
     discussionFeature: DiscussionFeature,
     makeProvider: @escaping @MainActor () -> any ProjectDetailsProvider,
     useFastLoading: @escaping @MainActor () -> Bool,
-    includeRichText: @escaping @MainActor () -> Bool,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -314,9 +314,9 @@ public final class ProjectDetailsFeature {
     self.platform = platform
     self.discussionFeature = discussionFeature
     self.sessionFeature = sessionFeature
+    self.settingsFeature = settingsFeature
     self.makeProvider = makeProvider
     self.useFastLoading = useFastLoading
-    self.includeRichText = includeRichText
     self.sleep = sleep
   }
 
@@ -339,7 +339,7 @@ public final class ProjectDetailsFeature {
   ) -> Task<Void, Never> {
     let identity = Identity(
       param: param, token: secretRewardToken, session: RequestSession(self.sessionFeature),
-      fast: self.useFastLoading(), richText: self.includeRichText()
+      fast: self.useFastLoading(), richText: self.includesRichTextStory
     )
     if let old = self.pages[route], old.session != identity.session {
       old.request?.task.cancel()

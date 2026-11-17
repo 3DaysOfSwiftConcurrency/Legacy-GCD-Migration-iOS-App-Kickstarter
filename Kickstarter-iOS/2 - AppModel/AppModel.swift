@@ -331,12 +331,12 @@ public final class AppModel {
       projectDetailsFeature: ProjectDetailsFeature(
         platform: .live(),
         sessionFeature: sessionFeature,
+        settingsFeature: settingsFeature,
         discussionFeature: discussionFeature,
         makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) },
         useFastLoading: {
           InstantPledgeButtonExperiment().boolValue(forKey: .instant_pledge_enabled) == true
-        },
-        includeRichText: { featureProjectStoryRichTextEnabled() }
+        }
       ),
       rewardsFeature: RewardsFeature(
         platform: .live(),

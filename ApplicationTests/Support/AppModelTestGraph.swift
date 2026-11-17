@@ -181,6 +181,41 @@ extension ProjectMediaFeature {
   }
 }
 
+extension ProjectDetailsFeature {
+  convenience init(
+    platform: Platform,
+    sessionFeature: SessionFeature,
+    discussionFeature: DiscussionFeature,
+    makeProvider: @escaping @MainActor () -> any ProjectDetailsProvider,
+    useFastLoading: @escaping @MainActor () -> Bool,
+    includeRichText: @escaping @MainActor () -> Bool,
+    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
+      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
+      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+      try Task.checkCancellation()
+    }
+  ) {
+    let settingsFeature = SettingsFeature(
+      sessionFeature: sessionFeature,
+      applicationSettings: .test(statsigClient: {
+        let client = MockStatsigWrapper()
+        client.features[.projectStoryRichText] = includeRichText()
+        return client
+      }),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    self.init(
+      platform: platform,
+      sessionFeature: sessionFeature,
+      settingsFeature: settingsFeature,
+      discussionFeature: discussionFeature,
+      makeProvider: makeProvider,
+      useFastLoading: useFastLoading,
+      sleep: sleep
+    )
+  }
+}
+
 @MainActor
 private struct UnusedDeepLinkSearchProvider: SearchProjectsProvider {
   func fetchPage(parameters: DiscoveryParams, cursor: String?) async throws -> SearchPageResponse {

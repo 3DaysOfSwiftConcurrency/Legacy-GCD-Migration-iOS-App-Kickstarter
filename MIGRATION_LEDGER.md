@@ -4624,3 +4624,33 @@ closure for the next checkpoint; the wider global/session audit also remains. Ke
 bootstrap remains deliberately independent of AppModel. This is not full CFA
 compliance. Swift packages, target identifiers and existing history are unchanged.
 No push.
+
+### Project Details reads rich-text policy through Settings — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProjectDetailsFeature now receives the composed SettingsFeature and owns the
+project-story rich-text decision. AppModel no longer passes a global
+`featureProjectStoryRichTextEnabled` closure, and that convenience helper is removed.
+The current effective decision remains part of request identity, so changing the flag
+still replaces an equivalent pending project read and supplies the new value to the
+provider. Project Page's rich-content/table fallback behavior is unchanged. The
+independent instant-pledge experiment remains separately composed.
+
+A direct Feature test supplies an enabled injected Statsig client against a disabled
+global client, proving the composed owner wins. The test target retains an old-shape
+convenience initializer that constructs an isolated SettingsFeature underneath it;
+production has no closure escape hatch.
+
+Final focused validation passed 72 Project Details and Settings tests. The bounded
+AppModel, Project Details, Settings, Project Page, Project Creator and related-project
+selection passed 164 tests. Both runs had zero failures and skips on iPhone 17 Pro
+Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-project-details-statsig-focused.xcresult` and
+`/private/tmp/kickstarter-project-details-statsig-bounded.xcresult`.
+
+The CFA gate rejects restored global Statsig/rich-text wiring in ProjectDetailsFeature
+and AppModel. Both known composed Statsig convenience closures are now removed; the
+wider global/session ownership audit remains. Keychain bootstrap remains deliberately
+independent of AppModel. This is not full CFA compliance. Swift packages, target
+identifiers and existing history are unchanged. No push.

@@ -228,6 +228,9 @@ reject_matches 'Project Details receives environment dependencies from compositi
 reject_matches 'Project Details receives experiment policy from composition.' \
   'InstantPledgeButtonExperiment\(|featureProjectStoryRichTextEnabled\(' \
   "$app_model/Features/ProjectDetails/ProjectDetailsFeature.swift"
+reject_matches 'ProjectDetailsFeature reads rich-text policy through SettingsFeature.' \
+  'featureProjectStoryRichTextEnabled|statsigFeatureEnabled|statsigClient|includeRichText' \
+  "$app_model/Features/ProjectDetails/ProjectDetailsFeature.swift" "$app_model/AppModel.swift"
 reject_matches 'Project Media and its watch view model receive environment dependencies from composition.' \
   'AppEnvironment[.]current' "$app_model/Features/ProjectMedia/ProjectMediaFeature.swift" \
   "$app_view/Views/ProjectPage/Views/WatchProjectViewModel.swift"

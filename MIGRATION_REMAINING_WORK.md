@@ -53,10 +53,16 @@ Swift packages are excluded.
   SettingsFeature. PledgeManagerWebViewModel asks that Feature for the result, and
   the global bypass helper is removed. Recognized Kickstarter and Stripe navigation
   retain their existing precedence over the fallback decision.
-- Next: remove the remaining composed global Statsig helper closure for Project
-  rich-text. Its input is already composed into ProjectDetailsFeature but still
-  uses a global helper closure at composition. Bootstrap keychain reads must remain
-  independent of AppModel; do not route them through SettingsFeature.
+- ProjectDetailsFeature now owns its project-story rich-text policy through the
+  composed SettingsFeature. AppModel no longer supplies either known global Statsig
+  convenience closure: Project Media and Project Details both read their current
+  effective policy from Settings. The generic helper remains for unmigrated callers
+  and bootstrap keychain reads remain independent of AppModel; do not route bootstrap
+  decisions through SettingsFeature.
+- Next: resume the wider in-scope global/session ownership scan now that the known
+  composed Statsig closures are removed. Classify each remaining global helper by
+  actual owner and behavior before changing it; keep SDK/bootstrap integration and
+  keychain reads separate from application Feature composition.
 - Bootstrap/keychain flag reads intentionally remain independent of AppModel
   construction. Environment configuration persistence, whole-config DebugData
   precedence, cookie installation and SDK integration remain contracts to preserve
