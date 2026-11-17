@@ -3363,3 +3363,9 @@ check the admitted session again before display. AppDelegate coverage includes
 replacement by a new session with the same user ID during that delay. All 44
 focused Settings and Session tests and 125 AppDelegate presentation tests
 passed on the simulator.
+
+ApplicationConfigurationService receives configuration loading, visitor
+cookie installation and retained feature flags from live composition.
+Isolated service tests can supply only the loader. Three focused AppModel
+and configuration-service tests and all 125 AppDelegate presentation tests
+passed, including the four visitor-cookie and two flag-retention scenarios.

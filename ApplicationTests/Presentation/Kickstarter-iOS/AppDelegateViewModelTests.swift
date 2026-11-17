@@ -38,9 +38,7 @@ final class AppDelegateViewModelTests: TestCase {
     ),
     sleep: { _ in try Task.checkCancellation() }
   )
-  private lazy var applicationConfigurationService = ApplicationConfigurationService(
-    load: { try await AppEnvironment.current.apiService.applicationConfiguration() }
-  )
+  private lazy var applicationConfigurationService = ApplicationConfigurationService.live()
   private lazy var discoveryFeature = DiscoveryFeature(
     provider: AsyncDiscoveryProvider(), currentUser: { [session = self.settingsFeature.sessionFeature] in
       session.currentUser

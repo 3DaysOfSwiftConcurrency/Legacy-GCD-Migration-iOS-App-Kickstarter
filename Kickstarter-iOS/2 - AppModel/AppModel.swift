@@ -38,31 +38,23 @@ public final class RemoteConfigurationService {
 @MainActor
 public final class ApplicationConfigurationService {
   private let load: @MainActor () async throws -> Config
+  private let installVisitorCookies: @MainActor () -> Void
+  private let debugFeatureFlags: @MainActor () -> [String: Bool]
   private var request: (id: UUID, task: Task<Config, Error>)?
 
-  public init(load: @escaping @MainActor () async throws -> Config) {
+  public init(
+    load: @escaping @MainActor () async throws -> Config,
+    installVisitorCookies: @escaping @MainActor () -> Void = {},
+    debugFeatureFlags: @escaping @MainActor () -> [String: Bool] = { [:] }
+  ) {
     self.load = load
+    self.installVisitorCookies = installVisitorCookies
+    self.debugFeatureFlags = debugFeatureFlags
   }
 
   func refresh() -> Task<Config, Error> {
     self.installVisitorCookies()
     return self.requestConfiguration()
-  }
-
-  /// Installs the device visitor identity for both web and API domains.
-  private func installVisitorCookies() {
-    let uuidString = (AppEnvironment.current.device.identifierForVendor ?? UUID()).uuidString
-    let server = AppEnvironment.current.apiService.serverConfig
-    [HTTPCookie?](arrayLiteral:
-      HTTPCookie(properties: [
-        .name: "vis", .value: uuidString, .domain: server.webBaseUrl.host as Any,
-        .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
-      ]),
-      HTTPCookie(properties: [
-        .name: "vis", .value: uuidString, .domain: server.apiBaseUrl.host as Any,
-        .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
-      ])
-    ).compact().forEach(AppEnvironment.current.cookieStorage.setCookie)
   }
 
   public func configuration() async throws -> Config {
@@ -94,11 +86,34 @@ public final class ApplicationConfigurationService {
   }
 
   private func retainingDebugFeatureFlags(_ config: Config) -> Config {
-    guard let environment = AppEnvironment.current, !environment.mainBundle.isRelease else {
-      return config
-    }
-    let stored = (environment.config?.features ?? [:]).filter { config.features[$0.key] != nil }
+    let stored = self.debugFeatureFlags().filter { config.features[$0.key] != nil }
     return config |> Config.lens.features .~ config.features.withAllValuesFrom(stored)
+  }
+}
+
+extension ApplicationConfigurationService {
+  public static func live() -> ApplicationConfigurationService {
+    ApplicationConfigurationService(
+      load: { try await AppEnvironment.current.apiService.applicationConfiguration() },
+      installVisitorCookies: {
+        guard let environment = AppEnvironment.current else { return }
+        let visitorID = (environment.device.identifierForVendor ?? UUID()).uuidString
+        let server = environment.apiService.serverConfig
+        let domains = [server.webBaseUrl.host, server.apiBaseUrl.host].compactMap { $0 }
+        for domain in domains {
+          if let cookie = HTTPCookie(properties: [
+            .name: "vis", .value: visitorID, .domain: domain,
+            .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
+          ]) {
+            environment.cookieStorage.setCookie(cookie)
+          }
+        }
+      },
+      debugFeatureFlags: {
+        guard let environment = AppEnvironment.current, !environment.mainBundle.isRelease else { return [:] }
+        return environment.config?.features ?? [:]
+      }
+    )
   }
 }
 
@@ -217,9 +232,7 @@ public final class AppModel {
     onboardingFeature: OnboardingFeature,
     connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService = RemoteConfigurationService(),
-    applicationConfigurationService: ApplicationConfigurationService = ApplicationConfigurationService(
-      load: { try await AppEnvironment.current.apiService.applicationConfiguration() }
-    ),
+    applicationConfigurationService: ApplicationConfigurationService = .live(),
     devicePushRegistrationService: DevicePushRegistrationService = DevicePushRegistrationService(
       register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
     ),
