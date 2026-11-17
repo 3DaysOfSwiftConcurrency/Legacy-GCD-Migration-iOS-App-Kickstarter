@@ -62,6 +62,23 @@ final class VideoFeedViewModelTests: TestCase {
     XCTAssertEqual(self.vm.items.first?.videoPreviewImageURL?.absoluteString, previewURL)
   }
 
+  func testShareURLUsesSuppliedHostAndDestinationRefTag() async throws {
+    let mockData = Self.mockVideoFeedQueryData(itemCount: 1)
+    await withEnvironment(apiService: MockService(fetchGraphQLResponses: [(VideoFeedQuery.self, mockData)])) {
+      await self.vm.fetchVideoFeed()
+    }
+
+    let item = try XCTUnwrap(self.vm.items.first)
+    let host = try XCTUnwrap(URL(string: "https://sharing.example.invalid"))
+    let url = try XCTUnwrap(VideoFeedShareDestination.projectURL(
+      for: item, webBaseURL: host, refTag: .videoFeedShareCopyLink
+    ))
+    let components = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))
+    XCTAssertEqual(components.host, host.host)
+    XCTAssertEqual(components.path, "/projects/\(item.slug)")
+    XCTAssertEqual(components.queryItems, [URLQueryItem(name: "ref", value: RefTag.videoFeedShareCopyLink.stringTag)])
+  }
+
   func testViewDidLoad_Success_EmptyResponse() async throws {
     let mockData = Self.mockVideoFeedQueryData(itemCount: 0)
 

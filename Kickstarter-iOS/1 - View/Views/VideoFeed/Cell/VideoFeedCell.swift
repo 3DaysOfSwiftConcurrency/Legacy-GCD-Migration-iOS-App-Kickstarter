@@ -95,7 +95,8 @@ final class VideoFeedCell: UICollectionViewCell, ValueCell {
   func configureWith(
     item: Binding<VideoFeedItem>,
     isSaved: Binding<Bool>,
-    isMuted: Binding<Bool>
+    isMuted: Binding<Bool>,
+    makeShareSheet: @escaping @MainActor (VideoFeedItem) -> VideoFeedShareSheetView
   ) {
     self.currentItemId = item.wrappedValue.id
 
@@ -106,6 +107,7 @@ final class VideoFeedCell: UICollectionViewCell, ValueCell {
         isMuted: isMuted,
         playbackState: self.playbackState,
         videoPlayer: self.videoPlayer,
+        makeShareSheet: makeShareSheet,
         onCloseTapped: { [weak self] in self?.onEvent?(.closeTapped) },
         onCreatorTapped: { [weak self] in self?.onEvent?(.creatorTapped) },
         onShareTapped: { [weak self] in self?.onEvent?(.shareTapped) },

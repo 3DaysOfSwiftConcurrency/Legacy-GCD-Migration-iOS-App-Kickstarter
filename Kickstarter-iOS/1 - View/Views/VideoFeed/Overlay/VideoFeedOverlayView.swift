@@ -47,6 +47,7 @@ struct VideoFeedOverlayView: View {
 
   let playbackState: VideoFeedPlaybackState
   let videoPlayer: VideoFeedVideoPlayer
+  let makeShareSheet: @MainActor (VideoFeedItem) -> VideoFeedShareSheetView
 
   var onCloseTapped: (() -> Void)?
   var onCreatorTapped: (() -> Void)?
@@ -81,6 +82,7 @@ struct VideoFeedOverlayView: View {
         VideoFeedRightRailView(
           item: self.$item,
           isSaved: self.$isSaved,
+          makeShareSheet: self.makeShareSheet,
           onCreatorTapped: self.onCreatorTapped,
           onShareTapped: self.onShareTapped,
           onMoreTapped: self.onMoreTapped,

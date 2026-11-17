@@ -68,7 +68,8 @@ final class VideoFeedViewControllerTests: TestCase {
             percentFunded: 100
           )),
           isSaved: .constant(false),
-          isMuted: .constant(false)
+          isMuted: .constant(false),
+          makeShareSheet: VideoFeedViewController.makeShareSheet
         )
 
         assertSnapshot(
@@ -130,7 +131,8 @@ final class VideoFeedViewControllerTests: TestCase {
             percentFunded: 42
           )),
           isSaved: .constant(true),
-          isMuted: .constant(false)
+          isMuted: .constant(false),
+          makeShareSheet: VideoFeedViewController.makeShareSheet
         )
 
         assertSnapshot(
@@ -193,7 +195,8 @@ final class VideoFeedViewControllerTests: TestCase {
             percentFunded: 42
           )),
           isSaved: .constant(false),
-          isMuted: .constant(false)
+          isMuted: .constant(false),
+          makeShareSheet: VideoFeedViewController.makeShareSheet
         )
 
         player.simulateVideoFailure()
@@ -257,7 +260,8 @@ final class VideoFeedViewControllerTests: TestCase {
             percentFunded: 42
           )),
           isSaved: .constant(false),
-          isMuted: .constant(false)
+          isMuted: .constant(false),
+          makeShareSheet: VideoFeedViewController.makeShareSheet
         )
 
         cell.showSaveErrorToast()
@@ -322,7 +326,8 @@ final class VideoFeedViewControllerTests: TestCase {
             percentFunded: 42
           )),
           isSaved: .constant(false),
-          isMuted: .constant(false)
+          isMuted: .constant(false),
+          makeShareSheet: VideoFeedViewController.makeShareSheet
         )
 
         player.simulateVideoFailure()
@@ -389,7 +394,8 @@ final class VideoFeedViewControllerTests: TestCase {
             percentFunded: 100
           )),
           isSaved: .constant(false),
-          isMuted: .constant(false)
+          isMuted: .constant(false),
+          makeShareSheet: VideoFeedViewController.makeShareSheet
         )
 
         player.simulateVideoReady()
@@ -456,7 +462,8 @@ final class VideoFeedViewControllerTests: TestCase {
             percentFunded: 100
           )),
           isSaved: .constant(false),
-          isMuted: .constant(true)
+          isMuted: .constant(true),
+          makeShareSheet: VideoFeedViewController.makeShareSheet
         )
 
         player.simulateVideoReady()

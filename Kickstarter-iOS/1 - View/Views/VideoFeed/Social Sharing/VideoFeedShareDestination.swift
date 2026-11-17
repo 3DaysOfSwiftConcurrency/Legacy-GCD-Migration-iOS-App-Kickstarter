@@ -100,17 +100,11 @@ enum VideoFeedShareDestination: String, CaseIterable, Identifiable {
 
   // MARK: - Project URL
 
-  @MainActor
-  static func projectURL(for item: VideoFeedItem) -> URL? {
-    AppModel.shared.projectMediaFeature.webBaseURL
-      .appendingPathComponent("projects/\(item.slug)")
-  }
-
   /// Returns the project URL with a `ref` query parameter appended for attribution tracking.
-  @MainActor
-  static func projectURL(for item: VideoFeedItem, refTag: RefTag) -> URL? {
-    guard let base = projectURL(for: item),
-          var components = URLComponents(url: base, resolvingAgainstBaseURL: false) else {
+  static func projectURL(for item: VideoFeedItem, webBaseURL: URL, refTag: RefTag? = nil) -> URL? {
+    let base = webBaseURL.appendingPathComponent("projects/\(item.slug)")
+    guard let refTag else { return base }
+    guard var components = URLComponents(url: base, resolvingAgainstBaseURL: false) else {
       return nil
     }
     var queryItems = components.queryItems ?? []
@@ -152,12 +146,13 @@ enum VideoFeedShareDestination: String, CaseIterable, Identifiable {
   // MARK: - Perform
 
   @MainActor
-  func perform(item: VideoFeedItem) {
-    let encoded = Self.encodedProjectURL(for: item)
+  func perform(item: VideoFeedItem, webBaseURL: URL) {
+    let projectURL = Self.projectURL(for: item, webBaseURL: webBaseURL)?.absoluteString
+    let encoded = projectURL?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
 
     switch self {
     case .copyLink:
-      UIPasteboard.general.string = Self.projectURL(for: item)?.absoluteString
+      UIPasteboard.general.string = projectURL
     case .instagramStories:
       Self.open("instagram-stories://share")
     case .facebookStories:
@@ -189,9 +184,4 @@ enum VideoFeedShareDestination: String, CaseIterable, Identifiable {
     UIApplication.shared.open(url)
   }
 
-  @MainActor
-  private static func encodedProjectURL(for item: VideoFeedItem) -> String? {
-    self.projectURL(for: item)?.absoluteString
-      .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-  }
 }

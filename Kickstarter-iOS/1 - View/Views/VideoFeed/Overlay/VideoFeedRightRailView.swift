@@ -23,6 +23,7 @@ struct VideoFeedRightRailView: View {
   @Binding var isSaved: Bool
 
   @State private var shareSheetItem: VideoFeedItem?
+  let makeShareSheet: @MainActor (VideoFeedItem) -> VideoFeedShareSheetView
 
   var onCreatorTapped: (() -> Void)?
   var onShareTapped: (() -> Void)?
@@ -88,7 +89,7 @@ struct VideoFeedRightRailView: View {
       item: self.$shareSheetItem,
       onDismiss: { self.onSheetDismissedFromLinkCopied?() },
       content: { item in
-        VideoFeedShareSheetView(item: item)
+        self.makeShareSheet(item)
           .presentationDragIndicator(.visible)
       }
     )

@@ -3396,6 +3396,13 @@ focused Project Media and Video Feed tests and 21 non-snapshot Video Feed
 presentation tests passed on iPhone 17 Pro Max. Share-sheet composition
 still resolves the share configuration separately.
 
+The Video Feed controller now supplies the share sheet's web URL provider
+and analytics callback. The sharing folder has a CFA check against direct
+global lookups. All 51 focused tests, including host and attribution
+coverage, and 21 non-snapshot presentation tests passed. Updated snapshot
+fixtures compiled. The pinned iPad mini on iOS 18.6 was unavailable for
+snapshot execution.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

@@ -45,7 +45,7 @@ final class VideoFeedShareSheetViewTests: TestCase {
         language: language,
         mainBundle: MockBundle(bundleIdentifier: appBundle.bundleIdentifier)
       ) {
-        let view = VideoFeedShareSheetView(item: self.mockFeedItem)
+        let view = VideoFeedViewController.makeShareSheet(self.mockFeedItem)
         let controller = UIHostingController(rootView: view)
         controller.view.frame = CGRect(
           origin: .zero,
@@ -63,7 +63,7 @@ final class VideoFeedShareSheetViewTests: TestCase {
 
   @MainActor
   func testRenderedPreviewCard() {
-    let view = VideoFeedShareSheetView(item: self.mockFeedItem)
+    let view = VideoFeedViewController.makeShareSheet(self.mockFeedItem)
     let image = view.renderedPreviewCard()
 
     XCTAssertNotNil(image, "renderedPreviewCard() returned nil")

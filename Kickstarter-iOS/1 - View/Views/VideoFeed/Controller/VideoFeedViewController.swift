@@ -223,7 +223,22 @@ final class VideoFeedViewController: UIViewController {
         set: { _ in }
       ),
       isSaved: self.viewModel.isSaved(projectId: item.id),
-      isMuted: self.muteBinding
+      isMuted: self.muteBinding,
+      makeShareSheet: Self.makeShareSheet
+    )
+  }
+
+  static func makeShareSheet(_ item: VideoFeedItem) -> VideoFeedShareSheetView {
+    VideoFeedShareSheetView(
+      item: item,
+      webBaseURL: { AppModel.shared.projectMediaFeature.webBaseURL },
+      onDestinationTapped: { destination in
+        AppEnvironment.current.ksrAnalytics.trackVideoFeedShareDestinationClicked(
+          destination: destination.analyticsContext,
+          videoId: item.id,
+          projectId: item.projectId
+        )
+      }
     )
   }
 
@@ -400,7 +415,8 @@ extension VideoFeedViewController: UICollectionViewDelegateFlowLayout {
         set: { _ in }
       ),
       isSaved: self.viewModel.isSaved(projectId: item.id),
-      isMuted: self.muteBinding
+      isMuted: self.muteBinding,
+      makeShareSheet: Self.makeShareSheet
     )
 
     if let url = item.videoURL {
