@@ -14,7 +14,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testRecommendationAvailabilityRejectsCompletionAfterSessionReset() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider,
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let old = Task { try await feature.hasRecommendations(for: .template) }
     await provider.waitForCount(1)
     feature.resetRecommendationAvailability()
@@ -32,9 +35,83 @@ final class DiscoveryFeatureTests: TestCase {
   func testLoggedOutRecommendationAvailabilityDoesNotFetch() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider,
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let available = try await feature.hasRecommendations(for: nil)
     XCTAssertFalse(available)
+    XCTAssertTrue(provider.requests.isEmpty)
+  }
+
+  func testRecommendationDeliveryDropsResultAfterSameUserSessionReplacement() async throws {
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template }
+    )
+    let provider = ControlledDiscoveryProvider()
+    defer { provider.releaseAll() }
+    let feature = DiscoveryFeature(provider: provider, sessionFeature: session)
+    var results: [Bool] = []
+
+    let old = feature.refreshRecommendationAvailability { results.append($0) }
+    await provider.waitForCount(1)
+    session.sessionChanged()
+    try provider.complete(0, ids: [1])
+    await old.value
+    XCTAssertEqual(results, [])
+
+    let current = feature.refreshRecommendationAvailability { results.append($0) }
+    await provider.waitForCount(2)
+    try provider.fail(1)
+    await current.value
+    XCTAssertEqual(results, [false])
+  }
+
+  func testRecommendationReadsDoNotShareAcrossSameUserSessionReplacement() async throws {
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template }
+    )
+    let provider = ControlledDiscoveryProvider()
+    defer { provider.releaseAll() }
+    let feature = DiscoveryFeature(provider: provider, sessionFeature: session)
+    let old = Task { try await feature.hasRecommendations(for: .template) }
+    await provider.waitForCount(1)
+    session.sessionChanged()
+    let current = Task { try await feature.hasRecommendations(for: .template) }
+    await provider.waitForCount(2)
+    try provider.fail(1)
+    let currentValue = try await current.value
+    XCTAssertFalse(currentValue)
+    try provider.complete(0, ids: [1])
+    guard case .failure(is CancellationError) = await old.result else {
+      return XCTFail("An obsolete recommendation result escaped the Feature")
+    }
+  }
+
+  func testRecommendationDeliveryDoesNotStartAfterSessionReplacement() async {
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template }
+    )
+    let provider = ControlledDiscoveryProvider()
+    defer { provider.releaseAll() }
+    let feature = DiscoveryFeature(provider: provider, sessionFeature: session)
+    let refresh = feature.refreshRecommendationAvailability { _ in XCTFail("Obsolete delivery") }
+    session.sessionChanged()
+    await refresh.value
+    XCTAssertTrue(provider.requests.isEmpty)
+  }
+
+  func testLoggedOutRecommendationDeliveryDoesNotFetch() async {
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { nil }
+    )
+    let provider = ControlledDiscoveryProvider()
+    defer { provider.releaseAll() }
+    let feature = DiscoveryFeature(provider: provider, sessionFeature: session)
+    var results: [Bool] = []
+    let refresh = feature.refreshRecommendationAvailability { results.append($0) }
+    await refresh.value
+    XCTAssertEqual(results, [false])
     XCTAssertTrue(provider.requests.isEmpty)
   }
 
@@ -44,7 +121,10 @@ final class DiscoveryFeatureTests: TestCase {
     localStore.favoriteCategoryIds = [17]
     AppEnvironment.pushEnvironment(ubiquitousStore: cloudStore, userDefaults: localStore)
     defer { AppEnvironment.popEnvironment() }
-    let feature = DiscoveryFeature(provider: ControlledDiscoveryProvider(), currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: ControlledDiscoveryProvider(),
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
 
     XCTAssertTrue(feature.isFavoriteCategory(17))
     feature.toggleFavoriteCategory(17)
@@ -60,7 +140,10 @@ final class DiscoveryFeatureTests: TestCase {
     cloudStore.hasSeenFavoriteCategoryAlert = true
     AppEnvironment.pushEnvironment(ubiquitousStore: cloudStore, userDefaults: localStore)
     defer { AppEnvironment.popEnvironment() }
-    let feature = DiscoveryFeature(provider: ControlledDiscoveryProvider(), currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: ControlledDiscoveryProvider(),
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
 
     XCTAssertTrue(feature.claimFavoriteCategoryTip())
     XCTAssertTrue(localStore.hasSeenFavoriteCategoryAlert)
@@ -69,7 +152,10 @@ final class DiscoveryFeatureTests: TestCase {
   }
 
   func testFilterSelectionIsObservable() async {
-    let feature = DiscoveryFeature(provider: ControlledDiscoveryProvider(), currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: ControlledDiscoveryProvider(),
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let changed = expectation(description: "Filter selection changed")
     withObservationTracking {
       _ = feature.selectedParameters
@@ -84,7 +170,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testFirstPageCreationInvalidatesObservedSnapshot() async {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let changed = expectation(description: "A page route was created")
     withObservationTracking {
       _ = feature.snapshot(for: .magic)
@@ -102,7 +191,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testPageSnapshotIsObservableAfterRouteExists() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let request = feature.requestRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     let changed = expectation(description: "Page snapshot changed")
@@ -120,7 +212,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testNativeUpdatesPreserveSortAndStopAfterCancellation() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     var events: [String] = []
     let observation = feature.observe { update in
       switch update {
@@ -144,7 +239,10 @@ final class DiscoveryFeatureTests: TestCase {
 
   func testConstructionDoesNotLoadAnyFeed() {
     let provider = ControlledDiscoveryProvider()
-    let feature = DiscoveryFeature(provider: provider, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider,
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     XCTAssertTrue(provider.requests.isEmpty)
     XCTAssertTrue(feature.snapshot(for: .magic).projects.isEmpty)
     XCTAssertFalse(feature.snapshot(for: .popular).isLoading)
@@ -153,7 +251,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testAwaitableRefreshPublishesBeforeReturning() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let command = Task { await feature.refresh(sort: .magic, parameters: .defaults) }
     await provider.waitForCount(1)
     XCTAssertTrue(feature.snapshot(for: .magic).isLoading)
@@ -167,7 +268,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testAllFourFeedsLoadIndependentlyAndKeepTheirOwnSort() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let sorts: [DiscoveryParams.Sort] = [.magic, .popular, .newest, .endingSoon]
     var tasks: [Task<Void, Never>] = []
     for sort in sorts {
@@ -185,7 +289,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testEquivalentRefreshAndNextPageCallersShareInFlightWork() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let first = feature.requestRefresh(sort: .magic, parameters: .defaults)
     let duplicate = feature.requestRefresh(sort: .magic, parameters: .defaults)
     XCTAssertEqual(first, duplicate)
@@ -204,7 +311,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testChangedFiltersRejectLateResponseWithoutClearingNewLoading() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let old = feature.requestRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     let changed = DiscoveryParams.defaults |> DiscoveryParams.lens.staffPicks .~ true
@@ -223,7 +333,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testRefreshRetainsCardsThenReplacesAndRejectsOldPagination() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let first = feature.requestRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     try provider.complete(0, ids: [1])
@@ -243,7 +356,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testPaginationUsesCursorDeduplicatesAndStopsAfterEmptyPage() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     XCTAssertNil(feature.requestNextPage(sort: .magic))
     let first = feature.requestRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
@@ -267,7 +383,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testPaginationFailureRetainsCardsAndRetriesSameCursor() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let first = feature.requestRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     try provider.complete(0, ids: [1], cursor: "retry-me")
@@ -291,7 +410,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testCancelOneFeedDoesNotCancelAnotherAndRejectsLateResults() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let magic = feature.requestRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     let popular = feature.requestRefresh(sort: .popular, parameters: .defaults)
@@ -331,7 +453,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testActivityReplacementRejectsLateSampleAndRetainsErrorSeparately() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let old = feature.requestActivitySample(sort: .magic)
     await provider.waitForCount(1)
     let new = feature.requestActivitySample(sort: .magic)
@@ -353,7 +478,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testOwnerCancellationRejectsLateActivityWithoutAffectingOtherFeed() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let magic = feature.requestActivitySample(sort: .magic)
     await provider.waitForCount(1)
     let popular = feature.requestActivitySample(sort: .popular)
@@ -379,7 +507,10 @@ final class DiscoveryFeatureTests: TestCase {
 
   func testRecommendationDefaultsAndFilterSelectionBelongToFeatureWithoutFetching() {
     let provider = ControlledDiscoveryProvider()
-    let feature = DiscoveryFeature(provider: provider, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider,
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let optedIn = User.template |> User.lens.optedOutOfRecommendations .~ false
     let optedOut = User.template |> User.lens.optedOutOfRecommendations .~ true
     XCTAssertEqual(DiscoveryFeature.initialParameters(for: nil).includePOTD, true)
@@ -394,7 +525,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testDelayedProjectsFromPreviousAccountCannotPublish() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     let firstUser = User.template |> User.lens.id .~ 1
     let secondUser = User.template |> User.lens.id .~ 2
     await withEnvironment(currentUser: firstUser) {
@@ -420,7 +554,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testDelayedActivityFromPreviousAccountCannotPublish() async {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
-    let feature = DiscoveryFeature(provider: provider, sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
+    let feature = DiscoveryFeature(
+      provider: provider, sleep: { _ in },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
     await withEnvironment(currentUser: User.template |> User.lens.id .~ 1) {
       let old = feature.requestActivitySample(sort: .magic)
       await provider.waitForCount(1)

@@ -3198,6 +3198,7 @@
 			"name" = "2 - AppModel";
 			"sourceTree" = "<group>";
 			"children" = (
+				"EB63C6D98F53E0A20D85B9FD",
 				"DA7F5FEED9F1A1A4D49F0321",
 				"642E2002A2401D5EA2010A32",
 				"48D6E9A9AD923608A65F217F",
@@ -4280,7 +4281,6 @@
 			"name" = "Composition";
 			"sourceTree" = "<group>";
 			"children" = (
-				"EB63C6D98F53E0A20D85B9FD",
 				"20C37173166CEEB66CA7BCF2",
 				"CFA031200000000000000006",
 				"B6A06FB25E9940333B72DDB6",
@@ -9402,8 +9402,8 @@
 			"fileRef" = "AAF5481B2F2445C0001DB5AC";
 		};
 		"EB63C6D98F53E0A20D85B9FD" = {
-			"name" = "AccountRefreshCoordinator.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Composition/AccountRefreshCoordinator.swift";
+			"name" = "AppModel+AccountRefresh.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/AppModel+AccountRefresh.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";

@@ -49,7 +49,7 @@ final class DeepLinkRouterTests: XCTestCase {
           try Task.checkCancellation()
           self?.discoverySleeps.append(seconds)
         },
-        currentUser: { session.currentUser }
+        sessionFeature: session
       ),
       activityFeature: ActivityFeature(
         sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },

@@ -4235,3 +4235,54 @@ remain unverified. Swift packages are unchanged. AppModel still stores six
 infrastructure collaborators: connectivity, remote configuration, application
 configuration, device registration, application shortcuts and account refresh.
 Their domain consumers and composition remain the next ownership audit.
+
+### Account refresh through AppModel and Discovery — 17 November 2026
+
+Author: Matthew Thomas.
+
+AccountRefreshCoordinator and ApplicationShortcutService are removed. AppModel's
+account-refresh methods coordinate Settings, Session and Discovery without adding
+stored workflow state. AppDelegate receives value events and retains native
+shortcut presentation, guarded logout, notifications and analytics SDK updates.
+The ShortcutItem type now defines the same ordered native list. Neither an
+AppDelegate ViewModel nor a lifecycle Feature is introduced.
+
+| Responsibility | Previous owner | Current owner |
+| --- | --- | --- |
+| Refresh user, then recommendation availability | AccountRefreshCoordinator | AppModel methods |
+| Account-refresh debounce and serialization with preferences | SettingsFeature | SettingsFeature |
+| Current user and session identity | SessionFeature | SessionFeature |
+| Recommendation read and application delivery lifetime | DiscoveryFeature plus ApplicationShortcutService | DiscoveryFeature |
+| Native shortcut selection and installation | AccountRefreshCoordinator plus AppDelegate | ShortcutItem plus AppDelegate |
+
+Discovery receives the composed SessionFeature instead of a current-user closure.
+Recommendation sharing and completion now check both identity and session
+generation, including replacement by the same user. Tests cover late old results,
+fresh requests without an explicit reset, replacement before admission, logged-out
+availability without transport, and synchronous session replacement by an AppModel
+user-update consumer. Existing shortcut/notification assertions now exercise the
+isolated AppModel graph directly. The former service test moves into Discovery's
+Feature test home; no assertions are dropped.
+
+The focused baseline passed 77 tests. The first implementation build found two
+missed pagination dependency references; both were corrected before testing.
+The final focused LibraryTests selection passed 188 tests covering AppModel,
+Settings, Session, Discovery, its four affected ViewModels and deep-link routing.
+The bounded PresentationTests selection passed 145 tests covering application
+routing, AppDelegate analytics and Root Tabs. Both final runs had zero failures
+and skips on iPhone 17 Pro Max, iOS 26.2. Result bundles:
+`/private/tmp/kickstarter-account-feature-ownership-verified.xcresult` and
+`/private/tmp/kickstarter-account-feature-presentation.xcresult`.
+
+`make check-cfa`, project plist validation and diff checks passed. The static gate
+rejects the removed coordinator/service and native shortcut presentation in the
+AppModel account API. Swift packages and target identifiers are unchanged.
+The README and remaining-work document now distinguish the historical handover
+from the still-incomplete CFA audit.
+
+AppModel retains four infrastructure properties: connectivity, remote configuration,
+application configuration and device registration. They still require ownership
+review. Discovery feed/activity session checks, global environment dependencies,
+and broader source coverage also remain. The full suite, native system shortcut
+integration, live account operations, visual parity and device validation were not
+performed. This checkpoint does not establish full CFA compliance. No push.

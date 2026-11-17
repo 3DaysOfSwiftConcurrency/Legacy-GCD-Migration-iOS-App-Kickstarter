@@ -25,7 +25,7 @@ func makeTestAppModel(
     makeProvider: { AsyncDiscussionProvider(service: MockService()) }
   )
   let discoveryFeature = discoveryFeature ?? DiscoveryFeature(
-    provider: AsyncDiscoveryProvider(), loadCategories: { .template }, currentUser: { sessionFeature.currentUser }
+    provider: AsyncDiscoveryProvider(), loadCategories: { .template }, sessionFeature: sessionFeature
   )
   let activityFeature = activityFeature ?? ActivityFeature(
     sessionFeature: sessionFeature, makeProvider: { AsyncActivityProvider(service: MockService()) }

@@ -84,8 +84,9 @@ final class ApplicationRoutingTests: TestCase {
     responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     sleep: { [weak self] seconds in try await self?.settingsLinkDelay(seconds) }
   )
-  private lazy var deepLinkModel = makeTestAppModel(
+  private lazy var model = makeTestAppModel(
     sessionFeature: self.settingsFeature.sessionFeature,
+    onboardingFeature: self.onboardingFeature,
     settingsFeature: self.settingsFeature,
     messagingFeature: self.messagingFeature,
     discussionFeature: DiscussionFeature(
@@ -107,23 +108,22 @@ final class ApplicationRoutingTests: TestCase {
     )
   )
   private lazy var deepLinkRouter = DeepLinkRouter(
-    currentSession: { [model = self.deepLinkModel] in model.deepLinkSession },
-    resolveDestination: { [model = self.deepLinkModel] in
+    currentSession: { [model = self.model] in model.deepLinkSession },
+    resolveDestination: { [model = self.model] in
       try await model.resolveDeepLink($0, discoveryResponseDelay: $1)
     },
-    firstRedirect: { [model = self.deepLinkModel] in try await model.resolveEmailLink($0, route: $1) },
-    releaseRedirect: { [model = self.deepLinkModel] in model.releaseEmailLink(route: $0) },
+    firstRedirect: { [model = self.model] in try await model.resolveEmailLink($0, route: $1) },
+    releaseRedirect: { [model = self.model] in model.releaseEmailLink(route: $0) },
     settingsLinks: self.settingsLinks,
     serverConfig: { AppEnvironment.current.apiService.serverConfig },
     discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
   private lazy var discoveryFeature = DiscoveryFeature(
     provider: AsyncDiscoveryProvider(), sleep: { _ in try Task.checkCancellation() },
-    currentUser: { [session = self.settingsFeature.sessionFeature] in
-      session.currentUser
-    }
+    sessionFeature: self.settingsFeature.sessionFeature
   )
-  private var accountRefresh: AccountRefreshCoordinator!
+  private let notificationCenter = NotificationCenter()
+  private var userUpdateObserver: MainActorNotificationObservation?
   private let navigationRoute = UUID()
   private var continueUserActivityReturnValue = false
   private var applicationDidFinishLaunchingReturnValue = true
@@ -169,6 +169,10 @@ final class ApplicationRoutingTests: TestCase {
   }
 
   override func tearDown() async throws {
+    self.userUpdateObserver?.cancel()
+    self.settingsFeature.cancelScheduledAccountRefresh()
+    self.settingsFeature.cancelAccountSetupRefresh()
+    self.discoveryFeature.cancelRecommendationRefresh()
     self.deepLinkRouter.reset()
     await self.deepLinkRouter.waitForOperations()
     await self.settingsFeature.waitForOperations()
@@ -191,32 +195,29 @@ final class ApplicationRoutingTests: TestCase {
     await self.settingsFeature.waitForOperations()
   }
 
-  private func makeAccountRefresh() -> AccountRefreshCoordinator {
-    let session = self.settingsFeature.sessionFeature
-    return AccountRefreshCoordinator(
-      applicationShortcuts: ApplicationShortcutService(
-        session: session,
-        hasRecommendations: { [discoveryFeature = self.discoveryFeature] in
-          try await discoveryFeature.hasRecommendations(for: $0)
-        }
-      ),
-      settingsFeature: self.settingsFeature
-    )
+  private var accountUpdateHandler: @MainActor (AppModel.AccountUpdate) -> Void {
+    { [weak self] update in
+      guard let self else { return }
+      switch update {
+      case let .user(user): self.updateCurrentUserInEnvironment.record(user)
+      case .invalidSession: self.forceLogout.record(())
+      case let .recommendationsAvailable(available):
+        self.setApplicationShortcutItems.record(ShortcutItem.items(hasRecommendations: available))
+      }
+    }
   }
 
   private func bindOutputs() {
-    self.accountRefresh = self.makeAccountRefresh()
+    self.userUpdateObserver = MainActorNotificationObservation(
+      center: self.notificationCenter, name: .ksr_userUpdated
+    ) { [weak self] in self?.postNotificationName.record($0.name) }
 
     self.onboardingFeature.onBadgeReset = { [weak self] in self?.applicationIconBadgeNumber.record(0) }
-    self.accountRefresh.onForceLogout = { [weak self] in self?.forceLogout.record(()) }
-    self.accountRefresh.onPostNotification = { [weak self] in self?.postNotificationName.record($0.name) }
     self.onboardingFeature.onRegistrationAttempted = { [weak self] in self?.pushRegistrationStarted.record(()) }
-    self.accountRefresh.onSetApplicationShortcutItems = { [weak self] in self?.setApplicationShortcutItems.record($0) }
     self.onboardingFeature.onTrackingAuthorizationStatus = { [weak self] in
       self?.trackingAuthorizationStatus.record($0)
     }
     self.onboardingFeature.onOfferOnboarding = { [weak self] in self?.triggerOnboardingFlow.record(()) }
-    self.accountRefresh.onUpdateCurrentUser = { [weak self] in self?.updateCurrentUserInEnvironment.record($0) }
   }
 
   private var navigationActionHandler: DeepLinkRouter.ActionHandler {
@@ -248,7 +249,7 @@ final class ApplicationRoutingTests: TestCase {
     self.applicationDidFinishLaunchingReturnValue = self.deepLinkRouter.routeLaunchShortcut(
       launchOptions?[.shortcutItem], route: self.navigationRoute, perform: self.navigationActionHandler
     )
-    self.accountRefresh.refreshAccountAndSetup()
+    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
   }
 
   private func openLink(
@@ -282,7 +283,7 @@ final class ApplicationRoutingTests: TestCase {
 
   private func startSession() {
     self.deepLinkRouter.release(route: self.navigationRoute)
-    self.accountRefresh.refreshAccountAndSetup()
+    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
   }
 
   private func launchApplication(
@@ -294,7 +295,7 @@ final class ApplicationRoutingTests: TestCase {
 
   private func enterForeground() {
     self.onboardingFeature.refreshNotificationAuthorization()
-    self.accountRefresh.refreshAccountAndSetup()
+    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
   }
 
   func testResetApplicationIconBadgeNumber_registeredForPushNotifications_WillEnterForeground() async {
@@ -350,7 +351,7 @@ final class ApplicationRoutingTests: TestCase {
       application: UIApplication.shared,
       launchOptions: [:]
     )
-    self.accountRefresh.refreshAccountAndSetup()
+    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
     self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
   }
 
@@ -362,25 +363,25 @@ final class ApplicationRoutingTests: TestCase {
       application: UIApplication.shared,
       launchOptions: [:]
     )
-    await self.accountRefresh.waitForUserRefresh()
+    await self.settingsFeature.waitForScheduledAccountRefresh()
     await self.settingsFeature.waitForOperations()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user])
     self.postNotificationName.assertDidNotEmitValue()
 
-    self.accountRefresh.currentUserUpdatedInEnvironment()
+    self.model.notifyUserUpdated(notificationCenter: self.notificationCenter)
 
     self.updateCurrentUserInEnvironment.assertValues([env.user])
     self.postNotificationName.assertValues([.ksr_userUpdated])
 
-    self.accountRefresh.refreshAccountAndSetup()
-    await self.accountRefresh.waitForUserRefresh()
+    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    await self.settingsFeature.waitForScheduledAccountRefresh()
     await self.settingsFeature.waitForOperations()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user, env.user])
     self.postNotificationName.assertValues([.ksr_userUpdated])
 
-    self.accountRefresh.currentUserUpdatedInEnvironment()
+    self.model.notifyUserUpdated(notificationCenter: self.notificationCenter)
 
     self.updateCurrentUserInEnvironment.assertValues([env.user, env.user])
     self.postNotificationName.assertValues(
@@ -396,13 +397,13 @@ final class ApplicationRoutingTests: TestCase {
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([.template])
       self.postNotificationName.assertDidNotEmitValue()
 
-      self.accountRefresh.currentUserUpdatedInEnvironment()
+      self.model.notifyUserUpdated(notificationCenter: self.notificationCenter)
 
       self.updateCurrentUserInEnvironment.assertValues([.template])
       self.postNotificationName.assertValues([.ksr_userUpdated])
@@ -424,7 +425,7 @@ final class ApplicationRoutingTests: TestCase {
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
@@ -1094,7 +1095,7 @@ final class ApplicationRoutingTests: TestCase {
       self.pushRegistrationStarted.assertValueCount(1)
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.devicePushRegistration.waitForScheduledDelivery()
@@ -1126,7 +1127,7 @@ final class ApplicationRoutingTests: TestCase {
       self.pushRegistrationStarted.assertValueCount(1)
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.devicePushRegistration.waitForScheduledDelivery()
@@ -1157,7 +1158,7 @@ final class ApplicationRoutingTests: TestCase {
       self.pushRegistrationStarted.assertValueCount(1)
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.devicePushRegistration.waitForScheduledDelivery()
@@ -1195,7 +1196,7 @@ final class ApplicationRoutingTests: TestCase {
         launchOptions: [:]
       )
       self.receiveDeviceToken("deadbeef".data(using: .utf8)!)
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.devicePushRegistration.waitForScheduledDelivery()
@@ -1469,19 +1470,19 @@ final class ApplicationRoutingTests: TestCase {
     self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
 
     self.setApplicationShortcutItems.assertValues([])
-    await self.accountRefresh.waitForUserRefresh()
+    await self.settingsFeature.waitForScheduledAccountRefresh()
     await self.settingsFeature.waitForOperations()
 
     await self.deepLinkRouter.waitForOperations()
-    await self.accountRefresh.waitForShortcutUpdate()
+    await self.discoveryFeature.waitForRecommendationRefresh()
     self.setApplicationShortcutItems.assertValues([[.projectsWeLove, .search]])
 
-    self.accountRefresh.refreshAccountAndSetup()
-    await self.accountRefresh.waitForUserRefresh()
+    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    await self.settingsFeature.waitForScheduledAccountRefresh()
     await self.settingsFeature.waitForOperations()
 
     await self.deepLinkRouter.waitForOperations()
-    await self.accountRefresh.waitForShortcutUpdate()
+    await self.discoveryFeature.waitForRecommendationRefresh()
     self.setApplicationShortcutItems.assertValues(
       [
         [.projectsWeLove, .search],
@@ -1503,11 +1504,11 @@ final class ApplicationRoutingTests: TestCase {
       self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
 
       self.setApplicationShortcutItems.assertValues([])
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.deepLinkRouter.waitForOperations()
-      await self.accountRefresh.waitForShortcutUpdate()
+      await self.discoveryFeature.waitForRecommendationRefresh()
       self.setApplicationShortcutItems.assertValues([
         [.recommendedForYou, .projectsWeLove, .search]
       ])
@@ -1527,11 +1528,11 @@ final class ApplicationRoutingTests: TestCase {
       self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
 
       self.setApplicationShortcutItems.assertValues([])
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.deepLinkRouter.waitForOperations()
-      await self.accountRefresh.waitForShortcutUpdate()
+      await self.discoveryFeature.waitForRecommendationRefresh()
       self.setApplicationShortcutItems.assertValues([
         [.recommendedForYou, .projectsWeLove, .search]
       ])
@@ -2050,7 +2051,7 @@ final class ApplicationRoutingTests: TestCase {
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([user])
@@ -2208,7 +2209,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForTrackingChecks()
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
@@ -2239,7 +2240,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForTrackingChecks()
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
@@ -2266,7 +2267,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForTrackingChecks()
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
@@ -2292,7 +2293,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForTrackingChecks()
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
@@ -2325,7 +2326,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForTrackingChecks()
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
@@ -2360,7 +2361,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForTrackingChecks()
-      await self.accountRefresh.waitForUserRefresh()
+      await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)

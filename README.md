@@ -92,6 +92,12 @@ The migration was AI-assisted and substantially autonomous, with human direction
 
 ## Verification and limits
 
+The continuing CFA audit is incomplete. AppDelegate has no ViewModel, and app
+lifecycle is not represented as a Feature. AppModel coordinates deep-link and
+account workflows through existing Features; remaining infrastructure ownership
+and global dependencies are tracked in [remaining work](MIGRATION_REMAINING_WORK.md).
+Swift packages are outside this audit's scope.
+
 At the 3 November handover, selected existing cohorts reported **2,929 passing tests**. Following ReactiveSwift removal, separate runs on iPhone Air / iOS 26.2 passed **1,944 non-snapshot model tests**, **183 non-snapshot presentation tests**, and **39 signed keychain tests**. These are separate checkpoints and overlapping cohorts, not additive totals. The simulator build succeeded, and a limited public-demo smoke check covered discovery sorting, opening a project and searching.
 
 The original snapshot references require an iPad mini (A17 Pro) with iOS 18.6; those comparisons were not rerun because that runtime was unavailable. Physical-device review, full visual/accessibility validation and live account/payment operations remain unverified. This case study is not a production certification, a claim of race freedom, or a warning-free Swift 6 build. See [remaining work](MIGRATION_REMAINING_WORK.md) and the [ledger](MIGRATION_LEDGER.md) for details and dated evidence.

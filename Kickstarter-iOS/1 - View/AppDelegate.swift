@@ -38,7 +38,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   }()
   private let navigationRoute = UUID()
   private var continueUserActivityReturnValue = false
-  private var accountRefresh: AccountRefreshCoordinator { AppModel.shared.accountRefresh }
 
   deinit {
     let router = self.deepLinkRouter
@@ -130,35 +129,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       }
     #endif
 
-    self.accountRefresh.onUpdateCurrentUser = { [weak self] _ in
-      DispatchQueue.main.async { [weak self] in
-        // The Feature committed already; never replay a delayed whole-user snapshot.
-        guard let user = AppModel.shared.sessionFeature.currentUser else { return }
-        // Update user in Braze.
-        self?.braze?.changeUser(userId: String(user.id))
-
-        // Update user in Segment and Statsig.
-        AppEnvironment.current.identify(user: user)
-
-        self?.accountRefresh.currentUserUpdatedInEnvironment()
-      }
-    }
-
-    self.accountRefresh.onForceLogout = {
-      let session = AppModel.shared.sessionFeature
-      let userID = session.currentUser?.id
-      let generation = session.generation
-      DispatchQueue.main.async {
-        guard session.isCurrent(userID: userID, generation: generation) else { return }
-        AppEnvironment.logout()
-        NotificationCenter.default.post(.init(name: .ksr_sessionEnded, object: nil))
-      }
-    }
-
-    self.accountRefresh.onPostNotification = { notification in
-      DispatchQueue.main.async { NotificationCenter.default.post(notification) }
-    }
-
     AppModel.shared.onboardingFeature.onBadgeReset = {
       DispatchQueue.main.async { UIApplication.shared.applicationIconBadgeNumber = 0 }
     }
@@ -189,22 +159,12 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { [weak self] in self?.appTrackingAuthorizationChanged(status: status) }
     }
 
-    self.accountRefresh.onSetApplicationShortcutItems = { shortcutItems in
-      let session = AppModel.shared.sessionFeature
-      let userID = session.currentUser?.id
-      let generation = session.generation
-      DispatchQueue.main.async {
-        guard session.isCurrent(userID: userID, generation: generation) else { return }
-        UIApplication.shared.shortcutItems = shortcutItems.map { $0.applicationShortcutItem }
-      }
-    }
-
     self.appNotificationObservers = [
       MainActorNotificationObservation(name: .ksr_sessionStarted) { [weak self] _ in
         AppModel.shared.sessionChanged()
         guard let self else { return }
         self.deepLinkRouter.release(route: self.navigationRoute)
-        self.accountRefresh.refreshAccountAndSetup()
+        AppModel.shared.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
       },
       MainActorNotificationObservation(name: .ksr_showNotificationsDialog) { [weak self] notification in
         guard let context = PushNotificationDialog.eligibleContext(for: notification) else { return }
@@ -216,7 +176,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         AppModel.shared.sessionChanged()
         guard let self else { return }
         self.deepLinkRouter.release(route: self.navigationRoute)
-        self.accountRefresh.refreshAfterSignOut()
+        AppModel.shared.refreshAccount(onUpdate: self.accountUpdateHandler)
         DispatchQueue.main.async { UIApplication.shared.unregisterForRemoteNotifications() }
       }
     ]
@@ -234,7 +194,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     let shouldContinueLaunch = self.deepLinkRouter.routeLaunchShortcut(
       launchOptions?[.shortcutItem], route: self.navigationRoute, perform: self.navigationActionHandler
     )
-    self.accountRefresh.refreshAccountAndSetup()
+    AppModel.shared.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
 
     AppModel.shared.preparePermissions()
     self.synchronizePreferences()
@@ -243,6 +203,45 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     UNUserNotificationCenter.current().delegate = self
 
     return shouldContinueLaunch
+  }
+
+  private var accountUpdateHandler: @MainActor (AppModel.AccountUpdate) -> Void {
+    { [weak self] in self?.handleAccountUpdate($0) }
+  }
+
+  private func handleAccountUpdate(_ update: AppModel.AccountUpdate) {
+    switch update {
+    case .user:
+      DispatchQueue.main.async { [weak self] in
+        // The Feature committed already; never replay a delayed whole-user snapshot.
+        guard let user = AppModel.shared.sessionFeature.currentUser else { return }
+        self?.braze?.changeUser(userId: String(user.id))
+        AppEnvironment.current.identify(user: user)
+        self?.notifyUserUpdated()
+      }
+    case .invalidSession:
+      let session = AppModel.shared.sessionFeature
+      let userID = session.currentUser?.id
+      let generation = session.generation
+      DispatchQueue.main.async {
+        guard session.isCurrent(userID: userID, generation: generation) else { return }
+        AppEnvironment.logout()
+        NotificationCenter.default.post(.init(name: .ksr_sessionEnded, object: nil))
+      }
+    case let .recommendationsAvailable(available):
+      let shortcutItems = ShortcutItem.items(hasRecommendations: available)
+      let session = AppModel.shared.sessionFeature
+      let userID = session.currentUser?.id
+      let generation = session.generation
+      DispatchQueue.main.async {
+        guard session.isCurrent(userID: userID, generation: generation) else { return }
+        UIApplication.shared.shortcutItems = shortcutItems.map { $0.applicationShortcutItem }
+      }
+    }
+  }
+
+  private func notifyUserUpdated() {
+    DispatchQueue.main.async { AppModel.shared.notifyUserUpdated() }
   }
 
   func applicationDidBecomeActive(_: UIApplication) {
@@ -255,7 +254,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func applicationWillEnterForeground(_: UIApplication) {
     AppModel.shared.refreshNotificationAuthorization()
-    self.accountRefresh.refreshAccountAndSetup()
+    AppModel.shared.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
     AppModel.shared.applicationWillEnterForeground()
   }
 
@@ -387,7 +386,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
             let user = session.currentUser else { return }
       self?.braze?.changeUser(userId: String(user.id))
       AppEnvironment.current.identify(user: user)
-      self?.accountRefresh.currentUserUpdatedInEnvironment()
+      self?.notifyUserUpdated()
     }
   }
 

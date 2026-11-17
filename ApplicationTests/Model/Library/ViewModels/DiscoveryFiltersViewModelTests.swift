@@ -54,7 +54,8 @@ internal final class DiscoveryFiltersViewModelTests: TestCase {
   private lazy var vm: DiscoveryFiltersViewModel = {
     let vm = DiscoveryFiltersViewModel(
       discoveryFeature: DiscoveryFeature(
-        provider: AsyncDiscoveryProvider(), currentUser: { AppEnvironment.current.currentUser }
+        provider: AsyncDiscoveryProvider(),
+        sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
       )
     )
     vm.onAnimateIn = { [weak self] in self?.animateInView.values.append(()) }

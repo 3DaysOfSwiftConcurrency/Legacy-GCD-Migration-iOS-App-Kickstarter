@@ -20,6 +20,39 @@ AppModel's remaining infrastructure properties and the wider application
 composition still need migration; this checkpoint does not establish full CFA
 compliance.
 
+## Account refresh and recommendation ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel coordinates account refresh through SettingsFeature, SessionFeature and
+DiscoveryFeature. It stores no account-refresh coordinator or shortcut service.
+AppDelegate receives value events and applies native presentation and SDK updates;
+it has no ViewModel. ShortcutItem owns the ordered native shortcut list.
+
+- Launch, foreground and sign-in refresh account/setup data. Sign-out refreshes
+  account-dependent presentation without fetching account setup.
+- Settings retains refresh debounce and serialization with preference writes.
+  Session remains the authority for account identity and committed user values.
+  Invalid-token failure retains the guarded logout behavior.
+- Discovery recommendation availability is scoped to both account identity and
+  session generation. Same-user session replacement cannot share or publish an
+  obsolete read. Replacing delivery cancels that waiter, not a shared domain read.
+- A session replacement before a pending delivery starts must prevent its request.
+  If a user-update consumer changes the session synchronously, AppModel must not
+  start the old account's subsequent recommendation workflow.
+- Logged-out availability performs no recommendation request. Keep the existing
+  failure-to-unavailable behavior and shortcut ordering: recommended, projects we
+  love, search when available; otherwise projects we love, search.
+- Preserve user-update notifications and the existing deferred UIKit/analytics
+  delivery. This checkpoint does not certify native system shortcuts or visual
+  behavior, or complete the remaining AppModel composition audit.
+
+The focused baseline passed 77 tests. Final validation passed 188 LibraryTests
+and 145 bounded PresentationTests on iPhone 17 Pro Max, iOS 26.2, with no failures
+or skips. The Feature and AppModel tests exercise the session boundaries above;
+application-routing tests retain the existing notification and shortcut assertions.
+Native system shortcut integration and live account operations remain unverified.
+
 ## Onboarding and application permission ownership — 17 November 2026
 
 Author: Matthew Thomas.

@@ -5,6 +5,10 @@ public enum ShortcutItem {
   case recommendedForYou
   case search
 
+  static func items(hasRecommendations: Bool) -> [ShortcutItem] {
+    hasRecommendations ? [.recommendedForYou, .projectsWeLove, .search] : [.projectsWeLove, .search]
+  }
+
   public init?(typeString: String) {
     switch typeString {
     case "projects_we_love":

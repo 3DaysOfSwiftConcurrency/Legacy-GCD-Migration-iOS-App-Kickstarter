@@ -87,31 +87,32 @@ final class AppModelTests: XCTestCase {
     XCTAssertEqual(surveyRequests, 0)
   }
 
-  func testShortcutRefreshDropsResultAfterSameUserSessionReplacement() async throws {
+  func testAccountUpdateCannotStartRecommendationsAfterSynchronousSessionReplacement() async {
     let user = User.template
     let session = SessionFeature(
-      makeProvider: { AsyncSessionProvider(service: MockService()) },
-      currentUser: { user }
+      makeProvider: { AsyncSessionProvider(service: MockService(fetchUserSelfResponse: user)) },
+      currentUser: { user }, updateUser: { _ in }
     )
-    let gate = AccountRequestGate<Bool>()
-    defer { gate.releaseAll() }
-    let shortcuts = ApplicationShortcutService(session: session, hasRecommendations: { _ in
-      try await gate.request()
-    })
-    var results: [Bool] = []
+    let settings = SettingsFeature(
+      sessionFeature: session, refreshDebounce: {},
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    let discovery = DiscoveryFeature(provider: NoRequestDiscoveryProvider(), sessionFeature: session)
+    let model = makeTestAppModel(sessionFeature: session, settingsFeature: settings, discoveryFeature: discovery)
+    var userUpdates = 0
 
-    shortcuts.refresh(for: user) { results.append($0) }
-    await gate.waitFor(1)
-    session.sessionChanged()
-    try gate.finish(0, .success(true))
-    await shortcuts.waitForRefresh()
-    XCTAssertEqual(results, [])
-
-    shortcuts.refresh(for: user) { results.append($0) }
-    await gate.waitFor(2)
-    try gate.finish(1, .success(false))
-    await shortcuts.waitForRefresh()
-    XCTAssertEqual(results, [false])
+    model.refreshAccount { update in
+      switch update {
+      case let .user(updated):
+        XCTAssertEqual(updated.id, user.id)
+        userUpdates += 1
+        session.sessionChanged()
+      default: XCTFail("An obsolete account refresh delivered another event")
+      }
+    }
+    await settings.waitForScheduledAccountRefresh()
+    await discovery.waitForRecommendationRefresh()
+    XCTAssertEqual(userUpdates, 1)
   }
 
   func testEnteringBackgroundPublishesTheApplicationNotification() {
@@ -217,7 +218,7 @@ final class AppModelTests: XCTestCase {
     )
     let firstDiscovery = DiscoveryFeature(
       provider: NoRequestDiscoveryProvider(),
-      currentUser: { firstSession.currentUser }
+      sessionFeature: firstSession
     )
     let firstOnboarding = OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store })
     let first = AppModel(
@@ -275,7 +276,7 @@ final class AppModelTests: XCTestCase {
     )
     let secondDiscovery = DiscoveryFeature(
       provider: NoRequestDiscoveryProvider(),
-      currentUser: { secondSession.currentUser }
+      sessionFeature: secondSession
     )
     let secondOnboarding = OnboardingFeature(completionStore: { [store = MockKeyValueStore()] in store })
     let second = AppModel(

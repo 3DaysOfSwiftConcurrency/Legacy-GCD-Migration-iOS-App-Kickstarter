@@ -235,43 +235,6 @@ extension ApplicationConfigurationService {
   }
 }
 
-/// Owns the session-scoped recommendation lookup used to refresh app shortcuts.
-@MainActor
-final class ApplicationShortcutService {
-  private let session: SessionFeature
-  private let hasRecommendations: @MainActor (User?) async throws -> Bool
-  private var refreshTask: Task<Void, Never>?
-
-  init(session: SessionFeature, hasRecommendations: @escaping @MainActor (User?) async throws -> Bool) {
-    self.session = session
-    self.hasRecommendations = hasRecommendations
-  }
-
-  func refresh(for user: User?, onResult: @escaping @MainActor (Bool) -> Void) {
-    self.cancel()
-    let session = self.session
-    let generation = session.generation
-    let userID = session.currentUser?.id
-    let hasRecommendations = self.hasRecommendations
-    self.refreshTask = Task {
-      do {
-        try Task.checkCancellation()
-        let available = try await hasRecommendations(user)
-        try Task.checkCancellation()
-        guard session.isCurrent(userID: userID, generation: generation) else { return }
-        onResult(available)
-      } catch { /* Failed or superseded reads leave the current shortcuts in place. */ }
-    }
-  }
-
-  func cancel() {
-    self.refreshTask?.cancel()
-    self.refreshTask = nil
-  }
-
-  func waitForRefresh() async { await self.refreshTask?.value }
-}
-
 /// Serializes device-token registration admitted by the application boundary.
 @MainActor
 public final class DevicePushRegistrationService {
@@ -387,8 +350,6 @@ public final class AppModel {
   public let profileFeature: ProfileFeature
   public let searchFeature: SearchFeature
   public let discoveryFeature: DiscoveryFeature
-  let applicationShortcuts: ApplicationShortcutService
-  let accountRefresh: AccountRefreshCoordinator
   public let projectDetailsFeature: ProjectDetailsFeature
   public let rewardsFeature: RewardsFeature
   public let discussionFeature: DiscussionFeature
@@ -442,17 +403,21 @@ public final class AppModel {
     self.profileFeature = profileFeature
     self.searchFeature = searchFeature
     self.discoveryFeature = discoveryFeature
-    let shortcuts = ApplicationShortcutService(
-      session: sessionFeature,
-      hasRecommendations: { try await discoveryFeature.hasRecommendations(for: $0) }
-    )
-    self.applicationShortcuts = shortcuts
-    self.accountRefresh = AccountRefreshCoordinator(applicationShortcuts: shortcuts, settingsFeature: settingsFeature)
     self.projectDetailsFeature = projectDetailsFeature
     self.rewardsFeature = rewardsFeature
     self.discussionFeature = discussionFeature
     self.projectMediaFeature = projectMediaFeature
     self.hasLaunched = false
+  }
+
+  deinit {
+    let settings = self.settingsFeature
+    let discovery = self.discoveryFeature
+    Task { @MainActor in
+      settings.cancelScheduledAccountRefresh()
+      settings.cancelAccountSetupRefresh()
+      discovery.cancelRecommendationRefresh()
+    }
   }
 
   /// Starts shared launch work once without making UI construction wait for it.
@@ -497,7 +462,6 @@ public final class AppModel {
   public func sessionChanged() {
     self.sessionFeature.sessionChanged()
     self.paymentsFeature.sessionChanged()
-    self.applicationShortcuts.cancel()
     self.settingsFeature.cancelScheduledAccountRefresh()
     self.authenticationFeature.resetEmailRedirects()
     self.discoveryFeature.resetRecommendationAvailability()
@@ -541,7 +505,7 @@ public final class AppModel {
       makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }
     )
     let discoveryFeature = DiscoveryFeature(
-      provider: AsyncDiscoveryProvider(), currentUser: { sessionFeature.currentUser }
+      provider: AsyncDiscoveryProvider(), sessionFeature: sessionFeature
     )
     let onboarding = OnboardingFeature.live()
     return AppModel(

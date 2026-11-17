@@ -21,7 +21,7 @@ app_view='Kickstarter-iOS/1 - View'
 app_model='Kickstarter-iOS/2 - AppModel'
 root_view_model="$app_view/Views/RootTabBar/RootViewModel.swift"
 root_tabs="$app_view/Views/RootTabBar/RootTabBarViewController.swift"
-account_refresh="$app_model/Composition/AccountRefreshCoordinator.swift"
+account_refresh="$app_model/AppModel+AccountRefresh.swift"
 pledge_view_model="$app_view/Views/PledgeView/Controllers/PledgeViewModel.swift"
 post_campaign_view_model="$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewModel.swift"
 manage_pledge_view_model="$app_view/Views/ManagePledge/Controllers/ManagePledgeViewModel.swift"
@@ -56,6 +56,10 @@ reject_matches 'AppDelegate hands tab links to Root Tabs with their route delive
   'rootTabBarController[?][.]switchTo(Activities|Discovery|MessageThread|Search)' "$app_view/AppDelegate.swift"
 reject_matches 'The app delegate uses its composed owners directly.' \
   'AppDelegateViewModel' "$app_view" "$app_model"
+reject_matches 'AppModel coordinates account refresh through its concrete Features.' \
+  'AccountRefreshCoordinator|ApplicationShortcutService' "$app_view" "$app_model"
+reject_matches 'Native shortcut presentation stays in the View layer.' \
+  'ShortcutItem|UIApplication' "$account_refresh"
 reject_matches 'Account refresh receives its dependencies from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$account_refresh"
 reject_matches 'RemoteConfigurationService owns activation and publishes its outcome.' \

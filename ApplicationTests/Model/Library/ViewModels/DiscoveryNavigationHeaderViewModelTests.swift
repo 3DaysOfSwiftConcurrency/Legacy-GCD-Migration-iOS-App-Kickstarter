@@ -51,7 +51,8 @@ internal final class DiscoveryNavigationHeaderViewModelTests: TestCase {
     try await super.setUp()
     self.vm = DiscoveryNavigationHeaderViewModel(
       discoveryFeature: DiscoveryFeature(
-        provider: AsyncDiscoveryProvider(), currentUser: { AppEnvironment.current.currentUser }
+        provider: AsyncDiscoveryProvider(),
+        sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
       ),
       scheduleDismissal: { [weak self] action in
         self?.pendingDismissals.append(action)

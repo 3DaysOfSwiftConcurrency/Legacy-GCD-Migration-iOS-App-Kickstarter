@@ -55,12 +55,15 @@ public final class DiscoveryFeature {
   }
 
   private var pages: [String: Page] = [:]
-  private var recommendationRequest: (id: UUID, userID: Int, task: Task<Bool, Error>)?
+  private var recommendationRequest: (
+    id: UUID, userID: Int, accountID: Int?, sessionGeneration: Int, task: Task<Bool, Error>
+  )?
+  private var recommendationDelivery: (id: UUID, task: Task<Void, Never>)?
   private var recommendationGeneration = 0
   private let provider: any DiscoveryProvider
   private let loadCategories: @MainActor () async throws -> RootCategoriesEnvelope
   private let sleep: @MainActor (TimeInterval) async throws -> Void
-  private let currentUser: @MainActor () -> User?
+  private let sessionFeature: SessionFeature
   internal enum Update {
     case projects(DiscoveryParams.Sort, [Project])
     case loading(DiscoveryParams.Sort, Bool)
@@ -133,24 +136,28 @@ public final class DiscoveryFeature {
   }
 
   public func initialParameters() -> DiscoveryParams {
-    Self.initialParameters(for: self.currentUser())
+    Self.initialParameters(for: self.sessionFeature.currentUser)
   }
 
-  public var user: User? { self.currentUser() }
+  public var user: User? { self.sessionFeature.currentUser }
 
   /// Availability is Discovery state even when the result is rendered as an app shortcut.
   public func hasRecommendations(for user: User?) async throws -> Bool {
     try Task.checkCancellation()
     guard let user else {
-      self.resetRecommendationAvailability()
+      self.resetRecommendationRead()
       return false
     }
-    if let request = self.recommendationRequest, request.userID == user.id {
+    let accountID = self.sessionFeature.currentUser?.id
+    let sessionGeneration = self.sessionFeature.generation
+    if let request = self.recommendationRequest, request.userID == user.id,
+       request.accountID == accountID, request.sessionGeneration == sessionGeneration {
       return try await self.recommendationAvailability(
-        request.task, generation: self.recommendationGeneration
+        request.task, generation: self.recommendationGeneration,
+        accountID: accountID, sessionGeneration: sessionGeneration
       )
     }
-    self.resetRecommendationAvailability()
+    self.resetRecommendationRead()
     let generation = self.recommendationGeneration
     let id = UUID()
     let provider = self.provider
@@ -172,31 +179,74 @@ public final class DiscoveryFeature {
         return false
       }
     }
-    self.recommendationRequest = (id, user.id, task)
-    return try await self.recommendationAvailability(task, generation: generation)
+    self.recommendationRequest = (id, user.id, accountID, sessionGeneration, task)
+    return try await self.recommendationAvailability(
+      task, generation: generation, accountID: accountID, sessionGeneration: sessionGeneration
+    )
   }
 
   private func recommendationAvailability(
-    _ task: Task<Bool, Error>, generation: Int
+    _ task: Task<Bool, Error>, generation: Int, accountID: Int?, sessionGeneration: Int
   ) async throws -> Bool {
     let value = try await task.value
     try Task.checkCancellation()
-    guard generation == self.recommendationGeneration else { throw CancellationError() }
+    guard generation == self.recommendationGeneration,
+          self.sessionFeature.isCurrent(userID: accountID, generation: sessionGeneration) else {
+      throw CancellationError()
+    }
     return value
   }
 
-  func resetRecommendationAvailability() {
+  /// Replaces the application's pending availability delivery without owning UIKit shortcuts.
+  @discardableResult
+  func refreshRecommendationAvailability(onResult: @escaping @MainActor (Bool) -> Void) -> Task<Void, Never> {
+    self.cancelRecommendationRefresh()
+    let id = UUID()
+    let user = self.sessionFeature.currentUser
+    let generation = self.sessionFeature.generation
+    let task = Task { [weak self] in
+      guard let self else { return }
+      defer {
+        if self.recommendationDelivery?.id == id { self.recommendationDelivery = nil }
+      }
+      do {
+        try Task.checkCancellation()
+        guard self.sessionFeature.isCurrent(userID: user?.id, generation: generation) else { return }
+        let available = try await self.hasRecommendations(for: user)
+        try Task.checkCancellation()
+        guard self.recommendationDelivery?.id == id,
+              self.sessionFeature.isCurrent(userID: user?.id, generation: generation) else { return }
+        onResult(available)
+      } catch { /* Failed or superseded reads leave the application's shortcuts in place. */ }
+    }
+    self.recommendationDelivery = (id, task)
+    return task
+  }
+
+  func cancelRecommendationRefresh() {
+    self.recommendationDelivery?.task.cancel()
+    self.recommendationDelivery = nil
+  }
+
+  func waitForRecommendationRefresh() async { await self.recommendationDelivery?.task.value }
+
+  private func resetRecommendationRead() {
     self.recommendationGeneration += 1
     self.recommendationRequest?.task.cancel()
     self.recommendationRequest = nil
   }
 
+  func resetRecommendationAvailability() {
+    self.cancelRecommendationRefresh()
+    self.resetRecommendationRead()
+  }
+
   public var currentUserHasSocialConnections: Bool {
-    self.currentUser()?.social == .some(true)
+    self.sessionFeature.currentUser?.social == .some(true)
   }
 
   public func topFilters() -> [DiscoveryParams] {
-    let user = self.currentUser()
+    let user = self.sessionFeature.currentUser
     var filters = [
       .defaults |> DiscoveryParams.lens.includePOTD .~ true,
       .defaults |> DiscoveryParams.lens.staffPicks .~ true
@@ -229,12 +279,12 @@ public final class DiscoveryFeature {
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
       try Task.checkCancellation()
     },
-    currentUser: @escaping @MainActor () -> User?
+    sessionFeature: SessionFeature
   ) {
     self.provider = provider
     self.loadCategories = loadCategories
     self.sleep = sleep
-    self.currentUser = currentUser
+    self.sessionFeature = sessionFeature
   }
 
   func waitForDeepLinkResponse(_ seconds: TimeInterval) async throws {
@@ -274,10 +324,10 @@ public final class DiscoveryFeature {
     var parameters = parameters
     parameters.sort = sort
     if !force, let request = page.request, request.cursor == nil,
-       page.userID == self.currentUser()?.id,
+       page.userID == self.sessionFeature.currentUser?.id,
        page.snapshot.parameters == parameters { return request.task }
     page.request?.task.cancel()
-    page.userID = self.currentUser()?.id
+    page.userID = self.sessionFeature.currentUser?.id
     page.snapshot.parameters = parameters
     page.cursor = nil
     page.snapshot.hasMore = false
@@ -287,7 +337,7 @@ public final class DiscoveryFeature {
   @discardableResult
   internal func requestNextPage(sort: DiscoveryParams.Sort) -> Task<Void, Never>? {
     let page = self.page(for: sort)
-    guard page.userID == self.currentUser()?.id else { return nil }
+    guard page.userID == self.sessionFeature.currentUser?.id else { return nil }
     if let request = page.request { return request.task }
     guard let parameters = page.snapshot.parameters, let cursor = page.cursor,
           page.snapshot.hasMore else { return nil }
@@ -298,8 +348,8 @@ public final class DiscoveryFeature {
     sort: DiscoveryParams.Sort, page: Page, parameters: DiscoveryParams, cursor: String?
   ) -> Task<Void, Never> {
     let id = UUID()
-    let currentUser = self.currentUser
-    let requestedUserID = currentUser()?.id
+    let session = self.sessionFeature
+    let requestedUserID = session.currentUser?.id
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     page.snapshot.isLoading = true
     page.snapshot.error = nil
@@ -313,7 +363,7 @@ public final class DiscoveryFeature {
       }
       do {
         try Task.checkCancellation()
-        guard currentUser()?.id == requestedUserID else { return }
+        guard session.currentUser?.id == requestedUserID else { return }
         let response: Result<DiscoveryEnvelope, Error>
         do { response = .success(try await provider.page(parameters: parameters, cursor: cursor)) }
         catch is CancellationError { return }
@@ -322,7 +372,7 @@ public final class DiscoveryFeature {
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, page.request?.id == id,
-              currentUser()?.id == requestedUserID else { return }
+              session.currentUser?.id == requestedUserID else { return }
         let envelope = try response.get()
         page.snapshot.projects = ((cursor == nil ? [] : page.snapshot.projects) + envelope.projects).distincts()
         page.cursor = envelope.urls.api.moreProjects
@@ -330,7 +380,7 @@ public final class DiscoveryFeature {
         self.emit(.projects(sort, page.snapshot.projects))
       } catch {
         guard page.request?.id == id, !Task.isCancelled, !(error is CancellationError),
-              currentUser()?.id == requestedUserID else { return }
+              session.currentUser?.id == requestedUserID else { return }
         page.snapshot.error = (error as? ErrorEnvelope) ?? .couldNotParseJSON
       }
     }
@@ -344,26 +394,26 @@ public final class DiscoveryFeature {
     let page = self.page(for: sort)
     page.activityRequest?.task.cancel()
     let id = UUID()
-    let currentUser = self.currentUser
-    let requestedUserID = currentUser()?.id
+    let session = self.sessionFeature
+    let requestedUserID = session.currentUser?.id
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     page.snapshot.activityError = nil
     let task = Task { @MainActor [weak self, provider, sleep] in
       defer { if page.activityRequest?.id == id { page.activityRequest = nil } }
       do {
         try Task.checkCancellation()
-        guard currentUser()?.id == requestedUserID else { return }
+        guard session.currentUser?.id == requestedUserID else { return }
         guard let envelope = try await provider.activitySample() else { return }
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, page.activityRequest?.id == id,
-              currentUser()?.id == requestedUserID else { return }
+              session.currentUser?.id == requestedUserID else { return }
         page.snapshot.activitySample = envelope.activities
         self.emit(.activities(sort, envelope.activities))
       } catch {
         // Legacy sample failures leave the existing sample unchanged.
         guard page.activityRequest?.id == id, !Task.isCancelled, !(error is CancellationError),
-              currentUser()?.id == requestedUserID else { return }
+              session.currentUser?.id == requestedUserID else { return }
         page.snapshot.activityError = (error as? ErrorEnvelope) ?? .couldNotParseJSON
       }
     }

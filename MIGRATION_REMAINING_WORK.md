@@ -1,6 +1,39 @@
-# CFA handover and remaining validation
+# CFA audit and remaining validation
 
-Author: Matthew Thomas. Updated 3 November 2026.
+Author: Matthew Thomas. Updated 17 November 2026.
+
+## Current audit — incomplete
+
+The 3 November handover below records a historical milestone. Subsequent source
+review found further CFA ownership work; it does not establish current full
+compliance. The active audit covers only `Kickstarter-iOS/1 - View` and
+`Kickstarter-iOS/2 - AppModel`, with supporting tests and project registration.
+Swift packages are excluded.
+
+- AppDelegate has no ViewModel. Lifecycle is not a Feature. Application events
+  enter AppModel, which coordinates the existing Features. DeepLinkRouter retains
+  navigation delivery and UIKit construction; domain resolution uses AppModel.
+- Account refresh now uses AppModel methods with Settings, Session and Discovery.
+  The account-refresh coordinator and application-shortcut service are removed.
+  Discovery owns recommendation requests; ShortcutItem defines native presentation.
+- AppModel still stores four infrastructure collaborators: connectivity, remote
+  configuration, application configuration and device registration. Their consumers
+  and appropriate ownership require source review before the composition meets
+  the Feature-only property requirement. Do not invent a lifecycle Feature to
+  conceal these dependencies.
+- Discovery recommendation reads check session generation. Feed pagination and
+  activity sampling still use user-ID checks; review same-user session replacement
+  and related task lifetimes separately.
+- Continue reviewing global environment access, authoritative state, feature
+  boundaries and presentation-owned work across the in-scope source. Focused green
+  tests establish only their tested scenarios, not an exhaustive compliance audit.
+
+Use the dated entries at the end of `MIGRATION_LEDGER.md` for current verified
+checkpoints. The full Library suite previously hung; run focused main-module
+selections followed by bounded affected regressions. Device, visual, live-service
+and release validation remain subject to the limits recorded below.
+
+## Historical handover — 3 November 2026
 
 **CFA application implementation and physical structure are complete for handover.**
 The app is ready for the separate concurrency-analysis and new-test phase requested
