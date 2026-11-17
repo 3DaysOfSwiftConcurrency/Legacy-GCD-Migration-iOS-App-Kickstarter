@@ -43,8 +43,12 @@ Swift packages are excluded.
   Tier selection, reward-toggle parsing and PPO presentation use that owner; PPO
   Views no longer call global flag helpers. The removed V2/V4 convenience functions
   cannot be restored without failing the CFA gate.
-- Next: migrate the remaining runtime helpers independently: Root Tabs floating-tab
-  policy and Pledge Manager bypass policy. Project rich-text and video-feed Statsig
+- RootViewModel now reads the effective floating-tab policy through the composed
+  SettingsFeature. RootTabBarViewController no longer supplies an Environment-backed
+  closure, and the global floating-tab helper is removed. The existing live policy
+  remains override, then remote client, then false.
+- Next: migrate the remaining Pledge Manager bypass runtime helper independently.
+  Project rich-text and video-feed Statsig
   inputs are already composed into their Features but still use global helper
   closures at composition. Bootstrap keychain reads must remain independent of
   AppModel; do not route them through SettingsFeature.

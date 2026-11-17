@@ -13,12 +13,23 @@ final class RootViewModelTests: TestCase {
   private let sessionFeature = SessionFeature(makeProvider: {
     AsyncSessionProvider(service: AppEnvironment.current.apiService)
   })
+  private lazy var settingsFeature = SettingsFeature(
+    sessionFeature: self.sessionFeature,
+    applicationSettings: .test(
+      userDefaults: { AppEnvironment.current.userDefaults },
+      remoteClient: { AppEnvironment.current.remoteConfigClient }
+    ),
+    makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+  )
   private lazy var vm = self.makeViewModel(profileFeature: ProfileFeature(
     sessionFeature: self.sessionFeature,
     makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }
   ))
 
-  private func makeViewModel(profileFeature: ProfileFeature) -> RootViewModel {
+  private func makeViewModel(
+    profileFeature: ProfileFeature,
+    settingsFeature: SettingsFeature? = nil
+  ) -> RootViewModel {
     RootViewModel(
       sessionFeature: profileFeature.sessionFeature,
       profileFeature: profileFeature,
@@ -26,9 +37,9 @@ final class RootViewModelTests: TestCase {
         sessionFeature: profileFeature.sessionFeature,
         makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
       ),
+      settingsFeature: settingsFeature ?? self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      floatingTabBarEnabled: featureFloatingTabBarEnabled,
       isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
     )
   }
@@ -824,6 +835,33 @@ final class RootViewModelTests: TestCase {
       ],
       "First load should use standard tab bar items order"
     )
+  }
+
+  func testFloatingTabBarPolicyComesFromInjectedSettingsFeature() {
+    let injectedRemoteConfig = MockRemoteConfigClient()
+    injectedRemoteConfig.features = [RemoteConfigFeature.floatingTabBar.rawValue: true]
+    let globalRemoteConfig = MockRemoteConfigClient()
+    globalRemoteConfig.features = [RemoteConfigFeature.floatingTabBar.rawValue: false]
+    let settingsFeature = SettingsFeature(
+      sessionFeature: self.sessionFeature,
+      applicationSettings: .test(remoteClient: { injectedRemoteConfig }),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    let viewModel = self.makeViewModel(
+      profileFeature: ProfileFeature(
+        sessionFeature: self.sessionFeature,
+        makeProvider: { AsyncProfileProvider(service: MockService()) }
+      ),
+      settingsFeature: settingsFeature
+    )
+    var receivedValues: [Bool] = []
+    viewModel.outputs.onFloatingTabBarEnabled = { receivedValues.append($0) }
+
+    withEnvironment(remoteConfigClient: globalRemoteConfig) {
+      viewModel.inputs.viewDidLoad()
+    }
+
+    XCTAssertEqual(receivedValues, [true])
   }
 
   func testSetViewControllersAndTabBarItemsData_ReTriggerOnAppWillEnterForeground() {

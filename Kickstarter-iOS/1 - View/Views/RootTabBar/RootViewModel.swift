@@ -150,6 +150,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   private let sessionFeature: SessionFeature
   private let profileFeature: ProfileFeature
   private let activityFeature: ActivityFeature
+  private let settingsFeature: SettingsFeature
   private var controllers: [RootViewControllerData] = []
   private var selectedTab: RootTab = .discovery
   private var lastUserSelectedTab: RootTab = .discovery
@@ -168,24 +169,23 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
 
   private let analytics: () -> KSRAnalytics
   private let badgePresentationDelay: () -> TimeInterval
-  private let floatingTabBarEnabled: @MainActor () -> Bool
   private let isVoiceOverRunning: () -> Bool
 
   public init(
     sessionFeature: SessionFeature,
     profileFeature: ProfileFeature,
     activityFeature: ActivityFeature,
+    settingsFeature: SettingsFeature,
     analytics: @escaping () -> KSRAnalytics,
     badgePresentationDelay: @escaping () -> TimeInterval,
-    floatingTabBarEnabled: @escaping @MainActor () -> Bool,
     isVoiceOverRunning: @escaping () -> Bool
   ) {
     self.sessionFeature = sessionFeature
     self.profileFeature = profileFeature
     self.activityFeature = activityFeature
+    self.settingsFeature = settingsFeature
     self.analytics = analytics
     self.badgePresentationDelay = badgePresentationDelay
-    self.floatingTabBarEnabled = floatingTabBarEnabled
     self.isVoiceOverRunning = isVoiceOverRunning
   }
 
@@ -199,7 +199,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   }
 
   private func applyFloatingLayoutIfChanged() {
-    let enabled = self.floatingTabBarEnabled()
+    let enabled = self.settingsFeature.isRemoteConfigurationEnabled(.floatingTabBar)
     guard self.appliedFloatingFlag != enabled else { return }
     self.appliedFloatingFlag = enabled
     self.onFloatingTabBarEnabled?(enabled)

@@ -30,8 +30,3 @@ public func featureBypassPledgeManagerDecisionPolicyEnabled() -> Bool {
 public func featureUseKeychainForOAuthTokenEnabled() -> Bool {
   featureEnabled(feature: .useKeychainForOAuthToken)
 }
-
-@MainActor
-public func featureFloatingTabBarEnabled() -> Bool {
-  featureEnabled(feature: .floatingTabBar)
-}

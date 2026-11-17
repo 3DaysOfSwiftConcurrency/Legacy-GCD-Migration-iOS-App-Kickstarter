@@ -94,6 +94,8 @@ reject_matches 'Project Page observes related projects through ProjectDetailsFea
 test -f "$discovery_feature"
 reject_matches 'RootViewModel must receive its dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current|featureFloatingTabBarEnabled|profileFeature[.]sessionFeature' "$root_view_model"
+reject_matches 'Root Tabs reads floating-tab policy through SettingsFeature.' \
+  'featureFloatingTabBarEnabled|featureEnabled[[:space:]]*[(]|remoteConfigClient' "$root_view_model" "$root_tabs"
 reject_matches 'Root Tabs owns and orders deferred UIKit presentation.' \
   'DispatchQueue[.]main' "$root_tabs"
 reject_matches 'AppDelegate hands tab links to Root Tabs with their route delivery.' \

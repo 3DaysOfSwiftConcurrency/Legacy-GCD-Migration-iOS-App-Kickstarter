@@ -34,9 +34,9 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     sessionFeature: AppModel.shared.sessionFeature,
     profileFeature: AppModel.shared.profileFeature,
     activityFeature: AppModel.shared.activityFeature,
+    settingsFeature: AppModel.shared.settingsFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
     badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-    floatingTabBarEnabled: featureFloatingTabBarEnabled,
     isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
   )
 

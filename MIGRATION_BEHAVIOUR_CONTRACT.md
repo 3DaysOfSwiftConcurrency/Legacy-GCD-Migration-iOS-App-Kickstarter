@@ -1511,6 +1511,11 @@ Removing the selected Activity tab returns to Discovery. In the floating
 layout an explicit Activity route opens the existing Activity screen on
 Discovery's stack.
 
+Root Tabs reads the effective floating-tab setting from the composed
+SettingsFeature on initial load and foreground entry. A local override takes
+precedence over the remote client and the absence of both remains false. The
+controller rebuilds its layout only when that effective value changes.
+
 Push registrations are admitted writes: equivalent pending tokens share; changed
 tokens execute in order, without automatic retries. Stale account completions cannot
 publish. Project creator blocking cooperates with the existing DiscussionFeature;

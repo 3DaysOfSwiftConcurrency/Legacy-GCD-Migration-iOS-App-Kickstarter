@@ -4533,3 +4533,31 @@ Root Tabs floating policy, Pledge Manager bypass policy and the composed Statsig
 closures remain for subsequent checkpoints. Keychain bootstrap remains deliberately
 independent of AppModel. This is not full CFA compliance. Swift packages, target
 identifiers and existing history are unchanged. No push.
+
+### Root Tabs reads floating policy through Settings — 17 November 2026
+
+Author: Matthew Thomas.
+
+RootViewModel now receives the composed SettingsFeature and asks it for the effective
+floating-tab policy. RootTabBarViewController no longer injects a free global helper,
+and `featureFloatingTabBarEnabled` is removed. The existing behavior is preserved:
+local overrides take precedence over the current remote client, missing values remain
+false, foreground reads stay live, and the layout rebuilds only when the effective
+value changes. No artificial Root Tabs or lifecycle Feature was introduced.
+
+The 31-test RootViewModel baseline and 42-test SettingsFeature baseline passed. The
+focused post-change RootViewModel and RootTabsNavigation selection passed 37 tests,
+including a new conflicting-dependency regression that proves the injected
+SettingsFeature wins over AppEnvironment. Final validation passed 42 focused
+SettingsFeature tests and 150 bounded application-routing, delegate analytics,
+Root Tabs and Settings presentation tests. All runs had zero failures and skips on
+iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-root-floating-final-focused.xcresult`,
+`/private/tmp/kickstarter-root-floating-final-library.xcresult` and
+`/private/tmp/kickstarter-root-floating-final-presentation.xcresult`.
+
+The CFA gate now rejects direct global floating-policy access in RootViewModel and
+RootTabBarViewController. Pledge Manager bypass policy, composed Statsig closures and
+the wider global/session audit remain. Keychain bootstrap remains deliberately
+independent of AppModel. This is not full CFA compliance. Swift packages, target
+identifiers and existing history are unchanged. No push.
