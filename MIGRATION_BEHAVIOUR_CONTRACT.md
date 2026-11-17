@@ -1857,3 +1857,17 @@ safe for arbitrary concurrent environment mutation.
   screen adapter, routing, shared following state and root presentation consumers.
 - This checkpoint does not establish live survey, push-badge, visual or whole-suite
   behavior, and it is not a claim of full CFA compliance.
+
+## Creator Drafts response-policy composition — 17 November 2026
+
+- CreatorDraftsFeature receives response timing through explicit AppModel
+  composition and no longer reads AppEnvironment when admitting reads or writes.
+- A draft read captures policy at admission, waits for an already-admitted edit,
+  then delays successful publication. Each ordered save, upload or removal captures
+  policy at admission and delays attachment publication after durable mutation.
+- Equivalent saves still share work; different edits remain ordered. Route release,
+  reset and session replacement continue to reject obsolete presentation results
+  without claiming to undo an admitted server mutation.
+- Controlled coverage proves both read and write timing boundaries. Live uploads,
+  server persistence, visual behavior and the whole Library suite remain outside
+  this checkpoint.

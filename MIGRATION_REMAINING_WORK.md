@@ -79,6 +79,9 @@ Swift packages are excluded.
 - ActivityFeature now receives survey resolution, application-badge access and page
   response policy through a Platform composed by AppModel. Page and survey work remain
   independent, while pagination, retry and session-replacement behavior are preserved.
+- CreatorDraftsFeature now receives read and write response policy from AppModel.
+  Draft reads still wait for admitted writes, and saves, uploads and removals retain
+  their ordered mutation and route/session invalidation rules.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

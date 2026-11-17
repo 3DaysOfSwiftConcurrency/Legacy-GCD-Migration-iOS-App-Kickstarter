@@ -57,6 +57,7 @@ public final class CreatorDraftsFeature {
   }
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any CreatorDraftsProvider
+  private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
   private var routes: [UUID: Route] = [:]
   private var drafts: [Key: UpdateDraft] = [:]
@@ -76,12 +77,14 @@ public final class CreatorDraftsFeature {
 
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any CreatorDraftsProvider,
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.responseDelaySeconds = responseDelaySeconds
     self.sleep = sleep
   }
   private func isCurrent(_ key: Key) -> Bool {
@@ -116,7 +119,7 @@ public final class CreatorDraftsFeature {
     let id = UUID()
     let provider = self.makeProvider()
     let predecessor = self.tails[key]?.task
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     let task = Task { [self] in
       defer { self.reads[id] = nil; if state.read?.id == id { state.read = nil } }
       do {
@@ -178,7 +181,7 @@ public final class CreatorDraftsFeature {
     if let previous, previous.command == command, previous.draftID == admittedDraft.update.id { return previous.task }
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     self.revisions[key, default: 0] += 1
     let task = Task { [self] in
       defer { self.writes[id] = nil; if self.tails[key]?.id == id { self.tails[key] = nil } }

@@ -298,9 +298,11 @@ public final class AppModel {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
       }),
       onboardingFeature: onboarding,
-      creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
-      }),
+      creatorDraftsFeature: CreatorDraftsFeature(
+        sessionFeature: sessionFeature,
+        makeProvider: { AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService) },
+        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      ),
       recommendationsFeature: RecommendationsFeature(platform: .live(), settingsFeature: settingsFeature, makeProvider: {
         AsyncRecommendationsProvider(service: AppEnvironment.current.apiService)
       }),

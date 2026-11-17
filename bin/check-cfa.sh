@@ -232,6 +232,8 @@ reject_matches 'Search receives timing policy from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Search/SearchFeature.swift"
 reject_matches 'Activity receives platform dependencies from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Activity/ActivityFeature.swift"
+reject_matches 'Creator Drafts receives response policy from AppModel composition.' \
+  'AppEnvironment[.]current' "$app_model/Features/CreatorDrafts/CreatorDraftsFeature.swift"
 reject_matches 'Pledge receives environment dependencies from composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Pledge/PledgeFeature.swift"
 reject_matches 'Rewards receives environment dependencies from composition.' \

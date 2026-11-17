@@ -4815,3 +4815,25 @@ iOS 26.2. Evidence:
 The CFA gate rejects direct AppEnvironment access in ActivityFeature. The wider
 in-scope ownership audit continues. This is not full CFA compliance. Swift packages,
 target identifiers and existing history are unchanged. No push.
+
+### Creator Drafts receives response policy from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+CreatorDraftsFeature now receives response-delay policy explicitly from AppModel
+composition. Reads and writes capture the current value at admission. Reads still
+wait for an already-admitted mutation; saves, uploads and removals remain ordered,
+with equivalent saves sharing work. Route release, reset and session replacement
+continue to reject obsolete delivery without claiming to reverse an admitted write.
+Production has no global fallback; test-only composition defaults to zero.
+
+A named Feature test proves both the read and write sleep boundaries use the injected
+policy. Focused validation passed all 12 CreatorDraftsFeature tests. The bounded
+Creator Drafts, AppModel and update-editor selection passed 49 tests. Both runs had
+zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-creator-drafts-policy-focused.xcresult` and
+`/private/tmp/kickstarter-creator-drafts-policy-bounded.xcresult`.
+
+The CFA gate rejects direct AppEnvironment access in CreatorDraftsFeature. The wider
+in-scope ownership audit continues. This is not full CFA compliance. Swift packages,
+target identifiers and existing history are unchanged. No push.

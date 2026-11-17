@@ -370,6 +370,23 @@ extension ActivityFeature {
   }
 }
 
+extension CreatorDraftsFeature {
+  convenience init(
+    sessionFeature: SessionFeature,
+    makeProvider: @escaping () -> any CreatorDraftsProvider,
+    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+    }
+  ) {
+    self.init(
+      sessionFeature: sessionFeature,
+      makeProvider: makeProvider,
+      responseDelaySeconds: { 0 },
+      sleep: sleep
+    )
+  }
+}
+
 @MainActor
 private struct UnusedDeepLinkSearchProvider: SearchProjectsProvider {
   func fetchPage(parameters: DiscoveryParams, cursor: String?) async throws -> SearchPageResponse {

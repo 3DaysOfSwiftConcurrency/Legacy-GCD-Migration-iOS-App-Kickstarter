@@ -33,6 +33,32 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     Task { try await self.feature.save(route: self.route, title: title, body: "Body", isPublic: false) }
   }
 
+  func testReadsAndWritesUseComposedResponseDelay() async throws {
+    let provider = ControlledCreatorDraftsProvider()
+    defer {
+      provider.loads.releaseAll()
+      provider.saves.releaseAll()
+    }
+    var sleeps: [TimeInterval] = []
+    let feature = CreatorDraftsFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      makeProvider: { provider },
+      responseDelaySeconds: { 7 },
+      sleep: { sleeps.append($0) }
+    )
+    let route = UUID()
+
+    await feature.load(project: .template, route: route)
+    let save = Task {
+      try await feature.save(route: route, title: "Delayed", body: "Body", isPublic: false)
+    }
+    await provider.saves.waitFor(1)
+    try provider.saves.finish(0, .success(.template))
+    _ = try await save.value
+
+    XCTAssertEqual(sleeps, [7, 7])
+  }
+
   func testEquivalentSavesShareAndDifferentFieldsExecuteInOrder() async throws {
     let first = self.save("First")
     let duplicate = self.save("First")
