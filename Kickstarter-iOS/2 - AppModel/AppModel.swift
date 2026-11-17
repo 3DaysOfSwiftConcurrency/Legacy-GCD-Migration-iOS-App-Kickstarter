@@ -225,6 +225,7 @@ public final class AppModel {
   public func sessionChanged() {
     self.sessionFeature.sessionChanged()
     self.authenticationFeature.resetEmailRedirects()
+    self.discoveryFeature.resetRecommendationAvailability()
     self.applicationConfigurationService.reset()
     self.devicePushRegistrationService.sessionChanged()
     self.developerExamplesFeature.reset()

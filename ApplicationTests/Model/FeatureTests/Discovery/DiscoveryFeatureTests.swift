@@ -11,6 +11,33 @@ import XCTest
 final class DiscoveryFeatureTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
+  func testRecommendationAvailabilityRejectsCompletionAfterSessionReset() async throws {
+    let provider = ControlledDiscoveryProvider()
+    defer { provider.releaseAll() }
+    let feature = DiscoveryFeature(provider: provider)
+    let old = Task { try await feature.hasRecommendations(for: .template) }
+    await provider.waitForCount(1)
+    feature.resetRecommendationAvailability()
+    let current = Task { try await feature.hasRecommendations(for: .template) }
+    await provider.waitForCount(2)
+    try provider.complete(0, ids: [1])
+    try provider.fail(1)
+    guard case .failure(is CancellationError) = await old.result else {
+      return XCTFail("Expected the previous session's request to be cancelled")
+    }
+    let available = try await current.value
+    XCTAssertFalse(available)
+  }
+
+  func testLoggedOutRecommendationAvailabilityDoesNotFetch() async throws {
+    let provider = ControlledDiscoveryProvider()
+    defer { provider.releaseAll() }
+    let feature = DiscoveryFeature(provider: provider)
+    let available = try await feature.hasRecommendations(for: nil)
+    XCTAssertFalse(available)
+    XCTAssertTrue(provider.requests.isEmpty)
+  }
+
   func testFavoriteCategoryReadsBothStoresAndKeepsLegacyToggleBehavior() {
     let localStore = MockKeyValueStore()
     let cloudStore = MockKeyValueStore()

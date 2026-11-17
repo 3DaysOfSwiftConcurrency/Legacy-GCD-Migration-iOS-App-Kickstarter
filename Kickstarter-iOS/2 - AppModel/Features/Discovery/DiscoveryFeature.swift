@@ -56,6 +56,7 @@ public final class DiscoveryFeature {
 
   private var pages: [String: Page] = [:]
   private var recommendationRequest: (id: UUID, userID: Int, task: Task<Bool, Error>)?
+  private var recommendationGeneration = 0
   private let provider: any DiscoveryProvider
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private let currentUser: @MainActor () -> User?
@@ -138,11 +139,18 @@ public final class DiscoveryFeature {
 
   /// Availability is Discovery state even when the result is rendered as an app shortcut.
   public func hasRecommendations(for user: User?) async throws -> Bool {
-    guard let user else { return false }
-    if let request = self.recommendationRequest, request.userID == user.id {
-      return try await request.task.value
+    try Task.checkCancellation()
+    guard let user else {
+      self.resetRecommendationAvailability()
+      return false
     }
-    self.recommendationRequest?.task.cancel()
+    if let request = self.recommendationRequest, request.userID == user.id {
+      return try await self.recommendationAvailability(
+        request.task, generation: self.recommendationGeneration
+      )
+    }
+    self.resetRecommendationAvailability()
+    let generation = self.recommendationGeneration
     let id = UUID()
     let provider = self.provider
     let task = Task { @MainActor in
@@ -154,12 +162,32 @@ public final class DiscoveryFeature {
           |> DiscoveryParams.lens.recommended .~ true
           |> DiscoveryParams.lens.state .~ .live
           |> DiscoveryParams.lens.perPage .~ 1
-        return try await provider.page(parameters: parameters, cursor: nil).stats.count > 0
+        let page = try await provider.page(parameters: parameters, cursor: nil)
+        try Task.checkCancellation()
+        return page.stats.count > 0
       } catch is CancellationError { throw CancellationError() }
-      catch { return false }
+      catch {
+        try Task.checkCancellation()
+        return false
+      }
     }
     self.recommendationRequest = (id, user.id, task)
-    return try await task.value
+    return try await self.recommendationAvailability(task, generation: generation)
+  }
+
+  private func recommendationAvailability(
+    _ task: Task<Bool, Error>, generation: Int
+  ) async throws -> Bool {
+    let value = try await task.value
+    try Task.checkCancellation()
+    guard generation == self.recommendationGeneration else { throw CancellationError() }
+    return value
+  }
+
+  func resetRecommendationAvailability() {
+    self.recommendationGeneration += 1
+    self.recommendationRequest?.task.cancel()
+    self.recommendationRequest = nil
   }
 
   public var currentUserHasSocialConnections: Bool {
