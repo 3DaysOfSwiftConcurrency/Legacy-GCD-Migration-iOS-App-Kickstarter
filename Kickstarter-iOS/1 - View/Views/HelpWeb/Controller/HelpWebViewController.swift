@@ -4,15 +4,16 @@ import Prelude
 import UIKit
 
 internal final class HelpWebViewController: WebViewController {
-  fileprivate let viewModel = HelpWebViewModel(
-    webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
-    prepareRequest: { AppEnvironment.current.apiService.preparedRequest(forURL: $0) }
-  )
+  fileprivate var viewModel: HelpWebViewModel!
 
   @IBOutlet private var logoImageView: UIImageView!
 
-  internal static func configuredWith(helpType: HelpType) -> HelpWebViewController {
+  internal static func configuredWith(
+    helpType: HelpType,
+    helpFeature: HelpFeature = AppModel.shared.helpFeature
+  ) -> HelpWebViewController {
     let vc = Storyboard.Help.instantiate(HelpWebViewController.self)
+    vc.viewModel = HelpWebViewModel(helpFeature: helpFeature)
     vc.viewModel.configureWith(helpType: helpType)
     return vc
   }

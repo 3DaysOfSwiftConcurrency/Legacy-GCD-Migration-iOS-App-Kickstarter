@@ -112,6 +112,9 @@ Swift packages are excluded.
 - SearchFeature now receives its lookup transport, cache and timing policy from
   AppModel composition. Discovery filters receive their category-loading use case
   from DiscoveryFeature instead of constructing a second global composition root.
+- HelpFeature now owns authenticated help-destination request construction. The Help
+  web controller receives that AppModel-owned Feature and its view model retains only
+  the selected destination needed by the screen.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

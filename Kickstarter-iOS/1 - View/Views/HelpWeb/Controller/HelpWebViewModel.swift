@@ -3,16 +3,11 @@ import KsApi
 
 @MainActor
 internal final class HelpWebViewModel {
-  private let webBaseURL: () -> URL
-  private let prepareRequest: (URL) -> URLRequest
+  private let helpFeature: HelpFeature
   private var helpType: HelpType?
 
-  init(
-    webBaseURL: @escaping () -> URL,
-    prepareRequest: @escaping (URL) -> URLRequest
-  ) {
-    self.webBaseURL = webBaseURL
-    self.prepareRequest = prepareRequest
+  init(helpFeature: HelpFeature) {
+    self.helpFeature = helpFeature
   }
 
   func configureWith(helpType: HelpType) {
@@ -20,9 +15,6 @@ internal final class HelpWebViewModel {
   }
 
   func requestForViewDidLoad() -> URLRequest? {
-    guard let url = self.helpType?.url(withBaseUrl: self.webBaseURL()) else {
-      return nil
-    }
-    return self.prepareRequest(url)
+    self.helpType.flatMap(self.helpFeature.request(for:))
   }
 }

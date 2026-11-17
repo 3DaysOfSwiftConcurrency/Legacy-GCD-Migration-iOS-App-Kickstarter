@@ -2007,3 +2007,14 @@ safe for arbitrary concurrent environment mutation.
   Search screen behavior are preserved by 36 focused and 188 bounded passing tests.
   Live services, visual rendering and the whole Library suite remain outside this
   checkpoint.
+
+## Help web request composition — 17 November 2026
+
+- HelpFeature owns mapping a HelpType onto the configured web host and preparing the
+  authenticated URL request. AppModel supplies both application dependencies.
+- HelpWebViewController composes its screen model with the shared HelpFeature;
+  HelpWebViewModel retains only the selected HelpType and asks the Feature for the
+  request when the view loads.
+- Cookie, Help Center, How It Works, Privacy and Terms paths are unchanged. Focused
+  AppModel and Help presentation tests pass; live web loading and visual rendering
+  remain outside this checkpoint.

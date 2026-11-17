@@ -5093,3 +5093,22 @@ unverified. The CFA gate rejects restored global access in Search lookup/categor
 loading and direct category use-case construction in Discovery Filters. This is not
 full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Help web request composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now owns a HelpFeature that receives the configured web host and authenticated
+request preparation at composition. HelpWebViewController supplies that Feature to its
+screen model, and HelpWebViewModel retains only the selected HelpType. Neither Help Web
+presentation type reads AppEnvironment or constructs service policy.
+
+Focused AppModel validation passed all 8 tests and the focused Help presentation test
+passed. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-help-composition-focused.xcresult` and
+`/private/tmp/kickstarter-help-presentation-focused-2.xcresult`.
+
+Live help navigation, authenticated cookie behavior, visual rendering and the whole
+Library and Presentation suites remain unverified. The CFA gate rejects restored global
+service composition in Help Web presentation. This is not full CFA compliance. Swift
+packages, target identifiers and existing history are unchanged. No push.

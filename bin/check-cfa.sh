@@ -236,6 +236,10 @@ reject_matches 'Search receives timing, transport and cache policy from AppModel
 reject_matches 'Discovery filters receive category loading through DiscoveryFeature composition.' \
   'FetchCategoriesUseCase[(][)]' \
   "$app_view/Views/DiscoveryFilters/Controller/DiscoveryFiltersViewModel.swift"
+reject_matches 'Help web requests belong to the composed HelpFeature.' \
+  'AppEnvironment[.]current|apiService[.]preparedRequest|serverConfig[.]webBaseUrl' \
+  "$app_view/Views/HelpWeb/Controller/HelpWebViewController.swift" \
+  "$app_view/Views/HelpWeb/Controller/HelpWebViewModel.swift"
 reject_matches 'Activity receives platform dependencies from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Activity/ActivityFeature.swift"
 reject_matches 'OAuth authorization receives server policy from Authentication composition.' \

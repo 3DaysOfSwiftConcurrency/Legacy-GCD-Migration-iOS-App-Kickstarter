@@ -270,6 +270,10 @@ final class AppModelTests: XCTestCase {
         sessionFeature: firstSession,
         makeProvider: { AsyncProfileProvider(service: MockService()) }
       ),
+      helpFeature: HelpFeature(
+        webBaseURL: { ServerConfig.production.webBaseUrl },
+        prepareRequest: { URLRequest(url: $0) }
+      ),
       searchFeature: firstFeature,
       discoveryFeature: firstDiscovery,
       projectDetailsFeature: firstDetails,
@@ -327,6 +331,10 @@ final class AppModelTests: XCTestCase {
         sessionFeature: secondSession,
         makeProvider: { AsyncProfileProvider(service: MockService()) }
       ),
+      helpFeature: HelpFeature(
+        webBaseURL: { ServerConfig.production.webBaseUrl },
+        prepareRequest: { URLRequest(url: $0) }
+      ),
       searchFeature: secondFeature,
       discoveryFeature: secondDiscovery,
       projectDetailsFeature: secondDetails,
@@ -360,6 +368,7 @@ final class AppModelTests: XCTestCase {
     XCTAssertFalse(first.settingsFeature === second.settingsFeature)
     XCTAssertFalse(first.activityFeature === second.activityFeature)
     XCTAssertFalse(first.profileFeature === second.profileFeature)
+    XCTAssertFalse(first.helpFeature === second.helpFeature)
     XCTAssertTrue(first.searchFeature === firstFeature)
     XCTAssertTrue(second.searchFeature === secondFeature)
     XCTAssertFalse(first.searchFeature === second.searchFeature)

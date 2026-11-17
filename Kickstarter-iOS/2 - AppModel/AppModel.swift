@@ -124,6 +124,7 @@ public final class AppModel {
   public let settingsFeature: SettingsFeature
   public let activityFeature: ActivityFeature
   public let profileFeature: ProfileFeature
+  public let helpFeature: HelpFeature
   public let searchFeature: SearchFeature
   public let discoveryFeature: DiscoveryFeature
   public let projectDetailsFeature: ProjectDetailsFeature
@@ -147,6 +148,7 @@ public final class AppModel {
     settingsFeature: SettingsFeature,
     activityFeature: ActivityFeature,
     profileFeature: ProfileFeature,
+    helpFeature: HelpFeature,
     searchFeature: SearchFeature,
     discoveryFeature: DiscoveryFeature,
     projectDetailsFeature: ProjectDetailsFeature,
@@ -169,6 +171,7 @@ public final class AppModel {
     self.settingsFeature = settingsFeature
     self.activityFeature = activityFeature
     self.profileFeature = profileFeature
+    self.helpFeature = helpFeature
     self.searchFeature = searchFeature
     self.discoveryFeature = discoveryFeature
     self.projectDetailsFeature = projectDetailsFeature
@@ -379,6 +382,10 @@ public final class AppModel {
       settingsFeature: settingsFeature,
       activityFeature: activityFeature,
       profileFeature: profileFeature,
+      helpFeature: HelpFeature(
+        webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
+        prepareRequest: { AppEnvironment.current.apiService.preparedRequest(forURL: $0) }
+      ),
       searchFeature: SearchFeature(
         platform: .init(
           responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },

@@ -2695,6 +2695,25 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "8A0433DF1629521540E4C154";
 		};
+		"CFA041700000000000000002" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "CFA041700000000000000001";
+		};
+		"CFA041700000000000000001" = {
+			"name" = "HelpFeature.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Help/HelpFeature.swift";
+			"isa" = "PBXFileReference";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"CFA041700000000000000003" = {
+			"isa" = "PBXGroup";
+			"name" = "Help";
+			"sourceTree" = "<group>";
+			"children" = (
+				"CFA041700000000000000001",
+			);
+		};
 		"53A1E41AD9B0380BFBFC5726" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "96C5D3B997A98009432750AF";
@@ -2747,6 +2766,7 @@
 			"name" = "Features";
 			"sourceTree" = "<group>";
 			"children" = (
+				"CFA041700000000000000003",
 				"E2FFA45F75B3C35B6A664C44",
 				"CFA031200000000000000005",
 				"7C8533C26BD5CA42C61C32C7",
@@ -7804,6 +7824,7 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				"CFA041700000000000000002",
 				"405205401E15B7F24FAD44CC",
 				"B2E02EFA24CB864FC44047F6",
 				"01FE68512B4F30B3E7C03405",

@@ -8,8 +8,10 @@ internal final class HelpWebViewModelTests: TestCase {
 
   func testWebRequestURLString() {
     let vm = HelpWebViewModel(
-      webBaseURL: { ServerConfig.production.webBaseUrl },
-      prepareRequest: { URLRequest(url: $0) }
+      helpFeature: HelpFeature(
+        webBaseURL: { ServerConfig.production.webBaseUrl },
+        prepareRequest: { URLRequest(url: $0) }
+      )
     )
     XCTAssertNil(vm.requestForViewDidLoad())
     let cases: [(HelpType, String)] = [

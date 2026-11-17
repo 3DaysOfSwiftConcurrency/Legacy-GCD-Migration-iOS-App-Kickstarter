@@ -118,6 +118,10 @@ func makeTestAppModel(
     profileFeature: ProfileFeature(sessionFeature: sessionFeature, makeProvider: {
       AsyncProfileProvider(service: MockService())
     }),
+    helpFeature: HelpFeature(
+      webBaseURL: { ServerConfig.production.webBaseUrl },
+      prepareRequest: { URLRequest(url: $0) }
+    ),
     searchFeature: SearchFeature(provider: UnusedDeepLinkSearchProvider()),
     discoveryFeature: discoveryFeature,
     projectDetailsFeature: ProjectDetailsFeature(
