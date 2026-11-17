@@ -3267,3 +3267,7 @@ these sign-in view models against direct AppModel singleton access.
 Change Password and Create Password now receive Settings from their controllers.
 Reset Password receives Authentication. The password, Settings and Authentication
 suites passed 61 focused simulator tests, and `make check-cfa` covers these screens.
+
+Both Backer Dashboard controllers now supply Profile explicitly. The dashboard
+and Profile suites passed 25 focused simulator tests, and `make check-cfa`
+guards the dashboard view-model boundaries.

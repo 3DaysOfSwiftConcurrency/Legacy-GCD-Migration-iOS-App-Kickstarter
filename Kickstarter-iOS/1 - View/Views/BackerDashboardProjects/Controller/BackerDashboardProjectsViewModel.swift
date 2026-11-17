@@ -34,8 +34,8 @@ public final class BackerDashboardProjectsViewModel {
   private var loadingNextPage: Bool?
   internal private(set) var pageTask: Task<Void, Never>?
 
-  public init(profileFeature: ProfileFeature? = nil) {
-    let feature = profileFeature ?? AppModel.shared.profileFeature
+  public init(profileFeature: ProfileFeature) {
+    let feature = profileFeature
     self.profileFeature = feature
     self.observer = feature.observePages { [weak self] event in self?.receive(event) }
   }

@@ -36,10 +36,10 @@ public final class BackerDashboardViewModel {
   internal private(set) var headerTask: Task<Void, Never>?
 
   public init(
-    profileFeature: ProfileFeature? = nil,
+    profileFeature: ProfileFeature,
     sleep: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
   ) {
-    let feature = profileFeature ?? AppModel.shared.profileFeature
+    let feature = profileFeature
     self.profileFeature = feature
     self.sleep = sleep
     self.headerObserver = feature.observeHeader { [weak self] event in self?.receive(event) }

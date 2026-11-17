@@ -56,6 +56,9 @@ reject_matches 'Sign-in view models must receive Authentication from their contr
 reject_matches 'Password view models must receive their feature dependencies from their controllers.' \
   'AppModel[.]shared' "$app_view/Views/ChangePassword/*ViewModel.swift" \
   "$app_view/Views/CreatePassword/*ViewModel.swift" "$app_view/Views/ResetPassword/*ViewModel.swift"
+reject_matches 'Backer Dashboard view models must receive Profile from their controllers.' \
+  'AppModel[.]shared' "$app_view/Views/BackerDashboardPages/*ViewModel.swift" \
+  "$app_view/Views/BackerDashboardProjects/*ViewModel.swift"
 reject_matches 'Features must receive their application dependencies explicitly.' \
   'AppModel[.]shared' "$app_model/Features"
 reject_matches 'View models must receive API and current-user dependencies from composition.' \

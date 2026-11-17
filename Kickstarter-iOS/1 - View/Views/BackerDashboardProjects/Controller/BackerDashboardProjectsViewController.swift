@@ -6,7 +6,9 @@ import UIKit
 
 internal final class BackerDashboardProjectsViewController: UITableViewController {
   private var userUpdatedObserver: MainActorNotificationObservation?
-  fileprivate let viewModel: BackerDashboardProjectsViewModel = BackerDashboardProjectsViewModel()
+  fileprivate let viewModel: BackerDashboardProjectsViewModel = BackerDashboardProjectsViewModel(
+    profileFeature: AppModel.shared.profileFeature
+  )
   fileprivate let dataSource = BackerDashboardProjectsDataSource()
 
   private let nextPageLoadingIndicator = UIActivityIndicatorView()

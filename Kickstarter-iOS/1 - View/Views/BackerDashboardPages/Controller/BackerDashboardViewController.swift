@@ -28,7 +28,9 @@ internal final class BackerDashboardViewController: UIViewController {
 
   fileprivate weak var pageViewController: UIPageViewController?
 
-  fileprivate let viewModel: BackerDashboardViewModel = BackerDashboardViewModel()
+  fileprivate let viewModel: BackerDashboardViewModel = BackerDashboardViewModel(
+    profileFeature: AppModel.shared.profileFeature
+  )
   fileprivate var pagesDataSource: BackerDashboardPagesDataSource!
 
   private var panGesture = UIPanGestureRecognizer()
