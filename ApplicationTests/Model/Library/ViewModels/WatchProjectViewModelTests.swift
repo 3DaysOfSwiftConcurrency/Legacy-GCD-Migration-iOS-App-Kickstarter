@@ -24,7 +24,7 @@ internal final class WatchProjectViewModelTests: TestCase {
 
   internal override func setUp() async throws {
     try await super.setUp()
-    self.feature = ProjectMediaFeature(makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) })
+    self.feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) })
     self.clock = WatchTestClock()
     let clock = self.clock!
     self.vm = WatchProjectViewModel(projectMediaFeature: self.feature, sleep: { try await clock.sleep($0) })

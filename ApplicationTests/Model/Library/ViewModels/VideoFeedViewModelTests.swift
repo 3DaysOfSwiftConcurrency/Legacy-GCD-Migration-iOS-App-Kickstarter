@@ -10,7 +10,7 @@ import XCTest
 @MainActor
 final class VideoFeedViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = VideoFeedViewModel(projectMediaFeature: ProjectMediaFeature(makeProvider: {
+  private let vm = VideoFeedViewModel(projectMediaFeature: ProjectMediaFeature(sessionFeature: .live(), makeProvider: {
     AsyncProjectMediaProvider(service: AppEnvironment.current.apiService)
   }))
 
@@ -245,7 +245,7 @@ final class VideoFeedViewModelTests: TestCase {
     XCTAssertEqual(self.vm.items.first?.watchesCount, 4, "Count should increment after deferred save fires.")
 
     /// Same flow but staying logged out.
-    let vm2 = VideoFeedViewModel(projectMediaFeature: ProjectMediaFeature(makeProvider: {
+    let vm2 = VideoFeedViewModel(projectMediaFeature: ProjectMediaFeature(sessionFeature: .live(), makeProvider: {
       AsyncProjectMediaProvider(service: AppEnvironment.current.apiService)
     }))
 

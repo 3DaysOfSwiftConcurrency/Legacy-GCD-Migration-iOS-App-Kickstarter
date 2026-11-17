@@ -32,7 +32,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testCampaignImageSharesPendingReadAndFailureAllowsRetry() async throws {
     let gate = AccountRequestGate<UIImage>()
     defer { gate.releaseAll() }
-    let feature = ProjectMediaFeature(loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), url = URL(fileURLWithPath: "/tmp/campaign-image")
     let first = feature.requestImage(route: route, url: url)
     let shared = feature.requestImage(route: route, url: url)
@@ -53,7 +53,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testPageCancellationDoesNotCancelOtherPagesImage() async throws {
     let gate = AccountRequestGate<UIImage>()
     defer { gate.releaseAll() }
-    let feature = ProjectMediaFeature(loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), url = URL(fileURLWithPath: "/tmp/campaign-image")
     let old = feature.requestImage(route: route, url: url)
     await gate.waitFor(1)
@@ -73,7 +73,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testCampaignImageReplacementAndExitRejectObsoleteDelivery() async throws {
     let gate = AccountRequestGate<UIImage>()
     defer { gate.releaseAll() }
-    let feature = ProjectMediaFeature(loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let model = self.pageModel(media: feature)
     let first = model.prepareImage(slot: "row", url: URL(fileURLWithPath: "/tmp/old")) { _ in XCTFail("Old row received image") }
     await gate.waitFor(1)
@@ -92,7 +92,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testProjectReplacementAndReleaseCancelImageDelivery() async throws {
     let gate = AccountRequestGate<UIImage>()
     defer { gate.releaseAll() }
-    let feature = ProjectMediaFeature(loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     var model: ProjectPageViewModel? = self.pageModel(media: feature)
     let request = try XCTUnwrap(model).prepareImage(slot: "row", url: URL(fileURLWithPath: "/tmp/old")) { _ in XCTFail("Old project image escaped") }
     await gate.waitFor(1)
@@ -109,7 +109,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testPreparationSharesSlotAndFailureAllowsRetry() async throws {
     let gate = AccountRequestGate<PreparedProjectMedia>()
     defer { gate.releaseAll() }
-    let feature = ProjectMediaFeature(preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), url = URL(fileURLWithPath: "/tmp/synthetic-video")
     let first = feature.requestPreparation(route: route, slot: "row", url: url, thumbnail: nil)
     let shared = feature.requestPreparation(route: route, slot: "row", url: url, thumbnail: nil)
@@ -130,7 +130,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testChangedMediaRejectsOldSlotAndOtherPageRemainsIndependent() async throws {
     let gate = AccountRequestGate<PreparedProjectMedia>()
     defer { gate.releaseAll() }
-    let feature = ProjectMediaFeature(preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), other = UUID(), url = URL(fileURLWithPath: "/tmp/synthetic-video")
     let old = feature.requestPreparation(route: route, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(1)
@@ -149,7 +149,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testPageExitSuppressesLatePreparationDelivery() async throws {
     let gate = AccountRequestGate<PreparedProjectMedia>()
     defer { gate.releaseAll() }
-    let feature = ProjectMediaFeature(preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let model = self.pageModel(media: feature)
     let waiter = model.prepareMedia(slot: "row", url: URL(fileURLWithPath: "/tmp/synthetic-video"), thumbnail: nil) { _ in
       XCTFail("Exited page received prepared media")
@@ -212,7 +212,7 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let project = Project.template
     provider.feedItems = [ControlledMediaProvider.item(project.graphID)]
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
     await feature.loadFeed(route: route)
     let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
@@ -238,7 +238,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
     let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
     let observation = Task { await feature.watch(project: project, intent: intent) }
@@ -255,7 +255,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
     let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
     let task = Task { await feature.watch(project: project, intent: intent) }
@@ -270,7 +270,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
     let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
     let task = Task { await feature.watch(project: project, intent: intent) }
@@ -286,7 +286,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
     let first = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
     let request = feature.submitWatch(first)
@@ -305,7 +305,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
     let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
     let task = feature.submitWatch(intent)
@@ -319,7 +319,7 @@ final class ProjectMediaFeatureTests: TestCase {
 
   func testReusedCellDiscardsDebouncedRequestAndItsOptimisticCache() async {
     let provider = ControlledMediaProvider()
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let vm = WatchProjectViewModel(projectMediaFeature: feature)
     await withEnvironment(currentUser: .template) {
       let original = Project.template
@@ -338,7 +338,7 @@ final class ProjectMediaFeatureTests: TestCase {
 
   func testCancellingOldPreparationDoesNotRevertNewerIntent() {
     let provider = ControlledMediaProvider()
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
     let old = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
     _ = feature.prepareWatch(projectID: project.graphID, watched: false, previous: true)
@@ -348,7 +348,7 @@ final class ProjectMediaFeatureTests: TestCase {
 
   func testFeedObservationPublishesInitialFlagBeforeReloadAndSaveDoesNotReload() async {
     let provider = ControlledMediaProvider()
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
     let state = feature.feedState(route: route)
     var initialFlagAtReload = false
@@ -376,7 +376,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseFeed = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
     let state = feature.feedState(route: route)
     let first = feature.requestFeed(route: route)
@@ -401,7 +401,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseFeed = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let firstRoute = UUID(), secondRoute = UUID()
     let releasedState = feature.feedState(route: firstRoute)
     let oldAccountState = feature.feedState(route: secondRoute)
@@ -424,11 +424,35 @@ final class ProjectMediaFeatureTests: TestCase {
     }
   }
 
+  func testSameUserSessionReplacementRejectsLateFeedResult() async throws {
+    let provider = ControlledMediaProvider()
+    provider.pauseFeed = true
+    defer { provider.releaseAll() }
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) },
+      currentUser: { .template }
+    )
+    let feature = ProjectMediaFeature(sessionFeature: session, makeProvider: { provider })
+    let route = UUID()
+    let stale = feature.requestFeed(route: route)
+    await provider.waitForFeeds(1)
+    session.sessionChanged()
+    try provider.finishFeed(0, items: provider.feedItems)
+    await stale.value
+    XCTAssertTrue(feature.feedState(route: route).items.isEmpty)
+
+    let current = feature.requestFeed(route: route)
+    await provider.waitForFeeds(2)
+    try provider.finishFeed(1, items: provider.feedItems)
+    await current.value
+    XCTAssertEqual(feature.feedState(route: route).items.count, 2)
+  }
+
   func testWatchWritesShareEquivalentIntentAndSerializeChangesPerProject() async throws {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let save = feature.requestWatch(projectID: "one", watched: true)
     let duplicate = feature.requestWatch(projectID: "one", watched: true)
     let unsave = feature.requestWatch(projectID: "one", watched: false)
@@ -453,7 +477,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
     await feature.loadFeed(route: route)
     let state = feature.feedState(route: route)
@@ -480,7 +504,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
     await feature.loadFeed(route: route)
     let state = feature.feedState(route: route)
@@ -503,7 +527,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     provider.pauseWatch = true
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
     await feature.loadFeed(route: route)
     let save = try XCTUnwrap(feature.toggleSaved(route: route, projectID: "one"))
@@ -528,7 +552,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testDuplicateEventSharesButStartAndCompletionRemainIndependent() async throws {
     let provider = ControlledMediaProvider()
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
     let start = feature.requestReport(route: route, project: Project.template, completed: false)
     let duplicate = feature.requestReport(route: route, project: Project.template, completed: false)
@@ -550,7 +574,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testReleaseCancelsOnlyItsRouteAndDoesNotPublishLateSuccess() async throws {
     let provider = ControlledMediaProvider()
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID(), other = UUID()
     let first = feature.requestReport(route: route, project: Project.template, completed: false)
     await provider.waitForRequests(1)
@@ -570,7 +594,7 @@ final class ProjectMediaFeatureTests: TestCase {
   func testAccountChangeSuppressesCompletionAndCancelledCallerDoesNotStart() async throws {
     let provider = ControlledMediaProvider()
     defer { provider.releaseAll() }
-    let feature = ProjectMediaFeature(makeProvider: { provider })
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let pending = feature.requestReport(route: UUID(), project: Project.template, completed: true)
     await provider.waitForRequests(1)
     AppEnvironment.pushEnvironment(currentUser: .template)
@@ -585,8 +609,30 @@ final class ProjectMediaFeatureTests: TestCase {
     XCTAssertNil(cancelledValue)
   }
 
+  func testPlaybackCountersAreIndependentAcrossSameUserSessions() async throws {
+    let provider = ControlledMediaProvider()
+    defer { provider.releaseAll() }
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) },
+      currentUser: { .template }
+    )
+    let feature = ProjectMediaFeature(sessionFeature: session, makeProvider: { provider })
+    let route = UUID()
+    let stale = feature.requestReport(route: route, project: Project.template, completed: true)
+    await provider.waitForRequests(1)
+    session.sessionChanged()
+    let current = feature.requestReport(route: route, project: Project.template, completed: true)
+    await provider.waitForRequests(2)
+    try provider.finish(0)
+    try provider.finish(1)
+    let staleResult = await stale.value
+    let currentResult = await current.value
+    XCTAssertNil(staleResult)
+    XCTAssertNotNil(currentResult)
+  }
+
   func testFailedCounterDoesNotPublishSuccessOrRetry() async {
-    let feature = ProjectMediaFeature(makeProvider: {
+    let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: {
       AsyncProjectMediaProvider(service: MockService(incrementVideoStartError: .couldNotParseJSON))
     })
     let result = await feature.report(route: UUID(), project: Project.template, completed: false)

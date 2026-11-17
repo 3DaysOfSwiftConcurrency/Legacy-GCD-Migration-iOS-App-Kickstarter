@@ -9,7 +9,7 @@ import XCTest
 @MainActor
 internal final class VideoViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  internal let vm = VideoViewModel(projectMediaFeature: ProjectMediaFeature(makeProvider: {
+  internal let vm = VideoViewModel(projectMediaFeature: ProjectMediaFeature(sessionFeature: .live(), makeProvider: {
     AsyncProjectMediaProvider(service: AppEnvironment.current.apiService)
   }))
   internal let addCompletionObserver = VideoRecorder<CMTime>()

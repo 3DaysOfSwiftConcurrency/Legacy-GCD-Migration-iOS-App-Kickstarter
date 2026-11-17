@@ -116,7 +116,7 @@ public final class ProjectMediaFeature {
 
   public enum FeedError: Error { case empty }
   private var feeds: [UUID: FeedState] = [:]
-  private var feedRequests: [UUID: (userID: Int?, token: UUID, task: Task<Void, Never>)] = [:]
+  private var feedRequests: [UUID: (userID: Int?, generation: Int, token: UUID, task: Task<Void, Never>)] = [:]
   private var feedSaves: [UUID: [String: (token: UUID, task: Task<Void, Never>)]] = [:]
 
   fileprivate struct WatchIdentity: Hashable {
@@ -144,7 +144,10 @@ public final class ProjectMediaFeature {
   @discardableResult
   public func requestFeed(route: UUID) -> Task<Void, Never> {
     let userID = self.sessionFeature.currentUser?.id
-    if let request = self.feedRequests[route], request.userID == userID { return request.task }
+    let generation = self.sessionFeature.generation
+    if let request = self.feedRequests[route], request.userID == userID, request.generation == generation {
+      return request.task
+    }
     self.feedRequests[route]?.task.cancel()
     let feed = self.feedState(route: route)
     let provider = self.makeProvider()
@@ -161,11 +164,11 @@ public final class ProjectMediaFeature {
       }
       do {
         try Task.checkCancellation()
-        guard userID == sessionFeature.currentUser?.id else { throw CancellationError() }
+        guard sessionFeature.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
         let items = try await provider.feed()
         try Task.checkCancellation()
         guard let self, self.feedRequests[route]?.token == token,
-              userID == sessionFeature.currentUser?.id else { return }
+              sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         guard let first = items.first else { throw FeedError.empty }
         // Match the existing reload observer contract: initial flag precedes
         // fetchedItems; saves never write fetchedItems or trigger a collection reload.
@@ -178,11 +181,11 @@ public final class ProjectMediaFeature {
       } catch is CancellationError {
       } catch {
         guard !Task.isCancelled, let self, self.feedRequests[route]?.token == token,
-              userID == sessionFeature.currentUser?.id else { return }
+              sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         feed.error = error
       }
     }
-    self.feedRequests[route] = (userID, token, task)
+    self.feedRequests[route] = (userID, generation, token, task)
     return task
   }
 
@@ -401,6 +404,7 @@ public final class ProjectMediaFeature {
     let url: String
     let completed: Bool
     let userID: Int?
+    let generation: Int
   }
 
   private var requests: [Event: (id: UUID, task: Task<VoidEnvelope?, Never>)] = [:]
@@ -408,14 +412,14 @@ public final class ProjectMediaFeature {
 
   public let sessionFeature: SessionFeature
   public init(
-    sessionFeature: SessionFeature? = nil,
+    sessionFeature: SessionFeature,
     loadImage: (@MainActor (URL) async throws -> UIImage)? = nil,
     preparePlayback: (@MainActor (URL, URL?) async throws -> PreparedProjectMedia)? = nil,
     makeProvider: @escaping () -> any ProjectMediaProvider
   ) {
     self.loadImage = loadImage ?? { try await ProjectMediaPreparation.loadImage(url: $0) }
     self.preparePlayback = preparePlayback ?? { try await ProjectMediaPreparation.load(url: $0, thumbnailURL: $1) }
-    self.sessionFeature = sessionFeature ?? .live()
+    self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
   }
 
@@ -433,7 +437,8 @@ public final class ProjectMediaFeature {
       route: route,
       url: project.projectWebURL,
       completed: completed,
-      userID: self.sessionFeature.currentUser?.id
+      userID: self.sessionFeature.currentUser?.id,
+      generation: self.sessionFeature.generation
     )
     if let request = self.requests[event] { return request.task }
     let token = UUID()
@@ -443,11 +448,11 @@ public final class ProjectMediaFeature {
       defer { if self?.requests[event]?.id == token { self?.requests[event] = nil } }
       do {
         try Task.checkCancellation()
-        guard event.userID == sessionFeature.currentUser?.id else { return nil }
+        guard sessionFeature.isCurrent(userID: event.userID, generation: event.generation) else { return nil }
         let value = try await provider.report(project: project, completed: completed)
         try Task.checkCancellation()
         guard let self, self.requests[event]?.id == token,
-              event.userID == sessionFeature.currentUser?.id else { return nil }
+              sessionFeature.isCurrent(userID: event.userID, generation: event.generation) else { return nil }
         return value
       } catch {
         // Counter errors have always been non-user-facing; do not retry a write

@@ -3376,6 +3376,13 @@ joins it, and a reset prevents the old request from applying its result. Four
 focused AppModel and configuration-service tests and all 125 AppDelegate
 presentation tests passed on the simulator.
 
+Project Media now requires an explicit Session, and feed reads and playback
+counter requests bind admission, sharing and completion to its generation.
+The new tests cover same-user session replacement for both operations.
+All 76 focused Project Media, Video Feed, Video and Watch tests passed after
+a simulator launch retry. All 66 Project Page and AppModel regression tests
+passed on the simulator.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the
