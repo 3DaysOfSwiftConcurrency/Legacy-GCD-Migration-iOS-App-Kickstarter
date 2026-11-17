@@ -26,7 +26,7 @@ public protocol ApplePayCapabilitiesType {
    - project: the project to use for determining supported card types
    */
   @MainActor
-  func applePayCapable(for project: Project) -> Bool
+  func applePayCapable(for project: Project, launchedCountries: LaunchedCountries) -> Bool
 
   /*
    Returns an array of supported PKPaymentNetworks
@@ -39,7 +39,7 @@ public protocol ApplePayCapabilitiesType {
    - project: the project to use for determining supported card types
    */
   @MainActor
-  func supportedNetworks(for project: Project) -> [PKPaymentNetwork]
+  func supportedNetworks(for project: Project, launchedCountries: LaunchedCountries) -> [PKPaymentNetwork]
 }
 
 public struct ApplePayCapabilities: ApplePayCapabilitiesType {
@@ -67,17 +67,19 @@ public struct ApplePayCapabilities: ApplePayCapabilitiesType {
   }
 
   @MainActor
-  public func applePayCapable(for project: Project) -> Bool {
+  public func applePayCapable(for project: Project, launchedCountries: LaunchedCountries) -> Bool {
     return PKPaymentAuthorizationViewController.canMakePayments(
-      usingNetworks: self.supportedNetworks(for: project)
+      usingNetworks: self.supportedNetworks(for: project, launchedCountries: launchedCountries)
     )
   }
 
   @MainActor
-  public func supportedNetworks(for project: Project) -> [PKPaymentNetwork] {
+  public func supportedNetworks(for project: Project, launchedCountries: LaunchedCountries) -> [PKPaymentNetwork] {
     guard let availableCardTypes = project.availableCardTypes else {
-      let projectCountryCurrency = projectCountry(forCurrency: project.stats.projectCurrency) ?? project
-        .country
+      let projectCountryCurrency = projectCountry(
+        forCurrency: project.stats.projectCurrency,
+        launchedCountries: launchedCountries
+      ) ?? project.country
       return self.supportedNetworks(projectCountry: projectCountryCurrency)
     }
 

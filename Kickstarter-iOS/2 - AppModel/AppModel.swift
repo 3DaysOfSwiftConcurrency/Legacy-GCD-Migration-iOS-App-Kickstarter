@@ -366,12 +366,17 @@ public final class AppModel {
         makeProvider: { AsyncPaymentsProvider(service: AppEnvironment.current.apiService) },
         trackThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) },
         supportedApplePayNetworks: {
-          AppEnvironment.current.applePayCapabilities.supportedNetworks(for: $0)
+          AppEnvironment.current.applePayCapabilities.supportedNetworks(
+            for: $0, launchedCountries: AppEnvironment.current.launchedCountries
+          )
         },
         stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
         currencyContext: { .live() },
+        launchedCountries: { AppEnvironment.current.launchedCountries },
         hasEligibleApplePayCard: {
-          AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0)
+          AppEnvironment.current.applePayCapabilities.applePayCapable(
+            for: $0, launchedCountries: AppEnvironment.current.launchedCountries
+          )
         },
         responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
       ),

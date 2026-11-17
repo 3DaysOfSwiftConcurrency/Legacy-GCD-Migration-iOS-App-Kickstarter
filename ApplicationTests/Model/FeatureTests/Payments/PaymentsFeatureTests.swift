@@ -50,11 +50,16 @@ final class PaymentsFeatureTests: TestCase {
     let feature = PaymentsFeature(
       sessionFeature: self.session,
       makeProvider: { self.provider },
-      supportedApplePayNetworks: { _ in [.visa, .masterCard] }
+      supportedApplePayNetworks: { _ in [.visa, .masterCard] },
+      launchedCountries: { LaunchedCountries(countries: [.us]) }
     )
 
+    let project = Project.template
+      |> Project.lens.country .~ .us
+      |> Project.lens.stats.projectCurrency .~ Project.Country.de.currencyCode
+
     let request = feature.paymentRequest(
-      for: Project.template,
+      for: project,
       reward: .noReward,
       allRewardsTotal: 0,
       additionalPledgeAmount: 25,
@@ -63,6 +68,7 @@ final class PaymentsFeatureTests: TestCase {
     )
 
     XCTAssertEqual(request.supportedNetworks, [.visa, .masterCard])
+    XCTAssertEqual(request.currencyCode, Project.Country.us.currencyCode)
   }
 
   override func tearDown() async throws {

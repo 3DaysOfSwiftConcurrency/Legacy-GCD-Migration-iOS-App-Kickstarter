@@ -49,7 +49,11 @@ final class RewardsCollectionViewController: UICollectionViewController {
 
   private let viewModel = RewardsCollectionViewModel(
     rewardsFeature: AppModel.shared.rewardsFeature,
-    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) }
+    hasEligibleApplePayCard: {
+      AppEnvironment.current.applePayCapabilities.applePayCapable(
+        for: $0, launchedCountries: AppEnvironment.current.launchedCountries
+      )
+    }
   )
 
   static func instantiate(

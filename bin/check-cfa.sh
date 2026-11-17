@@ -255,7 +255,10 @@ reject_matches 'Onboarding analytics belong to OnboardingFeature composition.' \
   'AppEnvironment[.]current|ksrAnalytics' \
   "$app_view/Views/Onboarding/Views/OnboardingViewModel.swift"
 reject_matches 'Apple Pay request policy belongs to PaymentsFeature composition.' \
-  'AppEnvironment[.]current' "$app_model/Features/Payments/PKPaymentRequest+Helpers.swift"
+  'AppEnvironment[.]current' \
+  "$app_model/Features/Payments/ApplePayCapabilities.swift" \
+  "$app_model/Features/Payments/PKPaymentRequest+Helpers.swift" \
+  "$app_model/Features/Pledge/ProjectAndPledgeRules.swift"
 reject_matches 'Payment presentation reads Stripe policy through PaymentsFeature.' \
   'environmentType[.]stripePublishableKey' \
   "$app_view/Views/PledgedProjectsOverview/PPOContainerViewModel.swift" \

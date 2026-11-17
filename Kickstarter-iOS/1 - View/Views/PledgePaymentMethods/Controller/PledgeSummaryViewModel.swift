@@ -134,7 +134,6 @@ private func attributedConfirmationPledgeOverTimeString(
 
   let date = Format.date(secondsInUTC: firstIncrement.scheduledCollection, template: Constants.dateFormat)
 
-  let projectCurrencyCountry = projectCountry(forCurrency: project.statsCurrency) ?? project.country
   let chargeAmount = firstIncrement.amount.amountFormattedInProjectNativeCurrency
 
   let font = UIFont.ksr_caption1()

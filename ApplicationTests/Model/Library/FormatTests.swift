@@ -56,7 +56,11 @@ final class FormatTests: TestCase {
         XCTAssertEqual(Format.percentage(125, locale: locale), Format.percentage(125))
         XCTAssertEqual(Format.percentage(0.125, locale: locale), Format.percentage(0.125))
         for currency in ["USD", "EUR", "SGD", "DKK"] {
-          let symbol = currencySymbol(forCurrencyCode: currency)
+          let symbol = currencySymbol(
+            forCurrencyCode: currency,
+            launchedCountries: AppEnvironment.current.launchedCountries,
+            viewerCountryCode: AppEnvironment.current.countryCode
+          )
           XCTAssertEqual(
             Format.formattedCurrency(123.456, symbol: symbol, locale: locale,
                                      maximumFractionDigits: 2, minimumFractionDigits: 2),

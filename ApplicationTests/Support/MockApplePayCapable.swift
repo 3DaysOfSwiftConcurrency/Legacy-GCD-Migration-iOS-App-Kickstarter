@@ -23,11 +23,11 @@ internal struct MockApplePayCapabilities: ApplePayCapabilitiesType {
     return self.isApplePayDevice
   }
 
-  func applePayCapable(for _: Project) -> Bool {
+  func applePayCapable(for _: Project, launchedCountries _: LaunchedCountries) -> Bool {
     return self.isApplePayCapableForProject
   }
 
-  func supportedNetworks(for _: Project) -> [PKPaymentNetwork] {
+  func supportedNetworks(for _: Project, launchedCountries _: LaunchedCountries) -> [PKPaymentNetwork] {
     return self.supportedNetworksForProject
   }
 }

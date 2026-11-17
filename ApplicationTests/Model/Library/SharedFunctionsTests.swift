@@ -962,9 +962,10 @@ final class SharedFunctionsTests: TestCase {
 
   @MainActor
   func testDeviceIdentifier_IdentifierForVendor_IsNotNil() {
-    withEnvironment(device: MockDevice()) {
-      XCTAssertEqual("DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF", deviceIdentifier(uuid: MockUUID()))
-    }
+    XCTAssertEqual(
+      "DEADBEEF-DEAD-BEEF-DEAD-DEADBEEFBEEF",
+      deviceIdentifier(uuid: MockUUID(), identifierForVendor: MockDevice().identifierForVendor)
+    )
   }
 
   @MainActor
@@ -972,9 +973,7 @@ final class SharedFunctionsTests: TestCase {
     let device = MockDevice()
       |> \.identifierForVendor .~ nil
 
-    withEnvironment(device: device) {
-      XCTAssertEqual("ABCD-123", deviceIdentifier(uuid: MockUUID()))
-    }
+    XCTAssertEqual("ABCD-123", deviceIdentifier(uuid: MockUUID(), identifierForVendor: device.identifierForVendor))
   }
 
   func testPledgeAmountSubtractingShippingAmount() {
@@ -1162,7 +1161,7 @@ final class SharedFunctionsTests: TestCase {
   }
 
   func testProjectCountryForCurrency() {
-    let projectCountry = projectCountry(forCurrency: "MXN")
+    let projectCountry = projectCountry(forCurrency: "MXN", launchedCountries: LaunchedCountries())
 
     XCTAssertEqual(projectCountry, .mx)
   }

@@ -23,7 +23,8 @@ final class PKPaymentRequestHelpersTests: XCTestCase {
       additionalPledgeAmount: 50,
       allRewardsShippingTotal: 0,
       merchantIdentifier: merchantId,
-      supportedNetworks: [.visa]
+      supportedNetworks: [.visa],
+      launchedCountries: LaunchedCountries()
     )
 
     XCTAssertEqual(paymentRequest.merchantIdentifier, merchantId)
@@ -61,7 +62,8 @@ final class PKPaymentRequestHelpersTests: XCTestCase {
       additionalPledgeAmount: 50,
       allRewardsShippingTotal: shippingRule.cost,
       merchantIdentifier: merchantId,
-      supportedNetworks: [.visa]
+      supportedNetworks: [.visa],
+      launchedCountries: LaunchedCountries()
     )
 
     XCTAssertEqual(paymentRequest.merchantIdentifier, merchantId)
@@ -105,7 +107,8 @@ final class PKPaymentRequestHelpersTests: XCTestCase {
       additionalPledgeAmount: 50,
       allRewardsShippingTotal: shippingRule.cost,
       merchantIdentifier: merchantId,
-      supportedNetworks: [.visa]
+      supportedNetworks: [.visa],
+      launchedCountries: LaunchedCountries()
     )
 
     XCTAssertEqual(paymentRequest.merchantIdentifier, merchantId)
@@ -149,7 +152,8 @@ final class PKPaymentRequestHelpersTests: XCTestCase {
       additionalPledgeAmount: 20,
       allRewardsShippingTotal: shippingRule.cost,
       merchantIdentifier: merchantId,
-      supportedNetworks: [.visa]
+      supportedNetworks: [.visa],
+      launchedCountries: LaunchedCountries()
     )
 
     XCTAssertEqual(paymentRequest.merchantIdentifier, merchantId)
@@ -191,7 +195,9 @@ final class PKPaymentRequestHelpersTests: XCTestCase {
       paymentIntent: "foo"
     )
 
-    let paymentRequest = PKPaymentRequest.paymentRequest(for: data, supportedNetworks: [.visa])
+    let paymentRequest = PKPaymentRequest.paymentRequest(
+      for: data, supportedNetworks: [.visa], launchedCountries: LaunchedCountries()
+    )
     XCTAssertEqual(paymentRequest.merchantIdentifier, merchantId)
     XCTAssertEqual(paymentRequest.merchantCapabilities, .capability3DS)
     XCTAssertEqual(paymentRequest.countryCode, "JP")
@@ -231,7 +237,9 @@ final class PKPaymentRequestHelpersTests: XCTestCase {
       paymentIntent: "foo"
     )
 
-    let paymentRequest = PKPaymentRequest.paymentRequest(for: data, supportedNetworks: [.visa])
+    let paymentRequest = PKPaymentRequest.paymentRequest(
+      for: data, supportedNetworks: [.visa], launchedCountries: LaunchedCountries()
+    )
     XCTAssertEqual(paymentRequest.merchantIdentifier, merchantId)
     XCTAssertEqual(paymentRequest.merchantCapabilities, .capability3DS)
     XCTAssertEqual(paymentRequest.countryCode, "CA")

@@ -152,18 +152,6 @@ internal func minPledgeAmount(forProject project: Project, reward: Reward?, laun
 
  - returns: The currency symbol that can be used for currency display.
  */
-@MainActor
-public func currencySymbol(
-  forCurrencyCode currencyCode: String,
-  omitCurrencyCode: Bool = true,
-  env: Environment = AppEnvironment.current
-) -> String {
-  return currencySymbol(
-    forCurrencyCode: currencyCode, omitCurrencyCode: omitCurrencyCode,
-    launchedCountries: env.launchedCountries, viewerCountryCode: env.countryCode
-  )
-}
-
 /// Renders a currency symbol from captured country values without reading shared state.
 public func currencySymbol(
   forCurrencyCode currencyCode: String,
@@ -196,14 +184,6 @@ public func currencySymbol(
 
  - returns: The first matching country for currency symbol
  */
-@MainActor
-public func projectCountry(
-  forCurrency code: String?,
-  env: Environment = AppEnvironment.current
-) -> Project.Country? {
-  return projectCountry(forCurrency: code, launchedCountries: env.launchedCountries)
-}
-
 public func projectCountry(
   forCurrency code: String?,
   launchedCountries: LaunchedCountries
@@ -284,9 +264,8 @@ internal func classNameWithoutModule(_ class: AnyClass) -> String {
     .joined(separator: ".")
 }
 
-@MainActor
-public func deviceIdentifier(uuid: UUIDType, env: Environment = AppEnvironment.current) -> String {
-  guard let identifier = env.device.identifierForVendor else {
+public func deviceIdentifier(uuid: UUIDType, identifierForVendor: UUID?) -> String {
+  guard let identifier = identifierForVendor else {
     return uuid.uuidString
   }
 

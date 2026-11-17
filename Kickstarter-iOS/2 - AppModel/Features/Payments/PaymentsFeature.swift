@@ -42,6 +42,7 @@ public final class PaymentsFeature {
   private let supportedApplePayNetworks: @MainActor (Project) -> [PKPaymentNetwork]
   private let stripeKey: @MainActor () -> String
   private let pledgeCurrencyContext: @MainActor () -> PledgeCurrencyContext?
+  private let launchedCountryPolicy: @MainActor () -> LaunchedCountries
   private let applePayEligibility: @MainActor (Project) -> Bool
   private let responseDelay: @MainActor () -> TimeInterval
 
@@ -52,6 +53,7 @@ public final class PaymentsFeature {
     supportedApplePayNetworks: @escaping @MainActor (Project) -> [PKPaymentNetwork] = { _ in [] },
     stripePublishableKey: @escaping @MainActor () -> String = { "" },
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext? = { nil },
+    launchedCountries: @escaping @MainActor () -> LaunchedCountries = { LaunchedCountries() },
     hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool = { _ in false },
     responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 }
   ) {
@@ -61,6 +63,7 @@ public final class PaymentsFeature {
     self.supportedApplePayNetworks = supportedApplePayNetworks
     self.stripeKey = stripePublishableKey
     self.pledgeCurrencyContext = currencyContext
+    self.launchedCountryPolicy = launchedCountries
     self.applePayEligibility = hasEligibleApplePayCard
     self.responseDelay = responseDelaySeconds
   }
@@ -88,14 +91,16 @@ public final class PaymentsFeature {
       additionalPledgeAmount: additionalPledgeAmount,
       allRewardsShippingTotal: allRewardsShippingTotal,
       merchantIdentifier: merchantIdentifier,
-      supportedNetworks: self.supportedApplePayNetworks(project)
+      supportedNetworks: self.supportedApplePayNetworks(project),
+      launchedCountries: self.launchedCountryPolicy()
     )
   }
 
   public func paymentRequest(for data: PostCampaignPaymentAuthorizationData) -> PKPaymentRequest {
     PKPaymentRequest.paymentRequest(
       for: data,
-      supportedNetworks: self.supportedApplePayNetworks(data.project)
+      supportedNetworks: self.supportedApplePayNetworks(data.project),
+      launchedCountries: self.launchedCountryPolicy()
     )
   }
 

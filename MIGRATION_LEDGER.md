@@ -5197,3 +5197,30 @@ Live Search transport, visual rendering and the whole Library suite remain unver
 The CFA gate rejects restored ambient environment access in the Search provider. This
 is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
+
+### Payment country-policy composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+PaymentsFeature now passes its composed launched-country table through Apple Pay network
+selection and PKPaymentRequest currency resolution. ApplePayCapabilities,
+PKPaymentRequest helpers and ProjectAndPledgeRules no longer resolve AppEnvironment.
+Currency symbols, project countries and device identifiers require explicit values,
+removing ambient overloads from reusable AppModel policy.
+
+Focused Apple Pay, payment-request, PaymentsFeature and shared-rule validation passed
+all 103 tests. A direct supplied-country proof passed all 5 tests. The bounded AppModel,
+formatting, Manage Pledge, pledge checkout, post-campaign checkout, add-on selection and
+rewards collection selection passed all 220 tests. All successful runs had zero failures
+and skips on iPhone 17 Pro Max, iOS 26.2. Final PaymentsFeature and AppModel composition
+verification passed all 26 tests after making launched countries a first-class Feature
+dependency. Evidence:
+`/private/tmp/kickstarter-payment-country-policy-focused-2.xcresult`,
+`/private/tmp/kickstarter-payment-country-explicit-proof.xcresult` and
+`/private/tmp/kickstarter-payment-country-policy-bounded.xcresult`, plus
+`/private/tmp/kickstarter-payment-country-final-composition.xcresult`.
+
+Live Apple Pay authorization, physical-device behavior, visual rendering and the whole
+Library suite remain unverified. The CFA gate rejects restored ambient environment access
+in reusable payment-country policy. This is not full CFA compliance. Swift packages,
+target identifiers and existing history are unchanged. No push.

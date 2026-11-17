@@ -7,15 +7,18 @@ extension PKPaymentRequest {
   private static func paymentRequest(
     for project: Project,
     merchantIdentifier: String,
-    supportedNetworks: [PKPaymentNetwork]
+    supportedNetworks: [PKPaymentNetwork],
+    launchedCountries: LaunchedCountries
   ) -> PKPaymentRequest {
     let request = PKPaymentRequest()
     request.merchantIdentifier = merchantIdentifier
     request.supportedNetworks = supportedNetworks
     request.merchantCapabilities = .capability3DS
     request.countryCode = project.country.countryCode
-    request.currencyCode = projectCountry(forCurrency: project.stats.projectCurrency)?.currencyCode ?? project
-      .country.currencyCode
+    request.currencyCode = projectCountry(
+      forCurrency: project.stats.projectCurrency,
+      launchedCountries: launchedCountries
+    )?.currencyCode ?? project.country.currencyCode
     request.shippingType = .shipping
     return request
   }
@@ -27,12 +30,14 @@ extension PKPaymentRequest {
     additionalPledgeAmount: Double,
     allRewardsShippingTotal: Double,
     merchantIdentifier: String,
-    supportedNetworks: [PKPaymentNetwork]
+    supportedNetworks: [PKPaymentNetwork],
+    launchedCountries: LaunchedCountries
   ) -> PKPaymentRequest {
     let request = self.paymentRequest(
       for: project,
       merchantIdentifier: merchantIdentifier,
-      supportedNetworks: supportedNetworks
+      supportedNetworks: supportedNetworks,
+      launchedCountries: launchedCountries
     )
 
     request.paymentSummaryItems = self.paymentSummaryItems(
@@ -47,12 +52,14 @@ extension PKPaymentRequest {
 
   public static func paymentRequest(
     for data: PostCampaignPaymentAuthorizationData,
-    supportedNetworks: [PKPaymentNetwork]
+    supportedNetworks: [PKPaymentNetwork],
+    launchedCountries: LaunchedCountries
   ) -> PKPaymentRequest {
     let request = self.paymentRequest(
       for: data.project,
       merchantIdentifier: data.merchantIdentifier,
-      supportedNetworks: supportedNetworks
+      supportedNetworks: supportedNetworks,
+      launchedCountries: launchedCountries
     )
     request.paymentSummaryItems = self.paymentSummaryItems(for: data)
     return request

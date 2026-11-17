@@ -77,7 +77,11 @@ internal final class ManagePledgeViewModelTests: TestCase {
     sessionFeature: self.sessionFeature,
     makeProvider: { AsyncPaymentsProvider(service: MockService()) },
     currencyContext: { .live() },
-    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
+    hasEligibleApplePayCard: {
+      AppEnvironment.current.applePayCapabilities.applePayCapable(
+        for: $0, launchedCountries: AppEnvironment.current.launchedCountries
+      )
+    },
     responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
   private var vm: ManagePledgeViewModelType!

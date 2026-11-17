@@ -2065,3 +2065,16 @@ safe for arbitrary concurrent environment mutation.
 - Focused Search provider, lookup, filter and view-model coverage passes 100 tests; the
   bounded SearchFeature and AppModel selection passes 29 tests. Live service behavior,
   visual rendering and the whole Library suite remain outside this checkpoint.
+
+## Payment country-policy composition — 17 November 2026
+
+- PaymentsFeature supplies launched-country data to Apple Pay network selection and
+  payment-request currency resolution. These reusable policies no longer consult the
+  process environment.
+- Currency-symbol, project-country and device-identifier pledge rules now require their
+  resolved country/device inputs. The unused ambient overloads were removed; payment
+  country-code fallback and supported-network behavior are unchanged.
+- Focused policy coverage passes 103 tests, a direct supplied-country proof passes 5,
+  the bounded AppModel plus pledge/reward presentation selection passes 220 tests, and
+  final PaymentsFeature/AppModel composition verification passes 26 tests. Live Apple
+  Pay authorization and physical-device behavior remain outside this checkpoint.

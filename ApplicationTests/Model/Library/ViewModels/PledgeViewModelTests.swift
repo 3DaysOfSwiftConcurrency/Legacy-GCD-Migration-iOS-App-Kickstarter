@@ -50,7 +50,11 @@ final class PledgeViewModelTests: TestCase {
     makeProvider: { AsyncPaymentsProvider(service: MockService()) },
     stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
     currencyContext: { .live() },
-    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
+    hasEligibleApplePayCard: {
+      AppEnvironment.current.applePayCapabilities.applePayCapable(
+        for: $0, launchedCountries: AppEnvironment.current.launchedCountries
+      )
+    },
     responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
   private lazy var feature = PledgeFeature(
