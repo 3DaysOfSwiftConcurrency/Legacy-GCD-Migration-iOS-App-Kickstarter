@@ -1,3 +1,4 @@
+import Foundation
 import KDS
 import KsApi
 import Prelude
@@ -26,35 +27,37 @@ public final class ManageViewPledgeRewardReceivedViewModel {
   public private(set) var rewardReceivedHidden = true
   @ObservationIgnored public var onChange: (@MainActor () -> Void)?
   @ObservationIgnored private let pledgeFeature: PledgeFeature
+  @ObservationIgnored private let trackToggle: @MainActor (Bool, Project) -> Void
   @ObservationIgnored private let delay: @MainActor () async throws -> Void
-  @ObservationIgnored private var observation: Task<Void, Never>?
-  private var data: ManageViewPledgeRewardReceivedViewData?
+  @ObservationIgnored private var observation: (id: UUID, task: Task<Void, Never>)?
+  private var configuration: (data: ManageViewPledgeRewardReceivedViewData, session: PledgeFeature.SessionIdentity)?
   private var loaded = false
 
-  public init(pledgeFeature: PledgeFeature,
-              delay: @escaping @MainActor () async throws -> Void = {
-    let interval = AppEnvironment.current.apiDelayInterval
-    switch interval {
-    case .seconds(let n): try await Task.sleep(for: .seconds(n))
-    case .milliseconds(let n): try await Task.sleep(for: .milliseconds(n))
-    case .microseconds(let n): try await Task.sleep(for: .microseconds(n))
-    case .nanoseconds(let n): try await Task.sleep(for: .nanoseconds(n))
-    case .never: try await Task.sleep(nanoseconds: UInt64.max)
-    @unknown default: break
-    }
-  }) {
+  public init(
+    pledgeFeature: PledgeFeature,
+    trackToggle: @escaping @MainActor (Bool, Project) -> Void,
+    delay: @escaping @MainActor () async throws -> Void
+  ) {
     self.pledgeFeature = pledgeFeature
+    self.trackToggle = trackToggle
     self.delay = delay
   }
 
   public func configureWith(_ data: ManageViewPledgeRewardReceivedViewData) {
-    self.data = data
+    let session = self.pledgeFeature.sessionIdentity
+    if let previous = self.configuration,
+       previous.session != session || previous.data.project.id != data.project.id ||
+       previous.data.project.personalization.backing?.id != data.project.personalization.backing?.id {
+      self.observation?.task.cancel()
+      self.observation = nil
+    }
+    self.configuration = (data, session)
     if self.loaded { self.apply(data) }
   }
 
   public func viewDidLoad() {
     self.loaded = true
-    if let data = self.data { self.apply(data) }
+    if let data = self.configuration?.data { self.apply(data) }
   }
 
   private func apply(_ data: ManageViewPledgeRewardReceivedViewData) {
@@ -71,29 +74,36 @@ public final class ManageViewPledgeRewardReceivedViewModel {
   }
 
   public func rewardReceivedToggleTapped(isOn: Bool) {
-    guard self.loaded, let data = self.data else { return }
-    AppEnvironment.current.ksrAnalytics.trackRewardReceivedToggled(
-      toggleOn: isOn, project: data.project, context: .managePledgeScreen
-    )
-    let session = self.pledgeFeature.sessionIdentity
-    guard let task = self.pledgeFeature.startReceivedForCurrentUser(projectID: data.project.id, received: isOn)
+    guard self.loaded, let configuration = self.configuration,
+          self.pledgeFeature.sessionIdentity == configuration.session else { return }
+    let project = configuration.data.project
+    self.trackToggle(isOn, project)
+    guard let write = self.pledgeFeature.startReceivedForCurrentUser(projectID: project.id, received: isOn)
     else { return }
-    self.observation?.cancel()
-    self.observation = Task { [weak self] in
+
+    self.observation?.task.cancel()
+    let id = UUID()
+    let delay = self.delay
+    let task = Task { [weak self] in
+      defer {
+        if self?.observation?.id == id { self?.observation = nil }
+      }
       do {
-        let backing = try await task.value
-        guard let self else { return }
-        try await self.delay()
+        let backing = try await write.value
         try Task.checkCancellation()
-        guard self.pledgeFeature.sessionIdentity == session else { return }
+        try await delay()
+        try Task.checkCancellation()
+        guard let self, self.observation?.id == id,
+              self.pledgeFeature.sessionIdentity == configuration.session else { return }
         self.rewardReceived = backing.backerCompleted ?? false
         self.onChange?()
       } catch { }
     }
+    self.observation = (id, task)
   }
 
-  func waitForObservation() async { await self.observation?.value }
-  deinit { self.observation?.cancel() }
+  func waitForObservation() async { await self.observation?.task.value }
+  deinit { self.observation?.task.cancel() }
 }
 
 private func formatEstimatedShipping(with shippingRange: String) -> NSAttributedString {

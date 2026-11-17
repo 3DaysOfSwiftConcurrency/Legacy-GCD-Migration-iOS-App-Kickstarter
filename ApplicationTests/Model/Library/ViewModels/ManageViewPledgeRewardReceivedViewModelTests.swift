@@ -15,15 +15,21 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
   }
 
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let feature = PledgeFeature(
+  private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+  private lazy var feature = PledgeFeature(
     platform: .live(),
-    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    sessionFeature: self.sessionFeature,
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
     }
   )
-  private lazy var vm = ManageViewPledgeRewardReceivedViewModel(pledgeFeature: self.feature, delay: {})
+  private var trackedToggles: [Bool] = []
+  private lazy var vm = ManageViewPledgeRewardReceivedViewModel(
+    pledgeFeature: self.feature,
+    trackToggle: { [weak self] isOn, _ in self?.trackedToggles.append(isOn) },
+    delay: {}
+  )
 
   func testAttributedText() async {
     let backing = Backing.template
@@ -148,6 +154,60 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
       await self.feature.waitForOperations()
       XCTAssertFalse(self.vm.rewardReceived)
     }
+  }
+
+  func testDelayedReceiptCannotUpdateAnotherBackingOfTheSameProject() async {
+    let project = Project.template |> Project.lens.personalization.backing .~ Backing.template
+    let nextBacking = Backing.template |> Backing.lens.id .~ 54321
+    let replacement = project |> Project.lens.personalization.backing .~ nextBacking
+    var whenDelayed: (() -> Void)?
+    var delays = 0
+    let model = ManageViewPledgeRewardReceivedViewModel(
+      pledgeFeature: self.feature, trackToggle: { _, _ in },
+      delay: {
+        delays += 1
+        whenDelayed?()
+      }
+    )
+    whenDelayed = { [weak model] in model?.configureWith(self.receiptData(project: replacement)) }
+
+    await withEnvironment(apiService: MockService(backingUpdate: .template), currentUser: .template) {
+      model.configureWith(self.receiptData(project: project))
+      model.viewDidLoad()
+      model.rewardReceivedToggleTapped(isOn: true)
+      await model.waitForObservation()
+      await self.feature.waitForOperations()
+
+      XCTAssertEqual(delays, 1)
+      XCTAssertFalse(model.rewardReceived)
+    }
+  }
+
+  func testOldSessionCannotSendAToggleUntilThePledgeIsReconfigured() async {
+    let data = self.receiptData(project: .template)
+    await withEnvironment(apiService: MockService(backingUpdate: .template), currentUser: .template) {
+      self.vm.configureWith(data)
+      self.vm.viewDidLoad()
+      self.sessionFeature.sessionChanged()
+
+      self.vm.rewardReceivedToggleTapped(isOn: true)
+      await self.advancePledges()
+      XCTAssertTrue(self.trackedToggles.isEmpty)
+      XCTAssertFalse(self.vm.rewardReceived)
+
+      self.vm.configureWith(data)
+      self.vm.rewardReceivedToggleTapped(isOn: true)
+      await self.advancePledges()
+      XCTAssertEqual(self.trackedToggles, [true])
+      XCTAssertTrue(self.vm.rewardReceived)
+    }
+  }
+
+  private func receiptData(project: Project) -> ManageViewPledgeRewardReceivedViewData {
+    ManageViewPledgeRewardReceivedViewData(
+      project: project, backerCompleted: false, estimatedDeliveryOn: 1_475_361_315,
+      backingState: .collected, estimatedShipping: nil, pledgeDisclaimerViewHidden: false
+    )
   }
 
   func testRewardReceivedHidden_Dropped() async {

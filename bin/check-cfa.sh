@@ -70,7 +70,8 @@ reject_matches 'Pledge CTA and shipping view models must receive their dependenc
   "$app_view/Views/DesignSystem/Views/PledgeViewCTAContainerViewModel.swift" \
   "$app_view/Views/PledgeShippingLocation/*ViewModel.swift"
 reject_matches 'Pledge management view models must receive dependencies from their controllers.' \
-  'AppModel[.]shared|AppEnvironment[.]current' "$manage_pledge_view_model" "$cancel_pledge_view_model"
+  'AppModel[.]shared|AppEnvironment[.]current' "$manage_pledge_view_model" "$cancel_pledge_view_model" \
+  "$app_view/Views/ManagePledge/Controllers/ManageViewPledgeRewardReceivedViewModel.swift"
 reject_matches 'Pledge owns managed pledge eligibility and reward amounts.' \
   'ManagePledgeAlertAction[.]allCases|[.]isPledgeOverTimeAllowed|[.]status == [.]errored|[.]paymentIncrements[.]isEmpty|[.]addingCurrency[(]|Project[.]lens[.]personalization[.]backing' \
   "$manage_pledge_view_model"

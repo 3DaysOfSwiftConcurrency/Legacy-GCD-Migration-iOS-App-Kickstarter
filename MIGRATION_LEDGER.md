@@ -3888,3 +3888,23 @@ The iPhone 17 Pro Max simulator on iOS 26.2 passed 105 focused
 Manage Pledge and Pledge Feature tests and 129 bounded cancellation,
 reward receipt, checkout, and installment regressions. Live payments
 and visual parity remain unverified.
+
+### Reward receipt composition and presentation — Matthew Thomas
+
+The Manage Pledge receipt controller supplies analytics and timing to
+the ViewModel. The ViewModel keeps the observation for the displayed
+backing and its session. Reconfiguring a different backing cancels
+observation of the previous result. A stale session cannot submit a
+toggle, and completion of an admitted write is independent of screen
+observation. The source check covers the injected dependencies.
+
+The new tests cover replacing a backing during the presentation delay
+and rejecting a toggle after same-account session replacement until
+reconfiguration. Swift rejected composition in the controller property
+initializer. Moving construction into a main-actor method fixed the
+build. The stored-card checkout ViewModel still reaches into
+Payments through StripeIntentService.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 108 focused tests
+and 111 bounded pledge summary, cancellation, and checkout regressions.
+Visual parity and live payment behavior remain unverified.

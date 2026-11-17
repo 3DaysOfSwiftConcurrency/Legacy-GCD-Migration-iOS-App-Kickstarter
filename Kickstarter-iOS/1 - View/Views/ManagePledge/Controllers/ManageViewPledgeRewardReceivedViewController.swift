@@ -7,9 +7,28 @@ import UIKit
 final class ManageViewPledgeRewardReceivedViewController: UIViewController {
   // MARK: - Properties
 
-  private let viewModel = ManageViewPledgeRewardReceivedViewModel(
-    pledgeFeature: AppModel.shared.pledgeFeature
-  )
+  private lazy var viewModel = self.makeViewModel()
+
+  private func makeViewModel() -> ManageViewPledgeRewardReceivedViewModel {
+    ManageViewPledgeRewardReceivedViewModel(
+      pledgeFeature: AppModel.shared.pledgeFeature,
+      trackToggle: { isOn, project in
+        AppEnvironment.current.ksrAnalytics.trackRewardReceivedToggled(
+          toggleOn: isOn, project: project, context: .managePledgeScreen
+        )
+      },
+      delay: {
+        switch AppEnvironment.current.apiDelayInterval {
+        case .seconds(let n): try await Task.sleep(for: .seconds(n))
+        case .milliseconds(let n): try await Task.sleep(for: .milliseconds(n))
+        case .microseconds(let n): try await Task.sleep(for: .microseconds(n))
+        case .nanoseconds(let n): try await Task.sleep(for: .nanoseconds(n))
+        case .never: try await Task.sleep(nanoseconds: UInt64.max)
+        @unknown default: break
+        }
+      }
+    )
+  }
 
   private lazy var rootStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var rewardReceivedInfoStackView: UIStackView = { UIStackView(frame: .zero) }()
