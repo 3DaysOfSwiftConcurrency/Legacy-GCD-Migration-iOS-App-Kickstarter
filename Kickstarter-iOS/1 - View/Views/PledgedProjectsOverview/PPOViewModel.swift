@@ -143,8 +143,8 @@ final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutp
     // Analytics: When view appears, the next time it loads, send a PPO dashboard open
     self.viewDidAppearSubject
       .withFirst(from: latestLoadedResults)
-      .sink { _, properties in
-        AppEnvironment.current.ksrAnalytics.trackPPODashboardOpens(properties: properties)
+      .sink { [weak self] _, properties in
+        self?.pledgedProjectsFeature.trackDashboardOpened(properties: properties)
       }
       .store(in: &self.cancellables)
 
@@ -164,10 +164,9 @@ final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutp
       .filter { $0.1 == .confirmed }
       .map { $0.0 }  // we just need the card
       .withFirst(from: latestLoadedResults)
-      .sink { card, overallProperties in
-        AppEnvironment.current.ksrAnalytics.trackPPOSubmitAddressConfirmation(
-          project: card.projectAnalytics,
-          properties: overallProperties
+      .sink { [weak self] card, overallProperties in
+        self?.pledgedProjectsFeature.trackAddressConfirmed(
+          project: card.projectAnalytics, properties: overallProperties
         )
       }
       .store(in: &self.cancellables)
@@ -209,59 +208,32 @@ final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutp
     cardModel: PPOProjectCardModel,
     overallProperties: KSRAnalytics.PledgedProjectOverviewProperties
   ) {
+    let analyticsEvent: PledgedProjectsFeature.Analytics.CardEvent
     switch event {
     case .sendMessage:
-      AppEnvironment.current.ksrAnalytics.trackPPOMessagingCreator(
-        from: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .sendMessage
     case .editAddress:
-      AppEnvironment.current.ksrAnalytics.trackPPOEditAddress(
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .editAddress
     case .fixPayment:
-      AppEnvironment.current.ksrAnalytics.trackPPOFixingPaymentFailure(
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .fixPayment
     case .completeSurvey:
-      AppEnvironment.current.ksrAnalytics.trackPPOOpeningSurvey(
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .completeSurvey
     case .openPledgeManager:
-      AppEnvironment.current.ksrAnalytics.trackPPOOpenPledgeManager(
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .openPledgeManager
     case .confirmAddress:
-      AppEnvironment.current.ksrAnalytics.trackPPOInitiateConfirmingAddress(
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .confirmAddress
     case .authenticateCard:
-      AppEnvironment.current.ksrAnalytics.trackPPOAuthenticateCard(
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .authenticateCard
     case .viewProjectDetails:
-      AppEnvironment.current.ksrAnalytics.trackPPOViewProjectDetails(
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .viewProjectDetails
     case .updateRewardReceived(let rewardReceived):
-      AppEnvironment.current.ksrAnalytics.trackPPOUpdateRewardReceived(
-        toggleOn: rewardReceived,
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .updateRewardReceived(rewardReceived)
     case .manageLivePledge:
-      AppEnvironment.current.ksrAnalytics.trackPPOManageLivePledge(
-        project: cardModel.projectAnalytics,
-        properties: overallProperties
-      )
+      analyticsEvent = .manageLivePledge
     }
+    self.pledgedProjectsFeature.trackCardEvent(
+      analyticsEvent, project: cardModel.projectAnalytics, properties: overallProperties
+    )
   }
 
   func preparedEvent(

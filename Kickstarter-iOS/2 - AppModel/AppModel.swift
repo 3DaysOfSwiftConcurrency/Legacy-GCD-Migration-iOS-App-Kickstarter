@@ -480,7 +480,60 @@ public final class AppModel {
       pledgedProjectsFeature: PledgedProjectsFeature(
         sessionFeature: sessionFeature, settingsFeature: settingsFeature, makeProvider: {
           AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
-        }, locale: { AppEnvironment.current.locale }
+        }, locale: { AppEnvironment.current.locale }, analytics: .init(
+          dashboardOpened: {
+            AppEnvironment.current.ksrAnalytics.trackPPODashboardOpens(properties: $0)
+          },
+          cardEvent: { event, project, properties in
+            switch event {
+            case .authenticateCard:
+              AppEnvironment.current.ksrAnalytics.trackPPOAuthenticateCard(
+                project: project, properties: properties
+              )
+            case .confirmAddress:
+              AppEnvironment.current.ksrAnalytics.trackPPOInitiateConfirmingAddress(
+                project: project, properties: properties
+              )
+            case .editAddress:
+              AppEnvironment.current.ksrAnalytics.trackPPOEditAddress(
+                project: project, properties: properties
+              )
+            case .fixPayment:
+              AppEnvironment.current.ksrAnalytics.trackPPOFixingPaymentFailure(
+                project: project, properties: properties
+              )
+            case .manageLivePledge:
+              AppEnvironment.current.ksrAnalytics.trackPPOManageLivePledge(
+                project: project, properties: properties
+              )
+            case .openPledgeManager:
+              AppEnvironment.current.ksrAnalytics.trackPPOOpenPledgeManager(
+                project: project, properties: properties
+              )
+            case .sendMessage:
+              AppEnvironment.current.ksrAnalytics.trackPPOMessagingCreator(
+                from: project, properties: properties
+              )
+            case .updateRewardReceived(let isOn):
+              AppEnvironment.current.ksrAnalytics.trackPPOUpdateRewardReceived(
+                toggleOn: isOn, project: project, properties: properties
+              )
+            case .viewProjectDetails:
+              AppEnvironment.current.ksrAnalytics.trackPPOViewProjectDetails(
+                project: project, properties: properties
+              )
+            case .completeSurvey:
+              AppEnvironment.current.ksrAnalytics.trackPPOOpeningSurvey(
+                project: project, properties: properties
+              )
+            }
+          },
+          addressConfirmed: {
+            AppEnvironment.current.ksrAnalytics.trackPPOSubmitAddressConfirmation(
+              project: $0, properties: $1
+            )
+          }
+        )
       ),
       pledgeFeature: PledgeFeature(
         platform: .live(),

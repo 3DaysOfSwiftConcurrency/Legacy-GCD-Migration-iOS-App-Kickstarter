@@ -9,6 +9,8 @@ import XCTest
 
 @MainActor
 class PPOViewModelTests: XCTestCase {
+  private var analyticsEventCount = 0
+  private var trackedCardEvents: [PledgedProjectsFeature.Analytics.CardEvent] = []
   private let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
   private lazy var settings = SettingsFeature(
     sessionFeature: self.session,
@@ -20,13 +22,22 @@ class PPOViewModelTests: XCTestCase {
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
-    }, locale: { AppEnvironment.current.locale })
+    }, locale: { AppEnvironment.current.locale }, analytics: .init(
+      dashboardOpened: { _ in self.analyticsEventCount += 1 },
+      cardEvent: { event, _, _ in
+        self.trackedCardEvents.append(event)
+        self.analyticsEventCount += 1
+      },
+      addressConfirmed: { _, _ in self.analyticsEventCount += 1 }
+    ))
   var viewModel: PPOViewModel!
   var cancellables: Set<AnyCancellable>!
 
   override func setUp() async throws {
     try await super.setUp()
     MainActor.assumeIsolated {
+      self.analyticsEventCount = 0
+      self.trackedCardEvents = []
       self.viewModel = PPOViewModel(pledgedProjectsFeature: self.feature)
       self.cancellables = []
     }
@@ -396,17 +407,6 @@ class PPOViewModelTests: XCTestCase {
   }
 
   func testAnalyticsEvents_NotTriggeredOnRefresh() async throws {
-    let appTrackingTransparency = MockAppTrackingTransparency()
-    appTrackingTransparency.requestAndSetAuthorizationStatusFlag = false
-    appTrackingTransparency.shouldRequestAuthStatus = true
-    appTrackingTransparency.updateAdvertisingIdentifier()
-
-    let mockTrackingClient = MockTrackingClient()
-    let analytics = KSRAnalytics(
-      segmentClient: mockTrackingClient,
-      appTrackingTransparency: appTrackingTransparency
-    )
-
     let mockService = MockService(
       fetchPledgedProjectsResult: Result
         .success(try GraphAPI.FetchPledgedProjectsQuery.fakeData(cursors: 1...3))
@@ -431,11 +431,7 @@ class PPOViewModelTests: XCTestCase {
       }
       .store(in: &self.cancellables)
 
-    await withEnvironment(
-      apiService: mockService,
-      appTrackingTransparency: appTrackingTransparency,
-      ksrAnalytics: analytics
-    ) { () async in
+    await withEnvironment(apiService: mockService) { () async in
       self.viewModel.viewDidAppear()
 
       // Trigger some actions that generate analytics
@@ -446,21 +442,21 @@ class PPOViewModelTests: XCTestCase {
       await fulfillment(of: [initialLoadExpectation], timeout: 2)
 
       // Store analytics event counts before refresh
-      let trackCountBefore = mockTrackingClient.tracks.count
+      let trackCountBefore = self.analyticsEventCount
       XCTAssertEqual(trackCountBefore, 4)
+      XCTAssertEqual(self.trackedCardEvents.count, 3)
+      XCTAssertTrue(self.trackedCardEvents.contains(.completeSurvey))
+      XCTAssertTrue(self.trackedCardEvents.contains(.fixPayment))
+      XCTAssertTrue(self.trackedCardEvents.contains(.sendMessage))
 
-      await withEnvironment(
-        apiService: reloadedMockService,
-        appTrackingTransparency: appTrackingTransparency,
-        ksrAnalytics: analytics
-      ) { () async in
+      await withEnvironment(apiService: reloadedMockService) { () async in
         await self.viewModel.refresh()
       }
 
       await fulfillment(of: [refreshExpectation], timeout: 2)
 
       // Verify analytics events weren't triggered again
-      XCTAssertEqual(mockTrackingClient.tracks.count, trackCountBefore)
+      XCTAssertEqual(self.analyticsEventCount, trackCountBefore)
     }
   }
 

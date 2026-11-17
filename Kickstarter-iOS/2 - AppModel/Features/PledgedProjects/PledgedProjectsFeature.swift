@@ -24,6 +24,51 @@ public struct AsyncPledgedProjectsProvider: PledgedProjectsProvider {
 @MainActor
 public final class PledgedProjectsFeature {
   public typealias Snapshot = PaginationResult<PPOProjectCardModel, String, ErrorEnvelope>
+  public struct Analytics {
+    public enum CardEvent: Equatable {
+      case authenticateCard
+      case confirmAddress
+      case editAddress
+      case fixPayment
+      case manageLivePledge
+      case openPledgeManager
+      case sendMessage
+      case updateRewardReceived(Bool)
+      case viewProjectDetails
+      case completeSurvey
+    }
+
+    let dashboardOpened: @MainActor (KSRAnalytics.PledgedProjectOverviewProperties) -> Void
+    let cardEvent: @MainActor (
+      CardEvent,
+      ProjectAnalyticsSnapshot,
+      KSRAnalytics.PledgedProjectOverviewProperties
+    ) -> Void
+    let addressConfirmed: @MainActor (
+      ProjectAnalyticsSnapshot,
+      KSRAnalytics.PledgedProjectOverviewProperties
+    ) -> Void
+
+    public init(
+      dashboardOpened: @escaping @MainActor (
+        KSRAnalytics.PledgedProjectOverviewProperties
+      ) -> Void = { _ in },
+      cardEvent: @escaping @MainActor (
+        CardEvent,
+        ProjectAnalyticsSnapshot,
+        KSRAnalytics.PledgedProjectOverviewProperties
+      ) -> Void = { _, _, _ in },
+      addressConfirmed: @escaping @MainActor (
+        ProjectAnalyticsSnapshot,
+        KSRAnalytics.PledgedProjectOverviewProperties
+      ) -> Void = { _, _ in }
+    ) {
+      self.dashboardOpened = dashboardOpened
+      self.cardEvent = cardEvent
+      self.addressConfirmed = addressConfirmed
+    }
+  }
+
   public enum OverviewVersion: Equatable {
     case projectAlerts
     case fundedProjects
@@ -34,17 +79,41 @@ public final class PledgedProjectsFeature {
   private let settingsFeature: SettingsFeature
   private let makeProvider: () -> any PledgedProjectsProvider
   private let locale: () -> Locale
+  private let analytics: Analytics
 
   public init(
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
     makeProvider: @escaping () -> any PledgedProjectsProvider,
-    locale: @escaping () -> Locale
+    locale: @escaping () -> Locale,
+    analytics: Analytics = Analytics()
   ) {
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
     self.makeProvider = makeProvider
     self.locale = locale
+    self.analytics = analytics
+  }
+
+  public func trackDashboardOpened(
+    properties: KSRAnalytics.PledgedProjectOverviewProperties
+  ) {
+    self.analytics.dashboardOpened(properties)
+  }
+
+  public func trackCardEvent(
+    _ event: Analytics.CardEvent,
+    project: ProjectAnalyticsSnapshot,
+    properties: KSRAnalytics.PledgedProjectOverviewProperties
+  ) {
+    self.analytics.cardEvent(event, project, properties)
+  }
+
+  public func trackAddressConfirmed(
+    project: ProjectAnalyticsSnapshot,
+    properties: KSRAnalytics.PledgedProjectOverviewProperties
+  ) {
+    self.analytics.addressConfirmed(project, properties)
   }
 
   public var overviewVersion: OverviewVersion {

@@ -5516,3 +5516,25 @@ Visual rendering and the whole Library suite remain unverified. The CFA gate rej
 restored ambient application access in the pledge-CTA view and view model. This is not
 full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Pledged Projects analytics ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgedProjectsFeature now owns semantic analytics commands for dashboard appearance,
+card actions and completed address confirmation. PPOViewModel translates its UI events
+into those commands without resolving AppEnvironment or KSRAnalytics directly.
+
+Focused PledgedProjectsFeature validation passed all 8 tests, and focused PPOViewModel
+validation passed all 15 tests. The bounded AppModel/feature selection passed all 16
+tests, and the bounded PPO presentation selection passed all 34 tests. All runs had zero
+failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-ppo-analytics-focused.xcresult`,
+`/private/tmp/kickstarter-ppo-viewmodel-focused-5.xcresult`,
+`/private/tmp/kickstarter-ppo-analytics-bounded-library.xcresult` and
+`/private/tmp/kickstarter-ppo-analytics-bounded-presentation.xcresult`.
+
+The whole Library and Presentation suites remain unverified. The CFA gate rejects
+restored ambient composition or analytics access in PPOViewModel. This is not full CFA
+compliance. Swift packages, target identifiers and existing history are unchanged. No
+push.

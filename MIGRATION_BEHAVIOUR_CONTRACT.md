@@ -2232,3 +2232,14 @@ safe for arbitrary concurrent environment mutation.
 - Focused ProjectDetailsFeature, pledge-CTA and Project Page coverage passes 118 tests.
   The bounded AppModel and Project Page selection passes 126 tests. Visual rendering
   and the whole Library suite remain outside this checkpoint.
+
+## Pledged Projects analytics ownership — 17 November 2026
+
+- PledgedProjectsFeature now owns dashboard, card-action and completed-address analytics
+  commands alongside its existing loading, pagination, policy and session boundaries.
+- PPOViewModel translates presentation events into semantic feature commands and no
+  longer resolves the process analytics environment.
+- Focused feature coverage passes 8 tests and focused PPO presentation coverage passes
+  15 tests. Bounded AppModel/feature coverage passes 16 tests and bounded PPO
+  presentation coverage passes 34 tests. The whole Library suite remains outside this
+  checkpoint.
