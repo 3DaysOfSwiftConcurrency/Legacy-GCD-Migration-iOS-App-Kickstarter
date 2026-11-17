@@ -675,7 +675,10 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func updateNotification(name: String, enabled: Bool) {
     guard let request = self.settingsFeature.requestNotification(named: name, enabled: enabled) else { return }
-    let operation = self.sessionFeature.sessionBound { try await request.value }
+    let session = self.sessionFeature
+    let userID = session.currentUser?.id
+    let generation = session.generation
+    let operation = session.sessionBound { try await request.value }
     let delay = self.settingsPresentationDelay
     let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let id = UUID()
@@ -685,6 +688,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
         _ = try await operation()
         try await delay(seconds)
         try Task.checkCancellation()
+        guard session.isCurrent(userID: userID, generation: generation) else { return }
         self?.onNotificationSettingsUpdated?()
       } catch { /* Failed, cancelled or obsolete writes do not report success. */ }
     }
@@ -693,7 +697,10 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private func verifyEmail(token: String) {
     self.verificationTask?.cancel()
     let request = self.settingsFeature.requestVerification(token: token)
-    let operation = self.sessionFeature.sessionBound { try await request.value }
+    let session = self.sessionFeature
+    let userID = session.currentUser?.id
+    let generation = session.generation
+    let operation = session.sessionBound { try await request.value }
     let delay = self.settingsPresentationDelay
     let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.verificationTask = Task { [weak self] in
@@ -703,6 +710,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
       do {
         try await delay(seconds)
         try Task.checkCancellation()
+        guard session.isCurrent(userID: userID, generation: generation) else { return }
         switch result {
         case let .success(response): self?.onEmailVerificationCompleted?(response.message, true)
         case let .failure(error):

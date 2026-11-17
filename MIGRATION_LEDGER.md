@@ -3357,3 +3357,9 @@ Braze, and owns browser fallback. The legacy AppDelegate handler still
 dispatches presentation and follow-up actions such as email verification.
 Focused simulator runs passed all 124 AppDelegate presentation tests and
 all 19 Navigation and DeepLinkRouter tests. The CFA source check passed.
+
+Delayed notification-settings and email-verification deep-link results now
+check the admitted session again before display. AppDelegate coverage includes
+replacement by a new session with the same user ID during that delay. All 44
+focused Settings and Session tests and 125 AppDelegate presentation tests
+passed on the simulator.

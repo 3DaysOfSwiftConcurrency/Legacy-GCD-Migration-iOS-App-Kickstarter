@@ -2417,6 +2417,29 @@ final class AppDelegateViewModelTests: TestCase {
     XCTAssertEqual(AppEnvironment.current.currentUser?.newsletters.games, true)
   }
 
+  func testDeepLinkNotificationDoesNotReportSuccessAfterSessionReplacement() async throws {
+    let delayStarted = self.expectation(description: "Settings write reached the presentation delay")
+    let (delayGate, release) = AsyncStream<Void>.makeStream()
+    let handler = try XCTUnwrap(self.vm as? AppDelegateViewModel)
+    handler.settingsPresentationDelay = { _ in
+      delayStarted.fulfill()
+      for await _ in delayGate { break }
+    }
+
+    AppEnvironment.login(AccessTokenEnvelope(accessToken: "fixture-token", user: .template))
+    let url = try XCTUnwrap(
+      URL(string: "https://www.kickstarter.com/settings/notify_mobile_of_messages/true")
+    )
+    XCTAssertTrue(handler.applicationOpenUrl(application: UIApplication.shared, url: url, options: [:]))
+    await self.fulfillment(of: [delayStarted], timeout: 2)
+    self.settingsFeature.sessionFeature.sessionChanged()
+    release.yield(())
+    release.finish()
+    await handler.waitForSettingsPresentation()
+
+    self.notificationSettingsUpdated.assertDidNotEmitValue()
+  }
+
   func testDeepLink_UserDidUpdateNotificationSettings() async {
     self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
 
