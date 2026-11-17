@@ -29,6 +29,7 @@ final class SettingsViewModelTests: TestCase {
         }),
         remoteConfiguration: RemoteConfigurationService(notificationCenter: center),
         readConfiguration: { config },
+        currentCountryCode: { config?.countryCode },
         saveConfigurationOverride: { _ in XCTFail("Choosing a destination must not write configuration") },
         userDefaults: { store },
         notificationCenter: center

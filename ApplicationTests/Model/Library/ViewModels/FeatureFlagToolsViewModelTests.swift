@@ -86,6 +86,7 @@ private final class ConfigurationFlagToolsFixture {
       }),
       remoteConfiguration: RemoteConfigurationService(notificationCenter: self.center),
       readConfiguration: { [weak self] in self?.config },
+      currentCountryCode: { [weak self] in self?.config?.countryCode },
       saveConfigurationOverride: { [weak self] config in
         self?.config = config
         self?.saved.append(config)

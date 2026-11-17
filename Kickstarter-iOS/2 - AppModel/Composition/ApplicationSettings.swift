@@ -40,6 +40,7 @@ extension SettingsFeature.ApplicationSettings {
     Self(
       configuration: configuration, remoteConfiguration: remoteConfiguration,
       readConfiguration: { AppEnvironment.current.config },
+      currentCountryCode: { AppEnvironment.current.countryCode },
       saveConfigurationOverride: { config in
         // Existing DebugData has whole-config precedence; update it before applying.
         AppEnvironment.updateDebugData(DebugData(config: config))

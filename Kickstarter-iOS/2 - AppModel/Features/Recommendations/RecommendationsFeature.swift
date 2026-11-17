@@ -24,10 +24,26 @@ public struct AsyncRecommendationsProvider: RecommendationsProvider {
 /// own route; replacing or releasing a route makes its old responses obsolete.
 @MainActor
 public final class RecommendationsFeature {
-  public func recordThirdPartyEvent(_ input: KsApi.TriggerThirdPartyEventInput) {
-    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
+  public struct Platform {
+    let promptStore: @MainActor () -> any KeyValueStoreType
+    let responseDelaySeconds: @MainActor () -> TimeInterval
+    let recordThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
+
+    public init(
+      promptStore: @escaping @MainActor () -> any KeyValueStoreType,
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
+      recordThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
+    ) {
+      self.promptStore = promptStore
+      self.responseDelaySeconds = responseDelaySeconds
+      self.recordThirdPartyEvent = recordThirdPartyEvent
+    }
   }
-  public enum PostBackingPrompt {
+
+  public func recordThirdPartyEvent(_ input: KsApi.TriggerThirdPartyEventInput) {
+    self.platform.recordThirdPartyEvent(input)
+  }
+  public enum PostBackingPrompt: Equatable {
     case gamesNewsletter
     case rating
   }
@@ -52,6 +68,7 @@ public final class RecommendationsFeature {
   }
   public let settingsFeature: SettingsFeature
   public let sessionFeature: SessionFeature
+  private let platform: Platform
   private let makeProvider: () -> any RecommendationsProvider
   private let sleep: @MainActor @Sendable (TimeInterval) async throws -> Void
   private var pending: [UUID: Pending] = [:]
@@ -60,12 +77,14 @@ public final class RecommendationsFeature {
   private var operations: [UUID: Task<Void, Never>] = [:]
 
   public init(
+    platform: Platform,
     settingsFeature: SettingsFeature,
     makeProvider: @escaping () -> any RecommendationsProvider,
     sleep: @escaping @MainActor @Sendable (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
+    self.platform = platform
     self.settingsFeature = settingsFeature
     self.sessionFeature = settingsFeature.sessionFeature
     self.makeProvider = makeProvider
@@ -85,14 +104,14 @@ public final class RecommendationsFeature {
   }
 
   public func nextPostBackingPrompt(for project: Project) -> PostBackingPrompt? {
-    let store = AppEnvironment.current.userDefaults
+    let store = self.platform.promptStore()
     if project.category?.rootId == KsApi.Category.gamesId,
        self.sessionFeature.currentUser?.newsletters.games != true,
        !store.hasSeenGamesNewsletterPrompt {
       store.hasSeenGamesNewsletterPrompt = true
       return .gamesNewsletter
     }
-    if !store.hasSeenAppRating, AppEnvironment.current.config?.iTunesLink != nil,
+    if !store.hasSeenAppRating, self.settingsFeature.canOfferAppStoreRating,
        !self.shouldOfferPledgeNotifications {
       store.hasSeenAppRating = true
       return .rating
@@ -123,7 +142,7 @@ public final class RecommendationsFeature {
     self.release(route: route)
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     let task = Task { [self] in
       defer {
         self.operations[id] = nil

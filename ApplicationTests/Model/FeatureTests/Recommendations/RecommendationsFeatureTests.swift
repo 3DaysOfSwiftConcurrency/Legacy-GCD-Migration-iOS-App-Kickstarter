@@ -8,17 +8,28 @@ import XCTest
 final class RecommendationsFeatureTests: XCTestCase {
   private var provider: ControlledRecommendationsProvider!
   private var feature: RecommendationsFeature!
+  private var configuration: Config? = .template
+  private var promptStore: MockKeyValueStore!
   private let route = UUID()
 
   override func setUp() async throws {
     try await super.setUp()
     let provider = ControlledRecommendationsProvider()
+    let promptStore = MockKeyValueStore()
     self.provider = provider
+    self.promptStore = promptStore
+    let user = User.template |> \.stats.backedProjectsCount .~ 2
     let settings = SettingsFeature(
-      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      sessionFeature: SessionFeature(
+        makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { user }
+      ),
+      applicationSettings: .test(readConfiguration: { [weak self] in self?.configuration }),
       makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
     )
-    self.feature = RecommendationsFeature(settingsFeature: settings, makeProvider: { provider }, sleep: { _ in })
+    self.feature = RecommendationsFeature(
+      platform: .test(promptStore: { promptStore }),
+      settingsFeature: settings, makeProvider: { provider }, sleep: { _ in }
+    )
   }
 
   override func tearDown() async throws {
@@ -30,6 +41,20 @@ final class RecommendationsFeatureTests: XCTestCase {
   }
 
   private func project(_ id: Int) -> Project { .template |> Project.lens.id .~ id }
+
+  func testPostBackingPromptsUseInjectedSettingsAndPromptStoreInPriorityOrder() {
+    let game = self.project(1) |> Project.lens.category .~ .games
+    XCTAssertEqual(self.feature.nextPostBackingPrompt(for: game), .gamesNewsletter)
+    XCTAssertTrue(self.promptStore.hasSeenGamesNewsletterPrompt)
+    XCTAssertEqual(self.feature.nextPostBackingPrompt(for: self.project(2)), .rating)
+    XCTAssertTrue(self.promptStore.hasSeenAppRating)
+    XCTAssertNil(self.feature.nextPostBackingPrompt(for: self.project(3)))
+
+    self.promptStore.hasSeenAppRating = false
+    self.configuration = nil
+    XCTAssertNil(self.feature.nextPostBackingPrompt(for: self.project(4)))
+    XCTAssertFalse(self.promptStore.hasSeenAppRating)
+  }
 
   func testCuratedCategoriesRunConcurrentlyPreserveDuplicatesAndBudget() async throws {
     let task = self.feature.request(.curated([.art, .tabletopGames]), route: self.route)

@@ -40,7 +40,9 @@ public final class SettingsNewsletterCellViewModel {
 
   public func newslettersSwitchTapped(on: Bool) {
     guard let newsletter = self.newsletter else { return }
-    if AppEnvironment.current.config?.countryCode == "DE", on { self.onOptIn?(newsletter.displayableName) }
+    if self.settingsFeature.requiresConfiguredCountryNewsletterOptIn, on {
+      self.onOptIn?(newsletter.displayableName)
+    }
     self.save([.init(.newsletter(newsletter), on)])
   }
 
@@ -53,7 +55,7 @@ public final class SettingsNewsletterCellViewModel {
     let id = UUID()
     let settingsFeature = self.settingsFeature
     let sleep = self.sleep
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = settingsFeature.responseDelaySeconds
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>

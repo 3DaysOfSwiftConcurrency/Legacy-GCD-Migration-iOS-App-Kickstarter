@@ -4454,3 +4454,43 @@ and Discovery feed/activity session checks still require audit. This checkpoint
 establishes the inspected ownership boundary, not full CFA compliance. Swift packages,
 identifiers and existing history are unchanged. Full-suite, device, visual, live SDK
 and release validation were not performed. No push.
+
+### Settings owns rating and newsletter policy — 17 November 2026
+
+Author: Matthew Thomas.
+
+The remaining View/Feature reads of global Config moved behind SettingsFeature.
+Settings now exposes whether an App Store rating destination exists and whether
+newsletter opt-in confirmation is required. The two historical country inputs remain
+distinct: newsletter Settings uses Config.countryCode; the post-backing games signup
+uses the current environment country. Both preserve the `DE`-only prompt rule.
+
+RecommendationsFeature now receives prompt storage, request delay and third-party
+event transport through an explicit Platform composed by AppModel.live. Its rating
+decision asks the injected SettingsFeature, while Recommendations retains ownership
+of games-before-rating priority and one-time prompt persistence. The newsletter cell
+and Thanks ViewModels obtain policy and save-delivery timing from SettingsFeature.
+RecommendationsFeature and SettingsNewslettersCellViewModel no longer access
+AppEnvironment. No cache, lifecycle Feature or delegate ViewModel was introduced.
+
+Focused baseline: 73 tests passed. The first implementation attempts found only
+test-support compile errors: actor isolation, an invalid optional test assignment and
+a missing explicit return. After correction, the final focused slice passed 75 tests.
+The expanded main-module selection passed 100 tests across AppModel, Settings,
+Recommendations, Curated Projects, Thanks, both flag tools and Statsig helpers.
+The bounded application-routing, AppDelegate analytics, RootViewModel, Root Tabs and
+Settings presentation selection passed 149 tests. All final runs had zero failures
+and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-settings-policy-final-2.xcresult`,
+`/private/tmp/kickstarter-settings-policy-expanded.xcresult` and
+`/private/tmp/kickstarter-settings-policy-presentation.xcresult`.
+
+`make check-cfa`, project plist and diff checks passed. New guards reject global
+dependencies in RecommendationsFeature and the newsletter cell, plus direct country
+or delay reads in Thanks. A fresh scan finds direct AppEnvironment Config reads only
+in composition, Environment persistence and the composed Rewards platform closure.
+
+Remote-config/Statsig helper callers, bootstrap/keychain separation and the wider
+global/session audit remain. This is not full CFA compliance. Swift packages,
+identifiers and existing history are unchanged. The full suite, device, visual,
+live-service and release validation were not performed. No push.

@@ -115,8 +115,24 @@ final class SettingsFeatureTests: XCTestCase {
     fixture.configuration = .template
     fixture.configuration?.iTunesLink = "https://example.invalid/store-a"
     XCTAssertEqual(fixture.feature.appStoreURL, "https://example.invalid/store-a")
+    XCTAssertTrue(fixture.feature.canOfferAppStoreRating)
     fixture.configuration?.iTunesLink = "https://example.invalid/store-b"
     XCTAssertEqual(fixture.feature.appStoreURL, "https://example.invalid/store-b")
+    fixture.configuration = nil
+    XCTAssertFalse(fixture.feature.canOfferAppStoreRating)
+  }
+
+  func testNewsletterOptInPoliciesReadTheirInjectedCountriesIndependently() {
+    var configuration = Config.template
+    configuration.countryCode = "DE"
+    let fixture = ApplicationSettingsFixture(configuration: configuration, currentCountryCode: "US")
+    XCTAssertTrue(fixture.feature.requiresConfiguredCountryNewsletterOptIn)
+    XCTAssertFalse(fixture.feature.requiresCurrentCountryNewsletterOptIn)
+
+    fixture.configuration?.countryCode = "GB"
+    fixture.currentCountryCode = "DE"
+    XCTAssertFalse(fixture.feature.requiresConfiguredCountryNewsletterOptIn)
+    XCTAssertTrue(fixture.feature.requiresCurrentCountryNewsletterOptIn)
   }
 
   func testApplicationRefreshSharesPrefetchAndRetainsAnOverrideMadeWhileLoading() async throws {
@@ -574,7 +590,7 @@ extension SettingsFeatureTests {
     defer { fixture.provider.emails.releaseAll(); delay.releaseAll() }
     let feature = SettingsFeature(
       sessionFeature: fixture.session,
-      accountFieldsDelaySeconds: { 2.5 },
+      responseDelaySeconds: { 2.5 },
       makeProvider: { fixture.provider }
     )
     let read = Task {
@@ -858,6 +874,7 @@ private final class ControlledPreferencesReadProvider: SessionProvider {
 @MainActor
 private final class ApplicationSettingsFixture {
   var configuration: Config?
+  var currentCountryCode: String?
   let store = MockKeyValueStore()
   let center = NotificationCenter()
   let responses = AccountRequestGate<Config>()
@@ -867,7 +884,10 @@ private final class ApplicationSettingsFixture {
   var appliedConfigurations: [Config] = []
   var activationEvents: [String] = []
 
-  init(configuration: Config? = .template) { self.configuration = configuration }
+  init(configuration: Config? = .template, currentCountryCode: String? = nil) {
+    self.configuration = configuration
+    self.currentCountryCode = currentCountryCode
+  }
 
   private lazy var configurationService = ApplicationConfigurationService(
     load: { [weak self] in
@@ -887,6 +907,7 @@ private final class ApplicationSettingsFixture {
       configuration: self.configurationService,
       remoteConfiguration: RemoteConfigurationService(notificationCenter: self.center),
       readConfiguration: { [weak self] in self?.configuration },
+      currentCountryCode: { [weak self] in self?.currentCountryCode },
       saveConfigurationOverride: { [weak self] configuration in
         self?.configuration = configuration
         self?.savedOverrides.append(configuration)

@@ -31,6 +31,9 @@ discovery_feature="$app_model/Features/Discovery/DiscoveryFeature.swift"
 configuration_flags="$app_view/Views/FeatureFlagTools/Controller"
 remote_configuration_flags="$app_view/Views/RemoteConfigFeatureFlagTools/Controller"
 application_settings="$app_model/Features/Settings/SettingsFeature+ApplicationSettings.swift"
+recommendations_feature="$app_model/Features/Recommendations/RecommendationsFeature.swift"
+newsletter_cell_view_model="$app_view/Views/SettingsNewsletters/Views/Cells/SettingsNewslettersCellViewModel.swift"
+thanks_view_model="$app_view/Views/ThanksProjects/Controller/ThanksViewModel.swift"
 
 reject_matches 'Deep-link data resolution belongs to AppModel and its Features.' \
   'discussionFeature|discoveryFeature|activityFeature|messagingFeature|authenticationFeature|sessionFeature' \
@@ -63,6 +66,12 @@ reject_matches 'AppModel composes configuration services locally and stores only
 test -f "$application_settings"
 reject_matches 'Settings application-settings operations receive storage and clients from composition.' \
   'AppEnvironment|AppModel[.]shared|UserDefaults[.]standard|NotificationCenter[.]default' "$application_settings"
+reject_matches 'Recommendations receives prompt storage, delay and transport from composition.' \
+  'AppEnvironment|AppModel[.]shared' "$recommendations_feature"
+reject_matches 'Newsletter settings policy and delay belong to SettingsFeature.' \
+  'AppEnvironment|AppModel[.]shared' "$newsletter_cell_view_model"
+reject_matches 'Thanks uses SettingsFeature for newsletter country policy and save delivery timing.' \
+  'AppEnvironment[.]current[.](countryCode|apiDelayInterval)' "$thanks_view_model"
 
 test -f "$root_view_model"
 test -f "$root_tabs"

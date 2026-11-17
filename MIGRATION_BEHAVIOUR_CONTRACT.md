@@ -58,6 +58,14 @@ services. The retained services provide transport and task lifetime below the Fe
   suppresses the prior activation's late success or failure notifications.
 - Settings' rating action reads the current App Store URL from its Feature and
   retains its existing empty-string fallback when the URL is absent.
+- Post-backing rating eligibility reads that same effective Settings destination.
+  Recommendations owns prompt priority and one-time prompt storage through its
+  injected platform; a games-newsletter prompt still takes priority over rating.
+- Newsletter opt-in policy belongs to SettingsFeature. Preserve the two existing
+  country inputs: newsletter Settings uses the configured application country,
+  while the post-backing games signup uses the current environment country. Each
+  requires the opt-in alert only for `DE`. Both screens obtain save-delivery delay
+  from their injected SettingsFeature, without reading the global environment.
 
 Bootstrap/keychain decisions remain independent of AppModel construction. Global
 configuration helpers and other consumers are still present; this checkpoint does

@@ -30,6 +30,19 @@ extension RewardsFeature.Platform {
   }
 }
 
+extension RecommendationsFeature.Platform {
+  @MainActor
+  static func live() -> Self {
+    Self(
+      promptStore: { AppEnvironment.current.userDefaults },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      recordThirdPartyEvent: {
+        _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0)
+      }
+    )
+  }
+}
+
 extension PledgeFeature.Platform {
   @MainActor
   static func live() -> Self {
@@ -257,7 +270,7 @@ public final class AppModel {
       sessionFeature: sessionFeature,
       applicationSettings: .live(configuration: applicationConfiguration, remoteConfiguration: remoteConfiguration),
       hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
-      accountFieldsDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
     )
     let messagingFeature = MessagingFeature(sessionFeature: sessionFeature, makeProvider: {
@@ -280,7 +293,7 @@ public final class AppModel {
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
       }),
-      recommendationsFeature: RecommendationsFeature(settingsFeature: settingsFeature, makeProvider: {
+      recommendationsFeature: RecommendationsFeature(platform: .live(), settingsFeature: settingsFeature, makeProvider: {
         AsyncRecommendationsProvider(service: AppEnvironment.current.apiService)
       }),
       projectReportingFeature: ProjectReportingFeature(sessionFeature: sessionFeature, makeProvider: {

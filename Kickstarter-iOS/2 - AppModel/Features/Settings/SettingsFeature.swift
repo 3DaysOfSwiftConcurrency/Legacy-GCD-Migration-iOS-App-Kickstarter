@@ -127,7 +127,7 @@ public final class SettingsFeature {
   private let session: SessionFeature
   private let makeProvider: () -> any AccountPreferencesProvider
   private let hasStoredCredentials: @MainActor () -> Bool
-  private let accountFieldsDelaySeconds: @MainActor () -> TimeInterval
+  private let responseDelay: @MainActor () -> TimeInterval
   private let refreshDebounce: @MainActor () async throws -> Void
   private var scheduledRefresh: Task<Void, Never>?
   private var lifecycleRefresh: Task<Void, Never>?
@@ -162,7 +162,7 @@ public final class SettingsFeature {
     sessionFeature: SessionFeature,
     applicationSettings: ApplicationSettings? = nil,
     hasStoredCredentials: @escaping @MainActor () -> Bool = { false },
-    accountFieldsDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     refreshDebounce: @escaping @MainActor () async throws -> Void = {
       try await Task.sleep(for: .seconds(5))
     },
@@ -171,10 +171,12 @@ public final class SettingsFeature {
     self.session = sessionFeature
     self.applicationSettings = applicationSettings
     self.hasStoredCredentials = hasStoredCredentials
-    self.accountFieldsDelaySeconds = accountFieldsDelaySeconds
+    self.responseDelay = responseDelaySeconds
     self.refreshDebounce = refreshDebounce
     self.makeProvider = makeProvider
   }
+
+  public var responseDelaySeconds: TimeInterval { self.responseDelay() }
 
   func scheduleAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
     self.scheduledRefresh?.cancel()
@@ -494,7 +496,7 @@ public final class SettingsFeature {
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) async throws -> GraphUser {
     try await self.readEmailUser {
-      try await sleep(self.accountFieldsDelaySeconds())
+      try await sleep(self.responseDelaySeconds)
     }
   }
 

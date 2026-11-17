@@ -246,7 +246,7 @@ final class AppModelTests: XCTestCase {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
       }),
-      recommendationsFeature: RecommendationsFeature(settingsFeature: firstSettings, makeProvider: {
+      recommendationsFeature: RecommendationsFeature(platform: .test(), settingsFeature: firstSettings, makeProvider: {
         XCTFail("Composition must not perform recommendation requests")
         return AsyncRecommendationsProvider(service: MockService())
       }),
@@ -299,7 +299,7 @@ final class AppModelTests: XCTestCase {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
       }),
-      recommendationsFeature: RecommendationsFeature(settingsFeature: secondSettings, makeProvider: {
+      recommendationsFeature: RecommendationsFeature(platform: .test(), settingsFeature: secondSettings, makeProvider: {
         XCTFail("Composition must not perform recommendation requests")
         return AsyncRecommendationsProvider(service: MockService())
       }),

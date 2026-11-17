@@ -97,13 +97,13 @@ final class ThanksViewModel {
     }
   }
   func gamesNewsletterSignupButtonTapped() {
-    if AppEnvironment.current.countryCode == "DE" {
+    if self.recommendationsFeature.settingsFeature.requiresCurrentCountryNewsletterOptIn {
       self.onEvent?(.showGamesNewsletterOptInAlert(Strings.profile_settings_newsletter_games()))
     }
     guard let user = self.recommendationsFeature.sessionFeature.currentUser else { return }
     self.newsletterTask?.cancel()
     let settings = self.recommendationsFeature.settingsFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = settings.responseDelaySeconds
     let sleep = self.sleep
     self.newsletterTask = Task { [weak self] in
       do {

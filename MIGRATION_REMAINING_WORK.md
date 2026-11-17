@@ -34,12 +34,16 @@ Swift packages are excluded.
   unknown keys, false overrides, DebugData precedence and rapid edits against the
   latest configuration. The existing one-second screen reload remains presentation
   behavior. The client-specific Statsig helper now queries its own client.
-- Next: trace remaining global configuration consumers to their actual domain
-  owners. RecommendationsFeature still reads global Config for app-rating
-  eligibility; SettingsNewslettersCellViewModel still reads configured country for
-  the Germany opt-in rule. Remote-config/Statsig helper functions and composition
-  inputs still read Environment. Review their authoritative values, mutations and
-  isolation without duplicating storage or introducing a lifecycle Feature.
+- SettingsFeature now exposes the effective App Store rating and newsletter
+  country policies. Recommendations receives its prompt store, response delay and
+  third-party-event transport through an explicit platform. The newsletter cell
+  and Thanks screen obtain policy and save timing from Settings. Neither
+  RecommendationsFeature nor SettingsNewslettersCellViewModel reads Environment.
+- Next: classify the remaining remote-config/Statsig helper functions and their
+  callers. Bootstrap/keychain reads must remain independent of AppModel, while
+  screen and Feature decisions should receive explicit policy. Composition inputs
+  may read Environment locally; no consumer should acquire it through a hidden
+  global helper merely to avoid dependency wiring.
 - Bootstrap/keychain flag reads intentionally remain independent of AppModel
   construction. Environment configuration persistence, whole-config DebugData
   precedence, cookie installation and SDK integration remain contracts to preserve

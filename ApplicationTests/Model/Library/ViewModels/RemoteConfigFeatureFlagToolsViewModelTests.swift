@@ -65,6 +65,7 @@ private final class RemoteFlagToolsFixture {
       }),
       remoteConfiguration: RemoteConfigurationService(notificationCenter: self.center),
       readConfiguration: { nil },
+      currentCountryCode: { nil },
       saveConfigurationOverride: { _ in XCTFail("Remote tools must not change REST configuration") },
       userDefaults: { [store = self.store] in store },
       remoteClient: { [remote = self.remote] in remote },

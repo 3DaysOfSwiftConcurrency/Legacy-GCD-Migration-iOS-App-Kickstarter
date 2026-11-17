@@ -7,6 +7,11 @@ final class SettingsNewslettersCellViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = SettingsFeature(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
+    applicationSettings: .test(
+      readConfiguration: { AppEnvironment.current.config },
+      currentCountryCode: { AppEnvironment.current.countryCode },
+      userDefaults: { AppEnvironment.current.userDefaults }
+    ),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var vm = SettingsNewsletterCellViewModel(settingsFeature: self.feature, sleep: { _ in })

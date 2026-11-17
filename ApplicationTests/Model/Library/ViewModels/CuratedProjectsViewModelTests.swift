@@ -15,7 +15,7 @@ final class CuratedProjectsViewModelTests: TestCase {
   private let isLoading = CuratedRecorder<Bool>()
   private let loadProjectsCount = CuratedRecorder<Int>()
   private let showErrorMessage = CuratedRecorder<String>()
-  private let feature = RecommendationsFeature(settingsFeature: SettingsFeature(
+  private let feature = RecommendationsFeature(platform: .test(), settingsFeature: SettingsFeature(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   ), makeProvider: { AsyncRecommendationsProvider(service: AppEnvironment.current.apiService) })

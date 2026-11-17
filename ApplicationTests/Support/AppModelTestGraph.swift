@@ -42,7 +42,7 @@ func makeTestAppModel(
     creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
       AsyncCreatorDraftsProvider(service: MockService())
     }),
-    recommendationsFeature: RecommendationsFeature(settingsFeature: settingsFeature, makeProvider: {
+    recommendationsFeature: RecommendationsFeature(platform: .test(), settingsFeature: settingsFeature, makeProvider: {
       AsyncRecommendationsProvider(service: MockService())
     }),
     projectReportingFeature: ProjectReportingFeature(sessionFeature: sessionFeature, makeProvider: {
@@ -83,6 +83,40 @@ func makeTestAppModel(
       AsyncProjectMediaProvider(service: MockService())
     })
   )
+}
+
+extension RecommendationsFeature.Platform {
+  static func test(
+    promptStore: (@MainActor () -> any KeyValueStoreType)? = nil,
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
+    recordThirdPartyEvent: @escaping @MainActor (TriggerThirdPartyEventInput) -> Void = { _ in }
+  ) -> Self {
+    let defaultPromptStore = MockKeyValueStore()
+    return Self(
+      promptStore: promptStore ?? { defaultPromptStore },
+      responseDelaySeconds: responseDelaySeconds,
+      recordThirdPartyEvent: recordThirdPartyEvent
+    )
+  }
+}
+
+extension SettingsFeature.ApplicationSettings {
+  @MainActor
+  static func test(
+    readConfiguration: @escaping @MainActor () -> Config? = { nil },
+    currentCountryCode: @escaping @MainActor () -> String? = { nil },
+    userDefaults: @escaping @MainActor () -> any KeyValueStoreType = { MockKeyValueStore() }
+  ) -> Self {
+    Self(
+      configuration: ApplicationConfigurationService(load: { throw CancellationError() }),
+      remoteConfiguration: RemoteConfigurationService(notificationCenter: NotificationCenter()),
+      readConfiguration: readConfiguration,
+      currentCountryCode: currentCountryCode,
+      saveConfigurationOverride: { _ in },
+      userDefaults: userDefaults,
+      notificationCenter: NotificationCenter()
+    )
+  }
 }
 
 @MainActor

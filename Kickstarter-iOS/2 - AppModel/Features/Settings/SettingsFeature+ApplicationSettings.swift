@@ -11,6 +11,7 @@ extension SettingsFeature {
     let configuration: ApplicationConfigurationService
     let remoteConfiguration: RemoteConfigurationService
     let readConfiguration: @MainActor () -> Config?
+    let currentCountryCode: @MainActor () -> String?
     let saveConfigurationOverride: @MainActor (Config) -> Void
     let userDefaults: @MainActor () -> any KeyValueStoreType
     let remoteClient: @MainActor () -> (any RemoteConfigClientType)?
@@ -22,6 +23,7 @@ extension SettingsFeature {
       configuration: ApplicationConfigurationService,
       remoteConfiguration: RemoteConfigurationService,
       readConfiguration: @escaping @MainActor () -> Config?,
+      currentCountryCode: @escaping @MainActor () -> String?,
       saveConfigurationOverride: @escaping @MainActor (Config) -> Void,
       userDefaults: @escaping @MainActor () -> any KeyValueStoreType,
       remoteClient: @escaping @MainActor () -> (any RemoteConfigClientType)? = { nil },
@@ -32,6 +34,7 @@ extension SettingsFeature {
       self.configuration = configuration
       self.remoteConfiguration = remoteConfiguration
       self.readConfiguration = readConfiguration
+      self.currentCountryCode = currentCountryCode
       self.saveConfigurationOverride = saveConfigurationOverride
       self.userDefaults = userDefaults
       self.remoteClient = remoteClient
@@ -84,6 +87,13 @@ extension SettingsFeature {
   }
 
   public var appStoreURL: String? { self.applicationSettings?.readConfiguration()?.iTunesLink }
+  public var canOfferAppStoreRating: Bool { self.appStoreURL != nil }
+  public var requiresConfiguredCountryNewsletterOptIn: Bool {
+    self.applicationSettings?.readConfiguration()?.countryCode == "DE"
+  }
+  public var requiresCurrentCountryNewsletterOptIn: Bool {
+    self.applicationSettings?.currentCountryCode() == "DE"
+  }
 
   /// A prefetch shares the pending read without publishing configuration changes.
   public func requestApplicationSettings() -> Task<Config, Error> {

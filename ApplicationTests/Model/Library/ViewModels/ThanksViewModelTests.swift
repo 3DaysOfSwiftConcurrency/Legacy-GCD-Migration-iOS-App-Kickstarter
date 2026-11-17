@@ -16,9 +16,18 @@ final class ThanksViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: {
       AsyncSessionProvider(service: AppEnvironment.current.apiService)
     }),
+    applicationSettings: .test(
+      readConfiguration: { AppEnvironment.current.config },
+      currentCountryCode: { AppEnvironment.current.countryCode },
+      userDefaults: { AppEnvironment.current.userDefaults }
+    ),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var feature = RecommendationsFeature(settingsFeature: self.settingsFeature,
+  private lazy var feature = RecommendationsFeature(
+    platform: .test(
+      promptStore: { AppEnvironment.current.userDefaults },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    ), settingsFeature: self.settingsFeature,
     makeProvider: { AsyncRecommendationsProvider(service: AppEnvironment.current.apiService) })
   private lazy var vm: ThanksViewModel = ThanksViewModel(recommendationsFeature: self.feature, sleep: { _ in try Task.checkCancellation() })
   private let categoryEnvelope = CategoryEnvelope(node: .template)
