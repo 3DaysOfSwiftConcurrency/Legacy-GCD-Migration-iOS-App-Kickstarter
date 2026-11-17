@@ -19,12 +19,12 @@ final class AppDelegateViewModelTests: TestCase {
     }),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private let messagingFeature = MessagingFeature(
-    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
+  private lazy var messagingFeature = MessagingFeature(
+    sessionFeature: self.settingsFeature.sessionFeature,
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var deepLinkRouter = DeepLinkRouter(
-    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
+    sessionFeature: self.settingsFeature.sessionFeature,
     messagingFeature: self.messagingFeature,
     discussionFeature: DiscussionFeature(
       sessionFeature: self.settingsFeature.sessionFeature,
@@ -40,7 +40,11 @@ final class AppDelegateViewModelTests: TestCase {
   private lazy var applicationConfigurationService = ApplicationConfigurationService(
     load: { try await AppEnvironment.current.apiService.applicationConfiguration() }
   )
-  private lazy var discoveryFeature = DiscoveryFeature(provider: AsyncDiscoveryProvider())
+  private lazy var discoveryFeature = DiscoveryFeature(
+    provider: AsyncDiscoveryProvider(), currentUser: { [session = self.settingsFeature.sessionFeature] in
+      session.currentUser
+    }
+  )
   var vm: AppDelegateViewModelType!
 
   private let applicationIconBadgeNumber = ValueRecorder<Int>()
@@ -115,19 +119,31 @@ final class AppDelegateViewModelTests: TestCase {
     await self.settingsFeature.waitForOperations()
   }
 
-  private func bindOutputs() {
-    self.vm = AppDelegateViewModel(
+  private func makeDelegateHandler() -> AppDelegateViewModel {
+    let session = self.settingsFeature.sessionFeature
+    let config = self.applicationConfigurationService
+    let registration = DevicePushRegistrationService(
+      register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
+    )
+    return AppDelegateViewModel(
       deepLinkRouter: self.deepLinkRouter,
+      authenticationFeature: AuthenticationFeature(sessionFeature: session, makeProvider: {
+        AsyncAuthenticationProvider(service: AppEnvironment.current.apiService)
+      }),
       discoveryFeature: self.discoveryFeature,
-      requestApplicationConfiguration: { [self] in
-        self.applicationConfigurationService.refresh()
-      },
-      sessionFeature: self.deepLinkRouter.sessionFeature,
+      requestApplicationConfiguration: { config.refresh() },
+      requestDevicePushRegistration: { registration.request(token: $0) },
+      sessionFeature: session,
       settingsFeature: self.settingsFeature,
+      onboardingFeature: OnboardingFeature(),
       pushDebounce: { try Task.checkCancellation() },
       userDebounce: { try Task.checkCancellation() },
       trackingDelay: { try Task.checkCancellation() }
     )
+  }
+
+  private func bindOutputs() {
+    self.vm = self.makeDelegateHandler()
     (self.vm as? AppDelegateViewModel)?.settingsPresentationDelay = { _ in try Task.checkCancellation() }
     self.vm.outputs.onNotificationSettingsUpdated = { [weak self] in self?.notificationSettingsUpdated.record(()) }
 
@@ -1158,13 +1174,7 @@ final class AppDelegateViewModelTests: TestCase {
 
   func testPushRegistrationDebounceAdmitsLatestToken() async {
     await withEnvironment(currentUser: .template) {
-      let model = AppDelegateViewModel(
-        deepLinkRouter: self.deepLinkRouter,
-        sessionFeature: self.deepLinkRouter.sessionFeature,
-        settingsFeature: self.settingsFeature,
-        pushDebounce: {
-        try Task.checkCancellation()
-      })
+      let model = self.makeDelegateHandler()
       var registered: [String] = []
       model.outputs.onPushTokenSuccessfullyRegistered = { registered.append($0) }
       model.inputs.didRegisterForRemoteNotifications(withDeviceTokenData: Data([0x01]))

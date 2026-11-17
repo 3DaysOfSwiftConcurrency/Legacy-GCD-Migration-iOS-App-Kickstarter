@@ -246,13 +246,13 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public init(
     deepLinkRouter: DeepLinkRouter,
-    authenticationFeature: AuthenticationFeature? = nil,
-    discoveryFeature: DiscoveryFeature? = nil,
-    requestApplicationConfiguration: (@MainActor () -> Task<Config, Error>)? = nil,
-    requestDevicePushRegistration: (@MainActor (String) -> Task<String, Error>)? = nil,
-    sessionFeature: SessionFeature? = nil,
-    settingsFeature: SettingsFeature? = nil,
-    onboardingFeature: OnboardingFeature? = nil,
+    authenticationFeature: AuthenticationFeature,
+    discoveryFeature: DiscoveryFeature,
+    requestApplicationConfiguration: @escaping @MainActor () -> Task<Config, Error>,
+    requestDevicePushRegistration: @escaping @MainActor (String) -> Task<String, Error>,
+    sessionFeature: SessionFeature,
+    settingsFeature: SettingsFeature,
+    onboardingFeature: OnboardingFeature,
     pushDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
     userDebounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) },
     trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
@@ -260,16 +260,14 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.pushDebounce = pushDebounce
     self.userDebounce = userDebounce
     self.trackingDelay = trackingDelay
-    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
+    self.authenticationFeature = authenticationFeature
     self.deepLinkRouter = deepLinkRouter
-    self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
+    self.discoveryFeature = discoveryFeature
     self.requestApplicationConfiguration = requestApplicationConfiguration
-      ?? { AppModel.shared.requestApplicationConfiguration() }
     self.requestDevicePushRegistration = requestDevicePushRegistration
-      ?? { AppModel.shared.requestDevicePushRegistration(token: $0) }
-    self.sessionFeature = sessionFeature ?? AppModel.shared.sessionFeature
-    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
-    self.onboardingFeature = onboardingFeature ?? AppModel.shared.onboardingFeature
+    self.sessionFeature = sessionFeature
+    self.settingsFeature = settingsFeature
+    self.onboardingFeature = onboardingFeature
   }
 
 
