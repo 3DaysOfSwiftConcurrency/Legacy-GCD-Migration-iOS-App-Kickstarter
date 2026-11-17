@@ -20,7 +20,7 @@ final class OnboardingViewModelTest: TestCase {
   override func setUp() async throws {
     try await super.setUp()
 
-    self.viewModel = OnboardingViewModel(with: Bundle.main)
+    self.viewModel = OnboardingViewModel(with: Bundle.main, onboardingFeature: OnboardingFeature())
 
     self.viewModel.onTrackingPrompt = { [weak self] in
       self?.trackingPromptCount += 1

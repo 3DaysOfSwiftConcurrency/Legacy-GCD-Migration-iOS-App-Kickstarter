@@ -3341,6 +3341,12 @@ passed 69 simulator tests. Five tracked view-model files still reference
 `AppModel.shared`: Onboarding, Pagination Example, Rich Text Example,
 Update Draft and Video Feed.
 
+Those five view models now receive their features explicitly. The focused
+simulator runs passed 76 Update Draft, Video Feed and Project Media tests,
+14 Onboarding tests, and seven developer example presentation tests.
+`make check-cfa` now rejects direct `AppModel.shared` access in all tracked
+`*ViewModel.swift` files in View. The wider boundary audit remains open.
+
 The Pledged Projects hosting controller now supplies Pledge and Pledged
 Projects to the container and screen view models. SwiftUI retains the screen
 model with StateObject. The focused simulator runs passed seven feature and

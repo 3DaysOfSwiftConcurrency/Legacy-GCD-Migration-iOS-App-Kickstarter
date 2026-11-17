@@ -19,7 +19,9 @@ final class VideoFeedViewController: UIViewController {
     static let backgroundColor = KDS.Colors.Icon.dark.uiColor()
   }
 
-  private let viewModel = VideoFeedViewModel()
+  private let viewModel = VideoFeedViewModel(
+    projectMediaFeature: AppModel.shared.projectMediaFeature
+  )
   private let dataSource = VideoFeedDataSource()
   private let audioController = VideoFeedAudioController()
 

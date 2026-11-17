@@ -81,8 +81,8 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
 
   // MARK: - Init
 
-  public init(projectMediaFeature: ProjectMediaFeature? = nil) {
-    let feature = projectMediaFeature ?? AppModel.shared.projectMediaFeature
+  public init(projectMediaFeature: ProjectMediaFeature) {
+    let feature = projectMediaFeature
     let route = UUID()
     self.projectMediaFeature = feature
     self.route = route

@@ -16,8 +16,8 @@ internal final class RichTextExampleProjectsViewModel {
   var isLoading: Bool { self.developerExamplesFeature.richTextSnapshot(route: self.route).isLoading }
   var errorMessage: String? { self.developerExamplesFeature.richTextSnapshot(route: self.route).errorMessage }
 
-  init(developerExamplesFeature: DeveloperExamplesFeature? = nil) {
-    self.developerExamplesFeature = developerExamplesFeature ?? AppModel.shared.developerExamplesFeature
+  init(developerExamplesFeature: DeveloperExamplesFeature) {
+    self.developerExamplesFeature = developerExamplesFeature
   }
   deinit {
     self.lookupTask?.cancel()

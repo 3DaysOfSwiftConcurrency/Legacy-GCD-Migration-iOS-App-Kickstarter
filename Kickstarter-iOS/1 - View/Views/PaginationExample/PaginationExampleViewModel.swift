@@ -15,8 +15,8 @@ internal final class PaginationExampleViewModel {
   var showProgressView: Bool { self.developerExamplesFeature.pageSnapshot(route: self.route).showProgressView }
   var statusText: String { self.developerExamplesFeature.pageSnapshot(route: self.route).statusText }
 
-  init(developerExamplesFeature: DeveloperExamplesFeature? = nil) {
-    self.developerExamplesFeature = developerExamplesFeature ?? AppModel.shared.developerExamplesFeature
+  init(developerExamplesFeature: DeveloperExamplesFeature) {
+    self.developerExamplesFeature = developerExamplesFeature
   }
   deinit {
     let developerExamplesFeature = self.developerExamplesFeature, route = self.route

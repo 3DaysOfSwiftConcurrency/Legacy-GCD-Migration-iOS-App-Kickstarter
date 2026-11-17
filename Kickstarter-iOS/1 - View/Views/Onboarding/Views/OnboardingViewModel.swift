@@ -62,7 +62,7 @@ public final class OnboardingViewModel {
 
   public init(
     with bundle: Bundle = .main,
-    onboardingFeature: OnboardingFeature = AppModel.shared.onboardingFeature
+    onboardingFeature: OnboardingFeature
   ) {
     self.onboardingFeature = onboardingFeature
     self.useCase = OnboardingUseCase(for: bundle)

@@ -31,8 +31,7 @@ final class UpdateDraftViewModel {
   private var saveRevision = UUID()
   private var imageTasks: [UUID: Task<Void, Never>] = [:]
 
-  init(creatorDraftsFeature: CreatorDraftsFeature? = nil) {
-    let creatorDraftsFeature = creatorDraftsFeature ?? AppModel.shared.creatorDraftsFeature
+  init(creatorDraftsFeature: CreatorDraftsFeature) {
     self.creatorDraftsFeature = creatorDraftsFeature
     creatorDraftsFeature.observe(route: self.route) { [weak self] event in self?.receive(event) }
   }

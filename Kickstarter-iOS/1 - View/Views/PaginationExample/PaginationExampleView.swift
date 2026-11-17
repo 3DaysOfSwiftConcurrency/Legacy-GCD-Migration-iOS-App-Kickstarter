@@ -49,7 +49,9 @@ private struct PaginationExampleProjectList: View {
 }
 
 public struct PaginationExampleView: View {
-  @State private var viewModel = PaginationExampleViewModel()
+  @State private var viewModel = PaginationExampleViewModel(
+    developerExamplesFeature: AppModel.shared.developerExamplesFeature
+  )
 
   public var body: some View {
     // Note that PaginationExampleProjectList is decoupled from the view model;
