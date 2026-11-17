@@ -5,6 +5,27 @@ import XCTest
 
 @MainActor
 final class SettingsFeatureTests: XCTestCase {
+  func testScheduledRefreshDoesNotStartAfterSessionReplacement() async throws {
+    let fixture = PreferencesFixture()
+    let debounce = AccountRequestGate<Void>()
+    defer { debounce.releaseAll() }
+    let feature = SettingsFeature(
+      sessionFeature: fixture.session,
+      hasStoredCredentials: {
+        XCTFail("An obsolete refresh consulted credentials")
+        return false
+      },
+      refreshDebounce: { try await debounce.request() },
+      makeProvider: { fixture.provider }
+    )
+
+    feature.scheduleAccountRefresh { _ in XCTFail("An obsolete refresh delivered a result") }
+    await debounce.waitFor(1)
+    fixture.session.sessionChanged()
+    try debounce.finish(0, .success(()))
+    await feature.waitForScheduledAccountRefresh()
+  }
+
   func testEveryNotificationURLFieldChangesOnlyItsOwnPreference() async throws {
     let parameters = [
       "notify_of_backings", "notify_of_comment_replies", "notify_of_comments",

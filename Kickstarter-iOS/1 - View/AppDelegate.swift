@@ -159,7 +159,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     self.viewModel.outputs.onForceLogout = {
+      let session = AppModel.shared.sessionFeature
+      let userID = session.currentUser?.id
+      let generation = session.generation
       DispatchQueue.main.async {
+        guard session.isCurrent(userID: userID, generation: generation) else { return }
         AppEnvironment.logout()
         NotificationCenter.default.post(.init(name: .ksr_sessionEnded, object: nil))
       }

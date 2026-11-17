@@ -17,6 +17,7 @@ final class AppDelegateViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: {
       AsyncSessionProvider(service: AppEnvironment.current.apiService)
     }),
+    hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
     refreshDebounce: { try Task.checkCancellation() },
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )

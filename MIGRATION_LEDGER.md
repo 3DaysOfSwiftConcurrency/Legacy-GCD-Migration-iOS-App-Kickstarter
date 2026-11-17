@@ -3422,3 +3422,11 @@ the admitted session. AppDelegate retains shortcut presentation and the
 existing ordering. All 27 focused AppModel and Discovery tests, including
 same-user session replacement, passed after a simulator launch retry.
 All 123 AppDelegate presentation tests and the CFA source check passed.
+
+Settings receives the stored-credential check from composition and binds
+delayed account refreshes to the admitted session. AppModel cancels pending
+refreshes on session changes. The delegate checks the session before acting
+on a queued invalid-token logout. All 48 focused Settings, Session and
+AppModel tests passed after retrying a simulator launch rejection, and all
+123 AppDelegate presentation tests passed, including legacy credential
+restoration.

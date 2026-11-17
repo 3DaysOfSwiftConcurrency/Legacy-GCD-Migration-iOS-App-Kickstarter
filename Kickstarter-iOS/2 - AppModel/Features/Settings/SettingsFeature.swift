@@ -124,6 +124,7 @@ public final class SettingsFeature {
 
   private let session: SessionFeature
   private let makeProvider: () -> any AccountPreferencesProvider
+  private let hasStoredCredentials: @MainActor () -> Bool
   private let refreshDebounce: @MainActor () async throws -> Void
   private var scheduledRefresh: Task<Void, Never>?
   private var lifecycleRefresh: Task<Void, Never>?
@@ -155,12 +156,14 @@ public final class SettingsFeature {
 
   public init(
     sessionFeature: SessionFeature,
+    hasStoredCredentials: @escaping @MainActor () -> Bool = { false },
     refreshDebounce: @escaping @MainActor () async throws -> Void = {
       try await Task.sleep(for: .seconds(5))
     },
     makeProvider: @escaping () -> any AccountPreferencesProvider
   ) {
     self.session = sessionFeature
+    self.hasStoredCredentials = hasStoredCredentials
     self.refreshDebounce = refreshDebounce
     self.makeProvider = makeProvider
   }
@@ -168,18 +171,20 @@ public final class SettingsFeature {
   func scheduleAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
     self.scheduledRefresh?.cancel()
     let debounce = self.refreshDebounce
+    let generation = self.session.generation
     self.scheduledRefresh = Task { [weak self] in
       do {
         try await debounce()
         try Task.checkCancellation()
-        self?.beginAccountRefresh(onResult: onResult)
+        guard let self, self.session.generation == generation else { return }
+        self.beginAccountRefresh(onResult: onResult)
       } catch { /* A newer event superseded this debounce. */ }
     }
   }
 
   private func beginAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
     self.lifecycleRefresh?.cancel()
-    let authenticated = AppEnvironment.current.apiService.isAuthenticated
+    let authenticated = self.hasStoredCredentials()
     let userID = self.session.currentUser?.id
     guard authenticated || userID != nil else {
       onResult(.success(nil))
@@ -193,9 +198,11 @@ public final class SettingsFeature {
           userID: userID, generation: generation, allowSessionRestore: authenticated
         )
         try Task.checkCancellation()
+        guard self.session.isCurrent(userID: user.id, generation: generation) else { return }
         onResult(.success(user))
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError) else { return }
+        guard !Task.isCancelled, !(error is CancellationError),
+              self.session.isCurrent(userID: userID, generation: generation) else { return }
         onResult(.failure(error))
       }
     }

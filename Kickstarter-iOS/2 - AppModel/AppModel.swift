@@ -383,6 +383,7 @@ public final class AppModel {
   public func sessionChanged() {
     self.sessionFeature.sessionChanged()
     self.applicationShortcuts.cancel()
+    self.settingsFeature.cancelScheduledAccountRefresh()
     self.authenticationFeature.resetEmailRedirects()
     self.discoveryFeature.resetRecommendationAvailability()
     self.applicationConfigurationService.reset()
@@ -410,9 +411,11 @@ public final class AppModel {
       sessionFeature: sessionFeature,
       makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }
     )
-    let settingsFeature = SettingsFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService)
-      })
+    let settingsFeature = SettingsFeature(
+      sessionFeature: sessionFeature,
+      hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
+      makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+    )
     let messagingFeature = MessagingFeature(sessionFeature: sessionFeature, makeProvider: {
       AsyncMessagingProvider(service: AppEnvironment.current.apiService)
     })
