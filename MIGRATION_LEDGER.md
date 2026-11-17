@@ -3419,6 +3419,13 @@ replacement-session regressions. Discussion still reads URL configuration,
 request preparation, optimistic comment metadata and response timing from
 the environment.
 
+Discussion now requires these dependencies explicitly. Live composition
+supplies the existing server configuration, request preparation, clock,
+UUID source and response timing. The optimistic-post test verifies
+injected IDs and timestamps, and the CFA check rejects direct environment
+reads in DiscussionFeature. All 118 focused tests and 130 AppDelegate and
+Update presentation tests passed on the simulator.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

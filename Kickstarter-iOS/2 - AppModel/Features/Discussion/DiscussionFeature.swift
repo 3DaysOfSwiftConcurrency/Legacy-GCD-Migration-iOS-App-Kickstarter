@@ -46,11 +46,33 @@ public struct AsyncDiscussionProvider: DiscussionProvider {
 /// never an admitted write: server cancellation cannot roll back a comment.
 @MainActor
 public final class DiscussionFeature {
+  public struct Platform {
+    let serverConfig: @MainActor () -> any ServerConfigType
+    let prepareWebRequest: @MainActor (URLRequest) -> URLRequest
+    let optimisticCommentID: @MainActor () -> String
+    let now: @MainActor () -> Date
+    let responseDelaySeconds: @MainActor () -> TimeInterval
+
+    public init(
+      serverConfig: @escaping @MainActor () -> any ServerConfigType,
+      prepareWebRequest: @escaping @MainActor (URLRequest) -> URLRequest,
+      optimisticCommentID: @escaping @MainActor () -> String,
+      now: @escaping @MainActor () -> Date,
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval
+    ) {
+      self.serverConfig = serverConfig
+      self.prepareWebRequest = prepareWebRequest
+      self.optimisticCommentID = optimisticCommentID
+      self.now = now
+      self.responseDelaySeconds = responseDelaySeconds
+    }
+  }
+
   public func helpType(for url: URL) -> HelpType? {
-    HelpType.helpType(from: url, baseURL: AppEnvironment.current.apiService.serverConfig.webBaseUrl)
+    HelpType.helpType(from: url, baseURL: self.platform.serverConfig().webBaseUrl)
   }
   public func helpURL(_ type: HelpType) -> String? {
-    type.url(withBaseUrl: AppEnvironment.current.apiService.serverConfig.webBaseUrl)?.absoluteString
+    type.url(withBaseUrl: self.platform.serverConfig().webBaseUrl)?.absoluteString
   }
 
   public func canBlock(author: Comment.Author) -> Bool {
@@ -59,7 +81,7 @@ public final class DiscussionFeature {
   }
 
   public func navigationMatch(_ request: URLRequest) -> Navigation? {
-    let config = AppEnvironment.current.apiService.serverConfig
+    let config = self.platform.serverConfig()
     return request.url.flatMap {
       Navigation.match($0, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
     }
@@ -157,8 +179,8 @@ public final class DiscussionFeature {
   /// presentation cannot prevent the server operation from starting.
   func beginPost(project: Project, commentableID: String, parentID: String?, user: User, body: String) -> OptimisticPost {
     let comment = Comment.failableComment(
-      withId: AppEnvironment.current.uuidType.init().uuidString,
-      date: AppEnvironment.current.dateType.init().date,
+      withId: self.platform.optimisticCommentID(),
+      date: self.platform.now(),
       project: project, parentId: parentID, user: user, body: body
     )
     let result = self.requestPost(
@@ -228,7 +250,7 @@ public final class DiscussionFeature {
       parentID: parentID, userID: self.sessionFeature.currentUser?.id,
       generation: self.sessionFeature.generation
     )
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     receive(comment.updatingStatus(to: .retrying), comment.id)
     return Task { [self] in
       do {
@@ -336,7 +358,7 @@ public final class DiscussionFeature {
   }
 
   private let sleep: (TimeInterval) async throws -> Void
-  private let prepareWebRequest: (URLRequest) -> URLRequest
+  private let platform: Platform
   private var pages: [UUID: PageRoute] = [:]
   internal enum PageUpdate {
     case page(UUID, [Comment], Int)
@@ -354,23 +376,21 @@ public final class DiscussionFeature {
   }
 
   public init(
+    platform: Platform,
     sessionFeature: SessionFeature,
     makeProvider: @escaping () -> any DiscussionProvider,
-    prepareWebRequest: @escaping (URLRequest) -> URLRequest = {
-      AppEnvironment.current.apiService.preparedRequest(forRequest: $0)
-    },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
-    self.prepareWebRequest = prepareWebRequest
+    self.platform = platform
     self.sleep = sleep
   }
 
   public func preparedWebRequest(from request: URLRequest) -> URLRequest {
-    self.prepareWebRequest(request)
+    self.platform.prepareWebRequest(request)
   }
 
   public func snapshot(for route: UUID) -> PageSnapshot {
@@ -437,7 +457,7 @@ public final class DiscussionFeature {
   ) -> Task<Void, Never> {
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     let sleep = self.sleep
     let requestID = UUID()
     page.snapshot.isLoading = true

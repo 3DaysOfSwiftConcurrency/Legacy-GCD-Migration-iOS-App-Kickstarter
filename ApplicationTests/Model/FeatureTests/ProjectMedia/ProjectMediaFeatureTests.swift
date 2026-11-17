@@ -16,6 +16,7 @@ final class ProjectMediaFeatureTests: TestCase {
   private func pageModel(media: ProjectMediaFeature) -> ProjectPageViewModel {
     let service = MockService()
     let discussion = DiscussionFeature(
+      platform: .live(),
       sessionFeature: media.sessionFeature,
       makeProvider: { AsyncDiscussionProvider(service: service) }
     )

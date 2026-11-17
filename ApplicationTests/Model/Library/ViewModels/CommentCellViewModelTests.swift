@@ -14,6 +14,7 @@ internal final class CommentCellViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
   let vm = CommentCellViewModel(discussionFeature: DiscussionFeature(
+    platform: .live(),
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncDiscussionProvider(service: MockService()) }
   ))

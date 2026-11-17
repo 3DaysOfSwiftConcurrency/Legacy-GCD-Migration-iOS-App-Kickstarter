@@ -13,7 +13,15 @@ final class DiscussionFeatureTests: TestCase {
   func testNativePostPublishesOptimisticAndConfirmedValues() async {
     let provider = ControlledDiscussionProvider()
     var delays: [TimeInterval] = []
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
     let feature = DiscussionFeature(
+      platform: .init(
+        serverConfig: { ServerConfig.staging },
+        prepareWebRequest: { $0 },
+        optimisticCommentID: { "injected-comment-id" },
+        now: { now },
+        responseDelaySeconds: { 0 }
+      ),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
       makeProvider: { provider }, sleep: { delays.append($0) }
     )
@@ -22,6 +30,8 @@ final class DiscussionFeatureTests: TestCase {
       values.append(value)
     }
     XCTAssertEqual(values.count, 1)
+    XCTAssertEqual(values.first?.id, "injected-comment-id")
+    XCTAssertEqual(values.first?.createdAt, now.timeIntervalSince1970)
     await task.value
     XCTAssertEqual(values.count, 2)
     XCTAssertEqual(values.last?.status, .success)
@@ -34,6 +44,7 @@ final class DiscussionFeatureTests: TestCase {
     provider.fail = true
     var delays: [TimeInterval] = []
     let feature = DiscussionFeature(
+      platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
       makeProvider: { provider }, sleep: { delays.append($0) }
     )
@@ -68,7 +79,7 @@ final class DiscussionFeatureTests: TestCase {
   func testNativeRetryPublishesStatusAndSuccessfulComment() async {
     let provider = ControlledDiscussionProvider()
     var delays: [TimeInterval] = []
-    let feature = DiscussionFeature(sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: {
+    let feature = DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: {
       delays.append($0)
     })
     let original = Comment.template.updatingStatus(to: .failed)
@@ -88,7 +99,7 @@ final class DiscussionFeatureTests: TestCase {
     let provider = ControlledDiscussionProvider()
     var resume: CheckedContinuation<Void, Never>?
     let started = expectation(description: "Retry delay started")
-    let feature = DiscussionFeature(sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: { _ in
+    let feature = DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: { _ in
       await withCheckedContinuation { continuation in
         resume = continuation
         started.fulfill()
@@ -111,6 +122,7 @@ final class DiscussionFeatureTests: TestCase {
     var resume: CheckedContinuation<Void, Never>?
     let started = expectation(description: "Retry delay started")
     let feature = DiscussionFeature(
+      platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
       makeProvider: { provider },
       sleep: { _ in await withCheckedContinuation { resume = $0; started.fulfill() } }
@@ -244,7 +256,7 @@ final class DiscussionFeatureTests: TestCase {
   }
 
   private func feature(_ provider: ControlledDiscussionProvider) -> DiscussionFeature {
-    DiscussionFeature(sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: { _ in try Task.checkCancellation() })
+    DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: { _ in try Task.checkCancellation() })
   }
 
   func testEquivalentPostsShareButDistinctAttemptsAndChangedBodiesDoNot() async throws {

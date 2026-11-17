@@ -31,7 +31,7 @@ final class DeepLinkRouterTests: XCTestCase {
     })
     self.feature = DeepLinkRouter(
       sessionFeature: session, messagingFeature: messaging,
-      discussionFeature: DiscussionFeature(sessionFeature: session, makeProvider: { provider }),
+      discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session, makeProvider: { provider }),
       discoveryFeature: DiscoveryFeature(
         provider: AsyncDiscoveryProvider(), loadCategories: { try await provider.categories() },
         currentUser: { session.currentUser }

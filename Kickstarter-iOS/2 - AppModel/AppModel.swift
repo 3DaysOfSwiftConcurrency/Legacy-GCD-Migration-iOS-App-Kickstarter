@@ -2,6 +2,19 @@ import Foundation
 import KsApi
 import Prelude
 
+extension DiscussionFeature.Platform {
+  @MainActor
+  static func live() -> Self {
+    Self(
+      serverConfig: { AppEnvironment.current.apiService.serverConfig },
+      prepareWebRequest: { AppEnvironment.current.apiService.preparedRequest(forRequest: $0) },
+      optimisticCommentID: { AppEnvironment.current.uuidType.init().uuidString },
+      now: { AppEnvironment.current.dateType.init().date },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    )
+  }
+}
+
 extension ProjectMediaFeature.SavePrompts {
   @MainActor
   static func live() -> Self {
@@ -439,9 +452,11 @@ public final class AppModel {
     let messagingFeature = MessagingFeature(sessionFeature: sessionFeature, makeProvider: {
       AsyncMessagingProvider(service: AppEnvironment.current.apiService)
     })
-    let discussionFeature = DiscussionFeature(sessionFeature: sessionFeature, makeProvider: {
-      AsyncDiscussionProvider(service: AppEnvironment.current.apiService)
-    })
+    let discussionFeature = DiscussionFeature(
+      platform: .live(),
+      sessionFeature: sessionFeature,
+      makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }
+    )
     let discoveryFeature = DiscoveryFeature(
       provider: AsyncDiscoveryProvider(), currentUser: { sessionFeature.currentUser }
     )

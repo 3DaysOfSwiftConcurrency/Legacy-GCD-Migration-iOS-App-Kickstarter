@@ -29,6 +29,7 @@ final class AppDelegateViewModelTests: TestCase {
     sessionFeature: self.settingsFeature.sessionFeature,
     messagingFeature: self.messagingFeature,
     discussionFeature: DiscussionFeature(
+      platform: .live(),
       sessionFeature: self.settingsFeature.sessionFeature,
       makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }
     ),
