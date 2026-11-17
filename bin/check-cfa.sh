@@ -39,7 +39,7 @@ test -f "$discovery_feature"
 reject_matches 'RootViewModel must receive its dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$root_view_model"
 reject_matches 'The delegate handler must receive application dependencies explicitly.' \
-  'AppModel[.]shared' "$delegate_handler"
+  'AppModel[.]shared|AppEnvironment[.]current' "$delegate_handler"
 reject_matches 'Checkout view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$pledge_view_model" "$post_campaign_view_model"
 reject_matches 'Pledge CTA and shipping view models must receive their dependencies explicitly.' \

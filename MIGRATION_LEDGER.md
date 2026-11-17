@@ -3408,3 +3408,10 @@ intents. The app-wide onboarding login notification and legacy forwarding
 input were removed. All 29 focused model tests and 123 AppDelegate
 presentation tests passed. The presentation suite passed on retry after a
 busy simulator initially rejected the runner launch.
+
+The legacy delegate handler receives push registration, tracking, bundle,
+Segment availability and Settings presentation timing from composition.
+Dependencies are resolved when used, preserving environment replacement.
+The CFA source check rejects direct environment reads in the handler. All
+46 focused model tests passed after retrying a simulator launch rejection,
+and all 123 AppDelegate presentation tests passed.

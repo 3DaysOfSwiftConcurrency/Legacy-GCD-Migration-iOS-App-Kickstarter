@@ -33,6 +33,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     return AppDelegateViewModel(
       deepLinkRouter: router,
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
+      pushRegistration: { AppEnvironment.current.pushRegistrationType },
+      trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
+      mainBundle: { AppEnvironment.current.mainBundle },
+      isSegmentEnabled: { featureSegmentIsEnabled() },
+      settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       authenticationFeature: model.authenticationFeature,
       discoveryFeature: model.discoveryFeature,
       requestApplicationConfiguration: { model.requestApplicationConfiguration() },

@@ -128,6 +128,11 @@ final class AppDelegateViewModelTests: TestCase {
     return AppDelegateViewModel(
       deepLinkRouter: self.deepLinkRouter,
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
+      pushRegistration: { AppEnvironment.current.pushRegistrationType },
+      trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
+      mainBundle: { AppEnvironment.current.mainBundle },
+      isSegmentEnabled: { featureSegmentIsEnabled() },
+      settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       authenticationFeature: AuthenticationFeature(sessionFeature: session, makeProvider: {
         AsyncAuthenticationProvider(service: AppEnvironment.current.apiService)
       }),

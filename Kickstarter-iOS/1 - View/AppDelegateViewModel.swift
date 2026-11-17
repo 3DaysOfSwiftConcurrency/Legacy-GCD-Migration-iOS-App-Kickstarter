@@ -198,6 +198,11 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private let authenticationFeature: AuthenticationFeature
   private let deepLinkRouter: DeepLinkRouter
   private let serverConfig: () -> ServerConfigType
+  private let pushRegistration: () -> PushRegistrationType.Type
+  private let trackingAdapter: () -> any AppTrackingTransparencyType
+  private let mainBundle: () -> any NSBundleType
+  private let isSegmentEnabled: () -> Bool
+  private let settingsPresentationDelaySeconds: () -> TimeInterval
   private let discoveryFeature: DiscoveryFeature
   private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
   private let devicePushRegistration: DevicePushRegistrationService
@@ -227,6 +232,11 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public init(
     deepLinkRouter: DeepLinkRouter,
     serverConfig: @escaping () -> ServerConfigType,
+    pushRegistration: @escaping () -> PushRegistrationType.Type,
+    trackingAdapter: @escaping () -> any AppTrackingTransparencyType,
+    mainBundle: @escaping () -> any NSBundleType,
+    isSegmentEnabled: @escaping () -> Bool,
+    settingsPresentationDelaySeconds: @escaping () -> TimeInterval,
     authenticationFeature: AuthenticationFeature,
     discoveryFeature: DiscoveryFeature,
     requestApplicationConfiguration: @escaping @MainActor () -> Task<Config, Error>,
@@ -240,6 +250,11 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.authenticationFeature = authenticationFeature
     self.deepLinkRouter = deepLinkRouter
     self.serverConfig = serverConfig
+    self.pushRegistration = pushRegistration
+    self.trackingAdapter = trackingAdapter
+    self.mainBundle = mainBundle
+    self.isSegmentEnabled = isSegmentEnabled
+    self.settingsPresentationDelaySeconds = settingsPresentationDelaySeconds
     self.discoveryFeature = discoveryFeature
     self.requestApplicationConfiguration = requestApplicationConfiguration
     self.devicePushRegistration = devicePushRegistration
@@ -324,7 +339,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private func checkPushAuthorizationForLaunch() {
     if self.hasDeniedPushAuthorization { self.triggerOnboardingIfEligible() }
     self.performPushOperation({ completion in
-      AppEnvironment.current.pushRegistrationType.hasAuthorizedNotifications(completion: completion)
+      self.pushRegistration().hasAuthorizedNotifications(completion: completion)
     }) { [weak self] authorized in
       guard let self else { return }
       if authorized {
@@ -338,7 +353,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func checkPushAuthorizationForBadge() {
     self.performPushOperation({ completion in
-      AppEnvironment.current.pushRegistrationType.hasAuthorizedNotifications(completion: completion)
+      self.pushRegistration().hasAuthorizedNotifications(completion: completion)
     }) { [weak self] authorized in
       if authorized { self?.onApplicationIconBadgeNumber?(0) }
     }
@@ -346,7 +361,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func beginPushRegistration() {
     self.performPushOperation({ completion in
-      AppEnvironment.current.pushRegistrationType.register(
+      self.pushRegistration().register(
         for: [.alert, .sound, .badge],
         requestAuthorization: { [onboardingFeature = self.onboardingFeature] options in
           await onboardingFeature.requestNotifications(options: options)
@@ -373,7 +388,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
         try await delay()
         try Task.checkCancellation()
         guard active, let self, self.onboardingFeature.hasSeenOnboarding else { return }
-        let tracking = AppEnvironment.current.appTrackingTransparency
+        let tracking = self.trackingAdapter()
         if tracking.advertisingIdentifier == nil, tracking.shouldRequestAuthorizationStatus() {
           tracking.requestAndSetAuthorizationStatus(nil)
         }
@@ -387,7 +402,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func observeTrackingAuthorization() {
-    let tracking = AppEnvironment.current.appTrackingTransparency
+    let tracking = self.trackingAdapter()
     if let (previous, id) = self.trackingObserver {
       if (previous as AnyObject) === (tracking as AnyObject) { return }
       previous.removeAuthorizationObserver(id)
@@ -503,9 +518,9 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.refreshConfiguration()
     self.onSynchronizeUbiquitousStore?()
     self.onConfigureFirebase?()
-    self.onConfigureStatsig?(statsigSDKKey())
+    self.onConfigureStatsig?(statsigSDKKey(for: self.mainBundle()))
     self.onConfigureSegmentWithBraze?(
-      AppEnvironment.current.mainBundle.isRelease ? Secrets.Segment.production : Secrets.Segment.staging
+      self.mainBundle().isRelease ? Secrets.Segment.production : Secrets.Segment.staging
     )
   }
 
@@ -536,7 +551,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func publishSegmentEnabledIfChanged() {
-    let enabled = featureSegmentIsEnabled()
+    let enabled = self.isSegmentEnabled()
     guard self.lastSegmentEnabled != enabled else { return }
     self.lastSegmentEnabled = enabled
     self.onSegmentEnabled?(enabled)
@@ -653,7 +668,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     let generation = session.generation
     let operation = session.sessionBound { try await request.value }
     let delay = self.settingsPresentationDelay
-    let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let seconds = self.settingsPresentationDelaySeconds()
     let id = UUID()
     self.notificationTasks[id] = Task { [weak self] in
       defer { self?.notificationTasks[id] = nil }
@@ -675,7 +690,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     let generation = session.generation
     let operation = session.sessionBound { try await request.value }
     let delay = self.settingsPresentationDelay
-    let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let seconds = self.settingsPresentationDelaySeconds()
     self.verificationTask = Task { [weak self] in
       let result: Result<EmailVerificationResponseEnvelope, Error>
       do { result = .success(try await operation()) }
@@ -904,9 +919,7 @@ private func accessTokenFromUrl(_ url: URL?) -> String? {
 }
 
 @MainActor
-private func statsigSDKKey() -> StatsigClientSDKKey {
-  let mainBundle = AppEnvironment.current.mainBundle
-
+private func statsigSDKKey(for mainBundle: any NSBundleType) -> StatsigClientSDKKey {
   if mainBundle.isRelease {
     return .productionTier(Secrets.Statsig.production)
   } else if mainBundle.isBeta {
