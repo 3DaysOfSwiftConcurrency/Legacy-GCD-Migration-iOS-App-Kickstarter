@@ -20,6 +20,36 @@ AppModel's remaining infrastructure properties and the wider application
 composition still need migration; this checkpoint does not establish full CFA
 compliance.
 
+## Video-feed availability and connectivity — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProjectMediaFeature decides whether the video feed is available from the injected
+feature flag and connectivity source. Search and Discovery ViewModels receive
+domain availability instead of reading global reachability and repeating the rule.
+AppModel.live constructs one native connectivity service retained privately by the
+media Feature. Environment no longer owns reachability or accesses AppModel to
+construct its defaults. Tests inject their own connectivity state directly.
+
+- Availability requires the flag and either Wi-Fi or cellular connectivity.
+  Offline hides the banner. Checking availability does not fetch the video feed.
+- Deliver the initial availability synchronously to initialize the ViewModel,
+  while preserving the existing screen-appearance/configuration emission timing.
+  Each ViewModel suppresses repeated banner values independently.
+- Reevaluate the current flag on every connectivity event, including repeated
+  network states, and on explicit configuration/appearance reads. A separate
+  cached flag or duplicate filter in the Feature must not hide a current change.
+- Multiple screens share one lazily started native monitor. Stopping one screen's
+  observation leaves the other active; account/session replacement leaves the
+  application-scoped monitor running. Releasing its owner ends the stream.
+- Preserve native reachability flag classification, including cellular precedence.
+  Keep the platform callback bridge separate from domain eligibility and tests.
+
+Final validation passed 144 focused LibraryTests, the separate Environment
+initialization test and 146 bounded PresentationTests on iPhone 17 Pro Max,
+iOS 26.2, with no failures/skips. Hardware network transitions and banner
+snapshot/visual comparisons remain unverified.
+
 ## Account device registration — 17 November 2026
 
 Author: Matthew Thomas.

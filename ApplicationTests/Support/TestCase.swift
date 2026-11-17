@@ -83,7 +83,6 @@ class TestCase: XCTestCase {
       locale: .init(identifier: "en_US"),
       mainBundle: self.mainBundle,
       pushRegistrationType: MockPushRegistration.self,
-      reachability: self.reachability,
       remoteConfigClient: self.remoteConfigClient,
       ubiquitousStore: self.ubiquitousStore,
       userDefaults: self.userDefaults,

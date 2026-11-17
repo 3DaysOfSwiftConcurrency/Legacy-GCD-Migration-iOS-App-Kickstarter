@@ -32,6 +32,25 @@ public struct AsyncProjectMediaProvider: ProjectMediaProvider {
 /// Start and completion may both be in flight; neither cancels the other.
 @MainActor
 public final class ProjectMediaFeature {
+  private let connectivity: ConnectivityService
+  private let isVideoFeedEnabled: @MainActor () -> Bool
+
+  public var isVideoFeedAvailable: Bool {
+    self.isVideoFeedEnabled() && self.connectivity.connectivity != .none
+  }
+
+  /// Consumers receive availability, not the network classification or flag rule.
+  /// The initial value is synchronous. Every connectivity event reads the current
+  /// flag; each screen suppresses repeated presentation values independently.
+  public func observeVideoFeedAvailability(
+    _ observer: @escaping @MainActor (Bool) -> Void
+  ) -> MainActorObservation {
+    return self.connectivity.source.observe { [weak self] _ in
+      guard let self else { return }
+      observer(self.isVideoFeedAvailable)
+    }
+  }
+
   public var webBaseURL: URL { self.readWebBaseURL() }
   public struct SavePrompts {
     let tipState: @MainActor () -> (today: Date, hasSeenTip: Bool)?
@@ -424,6 +443,8 @@ public final class ProjectMediaFeature {
   public let sessionFeature: SessionFeature
   public init(
     sessionFeature: SessionFeature,
+    connectivity: ConnectivityService = ConnectivityService(),
+    isVideoFeedEnabled: @escaping @MainActor () -> Bool = { false },
     webBaseURL: @escaping @MainActor () -> URL = { ServerConfig.production.webBaseUrl },
     analytics: @escaping @MainActor () -> KSRAnalytics? = { nil },
     savePrompts: SavePrompts? = nil,
@@ -431,6 +452,8 @@ public final class ProjectMediaFeature {
     preparePlayback: (@MainActor (URL, URL?) async throws -> PreparedProjectMedia)? = nil,
     makeProvider: @escaping () -> any ProjectMediaProvider
   ) {
+    self.connectivity = connectivity
+    self.isVideoFeedEnabled = isVideoFeedEnabled
     self.loadImage = loadImage ?? { try await ProjectMediaPreparation.loadImage(url: $0) }
     self.preparePlayback = preparePlayback ?? { try await ProjectMediaPreparation.load(url: $0, thumbnailURL: $1) }
     self.sessionFeature = sessionFeature

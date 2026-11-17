@@ -102,9 +102,6 @@ public struct Environment {
   /// A type that manages registration for push notifications.
   public let pushRegistrationType: PushRegistrationType.Type
 
-  /// A reachability signal producer.
-  public let reachability: ConnectivityState
-
   /// The remote config client
   public let remoteConfigClient: RemoteConfigClientType?
 
@@ -150,7 +147,6 @@ public struct Environment {
     locale: Locale = .current,
     mainBundle: NSBundleType = Bundle.main,
     pushRegistrationType: PushRegistrationType.Type = PushRegistration.self,
-    reachability: ConnectivityState = AppModel.shared.connectivityService.source,
     remoteConfigClient: RemoteConfigClientType? = nil,
     statsigClient: StatsigClientType? = nil,
     ubiquitousStore: KeyValueStoreType = NSUbiquitousKeyValueStore.default,
@@ -186,7 +182,6 @@ public struct Environment {
     self.locale = locale
     self.mainBundle = mainBundle
     self.pushRegistrationType = pushRegistrationType
-    self.reachability = reachability
     self.remoteConfigClient = remoteConfigClient
     self.statsigClient = statsigClient
     self.ubiquitousStore = ubiquitousStore

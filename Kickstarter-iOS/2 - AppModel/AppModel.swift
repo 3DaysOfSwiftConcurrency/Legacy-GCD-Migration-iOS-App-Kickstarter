@@ -244,7 +244,6 @@ public final class AppModel {
 
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
-  public let connectivityService: ConnectivityService
   public let remoteConfigurationService: RemoteConfigurationService
   public let applicationConfigurationService: ApplicationConfigurationService
   public let creatorDraftsFeature: CreatorDraftsFeature
@@ -270,7 +269,6 @@ public final class AppModel {
   public init(
     developerExamplesFeature: DeveloperExamplesFeature,
     onboardingFeature: OnboardingFeature,
-    connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService,
     applicationConfigurationService: ApplicationConfigurationService,
     creatorDraftsFeature: CreatorDraftsFeature,
@@ -295,7 +293,6 @@ public final class AppModel {
   ) {
     self.developerExamplesFeature = developerExamplesFeature
     self.onboardingFeature = onboardingFeature
-    self.connectivityService = connectivityService
     self.remoteConfigurationService = remoteConfigurationService
     self.applicationConfigurationService = applicationConfigurationService
     self.creatorDraftsFeature = creatorDraftsFeature
@@ -393,6 +390,7 @@ public final class AppModel {
   }
 
   public static func live() -> AppModel {
+    let connectivity = ConnectivityService(makeMonitor: { SystemReachabilityMonitor() })
     let searchProvider = AsyncSearchProjectsProvider()
     let sessionFeature = SessionFeature.live()
     let activityFeature = ActivityFeature(
@@ -426,7 +424,6 @@ public final class AppModel {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
       }),
       onboardingFeature: onboarding,
-      connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
       remoteConfigurationService: RemoteConfigurationService(
         notificationCenter: .default,
         reportFailure: RemoteConfigClient.reportActivationFailure
@@ -485,6 +482,7 @@ public final class AppModel {
       discussionFeature: discussionFeature,
       projectMediaFeature: ProjectMediaFeature(
         sessionFeature: sessionFeature,
+        connectivity: connectivity, isVideoFeedEnabled: featureVideoFeedEnabled,
         webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
         analytics: { AppEnvironment.current.ksrAnalytics },
         savePrompts: .live(),

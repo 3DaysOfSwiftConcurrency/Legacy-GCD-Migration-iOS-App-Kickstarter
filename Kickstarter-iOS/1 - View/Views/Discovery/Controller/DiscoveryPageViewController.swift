@@ -16,7 +16,8 @@ internal final class DiscoveryPageViewController: UITableViewController,
   MessageBannerViewControllerPresenting,
   VideoFeedBannerPresenting {
   fileprivate let viewModel: DiscoveryPageViewModelType = DiscoveryPageViewModel(
-    discoveryFeature: AppModel.shared.discoveryFeature
+    discoveryFeature: AppModel.shared.discoveryFeature,
+    projectMediaFeature: AppModel.shared.projectMediaFeature
   )
   fileprivate let shareViewModel = ShareViewModel()
 

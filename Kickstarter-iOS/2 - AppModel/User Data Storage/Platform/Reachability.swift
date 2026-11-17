@@ -6,10 +6,6 @@ public enum Reachability: Sendable {
   case wwan
   case none
 
-  @MainActor public static var current: Reachability {
-    AppModel.shared.connectivityService.connectivity
-  }
-
   static func from(flags: SCNetworkReachabilityFlags) -> Reachability {
     // Preserve the existing classification, including WWAN precedence.
     if flags.contains(.isWWAN) { return .wwan }
@@ -85,7 +81,7 @@ private final class ReachabilityCallback: Sendable {
   init(continuation: AsyncStream<Reachability>.Continuation) { self.continuation = continuation }
 }
 
-/// Main-actor connectivity state shared by screens and application infrastructure.
+/// Main-actor state consumed by the owning domain Feature.
 @MainActor
 public final class ConnectivityState {
   public var value: Reachability {
@@ -112,7 +108,7 @@ public final class MainActorObservation {
 }
 
 /// Application-scoped bridge from SystemConfiguration's callback stream to the
-/// observable connectivity state used by screens. It is infrastructure, not a
+/// observable connectivity state used by Features. It is infrastructure, not a
 /// product feature, and therefore survives account/session resets.
 @MainActor
 public final class ConnectivityService {
@@ -120,9 +116,13 @@ public final class ConnectivityService {
   private var monitor: (any ReachabilityMonitoring)?
   private var task: Task<Void, Never>?
   private var started = false
-  private let state = ConnectivityState()
+  private let state: ConnectivityState
 
-  public init(makeMonitor: @escaping () -> (any ReachabilityMonitoring)? = { nil }) {
+  public init(
+    state: ConnectivityState = ConnectivityState(),
+    makeMonitor: @escaping () -> (any ReachabilityMonitoring)? = { nil }
+  ) {
+    self.state = state
     self.makeMonitor = makeMonitor
   }
 

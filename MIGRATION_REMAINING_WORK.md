@@ -19,16 +19,15 @@ Swift packages are excluded.
 - Device-token association with the current account belongs to SessionFeature.
   AppDelegate retains raw-token forwarding to Braze; AppModel forwards account
   registration to Session. The standalone device-registration service is removed.
-- AppModel still stores three infrastructure collaborators: connectivity, remote
-  configuration and application configuration. Their consumers
+- ProjectMediaFeature owns video-feed availability and privately retains the
+  connectivity service. Search and Discovery receive that Feature explicitly;
+  Environment no longer exposes connectivity or starts the application graph.
+- AppModel still stores two infrastructure collaborators: remote configuration
+  and application configuration. Their consumers
   and appropriate ownership require source review before the composition meets
   the Feature-only property requirement. Do not invent a lifecycle Feature to
   conceal these dependencies.
-- Next: move the duplicated video-feed eligibility policy from Search and Discovery
-  ViewModels to ProjectMediaFeature. Compose one connectivity monitor privately
-  behind that capability and remove Environment's back-reference to AppModel's
-  service. Preserve observation timing and session-independent connectivity.
-- Then migrate the local/remote feature-flag tools and effective application
+- Next: migrate the local/remote feature-flag tools and effective application
   settings through SettingsFeature. The settings owner must control real reads
   and override mutations, not merely conceal the existing configuration services.
   Preserve shared activation, client replacement, debug overrides, publication

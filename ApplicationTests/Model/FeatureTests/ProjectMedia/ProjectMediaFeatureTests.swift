@@ -13,6 +13,121 @@ import UIKit
 final class ProjectMediaFeatureTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
+  func testVideoFeedAvailabilityRequiresEnabledFlagAndAnOnlineConnection() {
+    let state = ConnectivityState()
+    var enabled = false
+    let provider = ControlledMediaProvider()
+    let feature = ProjectMediaFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      connectivity: ConnectivityService(state: state), isVideoFeedEnabled: { enabled },
+      makeProvider: { provider }
+    )
+
+    for isEnabled in [false, true] {
+      enabled = isEnabled
+      for connection in [Reachability.none, .wifi, .wwan] {
+        state.value = connection
+        XCTAssertEqual(feature.isVideoFeedAvailable, isEnabled && connection != .none)
+      }
+    }
+    XCTAssertEqual(provider.feedCount, 0, "Checking availability must not load the video feed")
+  }
+
+  func testVideoFeedObservationReevaluatesConfigurationForEveryConnectivityEvent() {
+    let state = ConnectivityState(.wifi)
+    var enabled = true
+    let feature = ProjectMediaFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      connectivity: ConnectivityService(state: state), isVideoFeedEnabled: { enabled },
+      makeProvider: { ControlledMediaProvider() }
+    )
+    var values: [Bool] = []
+    let observation = feature.observeVideoFeedAvailability { values.append($0) }
+    defer { observation.stop() }
+    XCTAssertEqual(values, [true], "Initial availability must arrive synchronously")
+
+    state.value = .wwan
+    state.value = .wwan
+    state.value = .none
+    state.value = .none
+    XCTAssertEqual(values, [true, true, true, false, false])
+    enabled = false
+    state.value = .wifi
+    XCTAssertEqual(values, [true, true, true, false, false, false])
+    enabled = true
+    XCTAssertTrue(feature.isVideoFeedAvailable, "Configuration reads must not use a cached flag")
+    state.value = .wifi
+    XCTAssertEqual(values, [true, true, true, false, false, false, true])
+  }
+
+  func testVideoFeedObserversShareMonitoringAndSurviveSessionReplacement() async {
+    let monitor = ControlledReachabilityMonitor()
+    defer { monitor.continuation.finish() }
+    var monitorStarts = 0
+    let connectivity = ConnectivityService(makeMonitor: { monitorStarts += 1; return monitor })
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template }
+    )
+    let feature = ProjectMediaFeature(
+      sessionFeature: session, connectivity: connectivity, isVideoFeedEnabled: { true },
+      makeProvider: { ControlledMediaProvider() }
+    )
+    var first: [Bool] = []
+    var second: [Bool] = []
+    let offline = expectation(description: "Both feature observers receive offline availability")
+    offline.expectedFulfillmentCount = 2
+    let restored = expectation(description: "Remaining feature observer receives restored availability")
+    let a = feature.observeVideoFeedAvailability {
+      first.append($0)
+      if !$0 { offline.fulfill() }
+    }
+    let b = feature.observeVideoFeedAvailability {
+      second.append($0)
+      if !$0 { offline.fulfill() }
+      if $0 && second.count > 1 { restored.fulfill() }
+    }
+    defer { a.stop(); b.stop() }
+    XCTAssertEqual(first, [true])
+    XCTAssertEqual(second, [true])
+    XCTAssertEqual(monitorStarts, 1)
+
+    session.sessionChanged()
+    monitor.continuation.yield(.none)
+    await fulfillment(of: [offline], timeout: 2)
+    a.stop()
+    monitor.continuation.yield(.wifi)
+    await fulfillment(of: [restored], timeout: 2)
+    XCTAssertEqual(first, [true, false])
+    XCTAssertEqual(second, [true, false, true])
+    XCTAssertEqual(monitorStarts, 1)
+  }
+
+  func testVideoFeedAvailabilityStaysIsolatedBetweenFeatureGraphs() {
+    let firstState = ConnectivityState(.wifi)
+    let secondState = ConnectivityState(.none)
+    let first = ProjectMediaFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      connectivity: ConnectivityService(state: firstState), isVideoFeedEnabled: { true },
+      makeProvider: { ControlledMediaProvider() }
+    )
+    let second = ProjectMediaFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      connectivity: ConnectivityService(state: secondState), isVideoFeedEnabled: { true },
+      makeProvider: { ControlledMediaProvider() }
+    )
+    var firstValues: [Bool] = []
+    var secondValues: [Bool] = []
+    let a = first.observeVideoFeedAvailability { firstValues.append($0) }
+    let b = second.observeVideoFeedAvailability { secondValues.append($0) }
+    defer { a.stop(); b.stop() }
+    firstState.value = .none
+    secondState.value = .wifi
+    XCTAssertEqual(firstValues, [true, false])
+    XCTAssertEqual(secondValues, [false, true])
+    XCTAssertFalse(first.isVideoFeedAvailable)
+    XCTAssertTrue(second.isVideoFeedAvailable)
+  }
+
   private func pageModel(media: ProjectMediaFeature) -> ProjectPageViewModel {
     let service = MockService()
     let discussion = DiscussionFeature(

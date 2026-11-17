@@ -134,14 +134,16 @@ public protocol DiscoveryPageViewModelType {
 @MainActor
 public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, DiscoveryPageViewModelInputs,
   DiscoveryPageViewModelOutputs {
+  private let projectMediaFeature: ProjectMediaFeature
   private let discoveryFeature: DiscoveryFeature
   private var discoveryObservation: MainActorObservation?
   internal private(set) var pageTask: Task<Void, Never>?
   internal private(set) var activityTask: Task<Void, Never>?
 
   public init(
-    discoveryFeature: DiscoveryFeature
+    discoveryFeature: DiscoveryFeature, projectMediaFeature: ProjectMediaFeature
   ) {
+    self.projectMediaFeature = projectMediaFeature
     self.discoveryFeature = discoveryFeature
     self.discoveryObservation = discoveryFeature.observe { [weak self] update in
       guard let self else { return }
@@ -153,17 +155,16 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
       case let .activities(sort, activities): self.receiveActivities(activities, sort: sort)
       }
     }
-    self.connectivityObservation = AppEnvironment.current.reachability.observe { [weak self] value in
+    self.videoFeedObservation = projectMediaFeature.observeVideoFeedAvailability { [weak self] available in
       guard let self else { return }
-      self.connectivity = value
-      if self.receivedInitialConnectivity { self.updateVideoFeedBanner() }
-      self.receivedInitialConnectivity = true
+      if self.receivedInitialVideoAvailability { self.updateVideoFeedBanner(available) }
+      self.receivedInitialVideoAvailability = true
     }
   }
 
 
   public func configUpdated() {
-    self.updateVideoFeedBanner()
+    self.updateVideoFeedBanner(self.projectMediaFeature.isVideoFeedAvailable)
   }
 
   private var previousEnvironment: EnvironmentType?
@@ -412,7 +413,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
     }
     if self.discoveryFeature.user == nil { self.publishActivities([]) }
     self.onContentInset?(.zero)
-    self.updateVideoFeedBanner()
+    self.updateVideoFeedBanner(self.projectMediaFeature.isVideoFeedAvailable)
   }
 
   private var wasCloseToBottom: Bool?
@@ -424,10 +425,9 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
     self.pageTask = self.discoveryFeature.requestNextPage(sort: sort)
   }
 
-  private var connectivity: Reachability = .none
-  private var receivedInitialConnectivity = false
+  private var receivedInitialVideoAvailability = false
   private var lastVideoFeedBanner: Bool?
-  private var connectivityObservation: MainActorObservation?
+  private var videoFeedObservation: MainActorObservation?
 
   public var onActivitiesForSample: (([Activity]) -> Void)?
   public var onAsyncReloadData: (() -> Void)?
@@ -461,8 +461,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   }
   public var onVideoFeedBannerChanged: ((Bool) -> Void)?
 
-  private func updateVideoFeedBanner() {
-    let visible = featureVideoFeedEnabled() && self.connectivity != .none
+  private func updateVideoFeedBanner(_ visible: Bool) {
     guard self.lastVideoFeedBanner != visible else { return }
     self.lastVideoFeedBanner = visible
     self.onVideoFeedBannerChanged?(visible)

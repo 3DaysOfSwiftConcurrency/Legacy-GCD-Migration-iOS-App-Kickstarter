@@ -4337,3 +4337,50 @@ identified video-feed eligibility in Search/Discovery as the next boundary for
 ProjectMediaFeature, followed by local/remote settings tools and effective
 configuration ownership. These are recorded in MIGRATION_REMAINING_WORK.md;
 the wider CFA audit remains active and incomplete.
+
+### ProjectMedia owns video-feed availability — 17 November 2026
+
+Author: Matthew Thomas.
+
+Search and Discovery no longer read global reachability or duplicate the video-feed
+flag/connectivity rule. Their ViewModels receive ProjectMediaFeature explicitly,
+observe domain availability and retain only presentation timing/deduplication.
+ProjectMediaFeature reads the current injected flag and privately retains the
+connectivity service. AppModel.live creates one native service locally; AppModel's
+service property and default initializer argument are removed.
+
+The obsolete Environment.reachability slot, push/replace pass-through and unused
+Reachability.current alias are removed. Environment initialization no longer
+reaches into AppModel to start a native monitor. Search/Discovery tests explicitly
+inject their existing controlled state into their own media Feature. No replacement
+singleton, global bridge, lifecycle Feature or delegate ViewModel is introduced.
+
+Availability is recalculated for every native event, including equivalent network
+states, and whenever a screen reads it for configuration/appearance. Deduplication
+remains per screen, avoiding a stale Feature-level duplicate filter after a flag
+change. Initial subscription delivery and existing banner emission timing remain
+covered by the original ViewModel assertions.
+
+The five platform monitor/classification/disposal tests move from DeepLinkRouterTests
+to Model/Platform/ConnectivityServiceTests.swift, registered in LibraryTests and the
+Xcode navigator. Four new ProjectMedia tests cover eligibility without feed loading,
+fresh flag reads, shared monitoring across real session replacement, independent
+observer disposal and isolated Feature graphs. The old service test's router reset
+was unrelated to session lifetime; the new Feature test exercises SessionFeature.
+
+The baseline passed 132 tests. The final focused LibraryTests selection passed
+144 tests covering ProjectMedia, connectivity, Search, Discovery, deep-link routing
+and AppModel. EnvironmentTests.testInit passed separately (one test). The bounded
+application-routing, delegate analytics and Root Tabs selection passed 146
+PresentationTests. All runs had zero failures/skips on iPhone 17 Pro Max, iOS 26.2.
+Result bundles:
+`/private/tmp/kickstarter-video-availability-feature.xcresult`,
+`/private/tmp/kickstarter-video-availability-environment.xcresult` and
+`/private/tmp/kickstarter-video-availability-presentation.xcresult`.
+
+`make check-cfa`, project plist validation and diff checks passed. The guard rejects
+restoring connectivity/flag policy in these ViewModels or the obsolete global slot.
+Swift packages and target identifiers are unchanged. Native network transitions on
+hardware, banner snapshots/visual parity and the full suite remain unverified.
+AppModel's two configuration services and the live global flag reader remain for
+the next settings ownership checkpoint. This is not full CFA compliance. No push.

@@ -34,6 +34,14 @@ reject_matches 'Deep-link data resolution belongs to AppModel and its Features.'
   "$app_view/Navigation/DeepLinkRouter.swift"
 reject_matches 'AppModel deep-link coordination returns data, not UIKit controllers.' \
   'import UIKit|UIViewController|UINavigationController' "$app_model/AppModel+DeepLinks.swift"
+reject_matches 'ProjectMediaFeature owns video-feed availability policy.' \
+  'featureVideoFeedEnabled|reachability|Reachability|connectivity' \
+  "$app_view/Views/Search/Controller/SearchViewModel.swift" \
+  "$app_view/Views/Discovery/Controller/DiscoveryPageViewModel.swift"
+reject_matches 'Connectivity is composed privately behind ProjectMediaFeature.' \
+  'connectivityService|reachability' "$app_model/Composition/Environment.swift" "$app_model/Composition/AppEnvironment.swift"
+reject_matches 'AppModel exposes Features rather than the connectivity service.' \
+  'connectivityService' "$app_model/AppModel.swift"
 reject_matches 'SessionFeature owns device-to-account registration.' \
   'DevicePushRegistrationService|devicePushRegistrationService' "$app_view" "$app_model"
 reject_matches 'OnboardingFeature owns application consent and push-authorization policy.' \

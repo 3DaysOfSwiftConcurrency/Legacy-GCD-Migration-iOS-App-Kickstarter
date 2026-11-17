@@ -3,7 +3,6 @@ import UserNotifications
 import AppTrackingTransparency
 import Prelude
 import XCTest
-import SystemConfiguration
 
 @testable import KsApi
 
@@ -12,10 +11,7 @@ final class DeepLinkRouterTests: XCTestCase {
   private var provider: ControlledDeepLinkProvider!
   private var router: DeepLinkRouter!
   private var model: AppModel!
-  private var connectivityService: ConnectivityService!
   private let route = UUID()
-  private var connectivityMonitor: ControlledReachabilityMonitor!
-  private var monitorStarts = 0
   private var discoveryDelay: TimeInterval = 0
   private var discoverySleeps: [TimeInterval] = []
   private let redirects = AccountRequestGate<URL?>()
@@ -28,12 +24,6 @@ final class DeepLinkRouterTests: XCTestCase {
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     let messaging = MessagingFeature(
       sessionFeature: session, makeProvider: { AsyncMessagingProvider(service: MockService()) })
-    self.connectivityMonitor = ControlledReachabilityMonitor()
-    self.monitorStarts = 0
-    self.connectivityService = ConnectivityService(makeMonitor: { [weak self] in
-      self?.monitorStarts += 1
-      return self?.connectivityMonitor
-    })
     let settings = SettingsFeature(sessionFeature: session, makeProvider: {
       AsyncAccountPreferencesProvider(service: MockService(
         verifyEmailResult: .success(EmailVerificationResponseEnvelope(message: "Verified"))
@@ -215,83 +205,6 @@ final class DeepLinkRouterTests: XCTestCase {
     XCTAssertFalse(beforeRelease.isCurrent)
   }
 
-  func testConnectivitySharesNativeMonitorAndSurvivesSessionReset() async {
-    XCTAssertEqual(self.monitorStarts, 0)
-    XCTAssertEqual(self.connectivityService.connectivity, .wifi)
-    var first: [Reachability] = []
-    var second: [Reachability] = []
-    let delivered = expectation(description: "both observers received offline")
-    delivered.expectedFulfillmentCount = 2
-    let a = self.connectivityService.source.observe {
-      first.append($0)
-      if $0 == .none { delivered.fulfill() }
-    }
-    let b = self.connectivityService.source.observe {
-      second.append($0)
-      if $0 == .none { delivered.fulfill() }
-    }
-    XCTAssertEqual(first, [.wifi])
-    XCTAssertEqual(second, [.wifi])
-    self.router.reset()
-    self.connectivityMonitor.continuation.yield(.wwan)
-    self.connectivityMonitor.continuation.yield(.none)
-    await fulfillment(of: [delivered], timeout: 2)
-    XCTAssertEqual(first, [.wifi, .wwan, .none])
-    XCTAssertEqual(second, first)
-    XCTAssertEqual(self.monitorStarts, 1)
-    withExtendedLifetime((a, b)) {}
-  }
-
-  func testConnectivityDisposalDoesNotStopOtherObserverAndFeatureReleaseStopsStream() async {
-    let monitor = self.connectivityMonitor!
-    let stopped = expectation(description: "stream cancelled")
-    monitor.continuation.onTermination = { _ in stopped.fulfill() }
-    var stoppedValues: [Reachability] = []
-    let a = self.connectivityService.source.observe { stoppedValues.append($0) }
-    a.stop()
-    let delivered = expectation(description: "remaining observer")
-    let b = self.connectivityService.source.observe { if $0 == .wwan { delivered.fulfill() } }
-    monitor.continuation.yield(.wwan)
-    await fulfillment(of: [delivered], timeout: 2)
-    XCTAssertEqual(stoppedValues, [.wifi])
-    b.stop()
-    weak var released = self.connectivityService
-    self.connectivityService = nil
-    XCTAssertNil(released)
-    await fulfillment(of: [stopped], timeout: 2)
-  }
-
-  func testConnectivityObserverReceivesInitialValueSynchronously() {
-    var values: [Reachability] = []
-    let observation = self.connectivityService.source.observe { values.append($0) }
-    XCTAssertEqual(values, [.wifi])
-    XCTAssertEqual(self.monitorStarts, 1)
-    withExtendedLifetime(observation) {}
-  }
-
-  func testReachabilityPreservesNativeFlagClassification() {
-    XCTAssertEqual(Reachability.from(flags: []), .none)
-    XCTAssertEqual(Reachability.from(flags: [.reachable]), .wifi)
-    XCTAssertEqual(Reachability.from(flags: [.isWWAN]), .wwan)
-    XCTAssertEqual(Reachability.from(flags: [.isWWAN, .reachable]), .wwan)
-    XCTAssertEqual(Reachability.from(flags: [.connectionRequired]), .none)
-  }
-
-  func testNativeReachabilityMonitorReleaseFinishesItsStream() async throws {
-    var monitor: SystemReachabilityMonitor? = try XCTUnwrap(SystemReachabilityMonitor())
-    let stream = try XCTUnwrap(monitor).updates
-    weak var released = monitor
-    monitor = nil
-    XCTAssertNil(released)
-    let ended = expectation(description: "native stream ended")
-    let consumer = Task {
-      for await _ in stream {}
-      ended.fulfill()
-    }
-    await fulfillment(of: [ended], timeout: 2)
-    consumer.cancel()
-  }
-
   func testRedirectResponsePreservesRelativeLocationAndIgnoresNonRedirect() throws {
     let url = try XCTUnwrap(URL(string: "https://example.test/click/original"))
     let redirect = try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 302, httpVersion: nil, headerFields: ["Location": "../target"]))
@@ -438,11 +351,4 @@ private final class ControlledDeepLinkProvider: DiscussionProvider {
     self.updates.releaseAll()
     self.repliesGate.releaseAll()
   }
-}
-
-private final class ControlledReachabilityMonitor: ReachabilityMonitoring {
-  let initial: Reachability = .wifi
-  let updates: AsyncStream<Reachability>
-  let continuation: AsyncStream<Reachability>.Continuation
-  init() { (self.updates, self.continuation) = AsyncStream<Reachability>.makeStream() }
 }

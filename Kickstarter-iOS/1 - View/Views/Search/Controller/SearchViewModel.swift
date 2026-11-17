@@ -89,6 +89,7 @@ public protocol SearchViewModelType {
 
 @MainActor
 public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, SearchViewModelOutputs {
+  private let projectMediaFeature: ProjectMediaFeature
   private let searchFeature: SearchFeature
   private let sessionFeature: SessionFeature
   private var searchObservation: MainActorObservation?
@@ -99,7 +100,10 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
   internal private(set) var filterOptionsTask: Task<Void, Never>?
   internal private(set) var locationLookupTask: Task<Void, Never>?
 
-  public init(searchFeature: SearchFeature, sessionFeature: SessionFeature) {
+  public init(
+    searchFeature: SearchFeature, sessionFeature: SessionFeature, projectMediaFeature: ProjectMediaFeature
+  ) {
+    self.projectMediaFeature = projectMediaFeature
     self.searchFeature = searchFeature
     self.sessionFeature = sessionFeature
     self.searchFiltersUseCase = SearchFiltersUseCase(
@@ -139,11 +143,10 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
       case let .pageCount(value): self.completionAnalytics.recordPage(value)
       }
     }
-    self.connectivityObservation = AppEnvironment.current.reachability.observe { [weak self] value in
+    self.videoFeedObservation = projectMediaFeature.observeVideoFeedAvailability { [weak self] available in
       guard let self else { return }
-      self.connectivity = value
-      if self.receivedInitialConnectivity { self.updateVideoFeedBanner() }
-      self.receivedInitialConnectivity = true
+      if self.receivedInitialVideoAvailability { self.updateVideoFeedBanner(available) }
+      self.receivedInitialVideoAvailability = true
     }
   }
 
@@ -259,7 +262,7 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
       self.publishQueryText("")
     }
 
-    self.updateVideoFeedBanner()
+    self.updateVideoFeedBanner(self.projectMediaFeature.isVideoFeedAvailable)
     if isFirstAnimatedAppearance {
       self.appearanceResultsCount = 0
       self.completionAnalytics.recordCount(0)
@@ -303,18 +306,16 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
   }
 
   private let searchFiltersUseCase: SearchFiltersUseCase
-  private var connectivity: Reachability = .none
-  private var receivedInitialConnectivity = false
+  private var receivedInitialVideoAvailability = false
   private var lastVideoFeedBanner: Bool?
-  private var connectivityObservation: MainActorObservation?
+  private var videoFeedObservation: MainActorObservation?
 
   public var onGoToProject: ((ProjectPageParam, RefTag) -> Void)?
   public var onLoadingChanged: ((Bool) -> Void)?
   public var onEmptyStateChanged: ((DiscoveryParams, Bool) -> Void)?
   public var onVideoFeedBannerChanged: ((Bool) -> Void)?
 
-  private func updateVideoFeedBanner() {
-    let shouldShow = featureVideoFeedEnabled() && self.connectivity != .none
+  private func updateVideoFeedBanner(_ shouldShow: Bool) {
     guard self.lastVideoFeedBanner != shouldShow else { return }
     self.lastVideoFeedBanner = shouldShow
     self.onVideoFeedBannerChanged?(shouldShow)

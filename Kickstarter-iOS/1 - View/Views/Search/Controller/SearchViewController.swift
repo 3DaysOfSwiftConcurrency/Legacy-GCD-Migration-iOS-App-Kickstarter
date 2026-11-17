@@ -17,7 +17,8 @@ internal final class SearchViewController: UITableViewController,
   VideoFeedBannerPresenting {
   internal let viewModel: SearchViewModelType = SearchViewModel(
     searchFeature: AppModel.shared.searchFeature,
-    sessionFeature: AppModel.shared.sessionFeature
+    sessionFeature: AppModel.shared.sessionFeature,
+    projectMediaFeature: AppModel.shared.projectMediaFeature
   )
   internal let dataSource = SearchDataSource()
 

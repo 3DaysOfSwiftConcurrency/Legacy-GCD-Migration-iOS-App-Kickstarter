@@ -19,8 +19,13 @@ internal final class SearchViewModelTests: TestCase {
   private let sessionFeature = SessionFeature(makeProvider: {
     AsyncSessionProvider(service: AppEnvironment.current.apiService)
   })
+  private lazy var projectMediaFeature = ProjectMediaFeature(
+    sessionFeature: self.sessionFeature,
+    connectivity: ConnectivityService(state: self.reachability), isVideoFeedEnabled: featureVideoFeedEnabled,
+    makeProvider: { AsyncProjectMediaProvider(service: MockService()) }
+  )
   fileprivate lazy var vm = SearchViewModel(
-    searchFeature: self.searchFeature, sessionFeature: self.sessionFeature
+    searchFeature: self.searchFeature, sessionFeature: self.sessionFeature, projectMediaFeature: self.projectMediaFeature
   )
 
   override func tearDown() async throws {
@@ -140,7 +145,10 @@ internal final class SearchViewModelTests: TestCase {
       self.vm.inputs.viewWillAppear(animated: true)
       await self.advanceRequests()
       let existingParameters = self.searchFeature.parameters
-      let secondScreen = SearchViewModel(searchFeature: self.searchFeature, sessionFeature: self.sessionFeature)
+      let secondScreen = SearchViewModel(
+        searchFeature: self.searchFeature, sessionFeature: self.sessionFeature,
+        projectMediaFeature: self.projectMediaFeature
+      )
 
       secondScreen.inputs.searchTextChanged("second screen")
       XCTAssertNil(secondScreen.searchTask)

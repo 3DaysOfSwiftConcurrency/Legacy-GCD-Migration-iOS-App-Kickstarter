@@ -5,6 +5,24 @@
 	"objectVersion" = "60";
 	"archiveVersion" = "1";
 	"objects" = {
+		"C02E544FFE78185A46F6A0D9" = {
+			"isa" = "PBXFileReference";
+			"path" = "ConnectivityServiceTests.swift";
+			"sourceTree" = "<group>";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"4F51E1CD21FF6A08E72471CA" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "C02E544FFE78185A46F6A0D9";
+		};
+		"3A2CD00E0A88359AAC5D915E" = {
+			"isa" = "PBXGroup";
+			"path" = "Platform";
+			"sourceTree" = "<group>";
+			"children" = (
+				"C02E544FFE78185A46F6A0D9",
+			);
+		};
 		"9698C4E67510EEE372A58AAE" = {
 			"isa" = "PBXGroup";
 			"path" = "Onboarding";
@@ -4733,6 +4751,7 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				"4F51E1CD21FF6A08E72471CA",
 				"46F12FDE406F5BFAD9C744AE",
 				"BD32CD56E62A97C13707B7A1",
 				"AAF548D72F2445C0001DB5AC",
@@ -21871,6 +21890,7 @@
 			"isa" = "PBXGroup";
 			"name" = "ViewModel and Feature tests";
 			"children" = (
+				"3A2CD00E0A88359AAC5D915E",
 				"AAF548D12F2445C0001DB5AC",
 				"CFA026100000000000000004",
 				"CFA031200000000000000003",
