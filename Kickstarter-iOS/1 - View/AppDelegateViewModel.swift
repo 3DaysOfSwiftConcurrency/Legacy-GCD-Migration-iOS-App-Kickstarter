@@ -22,8 +22,6 @@ public protocol AppDelegateViewModelInputs {
     application: UIApplication?, launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   )
 
-  func recordOnboardingCompletion()
-
   /// Call when the application will enter foreground.
   func applicationWillEnterForeground()
 
@@ -362,8 +360,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func triggerOnboardingIfEligible() {
-    guard AppEnvironment.current.appTrackingTransparency.shouldRequestAuthorizationStatus(),
-          !self.onboardingFeature.hasSeenOnboarding else { return }
+    guard self.onboardingFeature.shouldOfferOnboarding else { return }
     self.onTriggerOnboardingFlow?()
   }
 
@@ -513,10 +510,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.onConfigureSegmentWithBraze?(
       AppEnvironment.current.mainBundle.isRelease ? Secrets.Segment.production : Secrets.Segment.staging
     )
-  }
-
-  public func recordOnboardingCompletion() {
-    self.onboardingFeature.recordCompletion()
   }
 
   public func applicationWillEnterForeground() {

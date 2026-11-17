@@ -3395,3 +3395,9 @@ composition supplies the existing onboarding completion store and tracking
 adapter. Prompt admission and serialization remain owned by Onboarding.
 All 48 focused Onboarding, Settings and AppModel tests and all 124
 AppDelegate presentation tests passed on the simulator.
+
+Onboarding now owns the tracking and stored-completion eligibility decision.
+AppDelegate supplies the feature to OnboardingView and records completion
+directly when dismissing onboarding for login. The existing launch push
+authorization and presentation timing are preserved. All 18 focused
+Onboarding and AppModel tests and 124 AppDelegate presentation tests passed.

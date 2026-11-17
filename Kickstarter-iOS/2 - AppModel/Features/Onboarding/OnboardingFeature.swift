@@ -16,6 +16,7 @@ public final class OnboardingFeature {
   private let authorizeNotifications: (UNAuthorizationOptions) async -> Bool
   private let registerNotifications: () -> Void
   private let notificationStatus: () async -> UNAuthorizationStatus
+  private let shouldRequestTracking: () -> Bool
   private let trackingAuthorization: () async -> ATTrackingManager.AuthorizationStatus
   private var notificationRequest: PendingNotificationRequest?
   private var trackingRequest: Task<UInt, Never>?
@@ -29,17 +30,20 @@ public final class OnboardingFeature {
     notificationStatus: @escaping () async -> UNAuthorizationStatus = {
       await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     },
+    shouldRequestTracking: @escaping () -> Bool = { false },
     trackingAuthorization: @escaping () async -> ATTrackingManager.AuthorizationStatus = { .notDetermined }
   ) {
     self.completionStore = completionStore
     self.authorizeNotifications = authorizeNotifications
     self.registerNotifications = registerNotifications
     self.notificationStatus = notificationStatus
+    self.shouldRequestTracking = shouldRequestTracking
     self.trackingAuthorization = trackingAuthorization
   }
 
   public var hasSeenOnboarding: Bool { self.completionStore().hasSeenOnboarding }
   public func recordCompletion() { self.completionStore().hasSeenOnboarding = true }
+  public var shouldOfferOnboarding: Bool { self.shouldRequestTracking() && !self.hasSeenOnboarding }
   public func currentNotificationStatus() async -> UNAuthorizationStatus { await self.notificationStatus() }
 
   /// A system prompt is application-scoped. Equal callers share it, while a

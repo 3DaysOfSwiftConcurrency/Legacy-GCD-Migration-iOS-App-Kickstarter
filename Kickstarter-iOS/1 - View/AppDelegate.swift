@@ -191,7 +191,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         if let onboardingView = self?.rootTabBarController?
           .presentedViewController as? UIHostingController<OnboardingView> {
           onboardingView.dismiss(animated: true)
-          self?.viewModel.inputs.recordOnboardingCompletion()
+          AppModel.shared.onboardingFeature.recordCompletion()
         }
 
         let vc = LoginToutViewController.configuredWith(loginIntent: intent)
@@ -234,7 +234,9 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { [weak self] in
         guard let rootTabBarController = self?.rootTabBarController else { return }
 
-        let onboardingVC = UIHostingController(rootView: OnboardingView())
+        let onboardingVC = UIHostingController(
+          rootView: OnboardingView(onboardingFeature: AppModel.shared.onboardingFeature)
+        )
         /// Onboarding flow should not respond to light/dark mode preference.
         onboardingVC.overrideUserInterfaceStyle = .light
         onboardingVC.modalPresentationStyle = .fullScreen

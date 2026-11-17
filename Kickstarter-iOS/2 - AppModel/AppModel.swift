@@ -6,6 +6,7 @@ extension OnboardingFeature {
   static func live() -> OnboardingFeature {
     OnboardingFeature(
       completionStore: { AppEnvironment.current.userDefaults },
+      shouldRequestTracking: { AppEnvironment.current.appTrackingTransparency.shouldRequestAuthorizationStatus() },
       trackingAuthorization: {
         await withCheckedContinuation { continuation in
           AppEnvironment.current.appTrackingTransparency.requestAndSetAuthorizationStatus {
