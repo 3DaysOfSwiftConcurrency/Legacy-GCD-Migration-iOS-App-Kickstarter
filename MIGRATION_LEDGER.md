@@ -4734,3 +4734,28 @@ Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
 The CFA gate rejects direct AppEnvironment access in FriendsFeature. Profile, Search
 and other classified global seams remain. This is not full CFA compliance. Swift
 packages, target identifiers and existing history are unchanged. No push.
+
+### Profile receives response policy from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProfileFeature now receives its header and project-page response-delay policy
+explicitly from AppModel composition. The two independent header reads and each
+project page capture the policy at admission and apply it after transport success
+before publishing. Header concurrency and partial results, per-tab request sharing,
+pagination, refresh supersession, session replacement, errors, retry and avatar task
+ownership are preserved. Test-only composition retains the compact initializer with
+a zero delay; production has no global fallback.
+
+A named Feature test proves both header branches and a project page use the injected
+delay and still publish. Focused validation passed all 15 ProfileFeature tests. The
+bounded AppModel, Profile Feature and two Backer Dashboard selections passed 34 tests;
+the focused RootViewModel presentation selection passed 32 tests. All runs had zero
+failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-profile-policy-focused.xcresult`,
+`/private/tmp/kickstarter-profile-policy-bounded.xcresult` and
+`/private/tmp/kickstarter-profile-policy-root.xcresult`.
+
+The CFA gate rejects direct AppEnvironment access in ProfileFeature. Search and other
+classified global seams remain. This is not full CFA compliance. Swift packages,
+target identifiers and existing history are unchanged. No push.

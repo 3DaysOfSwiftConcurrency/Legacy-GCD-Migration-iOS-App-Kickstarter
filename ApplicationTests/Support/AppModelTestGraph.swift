@@ -280,6 +280,25 @@ extension FriendsFeature {
   }
 }
 
+extension ProfileFeature {
+  convenience init(
+    sessionFeature: SessionFeature,
+    makeProvider: @escaping () -> any ProfileProvider,
+    loadAvatar: (@MainActor (URL) async throws -> Data)? = nil,
+    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+    }
+  ) {
+    self.init(
+      sessionFeature: sessionFeature,
+      makeProvider: makeProvider,
+      responseDelaySeconds: { 0 },
+      loadAvatar: loadAvatar,
+      sleep: sleep
+    )
+  }
+}
+
 @MainActor
 private struct UnusedDeepLinkSearchProvider: SearchProjectsProvider {
   func fetchPage(parameters: DiscoveryParams, cursor: String?) async throws -> SearchPageResponse {

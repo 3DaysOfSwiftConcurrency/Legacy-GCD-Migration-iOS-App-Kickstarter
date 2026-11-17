@@ -69,6 +69,9 @@ Swift packages are excluded.
 - FriendsFeature now receives page and statistics response-delay policy from AppModel.
   Its screen reads remain independent, while reads still wait for already-admitted
   writes and preserve the shared follow-state/session rules.
+- ProfileFeature now receives header and project-page response-delay policy from
+  AppModel. Its independent header reads remain concurrent, pages retain their
+  per-tab ownership, and session replacement still rejects obsolete results.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

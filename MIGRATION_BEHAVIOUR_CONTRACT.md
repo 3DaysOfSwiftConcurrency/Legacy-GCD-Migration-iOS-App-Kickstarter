@@ -180,6 +180,17 @@ transport success before publishing. Page and statistics reads remain independen
 page reads still wait for already-admitted follow writes, and follow ordering, shared
 Activity state, session invalidation, pagination, errors and retry are unchanged.
 
+## Profile response policy ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProfileFeature receives header and project-page response-delay policy from AppModel
+at composition. Header user and graph reads still begin independently and each applies
+the captured delay after transport success; a project page does the same before
+publishing. Header concurrency and partial-session behavior, per-tab request sharing,
+pagination, refresh supersession, session invalidation, errors, retry and avatar task
+ownership are unchanged.
+
 Final validation passed 144 focused LibraryTests, the separate Environment
 initialization test, 146 bounded PresentationTests and 14 signed Environment
 persistence tests on iPhone 17 Pro Max, iOS 26.2, with no failures/skips. Hardware network transitions and banner

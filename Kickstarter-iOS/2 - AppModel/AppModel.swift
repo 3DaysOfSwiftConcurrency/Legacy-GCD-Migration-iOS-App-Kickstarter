@@ -260,7 +260,8 @@ public final class AppModel {
     )
     let profileFeature = ProfileFeature(
       sessionFeature: sessionFeature,
-      makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }
+      makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
     )
     let applicationConfiguration = ApplicationConfigurationService.live()
     let remoteConfiguration = RemoteConfigurationService(

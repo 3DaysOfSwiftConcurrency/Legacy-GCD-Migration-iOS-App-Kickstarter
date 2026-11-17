@@ -128,6 +128,38 @@ final class ProfileFeatureTests: TestCase {
       .compactMap(ProjectCardProperties.init) ?? []
   }
 
+  func testHeaderAndPageUseComposedResponseDelay() async throws {
+    let headerProvider = ControlledHeaderProvider()
+    let pageProvider = ControlledProfileProvider()
+    defer {
+      headerProvider.users.releaseAll()
+      headerProvider.graphs.releaseAll()
+      pageProvider.pages.releaseAll()
+    }
+    let session = SessionFeature(makeProvider: { headerProvider }, currentUser: { .template })
+    var sleeps: [TimeInterval] = []
+    let feature = ProfileFeature(
+      sessionFeature: session,
+      makeProvider: { pageProvider },
+      responseDelaySeconds: { 11 },
+      sleep: { sleeps.append($0) }
+    )
+
+    let header = feature.requestHeader()
+    await headerProvider.users.waitFor(1)
+    await headerProvider.graphs.waitFor(1)
+    try headerProvider.users.finish(0, .success(.template))
+    try headerProvider.graphs.finish(0, .success(.template))
+    await header.value
+    let page = feature.requestPage(type: .backed)
+    await pageProvider.pages.waitFor(1)
+    try pageProvider.pages.finish(0, .success(.init(projects: self.projects(1), cursor: nil)))
+    await page?.value
+
+    XCTAssertEqual(sleeps, [11, 11, 11])
+    XCTAssertEqual(feature.snapshot(for: .backed).projects.count, 1)
+  }
+
   func testIndependentTabsShareDuplicatesAndPreservePageOnFailure() async throws {
     let provider = ControlledProfileProvider()
     defer { provider.pages.releaseAll() }

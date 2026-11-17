@@ -226,6 +226,8 @@ reject_matches 'Messaging receives response policy from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Messaging/MessagingFeature.swift"
 reject_matches 'Friends receives response policy from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Friends/FriendsFeature.swift"
+reject_matches 'Profile receives response policy from AppModel composition.' \
+  'AppEnvironment[.]current' "$app_model/Features/Profile/ProfileFeature.swift"
 reject_matches 'Pledge receives environment dependencies from composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Pledge/PledgeFeature.swift"
 reject_matches 'Rewards receives environment dependencies from composition.' \

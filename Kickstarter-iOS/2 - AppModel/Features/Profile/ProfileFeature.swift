@@ -55,6 +55,7 @@ public final class ProfileFeature {
   private var avatarRequest: (url: URL, userID: Int?, generation: Int, id: UUID, task: Task<Data, Error>)?
   private var avatarVersion: UUID?
   private let makeProvider: () -> any ProfileProvider
+  private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
   private var pages: [ProfileProjectsType: Route] = [:]
   private var headerRequest: (
@@ -105,6 +106,7 @@ public final class ProfileFeature {
 
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any ProfileProvider,
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
     loadAvatar: (@MainActor (URL) async throws -> Data)? = nil,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -112,6 +114,7 @@ public final class ProfileFeature {
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.responseDelaySeconds = responseDelaySeconds
     self.sleep = sleep
     self.loadAvatar = loadAvatar ?? { try await ProfileAvatarStore.shared.data(for: $0) }
   }
@@ -194,7 +197,7 @@ public final class ProfileFeature {
     let token = UUID()
     let userTask = self.sessionFeature.request(.user)
     let graphTask = self.sessionFeature.request(.graphUser)
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     self.userError = nil
     self.graphUserError = nil
     if let user = self.sessionFeature.currentUser {
@@ -282,7 +285,7 @@ public final class ProfileFeature {
     let cursor = next ? page.cursor : nil
     let token = UUID()
     let provider = self.makeProvider()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     page.snapshot.isLoading = true
     page.snapshot.error = nil
     let task = Task { [weak self, sleep] in
