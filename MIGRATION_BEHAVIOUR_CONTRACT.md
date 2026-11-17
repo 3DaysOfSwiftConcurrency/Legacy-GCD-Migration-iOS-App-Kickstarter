@@ -1957,3 +1957,15 @@ safe for arbitrary concurrent environment mutation.
   Manage Pledge, AppModel and native-payment regressions preserve existing behavior.
   Live transactions, wallet authorization and reference-device snapshots remain outside
   this checkpoint.
+
+## Reward-received mutation ownership — 17 November 2026
+
+- PledgeFeature owns the Manage Pledge reward-received mutation's analytics, ordered
+  request admission, session validation and configured presentation delay. The controller
+  supplies the shared Feature and the view model observes its result.
+- Toggle ordering, duplicate sharing, current-account user selection, delayed presentation,
+  replacement-backing suppression and analytics context remain unchanged. Cancellation of
+  screen observation does not abandon an already admitted write.
+- Controlled Feature coverage proves composed tracking and delay policy. Focused and
+  bounded Pledge, AppModel and Manage Pledge tests preserve existing behavior. Live account
+  mutation, visual rendering and the whole Library suite remain outside this checkpoint.

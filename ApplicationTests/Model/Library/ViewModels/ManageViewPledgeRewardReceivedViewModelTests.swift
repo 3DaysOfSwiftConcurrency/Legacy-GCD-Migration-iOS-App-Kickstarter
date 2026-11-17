@@ -22,14 +22,11 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
-    }
+    },
+    trackRewardReceivedToggle: { [weak self] isOn, _ in self?.trackedToggles.append(isOn) }
   )
   private var trackedToggles: [Bool] = []
-  private lazy var vm = ManageViewPledgeRewardReceivedViewModel(
-    pledgeFeature: self.feature,
-    trackToggle: { [weak self] isOn, _ in self?.trackedToggles.append(isOn) },
-    delay: {}
-  )
+  private lazy var vm = ManageViewPledgeRewardReceivedViewModel(pledgeFeature: self.feature)
 
   func testAttributedText() async {
     let backing = Backing.template
@@ -162,13 +159,21 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     let replacement = project |> Project.lens.personalization.backing .~ nextBacking
     var whenDelayed: (() -> Void)?
     var delays = 0
-    let model = ManageViewPledgeRewardReceivedViewModel(
-      pledgeFeature: self.feature, trackToggle: { _, _ in },
-      delay: {
+    let delayedFeature = PledgeFeature(
+      platform: .init(
+        serverConfig: { ServerConfig.staging },
+        prepareWebRequest: { $0 },
+        isPreparedWebRequest: { _ in false },
+        responseDelaySeconds: { 1 },
+        sleep: { _ in
         delays += 1
         whenDelayed?()
-      }
+        }
+      ),
+      sessionFeature: self.sessionFeature,
+      makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
     )
+    let model = ManageViewPledgeRewardReceivedViewModel(pledgeFeature: delayedFeature)
     whenDelayed = { [weak model] in model?.configureWith(self.receiptData(project: replacement)) }
 
     await withEnvironment(apiService: MockService(backingUpdate: .template), currentUser: .template) {
@@ -176,7 +181,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
       model.viewDidLoad()
       model.rewardReceivedToggleTapped(isOn: true)
       await model.waitForObservation()
-      await self.feature.waitForOperations()
+      await delayedFeature.waitForOperations()
 
       XCTAssertEqual(delays, 1)
       XCTAssertFalse(model.rewardReceived)

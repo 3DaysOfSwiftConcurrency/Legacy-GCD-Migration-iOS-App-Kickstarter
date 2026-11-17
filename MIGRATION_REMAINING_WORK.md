@@ -100,6 +100,9 @@ Swift packages are excluded.
 - PaymentsFeature now also owns checkout currency context, Apple Pay eligibility and
   presentation response timing. Crowdfunding, post-campaign, Manage Pledge and payment
   settings receive one composed PaymentsFeature instead of environment policy closures.
+- PledgeFeature now owns the reward-received toggle's analytics and presentation-delay
+  policy as part of the admitted mutation. Its controller only supplies the composed
+  Feature, and the view model only observes the session-checked result.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

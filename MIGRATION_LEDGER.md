@@ -5004,3 +5004,25 @@ Reference-device snapshot suites, live Stripe, wallet authorization and the whol
 Library suite remain unverified. The CFA gate rejects restored controller-level Apple
 Pay, currency-context or response-delay composition. This is not full CFA compliance.
 Swift packages, target identifiers and existing history are unchanged. No push.
+
+### Pledge owns reward-received mutation policy — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgeFeature now composes reward-received analytics and presentation delay with its
+existing ordered, session-aware mutation admission. The Manage Pledge reward-received
+controller no longer reads AppEnvironment or builds policy closures, and its view model
+only observes the Feature-owned operation. Toggle ordering, duplicate sharing, current-user
+selection, analytics context, delayed presentation and stale-backing suppression remain
+unchanged.
+
+Focused PledgeFeature and reward-received view-model validation passed all 60 tests. The
+bounded PledgeFeature, AppModel and Manage Pledge selection passed all 123 tests. Both runs
+had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-pledge-reward-policy-focused-3.xcresult` and
+`/private/tmp/kickstarter-pledge-reward-policy-bounded.xcresult`.
+
+Live account mutation, visual rendering and the whole Library suite remain unverified. The
+CFA gate rejects restored environment, delay or analytics composition in the controller.
+This is not full CFA compliance. Swift packages, target identifiers and existing history
+are unchanged. No push.

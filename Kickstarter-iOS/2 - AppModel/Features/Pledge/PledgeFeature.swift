@@ -125,17 +125,20 @@ public final class PledgeFeature {
   private let settingsFeature: SettingsFeature
   private let makeProvider: () -> any PledgeProvider
   private let platform: Platform
+  private let trackRewardReceivedToggle: @MainActor (Bool, Project) -> Void
 
   public init(
     platform: Platform,
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
-    makeProvider: @escaping () -> any PledgeProvider
+    makeProvider: @escaping () -> any PledgeProvider,
+    trackRewardReceivedToggle: @escaping @MainActor (Bool, Project) -> Void = { _, _ in }
   ) {
     self.sessionFeature = sessionFeature
     self.settingsFeature = settingsFeature
     self.makeProvider = makeProvider
     self.platform = platform
+    self.trackRewardReceivedToggle = trackRewardReceivedToggle
   }
 
   public func preparedWebRequest(from request: URLRequest) -> URLRequest { self.platform.prepareWebRequest(request) }
@@ -355,9 +358,18 @@ public final class PledgeFeature {
 
   /// Admit writes synchronously so rapid toggle changes keep their order even if
   /// their presentation tasks are cancelled.
-  func startReceivedForCurrentUser(projectID: Int, received: Bool) -> Task<Backing, Error>? {
+  func startReceivedForCurrentUser(project: Project, received: Bool) -> Task<Backing, Error>? {
     guard let userID = self.sessionFeature.currentUser?.id else { return nil }
-    return self.startReceived(projectID: projectID, userID: userID, received: received)
+    self.trackRewardReceivedToggle(received, project)
+    let session = self.sessionIdentity
+    let delay = self.platform.responseDelaySeconds()
+    let command = self.startReceived(projectID: project.id, userID: userID, received: received)
+    return Task {
+      let backing = try await command.value
+      try await self.platform.sleep(delay)
+      try self.requireCurrent(session)
+      return backing
+    }
   }
 
   func startReceived(projectID: Int, userID: Int, received: Bool) -> Task<Backing, Error> {

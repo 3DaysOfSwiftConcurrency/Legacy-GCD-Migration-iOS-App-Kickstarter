@@ -324,7 +324,12 @@ public final class AppModel {
         platform: .live(),
         sessionFeature: sessionFeature,
         settingsFeature: settingsFeature,
-        makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
+        makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) },
+        trackRewardReceivedToggle: { isOn, project in
+          AppEnvironment.current.ksrAnalytics.trackRewardReceivedToggled(
+            toggleOn: isOn, project: project, context: .managePledgeScreen
+          )
+        }
       ),
       paymentsFeature: PaymentsFeature(
         sessionFeature: sessionFeature,

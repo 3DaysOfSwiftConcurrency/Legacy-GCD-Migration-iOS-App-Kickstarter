@@ -27,20 +27,12 @@ public final class ManageViewPledgeRewardReceivedViewModel {
   public private(set) var rewardReceivedHidden = true
   @ObservationIgnored public var onChange: (@MainActor () -> Void)?
   @ObservationIgnored private let pledgeFeature: PledgeFeature
-  @ObservationIgnored private let trackToggle: @MainActor (Bool, Project) -> Void
-  @ObservationIgnored private let delay: @MainActor () async throws -> Void
   @ObservationIgnored private var observation: (id: UUID, task: Task<Void, Never>)?
   private var configuration: (data: ManageViewPledgeRewardReceivedViewData, session: PledgeFeature.SessionIdentity)?
   private var loaded = false
 
-  public init(
-    pledgeFeature: PledgeFeature,
-    trackToggle: @escaping @MainActor (Bool, Project) -> Void,
-    delay: @escaping @MainActor () async throws -> Void
-  ) {
+  public init(pledgeFeature: PledgeFeature) {
     self.pledgeFeature = pledgeFeature
-    self.trackToggle = trackToggle
-    self.delay = delay
   }
 
   public func configureWith(_ data: ManageViewPledgeRewardReceivedViewData) {
@@ -77,21 +69,17 @@ public final class ManageViewPledgeRewardReceivedViewModel {
     guard self.loaded, let configuration = self.configuration,
           self.pledgeFeature.sessionIdentity == configuration.session else { return }
     let project = configuration.data.project
-    self.trackToggle(isOn, project)
-    guard let write = self.pledgeFeature.startReceivedForCurrentUser(projectID: project.id, received: isOn)
+    guard let write = self.pledgeFeature.startReceivedForCurrentUser(project: project, received: isOn)
     else { return }
 
     self.observation?.task.cancel()
     let id = UUID()
-    let delay = self.delay
     let task = Task { [weak self] in
       defer {
         if self?.observation?.id == id { self?.observation = nil }
       }
       do {
         let backing = try await write.value
-        try Task.checkCancellation()
-        try await delay()
         try Task.checkCancellation()
         guard let self, self.observation?.id == id,
               self.pledgeFeature.sessionIdentity == configuration.session else { return }

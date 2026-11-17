@@ -200,6 +200,34 @@ final class PledgeFeatureTests: TestCase {
     XCTAssertEqual(self.provider.receivedUsers, [2, 2, 2])
   }
 
+  func testRewardToggleUsesComposedTrackingAndPresentationDelay() async throws {
+    var tracked: (Bool, Int)?
+    var slept: TimeInterval?
+    let feature = PledgeFeature(
+      platform: .init(
+        serverConfig: { ServerConfig.staging },
+        prepareWebRequest: { $0 },
+        isPreparedWebRequest: { _ in false },
+        responseDelaySeconds: { 3 },
+        sleep: { slept = $0 }
+      ),
+      sessionFeature: self.session,
+      makeProvider: { self.provider },
+      trackRewardReceivedToggle: { tracked = ($0, $1.id) }
+    )
+
+    let operation = try XCTUnwrap(
+      feature.startReceivedForCurrentUser(project: .template, received: true)
+    )
+    await self.provider.receipts.waitFor(1)
+    try self.provider.receipts.finish(0, .success(.template))
+
+    _ = try await operation.value
+    XCTAssertEqual(tracked?.0, true)
+    XCTAssertEqual(tracked?.1, Project.template.id)
+    XCTAssertEqual(slept, 3)
+  }
+
   func testSessionChangeRejectsOldErrorAndQueuedWrite() async throws {
     let old = self.feature.startCreate(self.createInput())
     let queued = self.feature.startUpdate(self.updateInput())

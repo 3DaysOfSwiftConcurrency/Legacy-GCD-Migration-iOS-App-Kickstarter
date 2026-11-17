@@ -131,7 +131,8 @@ extension PledgeFeature {
   convenience init(
     platform: Platform,
     sessionFeature: SessionFeature,
-    makeProvider: @escaping () -> any PledgeProvider
+    makeProvider: @escaping () -> any PledgeProvider,
+    trackRewardReceivedToggle: @escaping @MainActor (Bool, Project) -> Void = { _, _ in }
   ) {
     self.init(
       platform: platform,
@@ -141,7 +142,8 @@ extension PledgeFeature {
         applicationSettings: .test(),
         makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
       ),
-      makeProvider: makeProvider
+      makeProvider: makeProvider,
+      trackRewardReceivedToggle: trackRewardReceivedToggle
     )
   }
 }
