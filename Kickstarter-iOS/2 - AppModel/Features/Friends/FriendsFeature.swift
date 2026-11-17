@@ -61,6 +61,7 @@ public final class FriendsFeature {
 
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any FriendsProvider
+  private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
   private var routes: [UUID: Route] = [:]
   private var following: [Int: Bool] = [:]
@@ -70,12 +71,14 @@ public final class FriendsFeature {
   private var reads: [UUID: Task<Void, Never>] = [:]
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any FriendsProvider,
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
+    self.responseDelaySeconds = responseDelaySeconds
     self.sleep = sleep
   }
 
@@ -136,7 +139,7 @@ public final class FriendsFeature {
     state.snapshot.pageError = nil
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     // A new read waits for already-admitted writes. Reads never cancel writes.
     let predecessor = self.tails[state.session]?.task
     let task = Task { [self] in
@@ -174,7 +177,7 @@ public final class FriendsFeature {
     if let pending = state.statistics { return pending.task }
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     state.snapshot.statisticsError = nil
     let task = Task { [self] in
       defer {

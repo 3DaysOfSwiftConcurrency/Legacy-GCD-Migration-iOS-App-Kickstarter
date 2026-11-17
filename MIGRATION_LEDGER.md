@@ -4711,3 +4711,26 @@ The CFA gate rejects direct AppEnvironment access in MessagingFeature. Friends,
 Profile, Search and other classified global seams remain for later checkpoints. This
 is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
+
+### Friends receives response policy from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+FriendsFeature now receives page and statistics response-delay policy explicitly
+from AppModel composition. Both reads capture the policy at admission and apply it
+after transport success before publishing. Page/statistics independence, the rule
+that a new page waits for already-admitted writes, follow ordering, shared Activity
+follow state, session replacement, pagination, error and retry behavior are preserved.
+Test-only composition retains the compact initializer with zero delay; production has
+no global fallback.
+
+A named Feature test proves both read paths use the injected delay and publish their
+results. Focused validation passed 20 FriendsFeature tests. The bounded AppModel,
+Friends, Activity, Find Friends screen and two follow-cell selections passed 52 tests.
+Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-friends-policy-focused.xcresult` and
+`/private/tmp/kickstarter-friends-policy-bounded.xcresult`.
+
+The CFA gate rejects direct AppEnvironment access in FriendsFeature. Profile, Search
+and other classified global seams remain. This is not full CFA compliance. Swift
+packages, target identifiers and existing history are unchanged. No push.

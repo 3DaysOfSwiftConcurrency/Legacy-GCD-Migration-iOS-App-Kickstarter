@@ -301,9 +301,11 @@ public final class AppModel {
       projectReportingFeature: ProjectReportingFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncProjectReportingProvider(service: AppEnvironment.current.apiService)
       }),
-      friendsFeature: FriendsFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncFriendsProvider(service: AppEnvironment.current.apiService)
-      }),
+      friendsFeature: FriendsFeature(
+        sessionFeature: sessionFeature,
+        makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) },
+        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      ),
       pledgedProjectsFeature: PledgedProjectsFeature(
         sessionFeature: sessionFeature, settingsFeature: settingsFeature, makeProvider: {
           AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)

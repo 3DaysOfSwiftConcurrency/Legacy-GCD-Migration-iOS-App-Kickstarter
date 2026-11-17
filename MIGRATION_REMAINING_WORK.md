@@ -66,6 +66,9 @@ Swift packages are excluded.
 - MessagingFeature now receives mailbox response-delay policy from AppModel instead
   of reading AppEnvironment while admitting a page request. Test-only composition
   defaults that policy to zero; production has no hidden global fallback.
+- FriendsFeature now receives page and statistics response-delay policy from AppModel.
+  Its screen reads remain independent, while reads still wait for already-admitted
+  writes and preserve the shared follow-state/session rules.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

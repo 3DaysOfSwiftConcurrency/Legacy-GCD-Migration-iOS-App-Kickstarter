@@ -170,6 +170,16 @@ success and before publishing the page, exactly as before. Mailbox request shari
 pagination concatenation, empty-page termination, session invalidation, errors,
 search, reads and sends are unchanged.
 
+## Friends response policy ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+FriendsFeature receives page and statistics response-delay policy from AppModel at
+composition. Each read captures the current delay when admitted and applies it after
+transport success before publishing. Page and statistics reads remain independent;
+page reads still wait for already-admitted follow writes, and follow ordering, shared
+Activity state, session invalidation, pagination, errors and retry are unchanged.
+
 Final validation passed 144 focused LibraryTests, the separate Environment
 initialization test, 146 bounded PresentationTests and 14 signed Environment
 persistence tests on iPhone 17 Pro Max, iOS 26.2, with no failures/skips. Hardware network transitions and banner

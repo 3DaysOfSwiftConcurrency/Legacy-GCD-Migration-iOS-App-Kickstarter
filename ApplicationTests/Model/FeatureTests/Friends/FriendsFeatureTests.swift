@@ -27,6 +27,35 @@ final class FriendsFeatureTests: TestCase {
     try await super.tearDown()
   }
 
+  func testReadsUseComposedResponseDelay() async throws {
+    let provider = ControlledFriendsProvider()
+    defer {
+      provider.pages.releaseAll()
+      provider.statisticsGate.releaseAll()
+    }
+    var sleeps: [TimeInterval] = []
+    let feature = FriendsFeature(
+      sessionFeature: self.session,
+      makeProvider: { provider },
+      responseDelaySeconds: { 9 },
+      sleep: { sleeps.append($0) }
+    )
+    let route = UUID()
+
+    let page = feature.requestPage(route: route)
+    await provider.pages.waitFor(1)
+    try provider.pages.finish(0, .success(Self.page([1])))
+    await page?.value
+    let statistics = feature.requestStatistics(route: route)
+    await provider.statisticsGate.waitFor(1)
+    try provider.statisticsGate.finish(0, .success(.template))
+    await statistics.value
+
+    XCTAssertEqual(sleeps, [9, 9])
+    XCTAssertEqual(feature.snapshot(route: route).users.map(\.id), [1])
+    XCTAssertNotNil(feature.snapshot(route: route).statistics)
+  }
+
   func testEquivalentPageAndStatsReadsShareWhileRemainingIndependent() async throws {
     let page = self.feature.requestPage(route: self.route)
     let duplicate = self.feature.requestPage(route: self.route)
