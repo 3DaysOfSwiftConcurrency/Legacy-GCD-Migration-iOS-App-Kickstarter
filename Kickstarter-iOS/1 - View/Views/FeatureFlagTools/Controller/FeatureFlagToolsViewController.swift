@@ -10,7 +10,7 @@ final class FeatureFlagToolsViewController: UITableViewController {
 
   private var features = [FeatureEnabled]()
   private let reuseId = "FeatureFlagTools.TableViewCell"
-  private let viewModel = FeatureFlagToolsViewModel()
+  private let viewModel = FeatureFlagToolsViewModel(settingsFeature: AppModel.shared.settingsFeature)
 
   static func instantiate() -> FeatureFlagToolsViewController {
     return FeatureFlagToolsViewController(style: .plain)
@@ -33,8 +33,6 @@ final class FeatureFlagToolsViewController: UITableViewController {
   override func bindViewModel() {
     super.bindViewModel()
 
-    self.viewModel.onUpdateConfig = { [weak self] in self?.updateConfig(with: $0) }
-    self.viewModel.onConfigUpdated = { NotificationCenter.default.post(name: .ksr_configUpdated, object: nil) }
     self.observeFeatures()
   }
 
@@ -51,19 +49,6 @@ final class FeatureFlagToolsViewController: UITableViewController {
     self.viewModel.setFeatureAtIndexEnabled(index: switchControl.tag, isEnabled: switchControl.isOn)
   }
 
-  // MARK: - Private Helpers
-
-  private func updateConfig(with features: Features) {
-    guard let config = AppEnvironment.current.config else { return }
-
-    let updatedConfig = config
-      |> \.features .~ features
-
-    AppEnvironment.updateDebugData(DebugData(config: updatedConfig))
-    AppEnvironment.updateConfig(updatedConfig)
-
-    self.viewModel.didUpdateConfig()
-  }
 }
 
 // MARK: - UITableViewDataSource

@@ -533,8 +533,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   private func configureRemoteConfig() {
     let remoteConfigClient = RemoteConfigClient(with: RemoteConfig.remoteConfig())
 
-    AppEnvironment.updateRemoteConfigClient(remoteConfigClient)
-
     AppModel.shared.requestRemoteConfiguration(client: remoteConfigClient)
 
     self.remoteConfigListener?.remove()

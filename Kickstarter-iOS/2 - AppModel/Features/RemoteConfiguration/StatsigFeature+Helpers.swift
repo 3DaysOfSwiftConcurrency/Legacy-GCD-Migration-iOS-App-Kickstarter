@@ -41,6 +41,6 @@ extension StatsigClientType {
 
   @MainActor
   public func isFeatureEnabled(featureKey key: StatsigFeature) -> Bool {
-    AppEnvironment.current.statsigClient?.checkGate(for: key) == true
+    self.checkGate(for: key) == true
   }
 }

@@ -46,7 +46,7 @@ public final class SettingsViewModel {
       self.onLogoutPrompt?(Strings.profile_settings_logout_alert_message(),
                            Strings.profile_settings_logout_alert_cancel_button(), Strings.Yes())
     }
-    if cellType == .rateInAppStore { self.onRate?(AppEnvironment.current.config?.iTunesLink ?? "") }
+    if cellType == .rateInAppStore { self.onRate?(self.settings.appStoreURL ?? "") }
     if let controller = self.viewControllerFactory(cellType) { self.onNavigate?(controller) }
   }
 

@@ -11,7 +11,7 @@ final class RemoteConfigFeatureFlagToolsViewController: UITableViewController {
   private var remoteConfigFeatures = RemoteConfigFeatures()
   private var statsigFeatures = StatsigFeatures()
   private let reuseId = "FeatureFlagTools.TableViewCell"
-  private let viewModel = RemoteConfigFeatureFlagToolsViewModel()
+  private let viewModel = RemoteConfigFeatureFlagToolsViewModel(settingsFeature: AppModel.shared.settingsFeature)
 
   static func instantiate() -> RemoteConfigFeatureFlagToolsViewController {
     return RemoteConfigFeatureFlagToolsViewController(style: .plain)

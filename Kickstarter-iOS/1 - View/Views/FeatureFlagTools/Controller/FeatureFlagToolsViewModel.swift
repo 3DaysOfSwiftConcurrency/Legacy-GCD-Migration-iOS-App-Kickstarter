@@ -8,19 +8,21 @@ public typealias FeatureEnabled = (feature: Feature, isEnabled: Bool)
 @Observable
 public final class FeatureFlagToolsViewModel {
   public private(set) var reloadWithData: [Features] = []
-  public var onUpdateConfig: ((Features) -> Void)?
-  public var onConfigUpdated: (() -> Void)?
-  private var sortedFeatures: [(key: String, value: Bool)] = []
+  private let settingsFeature: SettingsFeature
+  private var sortedFeatures: [FeatureEnabled] = []
   private var reloadTask: Task<Void, Never>?
   private let sleep: () async throws -> Void
 
-  public init(sleep: @escaping () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }) {
+  public init(
+    settingsFeature: SettingsFeature,
+    sleep: @escaping () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
+  ) {
+    self.settingsFeature = settingsFeature
     self.sleep = sleep
   }
 
   public func viewDidLoad() { self.reload() }
-  public func didUpdateConfig() {
-    self.onConfigUpdated?()
+  private func scheduleReload() {
     self.reloadTask?.cancel()
     self.reloadTask = Task { [weak self, sleep] in
       do {
@@ -32,16 +34,14 @@ public final class FeatureFlagToolsViewModel {
   }
   public func setFeatureAtIndexEnabled(index: Int, isEnabled: Bool) {
     guard self.sortedFeatures.indices.contains(index),
-          self.sortedFeatures[index].value != isEnabled,
-          var features = AppEnvironment.current.config?.features else { return }
-    features[self.sortedFeatures[index].key] = isEnabled
-    self.onUpdateConfig?(features)
+          self.settingsFeature.setConfigurationFlag(self.sortedFeatures[index].feature, enabled: isEnabled)
+    else { return }
+    self.scheduleReload()
   }
   private func reload() {
-    guard let features = AppEnvironment.current.config?.features else { return }
-    self.sortedFeatures = features.filter { Feature(rawValue: $0.key) != nil }
-      .sorted { $0.key < $1.key }
-    self.reloadWithData = self.sortedFeatures.map { [$0.key: $0.value] }
+    guard let features = self.settingsFeature.configurationFlags else { return }
+    self.sortedFeatures = features
+    self.reloadWithData = features.map { [$0.feature.rawValue: $0.isEnabled] }
   }
   internal func waitForReload() async { await self.reloadTask?.value }
 }

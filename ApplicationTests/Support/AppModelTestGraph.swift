@@ -39,8 +39,6 @@ func makeTestAppModel(
       AsyncDeveloperExamplesProvider(service: MockService())
     }),
     onboardingFeature: onboarding,
-    remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
-    applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
     creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
       AsyncCreatorDraftsProvider(service: MockService())
     }),

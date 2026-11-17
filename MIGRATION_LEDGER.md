@@ -4392,3 +4392,65 @@ and skips under normal simulator signing on the same runtime. Evidence:
 This covers the separate Environment storage target; the similarly named selector
 under LibraryTests does not select those tests. Configuration review notes and
 that target distinction are recorded in the remaining-work document.
+
+### Settings owns effective configuration and flag tools — 17 November 2026
+
+Author: Matthew Thomas.
+
+SettingsFeature now owns effective configuration reads, recognized flag enumeration,
+override mutations, the Settings App Store destination and refresh/activation APIs.
+Both flag-tools ViewModels receive that Feature and retain only screen data and
+reload timing. Their controllers no longer persist Config or publish its update.
+AppModel forwards launch, foreground, session reset and remote activation to Settings;
+its stored properties now consist of concrete Features, the singleton and launch guard.
+
+The existing configuration services retain their request sharing, cancellation and
+publication behavior below Settings. They move from AppModel.swift to configuration
+infrastructure; the production adapters live in Composition/ApplicationSettings.swift.
+Environment Config, DebugData and the existing defaults keys remain storage authority.
+Deferred accessors avoid bootstrap cycles and introduce no second Config cache.
+DebugData is written before applying an override, preserving whole-config precedence.
+Remote client installation still occurs synchronously before activation.
+
+The local flag tool now compares an edit against the latest stored value, so toggling
+off and back on before its one-second presentation reload no longer loses the second
+edit. Unknown flags and other current Config fields survive. Remote/Statsig overrides
+preserve explicit false values and unrelated keys. A client-specific Statsig helper
+now queries its receiver instead of the global client; bootstrap helpers remain
+independent of AppModel construction.
+
+Six existing infrastructure tests move out of AppModelTests into two Platform files.
+New Settings tests cover injected clients/storage, latest-value edits, missing values,
+override precedence, shared prefetch/refresh, reset invalidation and activation order.
+Screen regressions cover rapid toggles, deferred reloads and the injected rating URL.
+An independent source review found no actionable defect in composition or callers.
+
+The baseline passed 53 tests. The first implementation build found an optional
+Statsig Boolean return that needed explicit handling; it was corrected before the
+final runs. On iPhone 17 Pro Max, iOS 26.2, final verification passed:
+
+- 67 focused LibraryTests: Settings, AppModel, both configuration services, both
+  flag-tools ViewModels, remote-config helpers and Statsig helpers.
+- 149 PresentationTests: application routing, AppDelegate analytics, RootViewModel,
+  Root Tabs navigation and SettingsViewModel.
+- 14 signed Library-Keychain-iOSTests/AppEnvironmentTests for existing persistence.
+
+All three final runs had zero failures and skips. Result bundles:
+`/private/tmp/kickstarter-settings-configuration-verified.xcresult`,
+`/private/tmp/kickstarter-settings-configuration-presentation.xcresult` and
+`/private/tmp/kickstarter-settings-configuration-environment-storage.xcresult`.
+`make check-cfa`, project plist validation and diff checks passed. All six new Swift
+files have one navigator reference and one expected source-phase entry. The gate
+now rejects restored flag-tool persistence/global reads and AppModel service storage.
+
+The developer's AppDelegate correction is reflected in the current behavior contract
+and remaining-work list. An older callback audit table was also corrected: the legacy
+AppDelegateViewModel was removed in commit 492437843, and lifecycle is not a Feature.
+AppDelegate receives links; DeepLinkRouter handles UIKit delivery; AppModel coordinates
+domain resolution through existing Features. Historical test claims remain historical.
+
+Global configuration consumers, bootstrap/storage coupling, other environment access
+and Discovery feed/activity session checks still require audit. This checkpoint
+establishes the inspected ownership boundary, not full CFA compliance. Swift packages,
+identifiers and existing history are unchanged. Full-suite, device, visual, live SDK
+and release validation were not performed. No push.

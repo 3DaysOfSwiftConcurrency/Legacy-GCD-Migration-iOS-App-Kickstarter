@@ -154,11 +154,13 @@ public final class SettingsFeature {
   private var verificationTail: Verification?
   private var verificationWrites: [UUID: Task<EmailVerificationResponseEnvelope, Error>] = [:]
   private var editRevision = 0
+  let applicationSettings: ApplicationSettings?
   public var sessionFeature: SessionFeature { self.session }
   public private(set) var lastError: Error?
 
   public init(
     sessionFeature: SessionFeature,
+    applicationSettings: ApplicationSettings? = nil,
     hasStoredCredentials: @escaping @MainActor () -> Bool = { false },
     accountFieldsDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     refreshDebounce: @escaping @MainActor () async throws -> Void = {
@@ -167,6 +169,7 @@ public final class SettingsFeature {
     makeProvider: @escaping () -> any AccountPreferencesProvider
   ) {
     self.session = sessionFeature
+    self.applicationSettings = applicationSettings
     self.hasStoredCredentials = hasStoredCredentials
     self.accountFieldsDelaySeconds = accountFieldsDelaySeconds
     self.refreshDebounce = refreshDebounce

@@ -16,9 +16,54 @@ DeepLinkRouter currently lives in the navigation layer and is called directly
 by AppDelegate. It requests destination and email-redirect resolution through
 AppModel. AppModel coordinates the existing Features and returns data;
 DeepLinkRouter retains navigation task lifetime and UIKit construction.
-AppModel's remaining infrastructure properties and the wider application
-composition still need migration; this checkpoint does not establish full CFA
-compliance.
+AppModel now stores its singleton, concrete Feature references and one private
+launch guard. Its live factory constructs lower-level dependencies and passes
+Features to its initializer. Global storage and the wider application composition
+still require review; this property boundary does not establish full CFA compliance.
+
+## Effective application settings and flag tools — 17 November 2026
+
+Author: Matthew Thomas.
+
+SettingsFeature owns effective configuration reads, supported flag enumeration,
+flag overrides, the Settings App Store URL and application-setting refresh/activation
+commands. FeatureFlagToolsViewModel and RemoteConfigFeatureFlagToolsViewModel receive
+SettingsFeature and retain screen rows and reload timing. Their controllers no
+longer write configuration. AppModel forwards launch, foreground, session-reset
+and remote-activation intents to SettingsFeature; it no longer stores configuration
+services. The retained services provide transport and task lifetime below the Feature.
+
+- Keep the current Environment Config and DebugData as the existing storage
+  authority. Settings reads current values through injected storage closures and
+  introduces no second Config cache. Preserve DebugData's whole-config precedence:
+  a tool override updates DebugData before applying the effective configuration.
+- Expose recognized application flags sorted by their raw keys. Preserve unknown
+  keys when changing a known flag. A missing Config, missing key or unchanged
+  value is a no-op. Each rapid toggle merges into the latest stored configuration,
+  including values changed since the tools screen's last reload.
+- Preserve the tools' one-second reload delay and replacement of a pending reload.
+  A delayed screen snapshot must not suppress or overwrite a later toggle. Publish
+  the existing configuration notification after a successful configuration edit.
+- Remote-config and Statsig overrides retain their existing user-defaults keys.
+  An explicit false override takes precedence over a true SDK value. Preserve
+  unrelated stored overrides and read the injected client for each request;
+  a client-specific helper must use that client rather than the global instance.
+- Prefetches share pending configuration reads without applying them. A refresh
+  can promote that shared read to apply its result once. Preserve visitor cookies,
+  non-release flag retention and release-mode server flags. Refresh completion
+  reads current overrides, including edits made while transport was suspended.
+- Session reset replaces the pending application-configuration read. Obsolete
+  completion cannot apply its result. Install a remote client synchronously before
+  starting activation; equal clients share activation, while replacing a client
+  suppresses the prior activation's late success or failure notifications.
+- Settings' rating action reads the current App Store URL from its Feature and
+  retains its existing empty-string fallback when the URL is absent.
+
+Bootstrap/keychain decisions remain independent of AppModel construction. Global
+configuration helpers and other consumers are still present; this checkpoint does
+not claim that all configuration dependencies have migrated. Executed validation
+belongs in the dated migration ledger. Live SDK configuration delivery, device
+behavior and visual comparisons remain unverified by this ownership change alone.
 
 ## Video-feed availability and connectivity — 17 November 2026
 

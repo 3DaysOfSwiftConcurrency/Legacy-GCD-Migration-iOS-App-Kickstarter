@@ -5,6 +5,81 @@
 	"objectVersion" = "60";
 	"archiveVersion" = "1";
 	"objects" = {
+		"86D2F574410D44AA50836D5B" = {
+			"isa" = "PBXFileReference";
+			"name" = "ApplicationConfigurationService.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/User Data Storage/Configuration/ApplicationConfigurationService.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"405205401E15B7F24FAD44CC" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "86D2F574410D44AA50836D5B";
+		};
+		"AE2924D7BC66548C6C11A455" = {
+			"isa" = "PBXFileReference";
+			"name" = "ApplicationConfigurationServiceTests.swift";
+			"path" = "ApplicationTests/Model/Platform/ApplicationConfigurationServiceTests.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"58C2D11050617C174C604D8C" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AE2924D7BC66548C6C11A455";
+		};
+		"691E04EA452F41896B598920" = {
+			"isa" = "PBXFileReference";
+			"name" = "RemoteConfigurationService.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/User Data Storage/Configuration/RemoteConfigurationService.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"B2E02EFA24CB864FC44047F6" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "691E04EA452F41896B598920";
+		};
+		"1330701ABCF220C19CCE8527" = {
+			"isa" = "PBXFileReference";
+			"name" = "RemoteConfigurationServiceTests.swift";
+			"path" = "ApplicationTests/Model/Platform/RemoteConfigurationServiceTests.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"BBBEF50FC2C939B73679974A" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1330701ABCF220C19CCE8527";
+		};
+		"2C6897D43D4F166E16617FF8" = {
+			"isa" = "PBXFileReference";
+			"name" = "ApplicationSettings.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Composition/ApplicationSettings.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"01FE68512B4F30B3E7C03405" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "2C6897D43D4F166E16617FF8";
+		};
+		"B6668120496AF341C56B30A8" = {
+			"isa" = "PBXFileReference";
+			"name" = "SettingsFeature+ApplicationSettings.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Settings/SettingsFeature+ApplicationSettings.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"A7D1444743B8EF70A9851352" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "B6668120496AF341C56B30A8";
+		};
+		"28BD8FECD4309288A4DA3FEB" = {
+			"isa" = "PBXGroup";
+			"name" = "Configuration";
+			"sourceTree" = "<group>";
+			"children" = (
+				"86D2F574410D44AA50836D5B",
+				"691E04EA452F41896B598920",
+			);
+		};
 		"C02E544FFE78185A46F6A0D9" = {
 			"isa" = "PBXFileReference";
 			"path" = "ConnectivityServiceTests.swift";
@@ -20,6 +95,8 @@
 			"path" = "Platform";
 			"sourceTree" = "<group>";
 			"children" = (
+				"AE2924D7BC66548C6C11A455",
+				"1330701ABCF220C19CCE8527",
 				"C02E544FFE78185A46F6A0D9",
 			);
 		};
@@ -1598,6 +1675,7 @@
 			"name" = "User Data Storage";
 			"sourceTree" = "<group>";
 			"children" = (
+				"28BD8FECD4309288A4DA3FEB",
 				"940D76A5330CBACF93226960",
 				"9E0E5D1F6BC1D1ECD9B36731",
 				"9B93ED38A358507FC07998A1",
@@ -4299,6 +4377,7 @@
 			"name" = "Composition";
 			"sourceTree" = "<group>";
 			"children" = (
+				"2C6897D43D4F166E16617FF8",
 				"20C37173166CEEB66CA7BCF2",
 				"CFA031200000000000000006",
 				"B6A06FB25E9940333B72DDB6",
@@ -4751,6 +4830,8 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				"58C2D11050617C174C604D8C",
+				"BBBEF50FC2C939B73679974A",
 				"4F51E1CD21FF6A08E72471CA",
 				"46F12FDE406F5BFAD9C744AE",
 				"BD32CD56E62A97C13707B7A1",
@@ -7723,6 +7804,10 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				"405205401E15B7F24FAD44CC",
+				"B2E02EFA24CB864FC44047F6",
+				"01FE68512B4F30B3E7C03405",
+				"A7D1444743B8EF70A9851352",
 				"90F81993353CE00EBDC1B162",
 				"2F1C416A2FE7F2C7F3BB9E2F",
 				"29558905CF4DC9874ACBC0CD",
@@ -23252,6 +23337,7 @@
 			"name" = "Settings";
 			"sourceTree" = "<group>";
 			"children" = (
+				"B6668120496AF341C56B30A8",
 				"5CAE8422993A2693F2589BA2",
 				"E0A3B2F34C67BC34B1A9D46E",
 				"5F7750F901BFA0D71426CB66",

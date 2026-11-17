@@ -189,17 +189,17 @@ final class AppModelTests: XCTestCase {
 
     try await verifyRefresh(country: "GB") {
       model.applicationWillEnterForeground()
-      _ = await model.applicationConfigurationService.requestConfiguration().result
+      _ = await model.settingsFeature.requestApplicationSettings().result
     }
 
     try await verifyRefresh(country: "CA", user: .template) {
       model.sessionChanged()
-      _ = await model.applicationConfigurationService.requestConfiguration().result
+      _ = await model.settingsFeature.requestApplicationSettings().result
     }
 
     try await verifyRefresh(country: "CZ") {
       model.sessionChanged()
-      _ = await model.applicationConfigurationService.requestConfiguration().result
+      _ = await model.settingsFeature.requestApplicationSettings().result
     }
     XCTAssertEqual(publishedCountries, ["US", "GB", "CA", "CZ"])
   }
@@ -242,8 +242,6 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: firstOnboarding,
-      remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
-      applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -297,8 +295,6 @@ final class AppModelTests: XCTestCase {
         return AsyncDeveloperExamplesProvider(service: MockService())
       }),
       onboardingFeature: secondOnboarding,
-      remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
-      applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -376,7 +372,7 @@ final class AppModelTests: XCTestCase {
     let secondPledgeSession = second.pledgeFeature.sessionIdentity
     let secondPaymentsSession = second.paymentsFeature.sessionIdentity
     first.sessionChanged()
-    _ = await first.applicationConfigurationService.requestConfiguration().result
+    _ = await first.settingsFeature.requestApplicationSettings().result
     XCTAssertEqual(first.sessionFeature.generation, 1)
     XCTAssertEqual(second.sessionFeature.generation, 0)
     XCTAssertEqual(first.pledgeFeature.sessionIdentity.generation, first.sessionFeature.generation)
@@ -385,179 +381,6 @@ final class AppModelTests: XCTestCase {
     XCTAssertEqual(first.paymentsFeature.sessionIdentity.generation, first.sessionFeature.generation)
     XCTAssertNotEqual(first.paymentsFeature.sessionIdentity, secondPaymentsSession)
     XCTAssertEqual(second.paymentsFeature.sessionIdentity, secondPaymentsSession)
-  }
-}
-
-@MainActor
-final class RemoteConfigurationServiceTests: XCTestCase {
-  func testSharedActivationReportsFailureOnceAndPublishesSuccessAfterRetry() async throws {
-    let center = NotificationCenter()
-    var reportedErrors: [URLError.Code] = []
-    let service = RemoteConfigurationService(notificationCenter: center) { error in
-      if let error = error as? URLError { reportedErrors.append(error.code) }
-    }
-    var notifications: [Notification.Name] = []
-    let observers = [
-      MainActorNotificationObservation(center: center, name: .ksr_remoteConfigClientConfigured) {
-        notifications.append($0.name)
-      },
-      MainActorNotificationObservation(center: center, name: .ksr_remoteConfigClientConfigurationFailed) {
-        notifications.append($0.name)
-      }
-    ]
-    defer { observers.forEach { $0.cancel() } }
-
-    let gate = AccountRequestGate<Void>()
-    let client = GatedRemoteConfigClient(gate: gate)
-    defer { gate.releaseAll() }
-    let first = service.activate(client: client)
-    let second = service.activate(client: client)
-    await gate.waitFor(1)
-    try gate.finish(0, .failure(URLError(.notConnectedToInternet)))
-    for request in [first, second] {
-      if case .success = await request.result { XCTFail("Failure was swallowed") }
-    }
-    XCTAssertEqual(notifications, [.ksr_remoteConfigClientConfigurationFailed])
-    XCTAssertEqual(reportedErrors, [.notConnectedToInternet])
-
-    let retry = service.activate(client: client)
-    await gate.waitFor(2)
-    try gate.finish(1, .success(()))
-    try await retry.value
-    XCTAssertEqual(gate.count, 2)
-    XCTAssertEqual(notifications, [.ksr_remoteConfigClientConfigurationFailed, .ksr_remoteConfigClientConfigured])
-    XCTAssertEqual(reportedErrors, [.notConnectedToInternet])
-  }
-
-  func testReplacingClientSuppressesBothLateSuccessAndLateFailure() async throws {
-    let center = NotificationCenter()
-    let service = RemoteConfigurationService(notificationCenter: center) { _ in
-      XCTFail("Obsolete client error was reported")
-    }
-    var publishedSuccesses = 0
-    let configured = MainActorNotificationObservation(center: center, name: .ksr_remoteConfigClientConfigured) {
-      _ in publishedSuccesses += 1
-    }
-    let failed = MainActorNotificationObservation(center: center, name: .ksr_remoteConfigClientConfigurationFailed) {
-      _ in XCTFail("Obsolete client failure was published")
-    }
-    defer { configured.cancel(); failed.cancel() }
-
-    for obsoleteResult: Result<Void, Error> in [.success(()), .failure(URLError(.notConnectedToInternet))] {
-      let gate = AccountRequestGate<Void>()
-      defer { gate.releaseAll() }
-      let old = service.activate(client: GatedRemoteConfigClient(gate: gate))
-      await gate.waitFor(1)
-      let replacement = service.activate(client: GatedRemoteConfigClient(gate: gate))
-      await gate.waitFor(2)
-      try gate.finish(1, .success(()))
-      try await replacement.value
-      try gate.finish(0, obsoleteResult)
-      if case .success = await old.result { XCTFail("Replaced activation completed") }
-    }
-    XCTAssertEqual(publishedSuccesses, 2)
-  }
-}
-
-private final class GatedRemoteConfigClient: MockRemoteConfigClient {
-  private let gate: AccountRequestGate<Void>
-
-  init(gate: AccountRequestGate<Void>) {
-    self.gate = gate
-    super.init()
-  }
-
-  override func fetchAndActivateAsync() async throws {
-    try await self.gate.request()
-  }
-}
-
-@MainActor
-final class ApplicationConfigurationServiceTests: XCTestCase {
-  func testLiveRefreshPreservesDebugOverridesAndUsesServerFlagsInRelease() async {
-    let stored = Config.template |> Config.lens.features .~ [
-      "enabled_flag": true, "disabled_flag": false, "removed_flag": true
-    ]
-    let incoming = Config.template |> Config.lens.features .~ [
-      "enabled_flag": false, "disabled_flag": true, "new_flag": true
-    ]
-    let apiService = MockService(fetchConfigResponse: incoming)
-    let debugBundle = MockBundle(bundleIdentifier: KickstarterBundleIdentifier.beta.rawValue)
-
-    await withEnvironment(apiService: apiService, config: stored, cookieStorage: MockCookieStorage(),
-                          mainBundle: debugBundle) {
-      _ = await ApplicationConfigurationService.live().refresh().result
-      XCTAssertEqual(AppEnvironment.current.config?.features, [
-        "enabled_flag": true, "disabled_flag": false, "new_flag": true
-      ])
-    }
-
-    let releaseBundle = MockBundle(bundleIdentifier: KickstarterBundleIdentifier.release.rawValue)
-    await withEnvironment(apiService: apiService, config: stored, cookieStorage: MockCookieStorage(),
-                          mainBundle: releaseBundle) {
-      _ = await ApplicationConfigurationService.live().refresh().result
-      XCTAssertEqual(AppEnvironment.current.config?.features, incoming.features)
-    }
-  }
-
-  func testEquivalentPrefetchesShareWithoutApplyingConfiguration() async throws {
-    let gate = AccountRequestGate<Config>()
-    defer { gate.releaseAll() }
-    let service = ApplicationConfigurationService(
-      load: { try await gate.request() },
-      applyConfiguration: { _ in XCTFail("Prefetch applied configuration") }
-    )
-    let first = service.requestConfiguration()
-    let second = service.requestConfiguration()
-    await gate.waitFor(1)
-    try gate.finish(0, .success(.template))
-    _ = try await first.value
-    _ = try await second.value
-    let next = service.requestConfiguration()
-    await gate.waitFor(2)
-    try gate.finish(1, .success(.template))
-    _ = try await next.value
-    XCTAssertEqual(gate.count, 2)
-  }
-
-  func testResetRejectsAnOldConfiguration() async throws {
-    let gate = AccountRequestGate<Config>()
-    defer { gate.releaseAll() }
-    var applied: [Config] = []
-    let service = ApplicationConfigurationService(
-      load: { try await gate.request() },
-      applyConfiguration: { applied.append($0) }
-    )
-    let old = service.refresh()
-    await gate.waitFor(1)
-    service.reset()
-    let current = service.refresh()
-    await gate.waitFor(2)
-    try gate.finish(0, .success(.template))
-    try gate.finish(1, .success(.template))
-    if case .success = await old.result { XCTFail("Reset configuration completed") }
-    let config = try await current.value
-    XCTAssertEqual(applied, [config])
-  }
-
-  func testConcurrentRefreshesApplyASharedPrefetchOnce() async throws {
-    let gate = AccountRequestGate<Config>()
-    defer { gate.releaseAll() }
-    var applied: [Config] = []
-    let service = ApplicationConfigurationService(
-      load: { try await gate.request() },
-      applyConfiguration: { applied.append($0) }
-    )
-    let prefetch = service.requestConfiguration()
-    await gate.waitFor(1)
-    let first = service.refresh()
-    let second = service.refresh()
-    try gate.finish(0, .success(.template))
-    _ = try await first.value
-    _ = try await second.value
-    let config = try await prefetch.value
-    XCTAssertEqual(gate.count, 1)
-    XCTAssertEqual(applied, [config])
   }
 }
 

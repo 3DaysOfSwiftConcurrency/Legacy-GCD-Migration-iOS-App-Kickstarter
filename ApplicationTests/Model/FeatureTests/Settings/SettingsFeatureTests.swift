@@ -1,10 +1,181 @@
 @testable import Kickstarter_iOS
 @testable import KsApi
+import Experimentation
+import Foundation
 
 import XCTest
 
 @MainActor
 final class SettingsFeatureTests: XCTestCase {
+  func testApplicationFlagsExposeOnlySupportedSortedKeysAndPreserveUnknownValues() throws {
+    var configuration = Config.template
+    configuration.features = Dictionary(uniqueKeysWithValues: Feature.allCases.map { ($0.rawValue, true) })
+    configuration.features["unknown_server_flag"] = false
+    let fixture = ApplicationSettingsFixture(configuration: configuration)
+    let flags = try XCTUnwrap(fixture.feature.configurationFlags)
+    XCTAssertEqual(flags.map { $0.feature.rawValue }, Feature.allCases.map(\.rawValue).sorted())
+    XCTAssertTrue(flags.allSatisfy { $0.isEnabled })
+
+    XCTAssertTrue(fixture.feature.setConfigurationFlag(.segment, enabled: false))
+    XCTAssertEqual(fixture.configuration?.features[Feature.segment.rawValue], false)
+    XCTAssertEqual(fixture.configuration?.features["unknown_server_flag"], false)
+    XCTAssertEqual(fixture.savedOverrides.count, 1)
+  }
+
+  func testApplicationFlagNoOpMissingKeyAndMissingConfigurationDoNotSave() {
+    var configuration = Config.template
+    configuration.features = [Feature.segment.rawValue: true]
+    let fixture = ApplicationSettingsFixture(configuration: configuration)
+    XCTAssertFalse(fixture.feature.setConfigurationFlag(.segment, enabled: true))
+    fixture.configuration?.features = ["unknown_server_flag": true]
+    XCTAssertEqual(fixture.feature.configurationFlags?.count, 0)
+    XCTAssertFalse(fixture.feature.setConfigurationFlag(.segment, enabled: false))
+    fixture.configuration = nil
+    XCTAssertNil(fixture.feature.configurationFlags)
+    XCTAssertFalse(fixture.feature.setConfigurationFlag(.segment, enabled: true))
+    XCTAssertTrue(fixture.savedOverrides.isEmpty)
+  }
+
+  func testConsecutiveApplicationFlagEditsMergeIntoTheLatestConfiguration() {
+    var configuration = Config.template
+    configuration.features = [Feature.segment.rawValue: true, "unknown_server_flag": false]
+    let fixture = ApplicationSettingsFixture(configuration: configuration)
+    XCTAssertTrue(fixture.feature.setConfigurationFlag(.segment, enabled: false))
+    fixture.configuration?.countryCode = "CA"
+    fixture.configuration?.features["new_server_flag"] = true
+    XCTAssertTrue(fixture.feature.setConfigurationFlag(.segment, enabled: true))
+
+    XCTAssertEqual(fixture.configuration?.countryCode, "CA")
+    XCTAssertEqual(fixture.configuration?.features, [
+      Feature.segment.rawValue: true, "unknown_server_flag": false, "new_server_flag": true
+    ])
+    XCTAssertEqual(fixture.savedOverrides.count, 2)
+  }
+
+  func testRemoteAndStatsigFalseOverridesTakePrecedenceAndPreserveOtherKeys() throws {
+    let fixture = ApplicationSettingsFixture()
+    let remote = MockRemoteConfigClient()
+    remote.features = Dictionary(uniqueKeysWithValues: RemoteConfigFeature.allCases.map { ($0.rawValue, true) })
+    let statsig = MockStatsigWrapper()
+    statsig.features = Dictionary(uniqueKeysWithValues: StatsigFeature.allCases.map { ($0, true) })
+    fixture.remoteClient = remote
+    fixture.statsigClient = statsig
+    fixture.store.remoteConfigFeatureFlags = [RemoteConfigFeature.floatingTabBar.rawValue: false, "unknown_remote": true]
+    fixture.store.statsigFeatureFlags = [StatsigFeature.videoFeed.rawValue: false, "unknown_statsig": true]
+
+    let remoteValue = try XCTUnwrap(fixture.feature.remoteConfigurationFlags.first { $0.0 == .floatingTabBar })
+    let statsigValue = try XCTUnwrap(fixture.feature.statsigFlags.first { $0.0 == .videoFeed })
+    XCTAssertFalse(remoteValue.1)
+    XCTAssertFalse(statsigValue.1)
+    fixture.feature.setRemoteConfigurationOverride(.useKeychainForOAuthToken, enabled: false)
+    fixture.feature.setStatsigOverride(.projectStoryRichText, enabled: false)
+    XCTAssertEqual(fixture.store.remoteConfigFeatureFlags, [
+      RemoteConfigFeature.floatingTabBar.rawValue: false,
+      RemoteConfigFeature.useKeychainForOAuthToken.rawValue: false, "unknown_remote": true
+    ])
+    XCTAssertEqual(fixture.store.statsigFeatureFlags, [
+      StatsigFeature.videoFeed.rawValue: false,
+      StatsigFeature.projectStoryRichText.rawValue: false, "unknown_statsig": true
+    ])
+    XCTAssertEqual(remote.features[RemoteConfigFeature.useKeychainForOAuthToken.rawValue], true)
+    XCTAssertEqual(statsig.features[.projectStoryRichText], true)
+  }
+
+  func testApplicationFlagsUseEachInjectedClientInsteadOfTheGlobalClient() throws {
+    let globalRemote = MockRemoteConfigClient()
+    let globalStatsig = MockStatsigWrapper()
+    globalRemote.features[RemoteConfigFeature.floatingTabBar.rawValue] = false
+    globalStatsig.features[.videoFeed] = false
+    AppEnvironment.pushEnvironment(remoteConfigClient: globalRemote, statsigClient: globalStatsig)
+    defer { AppEnvironment.popEnvironment() }
+    let first = ApplicationSettingsFixture()
+    let second = ApplicationSettingsFixture()
+    let firstRemote = MockRemoteConfigClient()
+    firstRemote.features[RemoteConfigFeature.floatingTabBar.rawValue] = true
+    let firstStatsig = MockStatsigWrapper()
+    firstStatsig.features[.videoFeed] = true
+    first.remoteClient = firstRemote
+    first.statsigClient = firstStatsig
+    second.remoteClient = MockRemoteConfigClient()
+    second.statsigClient = MockStatsigWrapper()
+
+    XCTAssertTrue(try XCTUnwrap(first.feature.remoteConfigurationFlags.first { $0.0 == .floatingTabBar }).1)
+    XCTAssertTrue(try XCTUnwrap(first.feature.statsigFlags.first { $0.0 == .videoFeed }).1)
+    XCTAssertFalse(try XCTUnwrap(second.feature.remoteConfigurationFlags.first { $0.0 == .floatingTabBar }).1)
+    XCTAssertFalse(try XCTUnwrap(second.feature.statsigFlags.first { $0.0 == .videoFeed }).1)
+    first.remoteClient = nil
+    first.statsigClient = nil
+    XCTAssertTrue(first.feature.remoteConfigurationFlags.allSatisfy { !$0.1 })
+    XCTAssertTrue(first.feature.statsigFlags.allSatisfy { !$0.1 })
+  }
+
+  func testAppStoreURLReadsTheCurrentConfigurationWithoutAnotherCache() {
+    let fixture = ApplicationSettingsFixture(configuration: nil)
+    XCTAssertNil(fixture.feature.appStoreURL)
+    fixture.configuration = .template
+    fixture.configuration?.iTunesLink = "https://example.invalid/store-a"
+    XCTAssertEqual(fixture.feature.appStoreURL, "https://example.invalid/store-a")
+    fixture.configuration?.iTunesLink = "https://example.invalid/store-b"
+    XCTAssertEqual(fixture.feature.appStoreURL, "https://example.invalid/store-b")
+  }
+
+  func testApplicationRefreshSharesPrefetchAndRetainsAnOverrideMadeWhileLoading() async throws {
+    var initial = Config.template
+    initial.features = [Feature.segment.rawValue: true, "removed_server_flag": true]
+    let fixture = ApplicationSettingsFixture(configuration: initial)
+    defer { fixture.responses.releaseAll() }
+    let prefetch = fixture.feature.requestApplicationSettings()
+    await fixture.responses.waitFor(1)
+    let refresh = fixture.feature.requestApplicationSettingsRefresh()
+    XCTAssertTrue(fixture.appliedConfigurations.isEmpty)
+    XCTAssertTrue(fixture.feature.setConfigurationFlag(.segment, enabled: false))
+    var incoming = Config.template
+    incoming.countryCode = "GB"
+    incoming.features = [Feature.segment.rawValue: true, "new_server_flag": true]
+    try fixture.responses.finish(0, .success(incoming))
+    let prefetched = try await prefetch.value
+    let refreshed = try await refresh.value
+
+    XCTAssertEqual(prefetched, refreshed)
+    XCTAssertEqual(refreshed.features, [Feature.segment.rawValue: false, "new_server_flag": true])
+    XCTAssertEqual(fixture.configuration, refreshed)
+    XCTAssertEqual(fixture.configuration?.countryCode, "GB")
+    XCTAssertEqual(fixture.responses.count, 1)
+    XCTAssertEqual(fixture.appliedConfigurations, [refreshed])
+  }
+
+  func testResetApplicationSettingsRejectsOldRefreshAndAllowsCurrentRefresh() async throws {
+    let fixture = ApplicationSettingsFixture()
+    defer { fixture.responses.releaseAll() }
+    let old = fixture.feature.requestApplicationSettingsRefresh()
+    await fixture.responses.waitFor(1)
+    fixture.feature.resetApplicationSettings()
+    let current = fixture.feature.requestApplicationSettingsRefresh()
+    await fixture.responses.waitFor(2)
+    var previous = Config.template
+    previous.countryCode = "CA"
+    var replacement = Config.template
+    replacement.countryCode = "AU"
+    try fixture.responses.finish(0, .success(previous))
+    try fixture.responses.finish(1, .success(replacement))
+    guard case .failure(is CancellationError) = await old.result else {
+      return XCTFail("Obsolete application settings were applied")
+    }
+    let applied = try await current.value
+    XCTAssertEqual(applied.countryCode, "AU")
+    XCTAssertEqual(fixture.appliedConfigurations, [applied])
+  }
+
+  func testRemoteClientIsInstalledSynchronouslyBeforeActivationStarts() async throws {
+    let fixture = ApplicationSettingsFixture()
+    let client = SettingsActivationClient { fixture.activationEvents.append("activated") }
+    let activation = fixture.feature.activateRemoteSettings(client: client)
+    XCTAssertTrue(fixture.remoteClient === client)
+    XCTAssertEqual(fixture.activationEvents, ["installed"])
+    try await activation.value
+    XCTAssertEqual(fixture.activationEvents, ["installed", "activated"])
+  }
+
   func testScheduledRefreshDoesNotStartAfterSessionReplacement() async throws {
     let fixture = PreferencesFixture()
     let debounce = AccountRequestGate<Void>()
@@ -682,4 +853,64 @@ private final class ControlledPreferencesReadProvider: SessionProvider {
   func user() async throws -> User { try await self.gate.request() }
   func graphUser() async throws -> User { throw CancellationError() }
   func clearActivityIndicator() async throws -> Int { throw CancellationError() }
+}
+
+@MainActor
+private final class ApplicationSettingsFixture {
+  var configuration: Config?
+  let store = MockKeyValueStore()
+  let center = NotificationCenter()
+  let responses = AccountRequestGate<Config>()
+  var remoteClient: (any RemoteConfigClientType)?
+  var statsigClient: (any StatsigClientType)?
+  var savedOverrides: [Config] = []
+  var appliedConfigurations: [Config] = []
+  var activationEvents: [String] = []
+
+  init(configuration: Config? = .template) { self.configuration = configuration }
+
+  private lazy var configurationService = ApplicationConfigurationService(
+    load: { [weak self] in
+      guard let self else { throw CancellationError() }
+      return try await self.responses.request()
+    },
+    debugFeatureFlags: { [weak self] in self?.configuration?.features ?? [:] },
+    applyConfiguration: { [weak self] configuration in
+      self?.configuration = configuration
+      self?.appliedConfigurations.append(configuration)
+    }
+  )
+
+  lazy var feature = SettingsFeature(
+    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    applicationSettings: SettingsFeature.ApplicationSettings(
+      configuration: self.configurationService,
+      remoteConfiguration: RemoteConfigurationService(notificationCenter: self.center),
+      readConfiguration: { [weak self] in self?.configuration },
+      saveConfigurationOverride: { [weak self] configuration in
+        self?.configuration = configuration
+        self?.savedOverrides.append(configuration)
+      },
+      userDefaults: { [store = self.store] in store },
+      remoteClient: { [weak self] in self?.remoteClient },
+      statsigClient: { [weak self] in self?.statsigClient },
+      installRemoteClient: { [weak self] client in
+        self?.remoteClient = client
+        self?.activationEvents.append("installed")
+      },
+      notificationCenter: self.center
+    ),
+    makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+  )
+}
+
+private final class SettingsActivationClient: MockRemoteConfigClient {
+  private let performActivation: @MainActor () async throws -> Void
+
+  init(activate: @escaping @MainActor () async throws -> Void) {
+    self.performActivation = activate
+    super.init()
+  }
+
+  override func fetchAndActivateAsync() async throws { try await self.performActivation() }
 }

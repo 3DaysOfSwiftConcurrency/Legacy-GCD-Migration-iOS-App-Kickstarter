@@ -321,11 +321,17 @@ marked; remaining queue arguments still require consumer/SDK contract review.
 
 ## Remaining owned-operation work
 
+Ownership correction by Matthew Thomas, 17 November 2026: the original October
+implementation used AppDelegateViewModel and AppLifecycleFeature. Both have since
+been removed. AppDelegate receives system events; AppModel coordinates real
+Features, and the navigation layer owns UIKit delivery. The rows below reflect
+those corrected owners without upgrading the historical validation claims.
+
 | Area | Evidence and risk | Required outcome |
 | --- | --- | --- |
-| Email-link redirect — implemented 29 October | AppLifecycleFeature now owns per-route reads; AppDelegateViewModel owns delivery. Native async transport stops at the first redirect and invalidates its session. | Local redirect/non-redirect/cancellation probe passed. Live email-service and visual navigation remain unverified; see latest ledger checkpoint. |
+| Email-link redirect — implemented 29 October; ownership corrected 17 November | AuthenticationFeature owns per-route reads; AppModel coordinates resolution, and DeepLinkRouter owns navigation delivery. Native async transport stops at the first redirect and invalidates its session. | Local redirect/non-redirect/cancellation probe passed. Live email-service and visual navigation remain unverified; see latest ledger checkpoint. |
 | Root profile avatar — implemented 29 October | ProfileFeature owns shared reads and session/URL validation; RootViewModel owns delivery; an actor handles disk cache and native async transport. | Cache-key compatibility and race regressions are recorded in the latest ledger. Populated-avatar visual/device parity remains unverified. |
-| Notification permissions and onboarding — implemented 29 October | AppLifecycleFeature owns admitted prompts; native settings reads and appearance-owned onboarding observers reject obsolete completion. | 248 selected regressions/app build passed; actual system-prompt/device behavior remains open. |
+| Notification permissions and onboarding — implemented 29 October; ownership corrected 17 November | OnboardingFeature owns consent and push-authorization policy; AppModel receives application signals. Native settings reads and appearance-owned onboarding observers reject obsolete completion. | 248 selected regressions/app build passed at the October checkpoint; actual system-prompt/device behavior remains open. See the latest ledger for subsequent ownership regressions. |
 | Remote configuration — implemented 29 October | Native Firebase async activation, per-client shared operation and replacement guards; listener retained/removed on reconfiguration. | Log-only listener behavior preserved. SDK cache changes cannot be retracted; live Firebase validation remains open. |
 | Project-page media — implemented | Feature-owned native loading, cancellable KVO readiness and optional WebP thumbnail read; per-page/slot identity. | 377 selected tests/app build recorded; remote media and device parity remain open. |
 | Video player and audio — implemented | One production audio controller owns callback stream/reset tasks; player owns seeking/timers/observations. Synchronous release regression covers the observed isolated-deinit toolchain crash. | Physical-device routing, populated playback and visual parity remain open. |

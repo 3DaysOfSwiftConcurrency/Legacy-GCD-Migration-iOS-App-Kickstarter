@@ -28,6 +28,9 @@ manage_pledge_view_model="$app_view/Views/ManagePledge/Controllers/ManagePledgeV
 cancel_pledge_view_model="$app_view/Views/CancelPledge/Controller/CancelPledgeViewModel.swift"
 project_page_view_model="$app_view/Views/ProjectPage/Controller/ProjectPageViewModel.swift"
 discovery_feature="$app_model/Features/Discovery/DiscoveryFeature.swift"
+configuration_flags="$app_view/Views/FeatureFlagTools/Controller"
+remote_configuration_flags="$app_view/Views/RemoteConfigFeatureFlagTools/Controller"
+application_settings="$app_model/Features/Settings/SettingsFeature+ApplicationSettings.swift"
 
 reject_matches 'Deep-link data resolution belongs to AppModel and its Features.' \
   'discussionFeature|discoveryFeature|activityFeature|messagingFeature|authenticationFeature|sessionFeature' \
@@ -46,6 +49,20 @@ reject_matches 'SessionFeature owns device-to-account registration.' \
   'DevicePushRegistrationService|devicePushRegistrationService' "$app_view" "$app_model"
 reject_matches 'OnboardingFeature owns application consent and push-authorization policy.' \
   'AppTrackingConsent|class PushAuthorization|let trackingConsent:|let pushAuthorization:' "$app_view" "$app_model"
+reject_matches 'Flag tools read and change settings through their injected SettingsFeature.' \
+  'AppEnvironment|AppModel[.]shared|[Uu]serDefaults|(featureEnabled|statsigFeatureEnabled)[[:space:]]*[(]' \
+  "$configuration_flags/FeatureFlagToolsViewModel.swift" \
+  "$remote_configuration_flags/RemoteConfigFeatureFlagToolsViewModel.swift"
+reject_matches 'SettingsFeature owns flag persistence and configuration publication.' \
+  'AppEnvironment|[Uu]serDefaults|DebugData|onUpdateConfig|onConfigUpdated|ksr_configUpdated' \
+  "$configuration_flags/FeatureFlagToolsViewController.swift" \
+  "$remote_configuration_flags/RemoteConfigFeatureFlagToolsViewController.swift"
+reject_matches 'AppModel composes configuration services locally and stores only their owning Feature.' \
+  'applicationConfigurationService|remoteConfigurationService|class[[:space:]]+(ApplicationConfigurationService|RemoteConfigurationService)|^  ((public|private|internal|fileprivate)[[:space:]]+)?(let|var)[[:space:]].*(ApplicationConfigurationService|RemoteConfigurationService)' \
+  "$app_model/AppModel.swift"
+test -f "$application_settings"
+reject_matches 'Settings application-settings operations receive storage and clients from composition.' \
+  'AppEnvironment|AppModel[.]shared|UserDefaults[.]standard|NotificationCenter[.]default' "$application_settings"
 
 test -f "$root_view_model"
 test -f "$root_tabs"

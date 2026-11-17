@@ -89,152 +89,6 @@ extension OnboardingFeature {
   }
 }
 
-/// Retains one remote-configuration activation at a time for the active SDK client.
-///
-/// This is application infrastructure rather than a product feature. `AppModel` receives
-/// the application lifecycle signal and owns this service at the composition boundary.
-@MainActor
-public final class RemoteConfigurationService {
-  private let notificationCenter: NotificationCenter
-  private let reportFailure: @MainActor (Error) -> Void
-  private var request: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
-
-  public init(
-    notificationCenter: NotificationCenter,
-    reportFailure: @escaping @MainActor (Error) -> Void = { _ in }
-  ) {
-    self.notificationCenter = notificationCenter
-    self.reportFailure = reportFailure
-  }
-
-  @discardableResult public func activate(client: any RemoteConfigClientType) -> Task<Void, Error> {
-    let clientID = ObjectIdentifier(client)
-    if let request = self.request, request.client == clientID { return request.task }
-    self.request?.task.cancel()
-    let id = UUID()
-    let task = Task { [self] in
-      defer { if self.request?.id == id { self.request = nil } }
-      do {
-        try Task.checkCancellation()
-        try await client.fetchAndActivateAsync()
-      } catch {
-        try Task.checkCancellation()
-        guard !(error is CancellationError), self.request?.id == id else { throw CancellationError() }
-        self.reportFailure(error)
-        self.notificationCenter.post(name: .ksr_remoteConfigClientConfigurationFailed, object: nil)
-        throw error
-      }
-      try Task.checkCancellation()
-      guard self.request?.id == id else { throw CancellationError() }
-      self.notificationCenter.post(name: .ksr_remoteConfigClientConfigured, object: nil)
-    }
-    self.request = (clientID, id, task)
-    return task
-  }
-}
-
-/// Owns the application-configuration read triggered by launch and foreground signals.
-///
-/// Configuration is shared application infrastructure: it is not a screen concern and
-/// it is not a product feature. A session reset replaces any in-flight read.
-@MainActor
-public final class ApplicationConfigurationService {
-  private let load: @MainActor () async throws -> Config
-  private let installVisitorCookies: @MainActor () -> Void
-  private let debugFeatureFlags: @MainActor () -> [String: Bool]
-  private let applyConfiguration: @MainActor (Config) -> Void
-  private var request: (id: UUID, task: Task<Config, Error>, appliesResult: Bool)?
-
-  public init(
-    load: @escaping @MainActor () async throws -> Config,
-    installVisitorCookies: @escaping @MainActor () -> Void = {},
-    debugFeatureFlags: @escaping @MainActor () -> [String: Bool] = { [:] },
-    applyConfiguration: @escaping @MainActor (Config) -> Void = { _ in }
-  ) {
-    self.load = load
-    self.installVisitorCookies = installVisitorCookies
-    self.debugFeatureFlags = debugFeatureFlags
-    self.applyConfiguration = applyConfiguration
-  }
-
-  @discardableResult func refresh() -> Task<Config, Error> {
-    self.installVisitorCookies()
-    return self.requestConfiguration(applyResult: true)
-  }
-
-  public func configuration() async throws -> Config {
-    try Task.checkCancellation()
-    let value = try await self.requestConfiguration().value
-    try Task.checkCancellation()
-    return value
-  }
-
-  @discardableResult public func requestConfiguration() -> Task<Config, Error> {
-    self.requestConfiguration(applyResult: false)
-  }
-
-  private func requestConfiguration(applyResult: Bool) -> Task<Config, Error> {
-    if let request = self.request {
-      if applyResult { self.request?.appliesResult = true }
-      return request.task
-    }
-    let id = UUID()
-    let load = self.load
-    let task = Task { [self] in
-      defer { if self.request?.id == id { self.request = nil } }
-      try Task.checkCancellation()
-      let value = try await load()
-      try Task.checkCancellation()
-      guard let request = self.request, request.id == id else { throw CancellationError() }
-      let config = self.retainingDebugFeatureFlags(value)
-      if request.appliesResult { self.applyConfiguration(config) }
-      return config
-    }
-    self.request = (id, task, applyResult)
-    return task
-  }
-
-  public func reset() {
-    self.request?.task.cancel()
-    self.request = nil
-  }
-
-  private func retainingDebugFeatureFlags(_ config: Config) -> Config {
-    let stored = self.debugFeatureFlags().filter { config.features[$0.key] != nil }
-    return config |> Config.lens.features .~ config.features.withAllValuesFrom(stored)
-  }
-}
-
-extension ApplicationConfigurationService {
-  public static func live() -> ApplicationConfigurationService {
-    ApplicationConfigurationService(
-      load: { try await AppEnvironment.current.apiService.applicationConfiguration() },
-      installVisitorCookies: {
-        guard let environment = AppEnvironment.current else { return }
-        let visitorID = (environment.device.identifierForVendor ?? UUID()).uuidString
-        let server = environment.apiService.serverConfig
-        let domains = [server.webBaseUrl.host, server.apiBaseUrl.host].compactMap { $0 }
-        for domain in domains {
-          if let cookie = HTTPCookie(properties: [
-            .name: "vis", .value: visitorID, .domain: domain,
-            .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
-          ]) {
-            environment.cookieStorage.setCookie(cookie)
-          }
-        }
-      },
-      debugFeatureFlags: {
-        guard let environment = AppEnvironment.current, !environment.mainBundle.isRelease else { return [:] }
-        return environment.config?.features ?? [:]
-      },
-      applyConfiguration: { config in
-        AppEnvironment.updateConfig(config)
-        NotificationCenter.default.post(name: .ksr_configUpdated, object: nil)
-      }
-    )
-  }
-}
-
 /// Application composition root. Features own shared state and directly awaitable workflows.
 @MainActor
 public final class AppModel {
@@ -244,8 +98,6 @@ public final class AppModel {
 
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
-  public let remoteConfigurationService: RemoteConfigurationService
-  public let applicationConfigurationService: ApplicationConfigurationService
   public let creatorDraftsFeature: CreatorDraftsFeature
   public let recommendationsFeature: RecommendationsFeature
   public let projectReportingFeature: ProjectReportingFeature
@@ -269,8 +121,6 @@ public final class AppModel {
   public init(
     developerExamplesFeature: DeveloperExamplesFeature,
     onboardingFeature: OnboardingFeature,
-    remoteConfigurationService: RemoteConfigurationService,
-    applicationConfigurationService: ApplicationConfigurationService,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
     projectReportingFeature: ProjectReportingFeature,
@@ -293,8 +143,6 @@ public final class AppModel {
   ) {
     self.developerExamplesFeature = developerExamplesFeature
     self.onboardingFeature = onboardingFeature
-    self.remoteConfigurationService = remoteConfigurationService
-    self.applicationConfigurationService = applicationConfigurationService
     self.creatorDraftsFeature = creatorDraftsFeature
     self.recommendationsFeature = recommendationsFeature
     self.projectReportingFeature = projectReportingFeature
@@ -331,7 +179,7 @@ public final class AppModel {
   public func applicationDidFinishLaunching() async {
     guard !self.hasLaunched else { return }
     self.hasLaunched = true
-    _ = try? await self.applicationConfigurationService.refresh().value
+    _ = try? await self.settingsFeature.requestApplicationSettingsRefresh().value
   }
 
   /// Synchronous permission preparation preserves the delegate's SDK setup order.
@@ -353,7 +201,7 @@ public final class AppModel {
   }
 
   public func applicationWillEnterForeground() {
-    self.applicationConfigurationService.refresh()
+    self.settingsFeature.requestApplicationSettingsRefresh()
   }
 
   public func applicationDidEnterBackground(notificationCenter: NotificationCenter = .default) {
@@ -367,7 +215,7 @@ public final class AppModel {
   @discardableResult public func requestRemoteConfiguration(
     client: any RemoteConfigClientType
   ) -> Task<Void, Error> {
-    self.remoteConfigurationService.activate(client: client)
+    self.settingsFeature.activateRemoteSettings(client: client)
   }
 
   public func sessionChanged() {
@@ -376,7 +224,7 @@ public final class AppModel {
     self.settingsFeature.cancelScheduledAccountRefresh()
     self.authenticationFeature.resetEmailRedirects()
     self.discoveryFeature.resetRecommendationAvailability()
-    self.applicationConfigurationService.reset()
+    self.settingsFeature.resetApplicationSettings()
     self.developerExamplesFeature.reset()
     self.creatorDraftsFeature.reset()
     self.recommendationsFeature.reset()
@@ -386,7 +234,7 @@ public final class AppModel {
     self.messagingFeature.reset()
     self.pledgeFeature.reset()
     self.pledgedProjectsFeature.reset()
-    self.applicationConfigurationService.refresh()
+    self.settingsFeature.requestApplicationSettingsRefresh()
   }
 
   public static func live() -> AppModel {
@@ -401,8 +249,13 @@ public final class AppModel {
       sessionFeature: sessionFeature,
       makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }
     )
+    let applicationConfiguration = ApplicationConfigurationService.live()
+    let remoteConfiguration = RemoteConfigurationService(
+      notificationCenter: .default, reportFailure: RemoteConfigClient.reportActivationFailure
+    )
     let settingsFeature = SettingsFeature(
       sessionFeature: sessionFeature,
+      applicationSettings: .live(configuration: applicationConfiguration, remoteConfiguration: remoteConfiguration),
       hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
       accountFieldsDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
@@ -424,11 +277,6 @@ public final class AppModel {
         AsyncDeveloperExamplesProvider(service: AppEnvironment.current.apiService)
       }),
       onboardingFeature: onboarding,
-      remoteConfigurationService: RemoteConfigurationService(
-        notificationCenter: .default,
-        reportFailure: RemoteConfigClient.reportActivationFailure
-      ),
-      applicationConfigurationService: .live(),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
       }),

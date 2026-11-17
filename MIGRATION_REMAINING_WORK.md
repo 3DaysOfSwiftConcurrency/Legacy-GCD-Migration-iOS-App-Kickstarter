@@ -10,9 +10,11 @@ compliance. The active audit covers only `Kickstarter-iOS/1 - View` and
 `Kickstarter-iOS/2 - AppModel`, with supporting tests and project registration.
 Swift packages are excluded.
 
-- AppDelegate has no ViewModel. Lifecycle is not a Feature. Application events
-  enter AppModel, which coordinates the existing Features. DeepLinkRouter retains
-  navigation delivery and UIKit construction; domain resolution uses AppModel.
+- AppDelegate has no ViewModel. Lifecycle is not a Feature. AppDelegate receives
+  incoming links and calls the presentation-layer DeepLinkRouter, which requests
+  domain resolution through AppModel and existing Features. The router retains
+  navigation delivery and UIKit construction. Other application events enter
+  AppModel's Feature coordination methods directly.
 - Account refresh now uses AppModel methods with Settings, Session and Discovery.
   The account-refresh coordinator and application-shortcut service are removed.
   Discovery owns recommendation requests; ShortcutItem defines native presentation.
@@ -22,24 +24,28 @@ Swift packages are excluded.
 - ProjectMediaFeature owns video-feed availability and privately retains the
   connectivity service. Search and Discovery receive that Feature explicitly;
   Environment no longer exposes connectivity or starts the application graph.
-- AppModel still stores two infrastructure collaborators: remote configuration
-  and application configuration. Their consumers
-  and appropriate ownership require source review before the composition meets
-  the Feature-only property requirement. Do not invent a lifecycle Feature to
-  conceal these dependencies.
-- Next: migrate the local/remote feature-flag tools and effective application
-  settings through SettingsFeature. The settings owner must control real reads
-  and override mutations, not merely conceal the existing configuration services.
-  Preserve shared activation, client replacement, debug overrides, publication
-  and visitor-cookie behavior; review downstream settings consumers together.
-  Keep one authoritative Config in the existing storage boundary while migrating
-  its commands. Preserve DebugData's whole-config precedence and non-release
-  refresh override behavior. Verify rapid toggles against current stored values,
-  rather than the tools screen's delayed snapshot. Bootstrap/keychain flag reads
-  must remain independent of AppModel construction. Correct or bypass the
-  Statsig client helper that currently reads the global client instead of `self`.
-  The signed Environment persistence suite is
-  `Library-Keychain-iOSTests/AppEnvironmentTests` in the Library-iOS scheme.
+- AppModel's stored-property boundary now consists of its singleton, concrete
+  Features and the private launch guard. Configuration services are retained below
+  SettingsFeature, which owns effective configuration reads, overrides, refresh
+  and activation commands. Flag tools and Settings' App Store action use that
+  Feature. This satisfies the inspected property boundary, not the full CFA audit.
+- Current Config and DebugData remain the storage authority through injected
+  accessors. No second Config cache was introduced. The tool mutation path preserves
+  unknown keys, false overrides, DebugData precedence and rapid edits against the
+  latest configuration. The existing one-second screen reload remains presentation
+  behavior. The client-specific Statsig helper now queries its own client.
+- Next: trace remaining global configuration consumers to their actual domain
+  owners. RecommendationsFeature still reads global Config for app-rating
+  eligibility; SettingsNewslettersCellViewModel still reads configured country for
+  the Germany opt-in rule. Remote-config/Statsig helper functions and composition
+  inputs still read Environment. Review their authoritative values, mutations and
+  isolation without duplicating storage or introducing a lifecycle Feature.
+- Bootstrap/keychain flag reads intentionally remain independent of AppModel
+  construction. Environment configuration persistence, whole-config DebugData
+  precedence, cookie installation and SDK integration remain contracts to preserve
+  through further migration. The signed persistence suite is
+  `Library-Keychain-iOSTests/AppEnvironmentTests` in the Library-iOS scheme; its
+  latest executed result belongs in the dated ledger, not a broad completion claim.
 - Discovery recommendation reads check session generation. Feed pagination and
   activity sampling still use user-ID checks; review same-user session replacement
   and related task lifetimes separately.

@@ -15,6 +15,37 @@ final class SettingsViewModelTests: TestCase {
   private lazy var vm = SettingsViewModel({ type in type == .notifications ? UIViewController() : nil },
                                            settingsFeature: self.feature)
 
+  func testRatingUsesTheInjectedSettingsDestinationAndPreservesMissingDestinationFallback() {
+    let destination = "https://example.test/application"
+    var config: Config? = Config.template |> \.iTunesLink .~ destination
+    let store = MockKeyValueStore()
+    let center = NotificationCenter()
+    let settings = SettingsFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      applicationSettings: SettingsFeature.ApplicationSettings(
+        configuration: ApplicationConfigurationService(load: {
+          XCTFail("Choosing a settings destination must not fetch configuration")
+          throw CancellationError()
+        }),
+        remoteConfiguration: RemoteConfigurationService(notificationCenter: center),
+        readConfiguration: { config },
+        saveConfigurationOverride: { _ in XCTFail("Choosing a destination must not write configuration") },
+        userDefaults: { store },
+        notificationCenter: center
+      ),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    let vm = SettingsViewModel({ _ in nil }, settingsFeature: settings)
+    var destinations: [String] = []
+    vm.onRate = { destinations.append($0) }
+
+    vm.settingsCellTapped(cellType: .rateInAppStore)
+    config = nil
+    vm.settingsCellTapped(cellType: .rateInAppStore)
+
+    XCTAssertEqual(destinations, [destination, ""])
+  }
+
   func testCachedAndRefreshedUserUpdatesFollowingAvailability() async {
     let stored = User.template |> \.social .~ false
     let refreshed = User.template |> \.social .~ true

@@ -11,16 +11,19 @@ public typealias StatsigFeatures = [(StatsigFeature, Bool)]
 public final class RemoteConfigFeatureFlagToolsViewModel {
   public private(set) var remoteConfigFeatures: RemoteConfigFeatures = []
   public private(set) var statsigFeatures: StatsigFeatures = []
+  private let settingsFeature: SettingsFeature
   private var reloadTask: Task<Void, Never>?
   private let sleep: () async throws -> Void
 
   public init(
+    settingsFeature: SettingsFeature,
     sleep: @escaping () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
   ) {
+    self.settingsFeature = settingsFeature
     self.sleep = sleep
   }
   public func viewDidLoad() { self.reload() }
-  public func didUpdateUserDefaults() {
+  private func scheduleReload() {
     self.reloadTask?.cancel()
     self.reloadTask = Task { [weak self, sleep] in
       do {
@@ -32,17 +35,17 @@ public final class RemoteConfigFeatureFlagToolsViewModel {
   }
   public func setFeatureAtIndexEnabled(index: Int, isEnabled: Bool) {
     guard self.remoteConfigFeatures.indices.contains(index) else { return }
-    AppEnvironment.current.userDefaults.remoteConfigFeatureFlags[self.remoteConfigFeatures[index].0.rawValue] = isEnabled
-    self.didUpdateUserDefaults()
+    self.settingsFeature.setRemoteConfigurationOverride(self.remoteConfigFeatures[index].0, enabled: isEnabled)
+    self.scheduleReload()
   }
   public func setStatsigFeatureAtIndexEnabled(index: Int, isEnabled: Bool) {
     guard self.statsigFeatures.indices.contains(index) else { return }
-    AppEnvironment.current.userDefaults.statsigFeatureFlags[self.statsigFeatures[index].0.rawValue] = isEnabled
-    self.didUpdateUserDefaults()
+    self.settingsFeature.setStatsigOverride(self.statsigFeatures[index].0, enabled: isEnabled)
+    self.scheduleReload()
   }
   private func reload() {
-    self.remoteConfigFeatures = RemoteConfigFeature.allCases.map { ($0, featureEnabled(feature: $0)) }
-    self.statsigFeatures = StatsigFeature.allCases.map { ($0, statsigFeatureEnabled(feature: $0)) }
+    self.remoteConfigFeatures = self.settingsFeature.remoteConfigurationFlags
+    self.statsigFeatures = self.settingsFeature.statsigFlags
   }
   internal func waitForReload() async { await self.reloadTask?.value }
 }
