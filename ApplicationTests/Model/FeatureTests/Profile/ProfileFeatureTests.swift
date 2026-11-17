@@ -335,6 +335,10 @@ private final class ControlledProfileProvider: ProfileProvider {
 
 @MainActor
 private final class ControlledHeaderProvider: SessionProvider {
+  func registerDeviceToken(_: String) async throws {
+    XCTFail("Unexpected device registration")
+    throw CancellationError()
+  }
   func setup() async throws -> GraphUserSetup { throw CancellationError() }
   let users = AccountRequestGate<User>()
   let graphs = AccountRequestGate<User>()

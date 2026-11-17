@@ -20,6 +20,37 @@ AppModel's remaining infrastructure properties and the wider application
 composition still need migration; this checkpoint does not establish full CFA
 compliance.
 
+## Account device registration — 17 November 2026
+
+Author: Matthew Thomas.
+
+SessionFeature owns associating device tokens with the current account through
+SessionProvider. The server endpoint is the current user's iOS push-token resource.
+This responsibility is separate from OnboardingFeature's permission and consent
+policy; no new Feature or delegate ViewModel is introduced.
+
+- AppDelegate forwards every raw token to Braze in arrival order, preserving the
+  existing deferred SDK call, then sends account registration through AppModel.
+- Preserve lowercase hexadecimal encoding and the five-second server debounce.
+  New tokens replace pending debounce/delivery without retracting an admitted
+  server write. Equal pending tokens within one session share a request; distinct
+  tokens reach the server in order. Only the latest admitted token publishes success.
+- Capture the account ID, session generation and provider at request admission.
+  Same-user session replacement cancels pending debounce and delivery. Already
+  admitted writes settle before a new session's write; queued obsolete requests
+  must not reach the transport or publish a result. Restoring a missing user from
+  stored credentials within the same session must retain pending registration
+  and share the same token request; a changed known account remains invalid.
+- A failed request can retry the same token. Keep failures silent at the native
+  application boundary while preserving directly awaitable Feature errors.
+- Retain logged-out token handling and native permission behavior. No real push
+  token, credential, or live registration is part of the regression evidence.
+
+Final validation passed 79 focused LibraryTests and 146 bounded PresentationTests
+on iPhone 17 Pro Max, iOS 26.2, with zero failures/skips. The native callback's
+production handler is covered with injected SDK delivery. Actual APNs/Braze
+integration and live account registration remain unverified.
+
 ## Account refresh and recommendation ownership — 17 November 2026
 
 Author: Matthew Thomas.

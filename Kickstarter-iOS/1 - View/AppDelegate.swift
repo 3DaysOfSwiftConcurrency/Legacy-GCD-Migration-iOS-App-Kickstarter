@@ -300,8 +300,8 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     _: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
-    AppModel.shared.devicePushRegistrationService.receive(
-      deviceToken: deviceToken,
+    Self.handleDeviceToken(
+      deviceToken, model: AppModel.shared,
       registerWithMessagingSDK: { [weak self] token in
         DispatchQueue.main.async { [weak self] in self?.braze?.notifications.register(deviceToken: token) }
       },
@@ -309,6 +309,16 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         DispatchQueue.main.async { print("📲 [Push Registration] Push token successfully registered (\(token)) ✨") }
       }
     )
+  }
+
+  /// Keep native token delivery independent of the account registration debounce.
+  static func handleDeviceToken(
+    _ deviceToken: Data, model: AppModel,
+    registerWithMessagingSDK: @MainActor (Data) -> Void,
+    onRegistered: @escaping @MainActor (String) -> Void
+  ) {
+    registerWithMessagingSDK(deviceToken)
+    model.receiveDeviceToken(deviceToken, onRegistered: onRegistered)
   }
 
   internal func application(

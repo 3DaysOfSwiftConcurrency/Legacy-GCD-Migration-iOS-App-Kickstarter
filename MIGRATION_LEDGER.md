@@ -4286,3 +4286,54 @@ review. Discovery feed/activity session checks, global environment dependencies,
 and broader source coverage also remain. The full suite, native system shortcut
 integration, live account operations, visual parity and device validation were not
 performed. This checkpoint does not establish full CFA compliance. No push.
+
+### Session owns account device registration — 17 November 2026
+
+Author: Matthew Thomas.
+
+The `users/self/ios/push_tokens` workflow now belongs to SessionFeature, using
+SessionProvider for transport. DevicePushRegistrationService and its AppModel
+property/initializer argument are removed. AppModel forwards incoming tokens to
+Session; AppDelegate's production handler forwards raw data to Braze independently
+of the account-registration debounce. Permission eligibility remains in
+OnboardingFeature. No lifecycle Feature or delegate ViewModel is introduced.
+
+Session owns lowercase encoding, the existing five-second debounce, shared equal
+requests, ordered changed-token writes and replaceable result delivery. It uses
+its authoritative session generation rather than a second service counter. The
+provider is captured at admission. Already admitted writes settle across logout;
+obsolete queued work cannot start transport, and stale successes/errors cannot
+escape into the new session. Completed debounce/delivery handles are released.
+
+Source review found that restoring a missing user from stored credentials does
+not advance the session generation. The initial strict ID check would have lost
+valid registration during that restoration. The corrected registration identity
+permits a previously absent user to be restored in the same generation, including
+sharing an admitted equal-token request, while rejecting a changed known account
+or session generation. Deterministic tests cover debounce and transport restoration.
+
+The former three service tests move into SessionFeature's test home and the real
+AppDelegate token handler. Eleven Session registration scenarios cover encoding,
+debounce, sharing, failure/retry, replacement, admitted/queued writes and restoration.
+An isolated AppModel test verifies forwarding and session-change invalidation.
+The existing application-routing tests now use the same SessionFeature graph.
+
+The focused baseline passed 24 tests. The initial migrated selection passed 76;
+after the restoration review and added regressions, the final LibraryTests run
+passed 79 tests across AppModel, Session, Settings and Profile. The bounded
+ApplicationRouting, AppDelegate analytics and Root Tabs selection passed 146
+PresentationTests. Both final runs had zero failures/skips on iPhone 17 Pro Max,
+iOS 26.2. Result bundles:
+`/private/tmp/kickstarter-session-device-registration-verified.xcresult` and
+`/private/tmp/kickstarter-session-device-presentation.xcresult`.
+
+`make check-cfa` and diff checks passed. The gate prevents restoring the standalone
+registration service. Swift packages, identifiers and project membership are
+unchanged. Native APNs/Braze delivery, live account registration, device/visual
+validation and the full suite remain unverified. No push.
+
+AppModel still stores connectivity and two configuration services. Source review
+identified video-feed eligibility in Search/Discovery as the next boundary for
+ProjectMediaFeature, followed by local/remote settings tools and effective
+configuration ownership. These are recorded in MIGRATION_REMAINING_WORK.md;
+the wider CFA audit remains active and incomplete.

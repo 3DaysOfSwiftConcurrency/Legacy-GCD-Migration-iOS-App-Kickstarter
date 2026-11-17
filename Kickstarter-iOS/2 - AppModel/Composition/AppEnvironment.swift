@@ -24,6 +24,9 @@ extension SessionFeature {
 
   public convenience init(
     makeProvider: @escaping () -> any SessionProvider,
+    deviceRegistrationDebounce: @escaping @MainActor () async throws -> Void = {
+      try await Task.sleep(for: .seconds(5))
+    },
     currentUser: @escaping () -> User? = { AppEnvironment.current.currentUser },
     currentUserEmail: @escaping () -> String? = { AppEnvironment.current.currentUserEmail },
     currentUserPPOSettings: @escaping () -> PPOUserSettings? = { AppEnvironment.current.currentUserPPOSettings },
@@ -42,6 +45,7 @@ extension SessionFeature {
   ) {
     self.init(
       makeProvider: makeProvider,
+      deviceRegistrationDebounce: deviceRegistrationDebounce,
       storage: Storage(
         currentUser: currentUser, currentUserEmail: currentUserEmail,
         currentUserPPOSettings: currentUserPPOSettings, updateUser: updateUser,

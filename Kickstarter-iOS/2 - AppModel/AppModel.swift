@@ -235,93 +235,6 @@ extension ApplicationConfigurationService {
   }
 }
 
-/// Serializes device-token registration admitted by the application boundary.
-@MainActor
-public final class DevicePushRegistrationService {
-  private let register: @MainActor (String) async throws -> Void
-  private let debounce: @MainActor () async throws -> Void
-  private var debounceTask: Task<Void, Never>?
-  private var deliveryTask: Task<Void, Never>?
-  private var generation = 0
-  private var tail: (token: String, generation: Int, id: UUID, task: Task<String, Error>)?
-
-  public init(
-    register: @escaping @MainActor (String) async throws -> Void,
-    debounce: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(5)) }
-  ) {
-    self.register = register
-    self.debounce = debounce
-  }
-
-  func receive(
-    deviceToken: Data,
-    registerWithMessagingSDK: @MainActor (Data) -> Void,
-    onRegistered: @escaping @MainActor (String) -> Void
-  ) {
-    registerWithMessagingSDK(deviceToken)
-    let token = deviceToken.map { String(format: "%02.2hhx", $0 as CVarArg) }.joined()
-    self.schedule(token: token, onRegistered: onRegistered)
-  }
-
-  private func schedule(token: String, onRegistered: @escaping @MainActor (String) -> Void) {
-    self.debounceTask?.cancel()
-    let debounce = self.debounce
-    let generation = self.generation
-    self.debounceTask = Task { [weak self] in
-      do {
-        try await debounce()
-        try Task.checkCancellation()
-        guard let self, self.generation == generation else { return }
-        self.deliveryTask?.cancel()
-        let request = self.request(token: token)
-        self.deliveryTask = Task { [weak self] in
-          do {
-            let registeredToken = try await request.value
-            try Task.checkCancellation()
-            guard self?.generation == generation else { return }
-            onRegistered(registeredToken)
-          } catch { /* Keep registration failures silent. */ }
-        }
-      } catch { /* A newer token superseded this debounce. */ }
-    }
-  }
-
-  private func cancelScheduledDelivery() {
-    self.debounceTask?.cancel()
-    self.deliveryTask?.cancel()
-  }
-
-  func waitForScheduledDelivery() async {
-    await self.debounceTask?.value
-    await self.deliveryTask?.value
-  }
-
-  @discardableResult public func request(token: String) -> Task<String, Error> {
-    let generation = self.generation
-    if let tail = self.tail, tail.token == token, tail.generation == generation { return tail.task }
-    let previous = self.tail?.task
-    let id = UUID()
-    let register = self.register
-    let task = Task { [self] in
-      defer { if self.tail?.id == id { self.tail = nil } }
-      if let previous { _ = await previous.result }
-      try Task.checkCancellation()
-      guard self.generation == generation else { throw CancellationError() }
-      try await register(token)
-      try Task.checkCancellation()
-      guard self.generation == generation, self.tail?.id == id else { throw CancellationError() }
-      return token
-    }
-    self.tail = (token, generation, id, task)
-    return task
-  }
-
-  public func sessionChanged() {
-    self.generation += 1
-    self.cancelScheduledDelivery()
-  }
-}
-
 /// Application composition root. Features own shared state and directly awaitable workflows.
 @MainActor
 public final class AppModel {
@@ -334,7 +247,6 @@ public final class AppModel {
   public let connectivityService: ConnectivityService
   public let remoteConfigurationService: RemoteConfigurationService
   public let applicationConfigurationService: ApplicationConfigurationService
-  public let devicePushRegistrationService: DevicePushRegistrationService
   public let creatorDraftsFeature: CreatorDraftsFeature
   public let recommendationsFeature: RecommendationsFeature
   public let projectReportingFeature: ProjectReportingFeature
@@ -361,7 +273,6 @@ public final class AppModel {
     connectivityService: ConnectivityService = ConnectivityService(),
     remoteConfigurationService: RemoteConfigurationService,
     applicationConfigurationService: ApplicationConfigurationService,
-    devicePushRegistrationService: DevicePushRegistrationService,
     creatorDraftsFeature: CreatorDraftsFeature,
     recommendationsFeature: RecommendationsFeature,
     projectReportingFeature: ProjectReportingFeature,
@@ -387,7 +298,6 @@ public final class AppModel {
     self.connectivityService = connectivityService
     self.remoteConfigurationService = remoteConfigurationService
     self.applicationConfigurationService = applicationConfigurationService
-    self.devicePushRegistrationService = devicePushRegistrationService
     self.creatorDraftsFeature = creatorDraftsFeature
     self.recommendationsFeature = recommendationsFeature
     self.projectReportingFeature = projectReportingFeature
@@ -441,6 +351,10 @@ public final class AppModel {
     self.onboardingFeature.refreshNotificationAuthorization()
   }
 
+  func receiveDeviceToken(_ deviceToken: Data, onRegistered: @escaping @MainActor (String) -> Void) {
+    self.sessionFeature.receiveDeviceToken(deviceToken, onRegistered: onRegistered)
+  }
+
   public func applicationWillEnterForeground() {
     self.applicationConfigurationService.refresh()
   }
@@ -466,7 +380,6 @@ public final class AppModel {
     self.authenticationFeature.resetEmailRedirects()
     self.discoveryFeature.resetRecommendationAvailability()
     self.applicationConfigurationService.reset()
-    self.devicePushRegistrationService.sessionChanged()
     self.developerExamplesFeature.reset()
     self.creatorDraftsFeature.reset()
     self.recommendationsFeature.reset()
@@ -519,9 +432,6 @@ public final class AppModel {
         reportFailure: RemoteConfigClient.reportActivationFailure
       ),
       applicationConfigurationService: .live(),
-      devicePushRegistrationService: DevicePushRegistrationService(
-        register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
-      ),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)
       }),

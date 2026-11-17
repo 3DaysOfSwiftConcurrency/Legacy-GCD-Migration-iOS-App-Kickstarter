@@ -60,9 +60,10 @@ final class AppDelegateAnalyticsTests: XCTestCase {
 final class ApplicationRoutingTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let settingsFeature = SettingsFeature(
-    sessionFeature: SessionFeature(makeProvider: {
-      AsyncSessionProvider(service: AppEnvironment.current.apiService)
-    }),
+    sessionFeature: SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) },
+      deviceRegistrationDebounce: { try Task.checkCancellation() }
+    ),
     hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
     refreshDebounce: { try Task.checkCancellation() },
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
@@ -70,10 +71,6 @@ final class ApplicationRoutingTests: TestCase {
   private lazy var messagingFeature = MessagingFeature(
     sessionFeature: self.settingsFeature.sessionFeature,
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
-  )
-  private let devicePushRegistration = DevicePushRegistrationService(
-    register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) },
-    debounce: { try Task.checkCancellation() }
   )
   private let onboardingFeature = OnboardingFeature.live(trackingDelay: { try Task.checkCancellation() })
   private var settingsLinkDelay: @MainActor (TimeInterval) async throws -> Void = { _ in
@@ -1066,8 +1063,8 @@ final class ApplicationRoutingTests: TestCase {
   }
 
   private func receiveDeviceToken(_ data: Data) {
-    self.devicePushRegistration.receive(
-      deviceToken: data,
+    AppDelegate.handleDeviceToken(
+      data, model: self.model,
       registerWithMessagingSDK: { self.registerPushTokenInBraze.record($0) },
       onRegistered: { [weak self] in self?.pushTokenSuccessfullyRegistered.record($0) }
     )
@@ -1098,7 +1095,7 @@ final class ApplicationRoutingTests: TestCase {
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await self.devicePushRegistration.waitForScheduledDelivery()
+      await self.model.sessionFeature.waitForDeviceRegistration()
       await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
@@ -1130,7 +1127,7 @@ final class ApplicationRoutingTests: TestCase {
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await self.devicePushRegistration.waitForScheduledDelivery()
+      await self.model.sessionFeature.waitForDeviceRegistration()
       await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
@@ -1161,7 +1158,7 @@ final class ApplicationRoutingTests: TestCase {
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await self.devicePushRegistration.waitForScheduledDelivery()
+      await self.model.sessionFeature.waitForDeviceRegistration()
       await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
 
@@ -1199,10 +1196,20 @@ final class ApplicationRoutingTests: TestCase {
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
-      await self.devicePushRegistration.waitForScheduledDelivery()
+      await self.model.sessionFeature.waitForDeviceRegistration()
       await self.deepLinkRouter.waitForOperations()
       self.pushTokenSuccessfullyRegistered.assertValueCount(1)
     }
+  }
+
+  func testRawTokensAreForwardedInOrderWhileServerRegistrationUsesTheLatest() async {
+    let first = Data([0x01, 0xff])
+    let latest = Data([0x00, 0x0a, 0xbe])
+    self.receiveDeviceToken(first)
+    self.receiveDeviceToken(latest)
+    self.registerPushTokenInBraze.assertValues([first, latest])
+    await self.model.sessionFeature.waitForDeviceRegistration()
+    self.pushTokenSuccessfullyRegistered.assertValues(["000abe"])
   }
 
   func testRegisterPushTokenInBraze() async {
@@ -1218,7 +1225,7 @@ final class ApplicationRoutingTests: TestCase {
       self.receiveDeviceToken(data)
 
       self.registerPushTokenInBraze.assertValues([data])
-      await self.devicePushRegistration.waitForScheduledDelivery()
+      await self.model.sessionFeature.waitForDeviceRegistration()
     }
   }
 

@@ -1,10 +1,242 @@
 @testable import Kickstarter_iOS
 @testable import KsApi
+import Foundation
 
 import XCTest
 
 @MainActor
 final class SessionFeatureTests: XCTestCase {
+  func testDeviceTokensDebounceAndRegisterTheLatestHexValue() async throws {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    let feature = SessionFeature(
+      makeProvider: { provider }, deviceRegistrationDebounce: {}, currentUser: { .template }
+    )
+    var delivered: [String] = []
+
+    feature.receiveDeviceToken(Data([0x01, 0xff])) { delivered.append($0) }
+    feature.receiveDeviceToken(Data([0x00, 0x0a, 0xbe])) { delivered.append($0) }
+    XCTAssertTrue(provider.registeredTokens.isEmpty)
+    await provider.registrations.waitFor(1)
+    XCTAssertEqual(provider.registeredTokens, ["000abe"])
+    try provider.registrations.finish(0, .success(()))
+    await feature.waitForDeviceRegistration()
+    XCTAssertEqual(delivered, ["000abe"])
+  }
+
+  func testSessionChangePreventsDebouncedDeviceRegistration() async throws {
+    let provider = ControlledSessionProvider()
+    let debounce = AccountRequestGate<Void>()
+    defer { provider.releaseAll(); debounce.releaseAll() }
+    let feature = SessionFeature(
+      makeProvider: { provider }, deviceRegistrationDebounce: { try await debounce.request() },
+      currentUser: { .template }
+    )
+
+    feature.receiveDeviceToken(Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
+    await debounce.waitFor(1)
+    feature.sessionChanged()
+    try debounce.finish(0, .success(()))
+    await feature.waitForDeviceRegistration()
+    XCTAssertTrue(provider.registeredTokens.isEmpty)
+  }
+
+  func testDuplicateDeviceTokensShareAndChangedTokensExecuteInOrderAfterFailure() async throws {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
+    let first = feature.requestDeviceRegistration(token: "synthetic-a")
+    let duplicate = feature.requestDeviceRegistration(token: "synthetic-a")
+    let second = feature.requestDeviceRegistration(token: "synthetic-b")
+    await provider.registrations.waitFor(1)
+    XCTAssertEqual(provider.registeredTokens, ["synthetic-a"])
+    try provider.registrations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
+    await provider.registrations.waitFor(2)
+    try provider.registrations.finish(1, .success(()))
+    for request in [first, duplicate] {
+      do { _ = try await request.value; XCTFail("Registration failure was swallowed") }
+      catch { XCTAssertTrue(error is ErrorEnvelope) }
+    }
+    let registered = try await second.value
+    XCTAssertEqual(registered, "synthetic-b")
+    XCTAssertEqual(provider.registeredTokens, ["synthetic-a", "synthetic-b"])
+  }
+
+  func testEquivalentDeviceRegistrationsShareSuccessfulCompletion() async throws {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
+    let first = feature.requestDeviceRegistration(token: "synthetic-a")
+    let duplicate = feature.requestDeviceRegistration(token: "synthetic-a")
+    await provider.registrations.waitFor(1)
+    try provider.registrations.finish(0, .success(()))
+    for request in [first, duplicate] {
+      let registered = try await request.value
+      XCTAssertEqual(registered, "synthetic-a")
+    }
+    XCTAssertEqual(provider.registeredTokens, ["synthetic-a"])
+  }
+
+  func testSameUserSessionReplacementPreventsDeviceRequestAdmission() async {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
+    let obsolete = feature.requestDeviceRegistration(token: "synthetic-a")
+    feature.sessionChanged()
+    guard case .failure(is CancellationError) = await obsolete.result else {
+      return XCTFail("A previous session's device registration was admitted")
+    }
+    XCTAssertTrue(provider.registeredTokens.isEmpty)
+  }
+
+  func testSessionReplacementFinishesAdmittedDeviceWriteBeforeNewSessionAndSkipsOldQueue() async throws {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
+    let admitted = feature.requestDeviceRegistration(token: "synthetic-a")
+    await provider.registrations.waitFor(1)
+    let queued = feature.requestDeviceRegistration(token: "synthetic-b")
+    feature.sessionChanged()
+    let current = feature.requestDeviceRegistration(token: "synthetic-c")
+    XCTAssertEqual(provider.registeredTokens, ["synthetic-a"])
+
+    try provider.registrations.finish(0, .success(()))
+    for request in [admitted, queued] {
+      guard case .failure(is CancellationError) = await request.result else {
+        return XCTFail("An obsolete device registration published success")
+      }
+    }
+    await provider.registrations.waitFor(2)
+    XCTAssertEqual(provider.registeredTokens, ["synthetic-a", "synthetic-c"])
+    XCTAssertEqual(provider.registrationWasCancelled, [false])
+    try provider.registrations.finish(1, .success(()))
+    let registered = try await current.value
+    XCTAssertEqual(registered, "synthetic-c")
+  }
+
+  func testFailedDeviceRegistrationCanRetryTheSameToken() async throws {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
+    let failed = feature.requestDeviceRegistration(token: "synthetic-a")
+    await provider.registrations.waitFor(1)
+    try provider.registrations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
+    do { _ = try await failed.value; XCTFail("Expected registration failure") }
+    catch { XCTAssertTrue(error is ErrorEnvelope) }
+
+    let retry = feature.requestDeviceRegistration(token: "synthetic-a")
+    await provider.registrations.waitFor(2)
+    try provider.registrations.finish(1, .success(()))
+    let registered = try await retry.value
+    XCTAssertEqual(registered, "synthetic-a")
+    XCTAssertEqual(provider.registeredTokens, ["synthetic-a", "synthetic-a"])
+  }
+
+  func testReplacingDeviceDeliveryKeepsAdmittedWriteAndOnlyDeliversTheLatestToken() async throws {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    let secondAdmitted = expectation(description: "Replacement registration admitted")
+    var admissions = 0
+    let feature = SessionFeature(
+      makeProvider: {
+        admissions += 1
+        if admissions == 2 { secondAdmitted.fulfill() }
+        return provider
+      },
+      deviceRegistrationDebounce: {}, currentUser: { .template }
+    )
+    var delivered: [String] = []
+    feature.receiveDeviceToken(Data([0x01])) { delivered.append($0) }
+    await provider.registrations.waitFor(1)
+    feature.receiveDeviceToken(Data([0x02])) { delivered.append($0) }
+    await fulfillment(of: [secondAdmitted], timeout: 2)
+
+    try provider.registrations.finish(0, .success(()))
+    await provider.registrations.waitFor(2)
+    XCTAssertEqual(provider.registeredTokens, ["01", "02"])
+    XCTAssertEqual(provider.registrationWasCancelled, [false])
+    XCTAssertTrue(delivered.isEmpty)
+    try provider.registrations.finish(1, .success(()))
+    await feature.waitForDeviceRegistration()
+    XCTAssertEqual(delivered, ["02"])
+  }
+
+  func testRestoringTheUserDuringDeviceDebouncePreservesRegistrationAndDelivery() async throws {
+    let provider = ControlledSessionProvider()
+    let debounce = AccountRequestGate<Void>()
+    defer { provider.releaseAll(); debounce.releaseAll() }
+    var user: User?
+    let feature = SessionFeature(
+      makeProvider: { provider }, deviceRegistrationDebounce: { try await debounce.request() },
+      currentUser: { user }, updateUser: { user = $0 }
+    )
+    let generation = feature.generation
+    var delivered: [String] = []
+    feature.receiveDeviceToken(Data([0x01])) { delivered.append($0) }
+    await debounce.waitFor(1)
+
+    feature.commitRefreshedUser(.template, userID: nil, generation: generation, allowSessionRestore: true)
+    XCTAssertEqual(user?.id, User.template.id)
+    XCTAssertEqual(feature.generation, generation)
+    try debounce.finish(0, .success(()))
+    await provider.registrations.waitFor(1)
+    try provider.registrations.finish(0, .success(()))
+    await feature.waitForDeviceRegistration()
+    XCTAssertEqual(provider.registeredTokens, ["01"])
+    XCTAssertEqual(delivered, ["01"])
+  }
+
+  func testRestoringTheUserDuringDeviceTransportKeepsSharingAndDelivery() async throws {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    var user: User?
+    let feature = SessionFeature(
+      makeProvider: { provider }, deviceRegistrationDebounce: {},
+      currentUser: { user }, updateUser: { user = $0 }
+    )
+    let generation = feature.generation
+    var delivered: [String] = []
+    feature.receiveDeviceToken(Data([0x01])) { delivered.append($0) }
+    await provider.registrations.waitFor(1)
+
+    feature.commitRefreshedUser(.template, userID: nil, generation: generation, allowSessionRestore: true)
+    XCTAssertEqual(user?.id, User.template.id)
+    XCTAssertEqual(feature.generation, generation)
+    let duplicate = feature.requestDeviceRegistration(token: "01")
+    let duplicateFinished = expectation(description: "Restored session shares device registration")
+    var duplicateResult: Result<String, Error>?
+    let observer = Task {
+      duplicateResult = await duplicate.result
+      duplicateFinished.fulfill()
+    }
+    try provider.registrations.finish(0, .success(()))
+    await fulfillment(of: [duplicateFinished], timeout: 2)
+    // Release an unexpected extra transport too, so a broken sharing policy cannot hang the suite.
+    provider.releaseAll()
+    await observer.value
+    await feature.waitForDeviceRegistration()
+    guard case let .success(token)? = duplicateResult else {
+      return XCTFail("Restoring account metadata invalidated the shared registration")
+    }
+    XCTAssertEqual(token, "01")
+    XCTAssertEqual(provider.registeredTokens, ["01"])
+    XCTAssertEqual(delivered, ["01"])
+  }
+
+  func testObsoleteDeviceTransportFailureIsReportedAsCancellation() async throws {
+    let provider = ControlledSessionProvider()
+    defer { provider.releaseAll() }
+    let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
+    let obsolete = feature.requestDeviceRegistration(token: "synthetic-a")
+    await provider.registrations.waitFor(1)
+    feature.sessionChanged()
+    try provider.registrations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
+    guard case .failure(is CancellationError) = await obsolete.result else {
+      return XCTFail("An old session's transport error escaped the registration boundary")
+    }
+    XCTAssertEqual(provider.registrationWasCancelled, [false])
+  }
+
   func testSessionBoundRejectsCancelledObserverAfterAdmittedWorkCompletes() async throws {
     let gate = AccountRequestGate<Void>()
     defer { gate.releaseAll() }
@@ -120,7 +352,7 @@ final class SessionFeatureTests: XCTestCase {
     defer { provider.releaseAll() }
     var commits: [GraphUserSetup] = []
     let feature = SessionFeature(
-      makeProvider: { provider },
+      makeProvider: { provider }, deviceRegistrationDebounce: {},
       storage: .init(
         currentUser: { .template },
         currentUserEmail: { commits.last?.email },
@@ -341,10 +573,19 @@ private final class ControlledSessionProvider: SessionProvider {
   let users = AccountRequestGate<User>()
   let graphs = AccountRequestGate<User>()
   let badges = AccountRequestGate<Int>()
+  let registrations = AccountRequestGate<Void>()
+  private(set) var registeredTokens: [String] = []
+  private(set) var registrationWasCancelled: [Bool] = []
+  func registerDeviceToken(_ token: String) async throws {
+    self.registeredTokens.append(token)
+    defer { self.registrationWasCancelled.append(Task.isCancelled) }
+    try await self.registrations.request()
+  }
   func user() async throws -> User { try await self.users.request() }
   func graphUser() async throws -> User { try await self.graphs.request() }
   func clearActivityIndicator() async throws -> Int { try await self.badges.request() }
   func releaseAll() {
     self.users.releaseAll(); self.graphs.releaseAll(); self.badges.releaseAll(); self.setups.releaseAll()
+    self.registrations.releaseAll()
   }
 }

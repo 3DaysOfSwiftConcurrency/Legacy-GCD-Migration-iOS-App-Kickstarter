@@ -673,6 +673,10 @@ private final class ControlledPreferencesProvider: AccountPreferencesProvider {
 
 @MainActor
 private final class ControlledPreferencesReadProvider: SessionProvider {
+  func registerDeviceToken(_: String) async throws {
+    XCTFail("Unexpected device registration")
+    throw CancellationError()
+  }
   func setup() async throws -> GraphUserSetup { throw CancellationError() }
   let gate = AccountRequestGate<User>()
   func user() async throws -> User { try await self.gate.request() }

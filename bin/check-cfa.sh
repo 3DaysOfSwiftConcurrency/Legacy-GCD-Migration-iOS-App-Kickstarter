@@ -34,6 +34,8 @@ reject_matches 'Deep-link data resolution belongs to AppModel and its Features.'
   "$app_view/Navigation/DeepLinkRouter.swift"
 reject_matches 'AppModel deep-link coordination returns data, not UIKit controllers.' \
   'import UIKit|UIViewController|UINavigationController' "$app_model/AppModel+DeepLinks.swift"
+reject_matches 'SessionFeature owns device-to-account registration.' \
+  'DevicePushRegistrationService|devicePushRegistrationService' "$app_view" "$app_model"
 reject_matches 'OnboardingFeature owns application consent and push-authorization policy.' \
   'AppTrackingConsent|class PushAuthorization|let trackingConsent:|let pushAuthorization:' "$app_view" "$app_model"
 

@@ -9,6 +9,21 @@ import XCTest
 
 @MainActor
 final class AppModelTests: XCTestCase {
+  func testDeviceRegistrationUsesInjectedSessionAndStopsAfterModelSessionChange() async throws {
+    let debounce = AccountRequestGate<Void>()
+    defer { debounce.releaseAll() }
+    let session = SessionFeature(
+      makeProvider: { NoDeviceRegistrationProvider() },
+      deviceRegistrationDebounce: { try await debounce.request() }, currentUser: { .template }
+    )
+    let model = makeTestAppModel(sessionFeature: session)
+    model.receiveDeviceToken(Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
+    await debounce.waitFor(1)
+    model.sessionChanged()
+    try debounce.finish(0, .success(()))
+    await session.waitForDeviceRegistration()
+  }
+
   func testPermissionEventsUseTheInjectedOnboardingFeature() async {
     let oldAuthorization = MockPushRegistration.authorizedValue
     let oldRegistration = MockPushRegistration.registerValue
@@ -229,9 +244,6 @@ final class AppModelTests: XCTestCase {
       onboardingFeature: firstOnboarding,
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
-      devicePushRegistrationService: DevicePushRegistrationService(register: { _ in
-        XCTFail("Composition must not register for push")
-      }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: firstSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -287,9 +299,6 @@ final class AppModelTests: XCTestCase {
       onboardingFeature: secondOnboarding,
       remoteConfigurationService: RemoteConfigurationService(notificationCenter: NotificationCenter()),
       applicationConfigurationService: ApplicationConfigurationService(load: { .template }),
-      devicePushRegistrationService: DevicePushRegistrationService(register: { _ in
-        XCTFail("Composition must not register for push")
-      }),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: secondSession, makeProvider: {
         XCTFail("Composition must not load creator drafts")
         return AsyncCreatorDraftsProvider(service: MockService())
@@ -553,74 +562,6 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
 }
 
 @MainActor
-final class DevicePushRegistrationServiceTests: XCTestCase {
-  func testReceivesRawTokensInOrderAndDebouncesHexServerRegistration() async {
-    let first = Data([0x01, 0xff])
-    let latest = Data([0x00, 0x0a, 0xbe])
-    var forwarded: [Data] = []
-    var registered: [String] = []
-    var delivered: [String] = []
-    let service = DevicePushRegistrationService(
-      register: { registered.append($0) }, debounce: { try Task.checkCancellation() }
-    )
-
-    service.receive(deviceToken: first, registerWithMessagingSDK: { forwarded.append($0) }) {
-      delivered.append($0)
-    }
-    service.receive(deviceToken: latest, registerWithMessagingSDK: { forwarded.append($0) }) {
-      delivered.append($0)
-    }
-
-    XCTAssertEqual(forwarded, [first, latest])
-    XCTAssertTrue(registered.isEmpty)
-    await service.waitForScheduledDelivery()
-    XCTAssertEqual(registered, ["000abe"])
-    XCTAssertEqual(delivered, registered)
-  }
-
-  func testSessionChangePreventsDebouncedRegistration() async throws {
-    let gate = AccountRequestGate<Void>()
-    defer { gate.releaseAll() }
-    var registeredTokens: [String] = []
-    let service = DevicePushRegistrationService(
-      register: { registeredTokens.append($0) },
-      debounce: { try await gate.request() }
-    )
-    service.receive(deviceToken: Data([0x01]), registerWithMessagingSDK: { _ in }) { _ in
-      XCTFail("Unexpected registration delivery")
-    }
-    await gate.waitFor(1)
-    service.sessionChanged()
-    try gate.finish(0, .success(()))
-    await service.waitForScheduledDelivery()
-    XCTAssertTrue(registeredTokens.isEmpty)
-  }
-
-  func testDuplicatesShareAndChangedTokensExecuteInOrderAfterFailure() async throws {
-    let gate = AccountRequestGate<Void>()
-    var tokens: [String] = []
-    let service = DevicePushRegistrationService(register: { token in
-      tokens.append(token)
-      try await gate.request()
-    })
-    defer { gate.releaseAll() }
-    let first = service.request(token: "synthetic-a")
-    let duplicate = service.request(token: "synthetic-a")
-    let second = service.request(token: "synthetic-b")
-    await gate.waitFor(1)
-    XCTAssertEqual(tokens, ["synthetic-a"])
-    try gate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
-    await gate.waitFor(2)
-    try gate.finish(1, .success(()))
-    if case .success = await first.result { XCTFail("Failure was swallowed") }
-    if case .success = await duplicate.result { XCTFail("Failure was swallowed") }
-    let registeredToken = try await second.value
-    XCTAssertEqual(registeredToken, "synthetic-b")
-    XCTAssertEqual(tokens, ["synthetic-a", "synthetic-b"])
-  }
-}
-
-@MainActor
 private final class NoRequestSearchProvider: SearchProjectsProvider {
   private(set) var requestCount = 0
 
@@ -641,6 +582,18 @@ private struct NoRequestDiscoveryProvider: DiscoveryProvider {
 
   func activitySample() async throws -> ActivityEnvelope? {
     XCTFail("Composition must not perform requests")
+    throw CancellationError()
+  }
+}
+
+@MainActor
+private struct NoDeviceRegistrationProvider: SessionProvider {
+  func setup() async throws -> GraphUserSetup { throw CancellationError() }
+  func user() async throws -> User { throw CancellationError() }
+  func graphUser() async throws -> User { throw CancellationError() }
+  func clearActivityIndicator() async throws -> Int { throw CancellationError() }
+  func registerDeviceToken(_: String) async throws {
+    XCTFail("Obsolete device registration reached the transport")
     throw CancellationError()
   }
 }
