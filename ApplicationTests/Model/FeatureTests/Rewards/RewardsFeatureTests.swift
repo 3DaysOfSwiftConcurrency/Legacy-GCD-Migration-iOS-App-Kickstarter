@@ -144,6 +144,30 @@ final class RewardsFeatureTests: TestCase {
     }
   }
 
+  func testSameUserSessionReplacementDiscardsRewardsSnapshotAndStartsNewRead() async throws {
+    AppEnvironment.login(.init(accessToken: "rewards-fixture", user: .template))
+    let provider = ControlledRewardsProvider()
+    defer { provider.releaseAll() }
+    let feature = self.feature(provider)
+    let route = UUID()
+    await feature.load(route: route, project: .template, location: nil)
+    XCTAssertTrue(feature.snapshot(for: route).hasResult)
+
+    provider.pause = true
+    let old = feature.requestLoad(route: route, project: .template, location: nil)
+    await provider.waitForRequests(2)
+    feature.sessionFeature.sessionChanged()
+    XCTAssertTrue(feature.snapshot(for: route).rewards.isEmpty)
+    let current = feature.requestLoad(route: route, project: .template, location: nil)
+    await provider.waitForRequests(3)
+    try provider.finish(0, rewards: [.shipsToUSAReward])
+    await old.value
+    XCTAssertFalse(feature.snapshot(for: route).hasResult)
+    try provider.finish(1, rewards: [.digitalReward])
+    await current.value
+    XCTAssertEqual(feature.snapshot(for: route).rewards, [.digitalReward])
+  }
+
   func testCancelledCallerDoesNotStartWork() async {
     let provider = ControlledRewardsProvider()
     let feature = self.feature(provider)
@@ -308,6 +332,31 @@ final class RewardsFeatureTests: TestCase {
     await provider.waitForRequests(2)
     try provider.finish(1, locations: [.canada])
     await signedIn.value
+    XCTAssertEqual(feature.shippingSnapshot(for: route).selectedLocation, .canada)
+  }
+
+  func testSameUserSessionReplacementDiscardsShippingSelectionAndStartsNewRead() async throws {
+    AppEnvironment.login(.init(accessToken: "shipping-fixture", user: .template))
+    let provider = ControlledShippingProvider()
+    provider.locations = [.usa]
+    defer { provider.releaseAll() }
+    let feature = self.shippingFeature(provider)
+    let route = UUID()
+    await feature.loadShippingLocations(route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true)
+    XCTAssertEqual(feature.shippingSnapshot(for: route).selectedLocation, .usa)
+
+    provider.pause = true
+    let old = feature.requestShippingLocations(route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true)
+    await provider.waitForRequests(2)
+    feature.sessionFeature.sessionChanged()
+    XCTAssertNil(feature.shippingSnapshot(for: route).selectedLocation)
+    let current = feature.requestShippingLocations(route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true)
+    await provider.waitForRequests(3)
+    try provider.finish(0, locations: [.usa])
+    await old.value
+    XCTAssertNil(feature.shippingSnapshot(for: route).selectedLocation)
+    try provider.finish(1, locations: [.canada])
+    await current.value
     XCTAssertEqual(feature.shippingSnapshot(for: route).selectedLocation, .canada)
   }
 

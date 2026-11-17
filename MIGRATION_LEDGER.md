@@ -3440,6 +3440,11 @@ direct environment lookups in RewardsFeature. All 107 focused tests and
 104 Rewards Collection, Add-on Selection and Pledge regression tests
 passed on the simulator.
 
+Rewards and shipping reads now bind route snapshots, request sharing and
+completion to the Session generation. Two signed-in tests cover replacing
+the session with the same user ID while a refresh is pending. All 46
+focused tests and 115 add-on and checkout regression tests passed.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the
