@@ -1,6 +1,7 @@
 import Foundation
 import KsApi
 import Prelude
+import UIKit
 
 /// Resolves deep-link destinations before UIKit presents them.
 /// Project links publish only after the complete project, update and reply chain loads.
@@ -198,4 +199,72 @@ public final class DeepLinkRouter {
     }
   }
 
+}
+
+extension DeepLinkRouter.Destination {
+  @MainActor
+  func makeViewController(isLoggedIn: Bool) -> UINavigationController? {
+    switch self {
+    case let .survey(url):
+      let controller = PledgeManagerWebViewController.configuredWith(url: url)
+      let navigation = UINavigationController(rootViewController: controller)
+      navigation.modalPresentationStyle = .pageSheet
+      return navigation
+    case let .project(project):
+      return ProjectDeepLink.viewController(project, isLoggedIn: isLoggedIn)
+    case .discovery, .message:
+      return nil
+    }
+  }
+}
+
+/// Pure UIKit composition from one fully resolved destination.
+@MainActor
+private enum ProjectDeepLink {
+  static func viewController(
+    _ destination: DeepLinkRouter.ProjectDestination, isLoggedIn: Bool
+  ) -> UINavigationController? {
+    let project = destination.project
+    let page = ProjectPageViewController.configuredWith(
+      projectOrParam: .left(project), refInfo: destination.refInfo,
+      secretRewardToken: destination.secretRewardToken
+    )
+    var controllers: [UIViewController] = [page]
+    switch destination.subpage {
+    case .root: break
+    case .comments:
+      controllers.append(commentsViewController(for: project, update: nil))
+    case let .commentThread(_, replyID):
+      guard let replies = destination.replies else { return nil }
+      controllers += [commentsViewController(for: project, update: nil),
+        CommentRepliesViewController.configuredWith(comment: replies.comment, project: project, update: nil,
+          inputAreaBecomeFirstResponder: false, replyId: replyID)]
+    case .updates:
+      controllers.append(ProjectUpdatesViewController.configuredWith(project: project))
+    case let .update(_, subpage):
+      guard let update = destination.update else { return nil }
+      controllers.append(UpdateViewController.configuredWith(project: project, update: update, context: .deepLink))
+      switch subpage {
+      case .root: break
+      case .comments: controllers.append(commentsViewController(update: update))
+      case let .commentThread(_, replyID):
+        guard let replies = destination.replies else { return nil }
+        controllers += [commentsViewController(for: nil, update: update),
+          CommentRepliesViewController.configuredWith(comment: replies.comment, project: project, update: update,
+            inputAreaBecomeFirstResponder: false, replyId: replyID)]
+      }
+    case .pledge(.manage):
+      guard isLoggedIn,
+            let backingID = project.personalization.backing?.id else { return nil }
+      let controller = ManagePledgeViewController.instantiate()
+      controller.configureWith(params: (.id(project.id), .id(backingID)))
+      controllers.append(controller)
+      let navigation = RewardPledgeNavigationController(nibName: nil, bundle: nil)
+      navigation.viewControllers = controllers
+      navigation.modalPresentationStyle = .pageSheet
+      return navigation
+    default: return nil
+    }
+    return ProjectPageViewController.navigationController(withViewControllers: controllers)
+  }
 }
