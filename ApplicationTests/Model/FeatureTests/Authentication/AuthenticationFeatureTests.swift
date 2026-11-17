@@ -5,6 +5,71 @@ import XCTest
 
 @MainActor
 final class AuthenticationFeatureTests: XCTestCase {
+  func testRedirectSharesPendingURL() async throws {
+    let route = UUID()
+    let gate = AccountRequestGate<URL?>()
+    defer { gate.releaseAll() }
+    let feature = AuthenticationFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      makeProvider: { AsyncAuthenticationProvider(service: MockService()) },
+      resolveRedirect: { _ in try await gate.request() }
+    )
+    let url = try XCTUnwrap(URL(string: "https://example.test/click"))
+    let first = Task { try await feature.firstRedirect(url, route: route) }
+    await gate.waitFor(1)
+    let second = Task { try await feature.firstRedirect(url, route: route) }
+    await Task.yield()
+    try gate.finish(0, .success(url))
+    let firstValue = try await first.value
+    let secondValue = try await second.value
+    XCTAssertEqual(firstValue, url)
+    XCTAssertEqual(secondValue, url)
+    XCTAssertEqual(gate.count, 1)
+  }
+  func testReleasingRouteRejectsNonCooperativeRedirect() async throws {
+    let route = UUID()
+    let gate = AccountRequestGate<URL?>()
+    defer { gate.releaseAll() }
+    let feature = AuthenticationFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      makeProvider: { AsyncAuthenticationProvider(service: MockService()) },
+      resolveRedirect: { _ in try await gate.request() }
+    )
+    let url = try XCTUnwrap(URL(string: "https://example.test/click"))
+    let old = Task { try await feature.firstRedirect(url, route: route) }
+    await gate.waitFor(1)
+    feature.releaseEmailRedirect(route: route)
+    try gate.finish(0, .success(url))
+    if case .failure(is CancellationError) = await old.result {
+    } else {
+      XCTFail("Obsolete redirect escaped its owner")
+    }
+  }
+  func testResetRejectsRedirectAndNextAttemptCanRetry() async throws {
+    let route = UUID()
+    let gate = AccountRequestGate<URL?>()
+    defer { gate.releaseAll() }
+    let feature = AuthenticationFeature(
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+      makeProvider: { AsyncAuthenticationProvider(service: MockService()) },
+      resolveRedirect: { _ in try await gate.request() }
+    )
+    let url = try XCTUnwrap(URL(string: "https://example.test/click"))
+    let old = Task { try await feature.firstRedirect(url, route: route) }
+    await gate.waitFor(1)
+    feature.resetEmailRedirects()
+    try gate.finish(0, .success(url))
+    if case .failure(is CancellationError) = await old.result {
+    } else {
+      XCTFail("Obsolete redirect escaped its owner")
+    }
+    let next = Task { try await feature.firstRedirect(url, route: route) }
+    await gate.waitFor(2)
+    try gate.finish(1, .success(nil))
+    let result = try await next.value
+    XCTAssertNil(result)
+  }
+
   func testOAuthSharedSuccessTracksBeforeSingleSessionCommit() async throws {
     let fixture = AuthenticationFixture()
     defer { fixture.provider.gate.releaseAll() }

@@ -275,7 +275,8 @@ final class DevicePushRegistrationServiceTests: XCTestCase {
     try gate.finish(1, .success(()))
     if case .success = await first.result { XCTFail("Failure was swallowed") }
     if case .success = await duplicate.result { XCTFail("Failure was swallowed") }
-    XCTAssertEqual(try await second.value, "synthetic-b")
+    let registeredToken = try await second.value
+    XCTAssertEqual(registeredToken, "synthetic-b")
     XCTAssertEqual(tokens, ["synthetic-a", "synthetic-b"])
   }
 }

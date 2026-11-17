@@ -208,6 +208,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
   private var notificationTasks: [UUID: Task<Void, Never>] = [:]
   private var verificationTask: Task<Void, Never>?
+  private let authenticationFeature: AuthenticationFeature
   private let lifecycleFeature: AppLifecycleFeature
   private let discoveryFeature: DiscoveryFeature
   private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
@@ -247,6 +248,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public init(
     lifecycleFeature: AppLifecycleFeature? = nil,
+    authenticationFeature: AuthenticationFeature? = nil,
     discoveryFeature: DiscoveryFeature? = nil,
     requestApplicationConfiguration: (@MainActor () -> Task<Config, Error>)? = nil,
     requestDevicePushRegistration: (@MainActor (String) -> Task<String, Error>)? = nil,
@@ -261,6 +263,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.userDebounce = userDebounce
     self.trackingDelay = trackingDelay
     let lifecycleFeature = lifecycleFeature ?? AppModel.shared.appLifecycleFeature
+    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
     self.lifecycleFeature = lifecycleFeature
     self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
     self.requestApplicationConfiguration = requestApplicationConfiguration
@@ -289,12 +292,14 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.setupObservation?.cancel()
     self.setupRequest?.cancel()
     let redirectObservation = self.redirectObservation
+    let authenticationFeature = self.authenticationFeature
     let trackingObserver = self.trackingObserver
     let feature = self.lifecycleFeature
     let route = self.navigationRoute
     Task { @MainActor in
       redirectObservation.cancel()
       if let (tracking, id) = trackingObserver { tracking.removeAuthorizationObserver(id) }
+      authenticationFeature.releaseEmailRedirect(route: route)
       feature.release(route: route)
     }
   }
@@ -306,6 +311,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.destinationTask?.cancel()
     guard navigation != .emailClick else { return }
     self.redirectObservation.cancel()
+    self.authenticationFeature.releaseEmailRedirect(route: self.navigationRoute)
     let request = self.lifecycleFeature.requestDestination(navigation, route: self.navigationRoute)
     self.destinationTask = Task { [weak self] in
       do {
@@ -514,7 +520,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.redirectObservation.input = url
     let id = UUID()
     self.redirectObservation.id = id
-    let feature = self.lifecycleFeature, route = self.navigationRoute
+    self.lifecycleFeature.release(route: self.navigationRoute)
+    let feature = self.authenticationFeature, route = self.navigationRoute
     self.redirectObservation.task = Task { [weak self] in
       defer {
         if self?.redirectObservation.id == id { self?.redirectObservation.task = nil; self?.redirectObservation.input = nil }

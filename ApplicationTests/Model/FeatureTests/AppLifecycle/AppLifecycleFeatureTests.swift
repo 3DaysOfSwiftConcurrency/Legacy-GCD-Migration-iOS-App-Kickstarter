@@ -32,7 +32,7 @@ final class AppLifecycleFeatureTests: XCTestCase {
     self.feature = AppLifecycleFeature(
       sessionFeature: session, messagingFeature: messaging,
       makeProvider: { provider },
-      resolveRedirect: { _ in try await provider.redirects.request() }, sleep: { _ in try Task.checkCancellation() })
+      sleep: { _ in try Task.checkCancellation() })
   }
   override func tearDown() async throws {
     self.feature?.reset()
@@ -129,40 +129,6 @@ final class AppLifecycleFeatureTests: XCTestCase {
     consumer.cancel()
   }
 
-  func testRedirectSharesPendingURL() async throws {
-    let url = try XCTUnwrap(URL(string: "https://example.test/click"))
-    let first = Task { try await self.feature.firstRedirect(url, route: self.route) }
-    await self.provider.redirects.waitFor(1)
-    let second = Task { try await self.feature.firstRedirect(url, route: self.route) }
-    await Task.yield()
-    try self.provider.redirects.finish(0, .success(url))
-    let firstValue = try await first.value
-    let secondValue = try await second.value
-    XCTAssertEqual(firstValue, url)
-    XCTAssertEqual(secondValue, url)
-    XCTAssertEqual(self.provider.redirects.count, 1)
-  }
-  func testNewNavigationRejectsNonCooperativeRedirect() async throws {
-    let url = try XCTUnwrap(URL(string: "https://example.test/click"))
-    let old = Task { try await self.feature.firstRedirect(url, route: self.route) }
-    await self.provider.redirects.waitFor(1)
-    _ = try await self.feature.requestDestination(.tab(.discovery(nil)), route: self.route).value
-    try self.provider.redirects.finish(0, .success(url))
-    await self.assertCancelled(old)
-  }
-  func testResetRejectsRedirectAndNextAttemptCanRetry() async throws {
-    let url = try XCTUnwrap(URL(string: "https://example.test/click"))
-    let old = Task { try await self.feature.firstRedirect(url, route: self.route) }
-    await self.provider.redirects.waitFor(1)
-    self.feature.reset()
-    try self.provider.redirects.finish(0, .success(url))
-    await self.assertCancelled(old)
-    let next = Task { try await self.feature.firstRedirect(url, route: self.route) }
-    await self.provider.redirects.waitFor(2)
-    try self.provider.redirects.finish(1, .success(nil))
-    let result = try await next.value
-    XCTAssertNil(result)
-  }
   func testRedirectResponsePreservesRelativeLocationAndIgnoresNonRedirect() throws {
     let url = try XCTUnwrap(URL(string: "https://example.test/click/original"))
     let redirect = try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 302, httpVersion: nil, headerFields: ["Location": "../target"]))
@@ -283,7 +249,6 @@ private final class ControlledLifecycleProvider: AppLifecycleProvider {
   let tracking = AccountRequestGate<UInt>()
   var permissionOptions: [UInt] = []
   var registrationCount = 0
-  let redirects = AccountRequestGate<URL?>()
   let config = AccountRequestGate<Config>()
   let registrations = AccountRequestGate<Void>()
   let recommendationsGate = AccountRequestGate<Int>()
@@ -314,7 +279,6 @@ private final class ControlledLifecycleProvider: AppLifecycleProvider {
   func releaseAll() {
     self.permissions.releaseAll()
     self.tracking.releaseAll()
-    self.redirects.releaseAll()
     self.config.releaseAll()
     self.registrations.releaseAll()
     self.recommendationsGate.releaseAll()

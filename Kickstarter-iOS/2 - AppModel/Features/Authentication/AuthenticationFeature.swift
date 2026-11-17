@@ -93,6 +93,18 @@ public final class AuthenticationFeature {
     }
   }
 
+  private struct Session: Equatable {
+    let userID: Int?
+    let generation: Int
+  }
+  private struct Pending<Value: Sendable> {
+    let id: UUID
+    let session: Session
+    let task: Task<Value, Error>
+  }
+  private let resolveRedirect: (URL) async throws -> URL?
+  private var redirects: [UUID: (url: URL, request: Pending<URL?>)] = [:]
+  private var redirectVersions: [UUID: UUID] = [:]
   private let session: SessionFeature
   private let makeProvider: () -> any AuthenticationProvider
   private let trackOAuthLogin: @MainActor () -> Void
@@ -118,12 +130,61 @@ public final class AuthenticationFeature {
     trackOAuthLogin: @escaping @MainActor () -> Void = {
       AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
     },
+    resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
     appleAppID: @escaping @MainActor () -> String = { AppEnvironment.current.apiService.appId }
   ) {
+    self.resolveRedirect = resolveRedirect
     self.session = sessionFeature
     self.makeProvider = makeProvider
     self.trackOAuthLogin = trackOAuthLogin
     self.appleAppID = appleAppID
+  }
+
+  /// One replaceable email-link read per navigation route. URL is Sendable;
+  /// the session and operation identity are checked again after every waiter resumes.
+  public func firstRedirect(_ url: URL, route: UUID) async throws -> URL? {
+    try Task.checkCancellation()
+    let session = Session(userID: self.session.currentUser?.id, generation: self.session.generation)
+    let pending: Pending<URL?>
+    if let current = self.redirects[route], current.url == url, current.request.session == session {
+      pending = current.request
+    } else {
+      self.releaseEmailRedirect(route: route)
+      let id = UUID()
+      let task = Task { [self] in
+        defer {
+          if self.redirects[route]?.request.id == id { self.redirects[route] = nil }
+        }
+        try self.requireCurrentRedirectSession(session)
+        let value = try await self.resolveRedirect(url)
+        try self.requireCurrentRedirectSession(session)
+        guard self.redirectVersions[route] == id else { throw CancellationError() }
+        return value
+      }
+      pending = Pending(id: id, session: session, task: task)
+      self.redirects[route] = (url, pending)
+      self.redirectVersions[route] = id
+    }
+    let value = try await pending.task.value
+    try self.requireCurrentRedirectSession(session)
+    guard self.redirectVersions[route] == pending.id else { throw CancellationError() }
+    return value
+  }
+
+  func releaseEmailRedirect(route: UUID) {
+    self.redirects.removeValue(forKey: route)?.request.task.cancel()
+    self.redirectVersions[route] = nil
+  }
+
+  func resetEmailRedirects() {
+    for route in Array(self.redirectVersions.keys) { self.releaseEmailRedirect(route: route) }
+  }
+
+  private func requireCurrentRedirectSession(_ session: Session) throws {
+    try Task.checkCancellation()
+    guard self.session.isCurrent(userID: session.userID, generation: session.generation) else {
+      throw CancellationError()
+    }
   }
 
   public var signInWithAppleAppID: String { self.appleAppID() }
