@@ -320,9 +320,18 @@ public final class AppModel {
       ),
       messagingFeature: messagingFeature,
       sessionFeature: sessionFeature,
-      authenticationFeature: AuthenticationFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncAuthenticationProvider(service: AppEnvironment.current.apiService)
-      }),
+      authenticationFeature: AuthenticationFeature(
+        sessionFeature: sessionFeature,
+        platform: .init(
+          webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
+          appleAppID: { AppEnvironment.current.apiService.appId },
+          trackLoginPageViewed: { AppEnvironment.current.ksrAnalytics.trackLoginPageViewed() },
+          trackLoginSubmitButtonClicked: {
+            AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
+          }
+        ),
+        makeProvider: { AsyncAuthenticationProvider(service: AppEnvironment.current.apiService) }
+      ),
       settingsFeature: settingsFeature,
       activityFeature: activityFeature,
       profileFeature: profileFeature,

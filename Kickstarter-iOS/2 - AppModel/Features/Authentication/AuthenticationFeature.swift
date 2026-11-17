@@ -55,7 +55,26 @@ public struct AsyncAuthenticationProvider: AuthenticationProvider {
 /// switch-to-latest interaction. Credentials exist only for the attempt lifetime.
 @MainActor
 public final class AuthenticationFeature {
-  public var webBaseURL: URL { AppEnvironment.current.apiService.serverConfig.webBaseUrl }
+  public struct Platform {
+    let webBaseURL: @MainActor () -> URL
+    let appleAppID: @MainActor () -> String
+    let trackLoginPageViewed: @MainActor () -> Void
+    let trackLoginSubmitButtonClicked: @MainActor () -> Void
+
+    public init(
+      webBaseURL: @escaping @MainActor () -> URL,
+      appleAppID: @escaping @MainActor () -> String,
+      trackLoginPageViewed: @escaping @MainActor () -> Void,
+      trackLoginSubmitButtonClicked: @escaping @MainActor () -> Void
+    ) {
+      self.webBaseURL = webBaseURL
+      self.appleAppID = appleAppID
+      self.trackLoginPageViewed = trackLoginPageViewed
+      self.trackLoginSubmitButtonClicked = trackLoginSubmitButtonClicked
+    }
+  }
+
+  public var webBaseURL: URL { self.platform.webBaseURL() }
   public func helpType(for url: URL) -> HelpType? {
     HelpType.allCases.first { url.absoluteString == $0.url(withBaseUrl: self.webBaseURL)?.absoluteString }
   }
@@ -106,9 +125,8 @@ public final class AuthenticationFeature {
   private var redirects: [UUID: (url: URL, request: Pending<URL?>)] = [:]
   private var redirectVersions: [UUID: UUID] = [:]
   private let session: SessionFeature
+  private let platform: Platform
   private let makeProvider: () -> any AuthenticationProvider
-  private let trackOAuthLogin: @MainActor () -> Void
-  private let appleAppID: @MainActor () -> String
   // The legacy screen allows resend and verification concurrently. A resend
   // must not supersede a submitted code; replacements are scoped per operation.
   private var current: [Operation: Attempt] = [:]
@@ -126,18 +144,14 @@ public final class AuthenticationFeature {
 
   public init(
     sessionFeature: SessionFeature,
+    platform: Platform,
     makeProvider: @escaping () -> any AuthenticationProvider,
-    trackOAuthLogin: @escaping @MainActor () -> Void = {
-      AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
-    },
-    resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
-    appleAppID: @escaping @MainActor () -> String = { AppEnvironment.current.apiService.appId }
+    resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) }
   ) {
     self.resolveRedirect = resolveRedirect
     self.session = sessionFeature
+    self.platform = platform
     self.makeProvider = makeProvider
-    self.trackOAuthLogin = trackOAuthLogin
-    self.appleAppID = appleAppID
   }
 
   func makeLoginSignup(intent: LoginIntent) -> LoginSignupUseCase {
@@ -191,7 +205,15 @@ public final class AuthenticationFeature {
     }
   }
 
-  public var signInWithAppleAppID: String { self.appleAppID() }
+  public var signInWithAppleAppID: String { self.platform.appleAppID() }
+
+  public func loginPageViewed() {
+    self.platform.trackLoginPageViewed()
+  }
+
+  public func loginSubmitButtonClicked() {
+    self.platform.trackLoginSubmitButtonClicked()
+  }
 
   public func authenticate(
     _ credentials: Credentials,
@@ -293,7 +315,7 @@ public final class AuthenticationFeature {
         if attempt.operation == .login {
           // Preserve OAuth's pre-login analytics identity, exactly once for
           // shared callers and only after a complete, current result.
-          if case .oauth = attempt.credentials { self.trackOAuthLogin() }
+          if case .oauth = attempt.credentials { self.loginSubmitButtonClicked() }
           try self.session.establishSession(
             envelope, userID: attempt.userID, generation: attempt.generation
           )

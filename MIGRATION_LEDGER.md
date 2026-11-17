@@ -4654,3 +4654,36 @@ and AppModel. Both known composed Statsig convenience closures are now removed; 
 wider global/session ownership audit remains. Keychain bootstrap remains deliberately
 independent of AppModel. This is not full CFA compliance. Swift packages, target
 identifiers and existing history are unchanged. No push.
+
+### Authentication receives platform dependencies from AppModel — 17 November 2026
+
+Author: Matthew Thomas.
+
+AuthenticationFeature now receives its live web base URL, Sign in with Apple app ID,
+login page-view transport and login-submit transport through one explicit Platform
+composed by AppModel. LoginViewModel reports page and submit intent through the
+Feature; neither type reads AppEnvironment. OAuth retains the same submit event after
+a complete current result and before its one session commit. URL matching, redirect
+ownership, password reset, two-factor and session-generation behavior are unchanged.
+
+A named Feature test proves injected URLs, app ID and both analytics transports.
+Test-target convenience composition preserves compact legacy test setup without a
+production fallback. The CFA gate rejects direct AppEnvironment access in
+AuthenticationFeature and LoginViewModel.
+
+Focused validation passed 43 Authentication Feature, Login ViewModel and OAuth tests.
+The bounded authentication, AppModel and checkout selection passed 199 tests. The
+first presentation invocation used a nonexistent scheme and ran nothing. A corrected
+selection compiled the presentation target and passed 115 routing/Apple Pay tests,
+then encountered the existing reference-device fatal guard in Login and Login Tout
+snapshot suites. The applicable nonvisual rerun passed the same 115 tests with zero
+failures and skips. Evidence:
+`/private/tmp/kickstarter-auth-platform-focused.xcresult`,
+`/private/tmp/kickstarter-auth-platform-bounded.xcresult` and
+`/private/tmp/kickstarter-auth-platform-presentation-applicable.xcresult`.
+The guarded visual attempt is
+`/private/tmp/kickstarter-auth-platform-presentation-2.xcresult`; no snapshot result
+is claimed.
+
+The wider global/session ownership audit remains. This is not full CFA compliance.
+Swift packages, target identifiers and existing history are unchanged. No push.

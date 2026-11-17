@@ -35,7 +35,7 @@ public final class LoginViewModel {
   }
   func viewDidLoad() {
     self.onEmailFirstResponder?()
-    AppEnvironment.current.ksrAnalytics.trackLoginPageViewed()
+    self.authenticationFeature.loginPageViewed()
   }
   func emailChanged(_ email: String?) { guard let email else { return }; self.email = email; self.publishValidity() }
   func passwordChanged(_ password: String?) { guard let password else { return }; self.password = password; self.publishValidity() }
@@ -47,7 +47,7 @@ public final class LoginViewModel {
   func passwordTextFieldDoneEditing() { self.submit(); self.onDismissKeyboard?() }
   func loginButtonPressed() { self.submit() }
   private func submit() {
-    AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
+    self.authenticationFeature.loginSubmitButtonClicked()
     guard let email = self.email, let password = self.password else { return }
     self.loginTask?.cancel()
     let version = UUID()

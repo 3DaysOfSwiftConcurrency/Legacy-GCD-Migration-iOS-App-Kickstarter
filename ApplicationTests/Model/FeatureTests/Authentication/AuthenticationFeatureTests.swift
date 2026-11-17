@@ -5,6 +5,30 @@ import XCTest
 
 @MainActor
 final class AuthenticationFeatureTests: XCTestCase {
+  func testPlatformOwnsURLsAppleAppIDAndLoginAnalytics() throws {
+    let webBaseURL = try XCTUnwrap(URL(string: "https://injected.example.invalid"))
+    var events: [String] = []
+    let feature = AuthenticationFeature(
+      sessionFeature: SessionFeature(makeProvider: {
+        AsyncSessionProvider(service: MockService())
+      }),
+      platform: .init(
+        webBaseURL: { webBaseURL },
+        appleAppID: { "injected-app-id" },
+        trackLoginPageViewed: { events.append("page") },
+        trackLoginSubmitButtonClicked: { events.append("submit") }
+      ),
+      makeProvider: { AsyncAuthenticationProvider(service: MockService()) }
+    )
+
+    feature.loginPageViewed()
+    feature.loginSubmitButtonClicked()
+
+    XCTAssertEqual(feature.webBaseURL, webBaseURL)
+    XCTAssertEqual(feature.signInWithAppleAppID, "injected-app-id")
+    XCTAssertEqual(events, ["page", "submit"])
+  }
+
   func testRedirectSharesPendingURL() async throws {
     let route = UUID()
     let gate = AccountRequestGate<URL?>()

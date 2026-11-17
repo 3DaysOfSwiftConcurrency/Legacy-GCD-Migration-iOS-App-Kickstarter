@@ -59,6 +59,10 @@ Swift packages are excluded.
   effective policy from Settings. The generic helper remains for unmigrated callers
   and bootstrap keychain reads remain independent of AppModel; do not route bootstrap
   decisions through SettingsFeature.
+- AuthenticationFeature now receives web URL, Sign in with Apple app ID and login
+  analytics through an explicit platform composed by AppModel. LoginViewModel reports
+  page and submit intent through that Feature instead of reading AppEnvironment.
+  OAuth keeps its existing successful-login tracking point before session commit.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

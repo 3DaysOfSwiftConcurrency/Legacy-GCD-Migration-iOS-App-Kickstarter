@@ -140,6 +140,26 @@ does not pass a global rich-text closure.
 - The independent instant-pledge experiment remains a separate request-loading input;
   moving the rich-text setting does not change its enrollment or fast-loading policy.
 
+## Authentication platform ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+AuthenticationFeature owns the application-facing authentication capability while
+AppModel composes its platform values and analytics transports. Authentication and
+LoginViewModel do not read AppEnvironment directly.
+
+- The web base URL remains live and supplies the same help-link matching and Facebook
+  confirmation destinations. The Sign in with Apple app ID remains the current API
+  service value when credentials are constructed.
+- Login page-view tracking still occurs when LoginViewModel loads. Email submit
+  tracking still occurs before validating stored form values, preserving keyboard and
+  button behavior. Both intents now pass through AuthenticationFeature.
+- OAuth submit tracking remains after a complete current result and immediately before
+  the single session commit. Shared OAuth callers produce one tracking event, and an
+  obsolete or failed result produces none.
+- Moving these dependencies does not change redirect ownership, login/resend overlap,
+  password-reset behavior, two-factor presentation or session-generation checks.
+
 Final validation passed 144 focused LibraryTests, the separate Environment
 initialization test, 146 bounded PresentationTests and 14 signed Environment
 persistence tests on iPhone 17 Pro Max, iOS 26.2, with no failures/skips. Hardware network transitions and banner

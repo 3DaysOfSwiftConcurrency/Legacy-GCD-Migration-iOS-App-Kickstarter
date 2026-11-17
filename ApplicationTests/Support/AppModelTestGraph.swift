@@ -216,6 +216,36 @@ extension ProjectDetailsFeature {
   }
 }
 
+extension AuthenticationFeature {
+  convenience init(
+    sessionFeature: SessionFeature,
+    makeProvider: @escaping () -> any AuthenticationProvider,
+    trackOAuthLogin: @escaping @MainActor () -> Void = {
+      AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
+    },
+    resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
+    appleAppID: @escaping @MainActor () -> String = { AppEnvironment.current.apiService.appId },
+    webBaseURL: @escaping @MainActor () -> URL = {
+      AppEnvironment.current.apiService.serverConfig.webBaseUrl
+    },
+    trackLoginPageViewed: @escaping @MainActor () -> Void = {
+      AppEnvironment.current.ksrAnalytics.trackLoginPageViewed()
+    }
+  ) {
+    self.init(
+      sessionFeature: sessionFeature,
+      platform: .init(
+        webBaseURL: webBaseURL,
+        appleAppID: appleAppID,
+        trackLoginPageViewed: trackLoginPageViewed,
+        trackLoginSubmitButtonClicked: trackOAuthLogin
+      ),
+      makeProvider: makeProvider,
+      resolveRedirect: resolveRedirect
+    )
+  }
+}
+
 @MainActor
 private struct UnusedDeepLinkSearchProvider: SearchProjectsProvider {
   func fetchPage(parameters: DiscoveryParams, cursor: String?) async throws -> SearchPageResponse {
