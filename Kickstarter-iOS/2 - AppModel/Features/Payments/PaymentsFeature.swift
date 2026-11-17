@@ -35,7 +35,7 @@ public struct AsyncPaymentsProvider: PaymentsProvider {
 /// There is no automatic retry or claim of server-side idempotency.
 @MainActor
 public final class PaymentsFeature {
-  public let sessionFeature: SessionFeature
+  private let sessionFeature: SessionFeature
   private let makeProvider: () -> any PaymentsProvider
   private let trackThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
 
@@ -49,7 +49,7 @@ public final class PaymentsFeature {
     self.trackThirdPartyEvent = trackThirdPartyEvent
   }
 
-  func checkoutBillingEmail(for session: SessionIdentity) -> String? {
+  func billingEmail(for session: SessionIdentity) -> String? {
     guard self.sessionIdentity == session else { return nil }
     return self.sessionFeature.currentUserEmail
   }
@@ -68,6 +68,10 @@ public final class PaymentsFeature {
       appData: .init(advertiserTrackingEnabled: true, applicationTrackingEnabled: true, extinfo: platformInfo),
       clientMutationId: ""
     ))
+  }
+
+  func setupForPaymentSettings() async throws -> ClientSecretEnvelope {
+    try await self.setup(projectID: nil, context: .profileSettings)
   }
 
   func setupForPledge(projectID: String, context: PledgeViewContext) async throws -> ClientSecretEnvelope {

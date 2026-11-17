@@ -3930,3 +3930,24 @@ The iPhone 17 Pro Max simulator on iOS 26.2 passed 68 focused tests,
 99 bounded app composition, payment settings, and pledge regressions,
 and 12 PaymentSheet operation tests. Live Stripe behavior and visual
 parity remain unverified.
+
+### Payment Settings composition and session ownership — Matthew Thomas
+
+Payment Settings now requests stored cards and profile setup intents
+from PaymentsFeature. Its controller supplies response timing and the
+Stripe publishable key. The native PaymentSheet receives the Payments
+session identity that requested setup, and both the controller and
+ViewModel check that identity before admitting a card write. Delete
+operations use the session that loaded the displayed cards.
+
+The last StripeIntentService caller migrated, so the adapter and its
+test double were removed. Payments keeps SessionFeature private.
+An isolated provider records settings, pledge, and post-campaign
+requests in tests. The new Settings regression verifies that session
+replacement rejects both a completed sheet callback and deletion of
+a previously displayed card.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 34 focused tests,
+134 bounded checkout regressions, and 12 PaymentSheet operation tests.
+Live Stripe and visual parity remain unverified. Stored-card checkout
+still owns card eligibility and default selection in its ViewModel.

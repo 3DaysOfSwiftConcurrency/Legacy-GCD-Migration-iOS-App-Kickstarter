@@ -80,6 +80,12 @@ reject_matches 'Pledge keeps the session collaborator private to its feature.' \
 reject_matches 'Stored-card checkout uses Payments without environment or session access.' \
   'AppEnvironment[.]current|AppModel[.]shared|StripeIntentService|[.]sessionFeature' \
   "$app_view/Views/PledgePaymentMethods/Controller/PledgePaymentMethodsViewModel.swift"
+reject_matches 'Payment Settings uses Payments without environment or session access.' \
+  'AppModel[.]shared|AppEnvironment[.]current|StripeIntentService|[.]sessionFeature' \
+  "$app_view/Views/PaymentMethods/Controller/PaymentMethodSettingsViewModel.swift"
+reject_matches 'Payment Settings uses the session that requested the PaymentSheet.' \
+  'AppModel[.]shared[.]sessionFeature' \
+  "$app_view/Views/PaymentMethods/Controller/PaymentMethodSettingsViewController.swift"
 reject_matches 'The checkout PaymentSheet uses the configured Payments session.' \
   'AppModel[.]shared[.]sessionFeature' \
   "$app_view/Views/PledgePaymentMethods/Controller/PledgePaymentMethodsViewController.swift"

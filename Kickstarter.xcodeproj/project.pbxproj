@@ -8284,7 +8284,6 @@
 				"43A8361D36E12BB9CF819F46",
 				"0D4DD2B8392AB43D756EE1FA",
 				"8B285E1216748B89C7C272EA",
-				"7E41DB4C3DEFB6CA2D3F0875",
 				"DD5D90BD6CCFBE69467255B1",
 				"A6BC615E9DCD60DAA5BF4A8A",
 				"43F26E85CBDC9134BCD39686",
@@ -9784,13 +9783,6 @@
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "text";
 			"sourceTree" = "<group>";
-		};
-		"3A4D227605735A10A87D64EC" = {
-			"name" = "StripeIntentService.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/Payments/StripeIntentService.swift";
-			"isa" = "PBXFileReference";
-			"sourceTree" = "SOURCE_ROOT";
-			"lastKnownFileType" = "sourcecode.swift";
 		};
 		"B8E54FACCC0107DAD0D3BF4F" = {
 			"isa" = "PBXBuildFile";
@@ -14000,7 +13992,7 @@
 			"sourceTree" = "<group>";
 		};
 		"D98DBC0005A491CB3690D683" = {
-			"path" = "ApplicationTests/Support/MockStripeIntentService.swift";
+			"path" = "ApplicationTests/Support/CheckoutPaymentsProvider.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -16013,10 +16005,6 @@
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
-		};
-		"7E41DB4C3DEFB6CA2D3F0875" = {
-			"isa" = "PBXBuildFile";
-			"fileRef" = "3A4D227605735A10A87D64EC";
 		};
 		"95DB64845109DA699A366BAA" = {
 			"name" = "PostCampaignPledgeRewardsSummaryHeaderCell.swift";
@@ -21023,7 +21011,6 @@
 				"C374749FD04EA08C49438BBB",
 				"717CE1DAD330BA48623425F8",
 				"8C1E75391FE1CD75791DF304",
-				"3A4D227605735A10A87D64EC",
 				"A9726F96D31576C631644710",
 			);
 		};

@@ -12,13 +12,28 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
   private func advancePayments(by _: DispatchTimeInterval = .seconds(0)) async {
     await self.vm.waitForPending()
-    await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForOperations()
   }
   private func runPayments() async { await self.advancePayments() }
 
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private var vm = PaymentMethodSettingsViewModel(stripeIntentService: MockStripeIntentService())
-  private let mockStripeIntentService = MockStripeIntentService()
+  private var vm: PaymentMethodSettingsViewModel!
+  private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+  private let paymentsProvider = CheckoutPaymentsProvider()
+  private lazy var paymentsFeature = PaymentsFeature(
+    sessionFeature: self.sessionFeature, makeProvider: { [paymentsProvider] in paymentsProvider }
+  )
+
+  private func makeViewModel(
+    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { _ in try Task.checkCancellation() }
+  ) -> PaymentMethodSettingsViewModel {
+    PaymentMethodSettingsViewModel(
+      paymentsFeature: self.paymentsFeature,
+      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
+      sleep: sleep
+    )
+  }
 
   private let userTemplate = GraphUser.template |> \.storedCards .~ UserCreditCards.template
   private let cancelLoadingState = PaymentRecorder<Void>()
@@ -35,7 +50,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
   internal override func setUp() async throws {
     try await super.setUp()
-    self.vm = PaymentMethodSettingsViewModel(stripeIntentService: self.mockStripeIntentService, sleep: { _ in try Task.checkCancellation() })
+    self.vm = self.makeViewModel()
     self.vm.onEvent = { [weak self] event in
       guard let self else { return }
       switch event {
@@ -43,7 +58,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       case let .editButtonIsEnabled(value): self.editButtonIsEnabled.record(value)
       case let .editButtonTitle(value): self.editButtonTitle.record(value)
       case let .errorLoadingPaymentMethodsOrSetupIntent(value): self.errorLoadingPaymentMethodsOrSetupIntent.record(value)
-      case let .goToPaymentSheet(value): self.goToPaymentSheet.record(value)
+      case let .goToPaymentSheet(value, _): self.goToPaymentSheet.record(value)
       case let .paymentMethods(value): self.paymentMethods.record(value)
       case let .presentBanner(value): self.presentBanner.record(value)
       case .reloadData: self.reloadData.record(())
@@ -56,7 +71,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
   func testSessionChangeDuringPresentationDelaySuppressesOldCards() async {
     let gate = PaymentDelayGate()
-    let vm = PaymentMethodSettingsViewModel(stripeIntentService: self.mockStripeIntentService, sleep: { _ in
+    let vm = self.makeViewModel(sleep: { _ in
       try await gate.wait()
     })
     var delivered = 0
@@ -65,10 +80,40 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     await withEnvironment(apiService: MockService(fetchGraphUserResult: .success(response))) {
       vm.viewDidLoad()
       await gate.waitUntilBlocked()
-      self.mockStripeIntentService.paymentsFeature.sessionFeature.sessionChanged()
+      self.sessionFeature.sessionChanged()
       gate.resume()
       await vm.waitForPending()
       XCTAssertEqual(delivered, 0)
+    }
+  }
+
+  func testSessionReplacementRejectsOldPaymentSheetAndCardDeletion() async throws {
+    let response = UserEnvelope<GraphUser>(me: self.userTemplate)
+    let card = try XCTUnwrap(self.userTemplate.storedCards.storedCards.first)
+    let service = MockService(
+      createStripeSetupIntentResult: .success(ClientSecretEnvelope(clientSecret: "fixture")),
+      fetchGraphUserResult: .success(response)
+    )
+    let model = self.makeViewModel()
+    var sheet: (secret: String, session: PaymentsFeature.SessionIdentity)?
+    model.onEvent = { event in
+      if case let .goToPaymentSheet(data, session) = event { sheet = (data.clientSecret, session) }
+    }
+    await withEnvironment(apiService: service, currentUser: .template) {
+      model.viewDidLoad()
+      await model.waitForPending()
+      model.paymentMethodsFooterViewDidTapAddNewCardButton()
+      await model.waitForPending()
+      guard let sheet else { XCTFail("Expected a PaymentSheet setup"); return }
+
+      self.sessionFeature.sessionChanged()
+      model.paymentSheetDidAdd(setupIntent: sheet.secret, session: sheet.session)
+      model.didDelete(card, visibleCellCount: 0)
+      await model.waitForPending()
+      await self.paymentsFeature.waitForOperations()
+
+      XCTAssertEqual(self.paymentsProvider.storeRequests, 0)
+      XCTAssertEqual(self.paymentsProvider.removeRequests, 0)
     }
   }
 
@@ -84,7 +129,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.paymentMethods.assertValues([UserCreditCards.template.storedCards])
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -97,7 +142,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.setStripePublishableKey.assertDidEmitValue()
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -114,7 +159,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       self.errorLoadingPaymentMethodsOrSetupIntent
         .assertValue(ErrorEnvelope.couldNotParseJSON.localizedDescription)
       self.paymentMethods.assertDidNotEmitValue()
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -133,9 +178,9 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       self.errorLoadingPaymentMethodsOrSetupIntent
         .assertValue(ErrorEnvelope.couldNotParseJSON.localizedDescription)
 
-      XCTAssertEqual(self.mockStripeIntentService.setupIntentRequests, 1)
-      XCTAssertEqual(self.mockStripeIntentService.paymentIntentRequests, 0)
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
+      XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -160,7 +205,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       self.vm
         .paymentSheetDidAdd(
-          setupIntent: "seti_1LVlHO4VvJ2PtfhK43R6p7FI_secret_MEDiGbxfYVnHGsQy8v8TbZJTQhlNKLZ"
+          setupIntent: "fixture", session: self.paymentsFeature.sessionIdentity
         )
 
       self.paymentMethods.assertValueCount(0)
@@ -170,7 +215,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       self.paymentMethods.assertValueCount(1)
       self.errorLoadingPaymentMethodsOrSetupIntent.assertDidNotEmitValue()
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -196,7 +241,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.cancelLoadingState.assertDidEmitValue()
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -204,7 +249,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     self.editButtonIsEnabled.assertDidNotEmitValue()
     self.vm.viewDidLoad()
     self.editButtonIsEnabled.assertValue(false)
-    await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForOperations()
   }
 
   func testEditButtonIsEnabledAndTitle_HasPaymentMethods() async {
@@ -230,7 +275,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       self.vm.editButtonTapped()
       self.editButtonIsEnabled.assertValues([false, true])
       self.editButtonTitle.assertValues(["Edit", "Done", "Edit"])
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -247,7 +292,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.editButtonIsEnabled.assertValues([false])
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -281,7 +326,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.editButtonIsEnabled.assertValues([false, true])
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -315,7 +360,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.editButtonIsEnabled.assertValues([false, true, false])
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -334,9 +379,9 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       self.goToPaymentSheet.assertValueCount(1)
 
-      XCTAssertEqual(self.mockStripeIntentService.setupIntentRequests, 1)
-      XCTAssertEqual(self.mockStripeIntentService.paymentIntentRequests, 0)
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
+      XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -363,9 +408,9 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       self.tableViewIsEditing.assertValues([false, true, false])
 
-      XCTAssertEqual(self.mockStripeIntentService.setupIntentRequests, 1)
-      XCTAssertEqual(self.mockStripeIntentService.paymentIntentRequests, 0)
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
+      XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -375,7 +420,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     self.vm.addNewCardSucceeded(with: Strings.Got_it_your_changes_have_been_saved())
 
     self.presentBanner.assertValues([Strings.Got_it_your_changes_have_been_saved()])
-    await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForOperations()
   }
 
   func testDeletePaymentMethod() async {
@@ -414,7 +459,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
         [UserCreditCards.template.storedCards],
         "Emits once"
       )
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -455,7 +500,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
         [UserCreditCards.template.storedCards, UserCreditCards.template.storedCards],
         "Emits again to reload the tableview after an error occurred"
       )
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 
@@ -494,7 +539,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       self.tableViewIsEditing.assertValues([false, true], "Editing mode remains enabled")
       self.showAlert.assertValues([])
-    await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForOperations()
     }
 
     let response2 = UserEnvelope<GraphUser>(me: userTemplate)
@@ -537,7 +582,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
         ],
         "Cards are refreshed normally"
       )
-      await self.mockStripeIntentService.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForOperations()
     }
   }
 }

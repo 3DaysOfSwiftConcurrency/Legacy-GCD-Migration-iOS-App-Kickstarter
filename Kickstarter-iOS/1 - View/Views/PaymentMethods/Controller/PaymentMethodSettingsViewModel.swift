@@ -6,12 +6,14 @@ import StripePaymentSheet
 final class PaymentMethodSettingsViewModel {
   enum Event {
     case cancelAddNewCardLoadingState, editButtonIsEnabled(Bool), editButtonTitle(String)
-    case errorLoadingPaymentMethodsOrSetupIntent(String), goToPaymentSheet(PaymentSheetSetupData)
+    case errorLoadingPaymentMethodsOrSetupIntent(String), goToPaymentSheet(PaymentSheetSetupData, session: PaymentsFeature.SessionIdentity)
     case paymentMethods([UserCreditCards.CreditCard]), presentBanner(String), reloadData
     case setStripePublishableKey(String), showAlert(String), tableViewIsEditing(Bool)
   }
   var onEvent: ((Event) -> Void)?
-  let stripeIntentService: StripeIntentServiceType
+  private let paymentsFeature: PaymentsFeature
+  private let responseDelay: @MainActor () -> TimeInterval
+  private let stripePublishableKey: @MainActor () -> String
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var loadTask: Task<Void, Never>?
   private var deleteTask: Task<Void, Never>?
@@ -21,44 +23,46 @@ final class PaymentMethodSettingsViewModel {
   private var hasEditingState = false
   private var enabled: Bool?
   private var shouldCancel = false
-  private var latestCards: [UserCreditCards.CreditCard]?
+  private var latestCards: (cards: [UserCreditCards.CreditCard], session: PaymentsFeature.SessionIdentity)?
 
-  init(stripeIntentService: StripeIntentServiceType,
-       sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-         if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-       }) {
-    self.stripeIntentService = stripeIntentService
+  init(
+    paymentsFeature: PaymentsFeature,
+    responseDelay: @escaping @MainActor () -> TimeInterval,
+    stripePublishableKey: @escaping @MainActor () -> String,
+    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
+      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+    }
+  ) {
+    self.paymentsFeature = paymentsFeature
+    self.responseDelay = responseDelay
+    self.stripePublishableKey = stripePublishableKey
     self.sleep = sleep
   }
+
   deinit {
-    self.loadTask?.cancel(); self.deleteTask?.cancel(); self.storeTask?.cancel(); self.setupTask?.cancel()
+    self.loadTask?.cancel()
+    self.deleteTask?.cancel()
+    self.storeTask?.cancel()
+    self.setupTask?.cancel()
   }
-  private struct PresentationSession {
-    let userID: Int?
-    let generation: Int
+
+  func isCurrent(_ identity: PaymentsFeature.SessionIdentity) -> Bool {
+    self.paymentsFeature.sessionIdentity == identity
   }
-  private var presentationSession: PresentationSession {
-    let session = self.stripeIntentService.paymentsFeature.sessionFeature
-    return PresentationSession(userID: session.currentUser?.id, generation: session.generation)
-  }
-  private func isCurrent(_ identity: PresentationSession) -> Bool {
-    self.stripeIntentService.paymentsFeature.sessionFeature.isCurrent(
-      userID: identity.userID, generation: identity.generation
-    )
-  }
+
   func viewDidLoad() {
     self.onEvent?(.reloadData)
     self.setEnabled(false)
-    self.onEvent?(.setStripePublishableKey(AppEnvironment.current.environmentType.stripePublishableKey))
+    self.onEvent?(.setStripePublishableKey(self.stripePublishableKey()))
     self.loadCards()
   }
   func failedToAddNewCard() { self.loadCards() }
   private func loadCards() {
     self.loadTask?.cancel()
-    let feature = self.stripeIntentService.paymentsFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let feature = self.paymentsFeature
+    let delay = self.responseDelay()
     let sleep = self.sleep
-    let identity = self.presentationSession
+    let identity = feature.sessionIdentity
     self.loadTask = Task { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
@@ -66,7 +70,7 @@ final class PaymentMethodSettingsViewModel {
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity) else { return }
-        self.latestCards = cards
+        self.latestCards = (cards, identity)
         self.onEvent?(.paymentMethods(cards))
         self.setEnabled(!cards.isEmpty)
       } catch {
@@ -77,12 +81,13 @@ final class PaymentMethodSettingsViewModel {
     }
   }
   func didDelete(_ card: UserCreditCards.CreditCard, visibleCellCount: Int) {
+    let identity = self.paymentsFeature.sessionIdentity
+    guard self.latestCards?.session == identity else { return }
     self.setEnabled(visibleCellCount > 0)
     self.deleteTask?.cancel()
-    let feature = self.stripeIntentService.paymentsFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let feature = self.paymentsFeature
+    let delay = self.responseDelay()
     let sleep = self.sleep
-    let identity = self.presentationSession
     self.deleteTask = Task { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
@@ -90,13 +95,16 @@ final class PaymentMethodSettingsViewModel {
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity) else { return }
-        self.latestCards = cards
+        self.latestCards = (cards, identity)
         self.setEnabled(!cards.isEmpty)
       } catch {
         do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.onEvent?(.showAlert(Strings.Something_went_wrong_and_we_were_unable_to_remove_your_payment_method_please_try_again()))
-        if let cards = self.latestCards { self.onEvent?(.paymentMethods(cards)); self.setEnabled(!cards.isEmpty) }
+        if let snapshot = self.latestCards, snapshot.session == identity {
+          self.onEvent?(.paymentMethods(snapshot.cards))
+          self.setEnabled(!snapshot.cards.isEmpty)
+        }
       }
     }
   }
@@ -107,22 +115,24 @@ final class PaymentMethodSettingsViewModel {
   func paymentMethodsFooterViewDidTapAddNewCardButton() {
     self.shouldCancel = false
     self.setupTask?.cancel()
-    let service = self.stripeIntentService
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let feature = self.paymentsFeature
+    let delay = self.responseDelay()
     let sleep = self.sleep
-    let identity = self.presentationSession
+    let identity = feature.sessionIdentity
     self.setupTask = Task { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        let envelope = try await service.setupIntent(for: nil, context: .profileSettings)
+        let envelope = try await feature.setupForPaymentSettings()
         try await sleep(1 + delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity), !self.shouldCancel else { return }
         var configuration = PaymentSheet.Configuration()
         configuration.merchantDisplayName = Strings.general_accessibility_kickstarter()
         configuration.allowsDelayedPaymentMethods = true
-        configuration.defaultBillingDetails.email = service.paymentsFeature.sessionFeature.currentUserEmail
-        self.onEvent?(.goToPaymentSheet(PaymentSheetSetupData(clientSecret: envelope.clientSecret, configuration: configuration)))
+        configuration.defaultBillingDetails.email = feature.billingEmail(for: identity)
+        self.onEvent?(.goToPaymentSheet(
+          (clientSecret: envelope.clientSecret, configuration: configuration), session: identity
+        ))
         self.setEditing(false)
       } catch {
         do { try await sleep(delay) } catch { return }
@@ -131,12 +141,12 @@ final class PaymentMethodSettingsViewModel {
       }
     }
   }
-  func paymentSheetDidAdd(setupIntent: String) {
+  func paymentSheetDidAdd(setupIntent: String, session identity: PaymentsFeature.SessionIdentity) {
+    guard self.isCurrent(identity) else { return }
     self.storeTask?.cancel()
-    let feature = self.stripeIntentService.paymentsFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let feature = self.paymentsFeature
+    let delay = self.responseDelay()
     let sleep = self.sleep
-    let identity = self.presentationSession
     self.storeTask = Task { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {

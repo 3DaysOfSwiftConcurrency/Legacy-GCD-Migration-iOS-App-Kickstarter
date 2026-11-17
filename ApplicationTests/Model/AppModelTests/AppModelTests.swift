@@ -334,7 +334,6 @@ final class AppModelTests: XCTestCase {
     XCTAssertFalse(first.friendsFeature === second.friendsFeature)
     XCTAssertFalse(first.pledgedProjectsFeature === second.pledgedProjectsFeature)
     XCTAssertFalse(first.pledgeFeature === second.pledgeFeature)
-    XCTAssertTrue(first.paymentsFeature.sessionFeature === first.sessionFeature)
     XCTAssertFalse(first.paymentsFeature === second.paymentsFeature)
     XCTAssertTrue(first.messagingFeature.sessionFeature === first.sessionFeature)
     XCTAssertFalse(first.messagingFeature === second.messagingFeature)
@@ -363,6 +362,7 @@ final class AppModelTests: XCTestCase {
     XCTAssertNil(first.searchFeature.parameters)
     XCTAssertNil(second.searchFeature.parameters)
     let secondPledgeSession = second.pledgeFeature.sessionIdentity
+    let secondPaymentsSession = second.paymentsFeature.sessionIdentity
     first.sessionChanged()
     _ = await first.applicationConfigurationService.requestConfiguration().result
     XCTAssertEqual(first.sessionFeature.generation, 1)
@@ -370,6 +370,9 @@ final class AppModelTests: XCTestCase {
     XCTAssertEqual(first.pledgeFeature.sessionIdentity.generation, first.sessionFeature.generation)
     XCTAssertNotEqual(first.pledgeFeature.sessionIdentity, secondPledgeSession)
     XCTAssertEqual(second.pledgeFeature.sessionIdentity, secondPledgeSession)
+    XCTAssertEqual(first.paymentsFeature.sessionIdentity.generation, first.sessionFeature.generation)
+    XCTAssertNotEqual(first.paymentsFeature.sessionIdentity, secondPaymentsSession)
+    XCTAssertEqual(second.paymentsFeature.sessionIdentity, secondPaymentsSession)
   }
 }
 

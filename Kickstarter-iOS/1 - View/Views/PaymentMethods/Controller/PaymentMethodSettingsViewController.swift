@@ -15,7 +15,15 @@ protocol PaymentMethodSettingsViewControllerDelegate: AnyObject {
 internal final class PaymentMethodSettingsViewController: UIViewController,
   MessageBannerViewControllerPresenting {
   private let dataSource = PaymentMethodsDataSource()
-  private let viewModel = PaymentMethodSettingsViewModel(stripeIntentService: StripeIntentService(paymentsFeature: AppModel.shared.paymentsFeature))
+  private lazy var viewModel = self.makeViewModel()
+
+  private func makeViewModel() -> PaymentMethodSettingsViewModel {
+    PaymentMethodSettingsViewModel(
+      paymentsFeature: AppModel.shared.paymentsFeature,
+      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
+    )
+  }
   private let paymentSheet = PaymentSheetOperation()
   private weak var cancellationDelegate: PaymentMethodSettingsViewControllerDelegate?
   @IBOutlet private var tableView: UITableView!
@@ -99,7 +107,7 @@ internal final class PaymentMethodSettingsViewController: UIViewController,
       case .cancelAddNewCardLoadingState: self.cancellationDelegate?.cancelLoadingPaymentMethodsViewController(self)
       case let .paymentMethods(cards): self.dataSource.load(creditCards: cards); self.tableView.reloadData()
       case .reloadData: self.tableView.reloadData()
-      case let .goToPaymentSheet(data): self.goToPaymentSheet(data: data)
+      case let .goToPaymentSheet(data, session): self.goToPaymentSheet(data: data, session: session)
       case let .errorLoadingPaymentMethodsOrSetupIntent(message): self.messageBannerViewController?.showBanner(with: .error, message: message)
       case let .presentBanner(message): self.messageBannerViewController?.showBanner(with: .success, message: message)
       case let .tableViewIsEditing(editing): self.tableView.setEditing(editing, animated: true)
@@ -120,20 +128,19 @@ internal final class PaymentMethodSettingsViewController: UIViewController,
 
   // MARK: - Private Helpers
 
-  private func goToPaymentSheet(data: PaymentSheetSetupData) {
-    let session = AppModel.shared.sessionFeature
-    let generation = session.generation
+  private func goToPaymentSheet(data: PaymentSheetSetupData, session: PaymentsFeature.SessionIdentity) {
     self.paymentSheet.start(
       clientSecret: data.clientSecret, client: StripePaymentSheetClient(data: data),
       presenter: self, retrievePaymentMethod: false,
       isCurrent: { [weak self] in
-        session.generation == generation && self?.navigationController?.topViewController === self
+        guard let self, self.viewModel.isCurrent(session) else { return false }
+        return self.navigationController?.topViewController === self
       },
       completed: { [weak self] result in
-        guard let self else { return }
+        guard let self, self.viewModel.isCurrent(session) else { return }
         self.viewModel.shouldCancelPaymentSheetAppearance(state: true)
         switch result {
-        case .completed: self.viewModel.paymentSheetDidAdd(setupIntent: data.clientSecret)
+        case .completed: self.viewModel.paymentSheetDidAdd(setupIntent: data.clientSecret, session: session)
         case .noSelection: break
         case .canceled: self.viewModel.failedToAddNewCard()
         case let .loadFailed(error):
