@@ -317,6 +317,25 @@ final class ProjectMediaFeatureTests: TestCase {
     XCTAssertFalse(feature.cached(project).personalization.isStarred ?? false)
   }
 
+  func testSavedProjectCacheIsIsolatedByFeatureAndSession() async throws {
+    let provider = ControlledMediaProvider()
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) },
+      currentUser: { .template }
+    )
+    let feature = ProjectMediaFeature(sessionFeature: session, makeProvider: { provider })
+    let other = ProjectMediaFeature(sessionFeature: session, makeProvider: { provider })
+    var project = Project.template
+    project.personalization.isStarred = false
+    let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
+    _ = try await feature.submitWatch(intent).value
+
+    XCTAssertEqual(feature.cached(project).personalization.isStarred, true)
+    XCTAssertEqual(other.cached(project).personalization.isStarred, false)
+    session.sessionChanged()
+    XCTAssertEqual(feature.cached(project).personalization.isStarred, false)
+  }
+
   func testReusedCellDiscardsDebouncedRequestAndItsOptimisticCache() async {
     let provider = ControlledMediaProvider()
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })

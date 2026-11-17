@@ -3383,6 +3383,12 @@ All 76 focused Project Media, Video Feed, Video and Watch tests passed after
 a simulator launch retry. All 66 Project Page and AppModel regression tests
 passed on the simulator.
 
+Project Media owns saved-project overrides and clears them on a session
+change. Watch controls and Video Feed still share the live feature. The CFA
+check rejects use of the global cache for this state. All 65 focused tests
+passed after a simulator launch retry, and 103 Project Page and Discovery
+card regression tests passed on the alternate iPhone 17 Pro Max simulator.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

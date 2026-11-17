@@ -221,6 +221,7 @@ public final class ProjectMediaFeature {
   }
   private var watchIntents: [WatchIdentity: (token: UUID, admitted: Bool)] = [:]
   private var watchSettlements: [UUID: Task<WatchProjectResponseEnvelope, Error>] = [:]
+  private let savedProjects = NSCache<NSNumber, NSNumber>()
   private var cacheIdentity: WatchIdentity?
 
   private func watchIdentity(_ projectID: String) -> WatchIdentity {
@@ -233,7 +234,7 @@ public final class ProjectMediaFeature {
   private func prepareCache() {
     let identity = self.watchIdentity("")
     if let previous = self.cacheIdentity, previous != identity {
-      AppEnvironment.current.cache[KSCache.ksr_projectSaved] = [Int: Bool]()
+      self.savedProjects.removeAllObjects()
       self.watchIntents.removeAll()
     }
     self.cacheIdentity = identity
@@ -241,16 +242,15 @@ public final class ProjectMediaFeature {
   public func cached(_ project: Project) -> Project {
     self.prepareCache()
     var project = project
-    if let cache = AppEnvironment.current.cache[KSCache.ksr_projectSaved] as? [Int: Bool],
-       let saved = cache[project.id] { project.personalization.isStarred = saved }
+    if let saved = self.savedProjects.object(forKey: NSNumber(value: project.id)) {
+      project.personalization.isStarred = saved.boolValue
+    }
     return project
   }
   private func cache(_ saved: Bool, for key: WatchIdentity) {
     guard self.isCurrent(key), let id = decompose(id: key.projectID) else { return }
     self.prepareCache()
-    var cache = AppEnvironment.current.cache[KSCache.ksr_projectSaved] as? [Int: Bool] ?? [:]
-    cache[id] = saved
-    AppEnvironment.current.cache[KSCache.ksr_projectSaved] = cache
+    self.savedProjects.setObject(NSNumber(value: saved), forKey: NSNumber(value: id))
   }
   public func claimSaveProjectTip(for project: Project) -> Bool {
     guard let environment = AppEnvironment.current else { return false }
@@ -388,10 +388,10 @@ public final class ProjectMediaFeature {
 
   public func reconcileSavedProjects(route: UUID) {
     self.prepareCache()
-    guard let feed = self.feeds[route],
-          let cache = AppEnvironment.current.cache[KSCache.ksr_projectSaved] as? [Int: Bool] else { return }
+    guard let feed = self.feeds[route] else { return }
     for index in feed.items.indices {
-      if let id = decompose(id: feed.items[index].projectId), let saved = cache[id] {
+      if let id = decompose(id: feed.items[index].projectId),
+         let saved = self.savedProjects.object(forKey: NSNumber(value: id))?.boolValue {
         let previous = feed.items[index].isSaved
         feed.items[index].isSaved = saved
         if previous != saved { feed.items[index].watchesCount += saved ? 1 : -1 }
