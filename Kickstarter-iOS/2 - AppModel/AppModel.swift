@@ -401,8 +401,7 @@ public final class AppModel {
 
   public static func live() -> AppModel {
     let searchProvider = AsyncSearchProjectsProvider()
-    let sessionFeature =
-      SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) })
+    let sessionFeature = SessionFeature.live()
     let activityFeature = ActivityFeature(
       sessionFeature: sessionFeature,
       makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }

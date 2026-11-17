@@ -5,6 +5,40 @@ import Foundation
 import KsApi
 import Prelude
 
+extension SessionFeature {
+  static func live() -> SessionFeature {
+    SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) })
+  }
+
+  public convenience init(
+    makeProvider: @escaping () -> any SessionProvider,
+    currentUser: @escaping () -> User? = { AppEnvironment.current.currentUser },
+    currentUserEmail: @escaping () -> String? = { AppEnvironment.current.currentUserEmail },
+    currentUserPPOSettings: @escaping () -> PPOUserSettings? = { AppEnvironment.current.currentUserPPOSettings },
+    updateUser: @escaping @MainActor (User) -> Void = { AppEnvironment.updateCurrentUser($0) },
+    login: @escaping @MainActor (AccessTokenEnvelope) -> Void = { AppEnvironment.login($0) },
+    updateSetup: @escaping (GraphUserSetup) -> Void = { setup in
+      guard let email = setup.email else { return }
+      AppEnvironment.replaceCurrentEnvironment(
+        currentUserEmail: email,
+        currentUserPPOSettings: PPOUserSettings(
+          hasAction: setup.ppoHasAction ?? false, backingActionCount: setup.backingActionCount ?? 0
+        ),
+        currentUserServerFeatures: setup.enabledFeatures
+      )
+    }
+  ) {
+    self.init(
+      makeProvider: makeProvider,
+      storage: Storage(
+        currentUser: currentUser, currentUserEmail: currentUserEmail,
+        currentUserPPOSettings: currentUserPPOSettings, updateUser: updateUser,
+        login: login, updateSetup: updateSetup
+      )
+    )
+  }
+}
+
 /**
  A global stack that captures the current state of global objects that the app wants access to.
  */

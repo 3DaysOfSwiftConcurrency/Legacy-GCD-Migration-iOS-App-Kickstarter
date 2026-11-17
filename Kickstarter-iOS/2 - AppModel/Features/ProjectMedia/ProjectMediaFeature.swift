@@ -415,9 +415,7 @@ public final class ProjectMediaFeature {
   ) {
     self.loadImage = loadImage ?? { try await ProjectMediaPreparation.loadImage(url: $0) }
     self.preparePlayback = preparePlayback ?? { try await ProjectMediaPreparation.load(url: $0, thumbnailURL: $1) }
-    self.sessionFeature = sessionFeature ?? SessionFeature(makeProvider: {
-      AsyncSessionProvider(service: AppEnvironment.current.apiService)
-    })
+    self.sessionFeature = sessionFeature ?? .live()
     self.makeProvider = makeProvider
   }
 

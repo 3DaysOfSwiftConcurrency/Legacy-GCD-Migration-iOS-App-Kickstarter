@@ -32,49 +32,31 @@ public final class SessionFeature {
     let readRevision: Int
   }
 
+  struct Storage {
+    let currentUser: () -> User?
+    let currentUserEmail: () -> String?
+    let currentUserPPOSettings: () -> PPOUserSettings?
+    let updateUser: @MainActor (User) -> Void
+    let login: @MainActor (AccessTokenEnvelope) -> Void
+    let updateSetup: (GraphUserSetup) -> Void
+  }
+
   private let makeProvider: () -> any SessionProvider
-  private let readUser: () -> User?
-  private let readUserEmail: () -> String?
-  private let readPPOSettings: () -> PPOUserSettings?
-  private let writeUser: @MainActor (User) -> Void
-  private let login: @MainActor (AccessTokenEnvelope) -> Void
-  private let writeSetup: (GraphUserSetup) -> Void
+  private let storage: Storage
   private var setupRequests: [Identity: Task<GraphUserSetup, Error>] = [:]
   private var revision = 0
   private var readRevision = 0
   private var setupReadRevision = 0
   private var requests: [Identity: Task<User, Error>] = [:]
-  public var currentUser: User? { self.readUser() }
-  public var currentUserEmail: String? { self.readUserEmail() }
-  public var currentUserPPOSettings: PPOUserSettings? { self.readPPOSettings() }
+  public var currentUser: User? { self.storage.currentUser() }
+  public var currentUserEmail: String? { self.storage.currentUserEmail() }
+  public var currentUserPPOSettings: PPOUserSettings? { self.storage.currentUserPPOSettings() }
   public var generation: Int { self.revision }
   public var readGeneration: Int { self.readRevision }
 
-  public init(
-    makeProvider: @escaping () -> any SessionProvider,
-    currentUser: @escaping () -> User? = { AppEnvironment.current.currentUser },
-    currentUserEmail: @escaping () -> String? = { AppEnvironment.current.currentUserEmail },
-    currentUserPPOSettings: @escaping () -> PPOUserSettings? = { AppEnvironment.current.currentUserPPOSettings },
-    updateUser: @escaping @MainActor (User) -> Void = { AppEnvironment.updateCurrentUser($0) },
-    login: @escaping @MainActor (AccessTokenEnvelope) -> Void = { AppEnvironment.login($0) },
-    updateSetup: @escaping (GraphUserSetup) -> Void = { setup in
-      guard let email = setup.email else { return }
-      AppEnvironment.replaceCurrentEnvironment(
-        currentUserEmail: email,
-        currentUserPPOSettings: PPOUserSettings(
-          hasAction: setup.ppoHasAction ?? false, backingActionCount: setup.backingActionCount ?? 0
-        ),
-        currentUserServerFeatures: setup.enabledFeatures
-      )
-    }
-  ) {
+  init(makeProvider: @escaping () -> any SessionProvider, storage: Storage) {
     self.makeProvider = makeProvider
-    self.readUser = currentUser
-    self.readUserEmail = currentUserEmail
-    self.readPPOSettings = currentUserPPOSettings
-    self.writeUser = updateUser
-    self.login = login
-    self.writeSetup = updateSetup
+    self.storage = storage
   }
 
   /// Login/logout is an explicit boundary, including returning to the same ID.
@@ -124,7 +106,7 @@ public final class SessionFeature {
   /// must never recreate a logged-out account or update a replacement account.
   public func commitUser(_ user: User, userID: Int?, generation: Int) {
     guard userID == user.id, self.isCurrent(userID: userID, generation: generation) else { return }
-    self.writeUser(user)
+    self.storage.updateUser(user)
   }
 
   /// A stored OAuth token can restore a user absent from legacy defaults. Only
@@ -134,7 +116,7 @@ public final class SessionFeature {
   ) {
     guard self.isCurrent(userID: userID, generation: generation),
           userID == user.id || (userID == nil && allowSessionRestore) else { return }
-    self.writeUser(user)
+    self.storage.updateUser(user)
   }
 
   /// Commit credentials and user together through the existing store, only if
@@ -144,7 +126,7 @@ public final class SessionFeature {
   ) throws {
     guard self.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
     self.sessionChanged()
-    self.login(envelope)
+    self.storage.login(envelope)
   }
 
   /// Email, feature flags and backing-action metadata belong to the same session
@@ -170,7 +152,7 @@ public final class SessionFeature {
           try Task.checkCancellation()
           guard self.isCurrent(userID: identity.userID, generation: identity.revision),
                 self.setupReadRevision == identity.readRevision else { throw CancellationError() }
-          self.writeSetup(setup)
+          self.storage.updateSetup(setup)
           return setup
         } catch {
           guard !Task.isCancelled,

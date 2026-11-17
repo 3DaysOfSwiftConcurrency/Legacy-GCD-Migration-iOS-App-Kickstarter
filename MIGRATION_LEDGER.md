@@ -3396,6 +3396,14 @@ adapter. Prompt admission and serialization remain owned by Onboarding.
 All 48 focused Onboarding, Settings and AppModel tests and all 124
 AppDelegate presentation tests passed on the simulator.
 
+SessionFeature now receives its user, credential and setup storage from
+composition. The environment-backed initializer remains available for
+existing callers and Project Media's fallback. The Session setup-sharing
+test uses injected storage and verifies the committed email is read back
+through the feature. The CFA check rejects direct AppEnvironment access in
+SessionFeature. All 46 focused tests and 127 AppDelegate and Project Video
+presentation tests passed on the simulator.
+
 Onboarding now owns the tracking and stored-completion eligibility decision.
 AppDelegate supplies the feature to OnboardingView and records completion
 directly when dismissing onboarding for login. The existing launch push

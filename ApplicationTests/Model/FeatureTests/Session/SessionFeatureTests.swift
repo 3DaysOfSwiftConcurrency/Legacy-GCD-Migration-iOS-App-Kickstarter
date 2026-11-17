@@ -121,8 +121,14 @@ final class SessionFeatureTests: XCTestCase {
     var commits: [GraphUserSetup] = []
     let feature = SessionFeature(
       makeProvider: { provider },
-      currentUser: { .template },
-      updateSetup: { commits.append($0) }
+      storage: .init(
+        currentUser: { .template },
+        currentUserEmail: { commits.last?.email },
+        currentUserPPOSettings: { nil },
+        updateUser: { _ in XCTFail("Setup updated the user record") },
+        login: { _ in XCTFail("Setup established a session") },
+        updateSetup: { commits.append($0) }
+      )
     )
     let first = Task { try await feature.refreshSetup() }
     let second = Task { try await feature.refreshSetup() }
@@ -138,6 +144,7 @@ final class SessionFeatureTests: XCTestCase {
     _ = try await second.value
     XCTAssertEqual(provider.setups.count, 1)
     XCTAssertEqual(commits, [setup])
+    XCTAssertEqual(feature.currentUserEmail, setup.email)
   }
 
   func testObsoleteSetupSuccessAndFailureCannotPublishAndCurrentRetryCan() async throws {
