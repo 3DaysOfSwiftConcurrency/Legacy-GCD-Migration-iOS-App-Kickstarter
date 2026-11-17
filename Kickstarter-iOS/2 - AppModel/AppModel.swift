@@ -304,6 +304,10 @@ public final class AppModel {
     _ = try? await self.applicationConfigurationService.configuration()
   }
 
+  public func applicationDidEnterBackground(notificationCenter: NotificationCenter = .default) {
+    notificationCenter.post(name: .ksr_applicationDidEnterBackground, object: nil)
+  }
+
   @discardableResult public func requestApplicationConfiguration() -> Task<Config, Error> {
     self.applicationConfigurationService.refresh()
   }

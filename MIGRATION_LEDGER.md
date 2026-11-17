@@ -3375,3 +3375,10 @@ them to AppDelegate for notification. A prefetch only reads unless a refresh
 joins it, and a reset prevents the old request from applying its result. Four
 focused AppModel and configuration-service tests and all 125 AppDelegate
 presentation tests passed on the simulator.
+
+AppDelegate sends the background lifecycle event directly to AppModel after
+cancelling the permission alert. AppModel publishes the same notification
+used by Project Page and video playback, with the delegate retaining the
+existing main-queue scheduling. The background notification test moved to
+AppModel. All 77 focused model tests and 128 bounded AppDelegate and Project
+Video presentation tests passed on the simulator.

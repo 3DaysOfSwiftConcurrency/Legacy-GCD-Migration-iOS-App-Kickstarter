@@ -6,6 +6,22 @@ import XCTest
 
 @MainActor
 final class AppModelTests: XCTestCase {
+  func testEnteringBackgroundPublishesTheApplicationNotification() {
+    let notificationCenter = NotificationCenter()
+    let received = self.expectation(description: "Application entered background")
+    let observer = notificationCenter.addObserver(
+      forName: .ksr_applicationDidEnterBackground, object: nil, queue: nil
+    ) { notification in
+      XCTAssertNil(notification.object)
+      received.fulfill()
+    }
+    defer { notificationCenter.removeObserver(observer) }
+
+    AppModel.live().applicationDidEnterBackground(notificationCenter: notificationCenter)
+
+    self.wait(for: [received], timeout: 0)
+  }
+
   func testGraphsRetainTheirInjectedFeaturesWithoutSharingState() {
     let firstProvider = NoRequestSearchProvider()
     let secondProvider = NoRequestSearchProvider()

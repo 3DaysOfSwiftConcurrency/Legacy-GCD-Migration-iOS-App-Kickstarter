@@ -244,8 +244,6 @@ final class AppDelegateViewModelTests: TestCase {
       launchOptions: [:]
     )
     self.vm.inputs.applicationWillEnterForeground()
-    self.vm.inputs.applicationDidEnterBackground()
-
     self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
   }
 
@@ -280,28 +278,6 @@ final class AppDelegateViewModelTests: TestCase {
     self.updateCurrentUserInEnvironment.assertValues([env.user, env.user])
     self.postNotificationName.assertValues(
       [.ksr_userUpdated, .ksr_userUpdated]
-    )
-  }
-
-  func testAppStateEnteringBackground_SendNotification_Success() async {
-    let env = AccessTokenEnvelope(accessToken: "deadbeef", user: User.template)
-    AppEnvironment.login(env)
-
-    self.vm.inputs.applicationDidFinishLaunching(
-      application: UIApplication.shared,
-      launchOptions: [:]
-    )
-    await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
-    await self.settingsFeature.waitForOperations()
-
-    self.postNotificationName.assertDidNotEmitValue()
-
-    self.vm.inputs.applicationDidEnterBackground()
-    await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
-    await self.settingsFeature.waitForOperations()
-
-    self.postNotificationName.assertValues(
-      [.ksr_applicationDidEnterBackground]
     )
   }
 
@@ -1455,7 +1431,6 @@ final class AppDelegateViewModelTests: TestCase {
     await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
     self.setApplicationShortcutItems.assertValues([[.projectsWeLove, .search]])
 
-    self.vm.inputs.applicationDidEnterBackground()
     self.vm.inputs.applicationWillEnterForeground()
     await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
     await self.settingsFeature.waitForOperations()
@@ -1795,7 +1770,6 @@ final class AppDelegateViewModelTests: TestCase {
       self.goToMobileSafari.assertValues([])
 
       // We deep-link to an email url.
-      self.vm.inputs.applicationDidEnterBackground()
       self.vm.inputs.applicationWillEnterForeground()
       let result = self.vm.inputs.applicationOpenUrl(
         application: UIApplication.shared,
@@ -1836,7 +1810,6 @@ final class AppDelegateViewModelTests: TestCase {
       self.goToMobileSafari.assertValues([])
 
       // We deep-link to an email url.
-      self.vm.inputs.applicationDidEnterBackground()
       self.vm.inputs.applicationWillEnterForeground()
       let result = self.vm.inputs.applicationContinueUserActivity(userActivity)
       XCTAssertTrue(result)
@@ -1870,7 +1843,6 @@ final class AppDelegateViewModelTests: TestCase {
     self.goToMobileSafari.assertValues([])
 
     // We deep-link to an email url.
-    self.vm.inputs.applicationDidEnterBackground()
     self.vm.inputs.applicationWillEnterForeground()
     let result = self.vm.inputs.applicationOpenUrl(
       application: UIApplication.shared,
@@ -1908,7 +1880,6 @@ final class AppDelegateViewModelTests: TestCase {
     self.goToMobileSafari.assertValues([])
 
     // We deep-link to an email url.
-    self.vm.inputs.applicationDidEnterBackground()
     self.vm.inputs.applicationWillEnterForeground()
     let result = self.vm.inputs.applicationOpenUrl(
       application: UIApplication.shared,

@@ -27,14 +27,8 @@ public protocol AppDelegateViewModelInputs {
   /// Call when the application will enter foreground.
   func applicationWillEnterForeground()
 
-  /// Call when the application enters background.
-  func applicationDidEnterBackground()
-
   /// Call when the application becomes active `UIApplicationStateActive` and `UIApplicationStateInactive`
   func applicationActive(state: Bool)
-
-  /// Call when the aplication receives memory warning from the system.
-  func applicationDidReceiveMemoryWarning()
 
   /// Call to open a url that was sent to the app
   func applicationOpenUrl(
@@ -536,13 +530,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.latestActiveState = state
     self.scheduleTrackingRequestIfNeeded()
     self.observeTrackingAuthorization()
-  }
-
-  public func applicationDidEnterBackground() {
-    self.onPostNotification?(Notification(name: .ksr_applicationDidEnterBackground, object: nil))
-  }
-
-  public func applicationDidReceiveMemoryWarning() {
   }
 
   public func applicationPerformActionForShortcutItem(_ item: UIApplicationShortcutItem) {

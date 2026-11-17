@@ -389,7 +389,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func applicationDidEnterBackground(_: UIApplication) {
     self.permissionAlertPresenter.cancel()
-    self.viewModel.inputs.applicationDidEnterBackground()
+    DispatchQueue.main.async { AppModel.shared.applicationDidEnterBackground() }
   }
 
   func application(
@@ -435,10 +435,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     didFailToRegisterForRemoteNotificationsWithError error: Error
   ) {
     print("🔴 Failed to register for remote notifications: \(error.localizedDescription)")
-  }
-
-  internal func applicationDidReceiveMemoryWarning(_: UIApplication) {
-    self.viewModel.inputs.applicationDidReceiveMemoryWarning()
   }
 
   internal func application(
