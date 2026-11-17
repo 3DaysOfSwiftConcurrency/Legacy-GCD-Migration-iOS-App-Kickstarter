@@ -96,23 +96,38 @@ extension OnboardingFeature {
 /// the application lifecycle signal and owns this service at the composition boundary.
 @MainActor
 public final class RemoteConfigurationService {
+  private let notificationCenter: NotificationCenter
+  private let reportFailure: @MainActor (Error) -> Void
   private var request: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
 
-  public init() {}
+  public init(
+    notificationCenter: NotificationCenter,
+    reportFailure: @escaping @MainActor (Error) -> Void = { _ in }
+  ) {
+    self.notificationCenter = notificationCenter
+    self.reportFailure = reportFailure
+  }
 
-  @discardableResult public func activate(
-    client: AnyObject, operation: @escaping @MainActor () async throws -> Void
-  ) -> Task<Void, Error> {
+  @discardableResult public func activate(client: any RemoteConfigClientType) -> Task<Void, Error> {
     let clientID = ObjectIdentifier(client)
     if let request = self.request, request.client == clientID { return request.task }
     self.request?.task.cancel()
     let id = UUID()
     let task = Task { [self] in
       defer { if self.request?.id == id { self.request = nil } }
-      try Task.checkCancellation()
-      try await operation()
+      do {
+        try Task.checkCancellation()
+        try await client.fetchAndActivateAsync()
+      } catch {
+        try Task.checkCancellation()
+        guard !(error is CancellationError), self.request?.id == id else { throw CancellationError() }
+        self.reportFailure(error)
+        self.notificationCenter.post(name: .ksr_remoteConfigClientConfigurationFailed, object: nil)
+        throw error
+      }
       try Task.checkCancellation()
       guard self.request?.id == id else { throw CancellationError() }
+      self.notificationCenter.post(name: .ksr_remoteConfigClientConfigured, object: nil)
     }
     self.request = (clientID, id, task)
     return task
@@ -373,7 +388,7 @@ public final class AppModel {
     developerExamplesFeature: DeveloperExamplesFeature,
     onboardingFeature: OnboardingFeature,
     connectivityService: ConnectivityService = ConnectivityService(),
-    remoteConfigurationService: RemoteConfigurationService = RemoteConfigurationService(),
+    remoteConfigurationService: RemoteConfigurationService,
     applicationConfigurationService: ApplicationConfigurationService,
     devicePushRegistrationService: DevicePushRegistrationService = DevicePushRegistrationService(
       register: { try await AppEnvironment.current.apiService.registerApplicationPushToken($0) }
@@ -450,9 +465,9 @@ public final class AppModel {
   }
 
   @discardableResult public func requestRemoteConfiguration(
-    client: AnyObject, activate: @escaping @MainActor () async throws -> Void
+    client: any RemoteConfigClientType
   ) -> Task<Void, Error> {
-    self.remoteConfigurationService.activate(client: client, operation: activate)
+    self.remoteConfigurationService.activate(client: client)
   }
 
   public func sessionChanged() {
@@ -509,6 +524,10 @@ public final class AppModel {
       }),
       onboardingFeature: .live(),
       connectivityService: ConnectivityService(makeMonitor: { SystemReachabilityMonitor() }),
+      remoteConfigurationService: RemoteConfigurationService(
+        notificationCenter: .default,
+        reportFailure: RemoteConfigClient.reportActivationFailure
+      ),
       applicationConfigurationService: .live(),
       creatorDraftsFeature: CreatorDraftsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService)

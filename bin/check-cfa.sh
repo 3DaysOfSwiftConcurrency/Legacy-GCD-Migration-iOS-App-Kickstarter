@@ -46,6 +46,9 @@ reject_matches 'AppModel and ApplicationConfigurationService own application con
 reject_matches 'The app delegate owns startup analytics wiring and preference synchronization.' \
   'onConfigure(Firebase|SegmentWithBraze|Statsig)|onSegmentEnabled|onSynchronizeUbiquitousStore|statsigSDKKey' \
   "$delegate_handler"
+reject_matches 'RemoteConfigurationService owns activation and publishes its outcome.' \
+  'remoteConfig(Task|Version)|didUpdateRemoteConfigClient|remoteConfigClientConfigurationFailed|ksr_remoteConfigClientConfigured' \
+  "$app_view/AppDelegate.swift" "$delegate_handler"
 reject_matches 'Checkout view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$pledge_view_model" "$post_campaign_view_model"
 reject_matches 'Pledge CTA and shipping view models must receive their dependencies explicitly.' \

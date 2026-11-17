@@ -2578,34 +2578,6 @@ final class AppDelegateViewModelTests: TestCase {
     self.goToMobileSafari.assertDidNotEmitValue()
   }
 
-  func testRemoteConfigClientConfiguredNotification_Success() async {
-    let mockService = MockService(serverConfig: ServerConfig.staging)
-
-    await withEnvironment(apiService: mockService) {
-      self.postNotificationName.assertDidNotEmitValue()
-
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-
-      self.vm.inputs.didUpdateRemoteConfigClient()
-
-      self.postNotificationName.assertValues([.ksr_remoteConfigClientConfigured])
-    }
-  }
-
-  func testRemoteConfigClientConfigurationFailedNotification() async {
-    let mockService = MockService(serverConfig: ServerConfig.staging)
-
-    await withEnvironment(apiService: mockService) {
-      self.postNotificationName.assertDidNotEmitValue()
-
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-
-      self.vm.inputs.remoteConfigClientConfigurationFailed()
-
-      self.postNotificationName.assertValues([.ksr_remoteConfigClientConfigurationFailed])
-    }
-  }
-
   func testUserSessionStarted_fetchesUserEmail_andClearsOnLogout() async {
     let fetchUserSetupQueryData = GraphAPI.FetchUserSetupQuery.Data(
       me: GraphAPI.FetchUserSetupQuery.Data.Me(

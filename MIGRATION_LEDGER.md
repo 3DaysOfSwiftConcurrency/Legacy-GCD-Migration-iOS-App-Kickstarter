@@ -3583,3 +3583,19 @@ Three focused simulator tests passed for Segment key selection, Statsig
 tier selection, and Segment flag changes. The bounded run passed 111
 legacy delegate and 28 Root Tabs tests. Live SDK initialization was
 outside the simulator test coverage.
+
+### Remote Config activation ownership — Matthew Thomas
+
+AppDelegate installs the Firebase client, starts activation through
+AppModel, and retains the log-only real-time listener. The Remote
+Configuration service owns the activation task and publishes success or
+failure once per request. A replaced activation cannot publish or log a
+late result. The platform client adapter preserves Crashlytics filtering.
+The source check guards against restoring activation tracking or result
+callbacks in the delegate and legacy handler.
+
+Six focused simulator model tests passed. They cover shared activation,
+retry, and suppression of late success and failure after client
+replacement. The bounded runs passed 20 Discovery and configuration
+tests and 112 delegate and analytics presentation tests. The tests use
+controlled clients and do not exercise live Firebase or Crashlytics.

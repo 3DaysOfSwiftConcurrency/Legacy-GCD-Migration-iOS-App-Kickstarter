@@ -50,15 +50,9 @@ public protocol AppDelegateViewModelInputs {
   /// Call when the app delegate gets notice of a successful notification registration.
   func didRegisterForRemoteNotifications(withDeviceTokenData data: Data)
 
-  /// Call when the Remote Config client has been updated in the AppEnvironment
-  func didUpdateRemoteConfigClient()
-
   /// Call when the redirect URL has been found, see `findRedirectUrl` for more information.
   func resolveEmailRedirect(_ url: URL)
   func foundRedirectUrl(_ url: URL)
-
-  /// Call when Remote Config configuration has failed
-  func remoteConfigClientConfigurationFailed()
 
   /// Call when the contextual PushNotification dialog should be presented.
   func showNotificationDialog(notification: Notification)
@@ -504,10 +498,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.beginPushRegistration()
   }
 
-  public func didUpdateRemoteConfigClient() {
-    self.onPostNotification?(Notification(name: .ksr_remoteConfigClientConfigured, object: nil))
-  }
-
   public func foundRedirectUrl(_ url: URL) {
     self.handleURL(url)
   }
@@ -631,10 +621,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public private(set) var applicationDidFinishLaunchingReturnValue = true
-
-  public func remoteConfigClientConfigurationFailed() {
-    self.onPostNotification?(Notification(name: .ksr_remoteConfigClientConfigurationFailed, object: nil))
-  }
 
   public var onApplicationIconBadgeNumber: ((Int) -> Void)?
   public private(set) var continueUserActivityReturnValue = false

@@ -1,6 +1,15 @@
+import FirebaseCrashlytics
 import FirebaseRemoteConfig
+import Foundation
 
 public class RemoteConfigClient: RemoteConfigClientType {
+  @MainActor static func reportActivationFailure(_ error: Error) {
+    let value = error as NSError
+    if value.domain != RemoteConfigErrorDomain || value.code != RemoteConfigError.internalError.rawValue {
+      Crashlytics.crashlytics().record(error: error)
+    }
+  }
+
   @MainActor public func fetchAndActivateAsync() async throws {
     _ = try await self.sharedClient.fetchAndActivate()
   }

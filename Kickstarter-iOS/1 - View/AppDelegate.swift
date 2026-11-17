@@ -54,8 +54,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   private var appNotificationObservers: [MainActorNotificationObservation] = []
 
   private var remoteConfigListener: ConfigUpdateListenerRegistration?
-  private var remoteConfigTask: Task<Void, Never>?
-  private var remoteConfigVersion = UUID()
   private let permissionAlertPresenter = ContextualPermissionAlertPresenter()
 
   // Never enable demo integration policy in a production build, even with a public config.
@@ -502,52 +500,25 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     AppEnvironment.updateRemoteConfigClient(remoteConfigClient)
 
-    self.fetchAndActivateRemoteConfig()
+    AppModel.shared.requestRemoteConfiguration(client: remoteConfigClient)
 
     self.remoteConfigListener?.remove()
-    self.remoteConfigListener = AppEnvironment.current.remoteConfigClient?
-      .addOnConfigUpdateListener { configUpdate, error in
-        guard let realtimeUpdateError = error else {
-          print("🔮 Remote Config Keys Update: \(String(describing: configUpdate?.updatedKeys))")
+    self.remoteConfigListener = remoteConfigClient.addOnConfigUpdateListener { configUpdate, error in
+      guard let realtimeUpdateError = error else {
+        print("🔮 Remote Config Keys Update: \(String(describing: configUpdate?.updatedKeys))")
 
-          return
-        }
-
-        print(
-          "🔴 Remote Config SDK Config Update Listener Failure: \(realtimeUpdateError.localizedDescription)"
-        )
+        return
       }
+
+      print(
+        "🔴 Remote Config SDK Config Update Listener Failure: \(realtimeUpdateError.localizedDescription)"
+      )
+    }
   }
 
   private func configureStatsig(with key: StatsigClientSDKKey) {
     let client = StatsigWrapper(sdkKey: key, user: AppEnvironment.current.statsigUser())
     AppEnvironment.updateStatsigClient(client)
-  }
-
-  private func fetchAndActivateRemoteConfig() {
-    guard let client = AppEnvironment.current.remoteConfigClient else { return }
-    self.remoteConfigTask?.cancel()
-    let version = UUID()
-    self.remoteConfigVersion = version
-    let request = AppModel.shared.requestRemoteConfiguration(client: client) {
-      try await client.fetchAndActivateAsync()
-    }
-    self.remoteConfigTask = Task { [weak self] in
-      do {
-        try await request.value
-        try Task.checkCancellation()
-        guard let self, self.remoteConfigVersion == version else { return }
-        self.viewModel.inputs.didUpdateRemoteConfigClient()
-      } catch {
-        guard !Task.isCancelled, !(error is CancellationError), let self,
-          self.remoteConfigVersion == version else { return }
-        let value = error as NSError
-        if value.domain != RemoteConfigErrorDomain || value.code != RemoteConfigError.internalError.rawValue {
-          Crashlytics.crashlytics().record(error: error)
-        }
-        self.viewModel.inputs.remoteConfigClientConfigurationFailed()
-      }
-    }
   }
 
   private func configuredBrazeDestination(for configuration: Segment.Analytics) -> BrazeDestination {
