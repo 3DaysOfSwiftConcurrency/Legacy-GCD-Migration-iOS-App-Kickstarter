@@ -25,9 +25,12 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
   internal var messageBannerViewController: MessageBannerViewController?
 
-  private var applePayPaymentIntent: String?
-  private var applePaySessionGeneration: Int?
-  private var activeApplePayContext: STPApplePayContext?
+  private struct ApplePayAuthorization {
+    let context: STPApplePayContext
+    let session: PledgeFeature.CheckoutSession
+    let clientSecret: String
+  }
+  private var applePayAuthorization: ApplePayAuthorization?
 
   private lazy var titleLabel = UILabel(frame: .zero)
 
@@ -85,10 +88,11 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
   private var sessionStartedObserver: MainActorNotificationObservation?
 
-  private let viewModel: PostCampaignCheckoutViewModelType =
+  private let pledgeFeature = AppModel.shared.pledgeFeature
+  private lazy var viewModel: PostCampaignCheckoutViewModelType =
     PostCampaignCheckoutViewModel(
       stripeIntentService: StripeIntentService(paymentsFeature: AppModel.shared.paymentsFeature),
-      pledgeFeature: AppModel.shared.pledgeFeature,
+      pledgeFeature: self.pledgeFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       currencyContext: { .live() },
       hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
@@ -106,9 +110,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
     super.viewWillDisappear(animated)
     if self.isMovingFromParent || self.isBeingDismissed || self.navigationController?.isBeingDismissed == true {
       self.confirmation.cancelObservation()
-      self.activeApplePayContext = nil
-      self.applePayPaymentIntent = nil
-      self.applePaySessionGeneration = nil
+      self.applePayAuthorization = nil
     }
   }
 
@@ -348,12 +350,12 @@ final class PostCampaignCheckoutViewController: UIViewController,
       paymentParams.paymentMethodId = id
     }
 
-    let session = AppModel.shared.sessionFeature
-    let generation = session.generation
+    let feature = self.pledgeFeature
+    let session = feature.checkoutSession
     self.confirmation.start(
       identity: .init(kind: .payment, clientSecret: validation.paymentIntentClientSecret,
                       paymentMethodID: validation.selectedCardStripeCardId),
-      isCurrent: { session.generation == generation },
+      isCurrent: { feature.checkoutSession == session },
       begin: { completion in
         STPPaymentHandler.shared().confirmPayment(paymentParams, with: self) { status, _, error in
           completion(.init(status: status, error: error))
@@ -394,16 +396,18 @@ final class PostCampaignCheckoutViewController: UIViewController,
   }
 
   private func goToPaymentAuthorization(_ paymentAuthorizationData: PostCampaignPaymentAuthorizationData) {
-    guard self.activeApplePayContext == nil else { return }
+    guard self.applePayAuthorization == nil else { return }
     let request = PKPaymentRequest.paymentRequest(for: paymentAuthorizationData)
     guard let applePayContext = STPApplePayContext(paymentRequest: request, delegate: self) else {
       self.viewModel.inputs.checkoutTerminated()
       return
     }
 
-    self.applePayPaymentIntent = paymentAuthorizationData.paymentIntent
-    self.applePaySessionGeneration = AppModel.shared.sessionFeature.generation
-    self.activeApplePayContext = applePayContext
+    self.applePayAuthorization = ApplePayAuthorization(
+      context: applePayContext,
+      session: self.pledgeFeature.checkoutSession,
+      clientSecret: paymentAuthorizationData.paymentIntent
+    )
     applePayContext.presentApplePay()
   }
 }
@@ -499,13 +503,13 @@ extension PostCampaignCheckoutViewController: STPApplePayContextDelegate {
     let contextID = ObjectIdentifier(context)
     let paymentMethodID = paymentMethod.stripeId
     let result: Result<String, PostCampaignCheckoutApplePayError> = MainActor.assumeIsolated {
-      guard self.activeApplePayContext.map(ObjectIdentifier.init) == contextID,
-            self.applePaySessionGeneration == AppModel.shared.sessionFeature.generation,
-            let clientSecret = self.applePayPaymentIntent else {
+      guard let authorization = self.applePayAuthorization,
+            ObjectIdentifier(authorization.context) == contextID,
+            self.pledgeFeature.checkoutSession == authorization.session else {
         return .failure(.missingPaymentIntent("Missing PaymentIntent"))
       }
       self.viewModel.inputs.applePayContextDidCreatePayment(with: paymentMethodID)
-      return .success(clientSecret)
+      return .success(authorization.clientSecret)
     }
     // The pinned SDK delivers on the main queue. Complete synchronously there,
     // without capturing its non-Sendable completion block in an actor closure.
@@ -530,12 +534,10 @@ extension PostCampaignCheckoutViewController: STPApplePayContextDelegate {
     }
     // Stripe delivers this after its UIKit dismissal, on the main queue.
     MainActor.assumeIsolated {
-      guard self.activeApplePayContext.map(ObjectIdentifier.init) == contextID else { return }
-      let isCurrentSession = self.applePaySessionGeneration == AppModel.shared.sessionFeature.generation
-      self.activeApplePayContext = nil
-      self.applePayPaymentIntent = nil
-      self.applePaySessionGeneration = nil
-      guard isCurrentSession else { return }
+      guard let authorization = self.applePayAuthorization,
+            ObjectIdentifier(authorization.context) == contextID else { return }
+      self.applePayAuthorization = nil
+      guard self.pledgeFeature.checkoutSession == authorization.session else { return }
       switch outcome {
       case .succeeded:
         self.viewModel.inputs.applePayContextDidComplete()

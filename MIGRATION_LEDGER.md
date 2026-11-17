@@ -3745,3 +3745,20 @@ The simulator passed 30 focused snapshot and backing tests and 82
 bounded Project Page, creator, and recommendation tests. These checks
 exercise session replacement and the page refresh commands with
 controlled providers.
+
+### Checkout session ownership — Matthew Thomas
+
+Pledge supplies the same account and session generation identity to its
+requests, both checkout ViewModels, and the UIKit Stripe and Apple Pay
+callbacks. An account change before the session notification or a
+same-account session replacement invalidates earlier checkout results.
+PassKit still receives a failure reply for an obsolete authorization.
+Post-campaign Apple Pay keeps its native context, client secret, and
+session in one authorization value.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 139 focused Pledge
+Feature and checkout ViewModel tests and 14 Stripe and Apple Pay callback
+tests. The initial presentation run also selected the legacy Stripe status
+mapping suite, whose shared setup requires iPad mini (A17 Pro) on iOS 18.6.
+That runtime was unavailable. The callback-only rerun passed with the
+snapshot check intact. Live payment integrations remain unverified.

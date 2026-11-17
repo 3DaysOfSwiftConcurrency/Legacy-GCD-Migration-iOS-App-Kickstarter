@@ -54,6 +54,9 @@ reject_matches 'Navigation owns email redirect delivery and release.' \
   "$app_view/AppDelegate.swift"
 reject_matches 'Checkout view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$pledge_view_model" "$post_campaign_view_model"
+reject_matches 'Checkout controllers use the same session identity as Pledge.' \
+  'AppModel[.]shared[.]sessionFeature' "$app_view/Views/PledgeView/Controllers/PledgeViewController.swift" \
+  "$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewController.swift"
 reject_matches 'Pledge CTA and shipping view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Shared Views/PledgeCTAContainerViewViewModel.swift" \
   "$app_view/Views/DesignSystem/Views/PledgeViewCTAContainerViewModel.swift" \

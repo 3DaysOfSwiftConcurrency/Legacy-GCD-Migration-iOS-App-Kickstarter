@@ -169,11 +169,11 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
 
     let processingState = PledgeProcessingState()
     let completionState = self.completionState
-    let deliverResponse: @MainActor (PledgeResponse, Bool, Int?, Int, UUID) -> Void = { [weak self] response, isCreate, userID, generation, id in
+    let deliverResponse: @MainActor (PledgeResponse, Bool, PledgeFeature.CheckoutSession, UUID) -> Void = { [weak self] response, isCreate, session, id in
       guard let self else { return }
       let identity = isCreate ? self.createIdentity : self.updateIdentity
       guard identity.id == id else { return }
-      guard feature.sessionFeature.isCurrent(userID: userID, generation: generation) else {
+      guard feature.checkoutSession == session else {
         identity.id = UUID()
         processingState.setHidden(true)
         return
@@ -197,10 +197,10 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
         completionState.failed(error)
       }
     }
-    let scheduleResponse: @MainActor (PledgeResponse, Bool, Int?, Int, UUID) async throws -> Void = { response, isCreate, userID, generation, id in
+    let scheduleResponse: @MainActor (PledgeResponse, Bool, PledgeFeature.CheckoutSession, UUID) async throws -> Void = { response, isCreate, session, id in
       try await sleep(responseDelay())
       try Task.checkCancellation()
-      deliverResponse(response, isCreate, userID, generation, id)
+      deliverResponse(response, isCreate, session, id)
     }
 
     self.presentData = { [weak self] data in
@@ -281,8 +281,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       guard let self else { return }
       let input = CreateBackingInput.input(from: data, isApplePay: isApplePay)
       self.createTask?.cancel()
-      let userID = feature.sessionFeature.currentUser?.id
-      let generation = feature.sessionFeature.generation
+      let session = feature.checkoutSession
       let id = UUID()
       self.createIdentity.id = id
       let request = feature.startCreate(input)
@@ -291,13 +290,13 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
         do {
           let result = try await request.value
           guard !Task.isCancelled else { return }
-          try await scheduleResponse(.created(result), true, userID, generation, id)
+          try await scheduleResponse(.created(result), true, session, id)
         } catch {
           if Task.isCancelled || error is CancellationError {
             if self?.createIdentity.id == id { processingState.setHidden(true) }
             return
           }
-          try? await scheduleResponse(.failed((error as? ErrorEnvelope) ?? .couldNotParseJSON), true, userID, generation, id)
+          try? await scheduleResponse(.failed((error as? ErrorEnvelope) ?? .couldNotParseJSON), true, session, id)
         }
       }
     }
@@ -305,8 +304,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       guard let self else { return }
       let input = UpdateBackingInput.input(from: data, isApplePay: isApplePay)
       self.updateTask?.cancel()
-      let userID = feature.sessionFeature.currentUser?.id
-      let generation = feature.sessionFeature.generation
+      let session = feature.checkoutSession
       let id = UUID()
       self.updateIdentity.id = id
       let request = feature.startUpdate(input)
@@ -315,13 +313,13 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
         do {
           let result = try await request.value
           guard !Task.isCancelled else { return }
-          try await scheduleResponse(.updated(result), false, userID, generation, id)
+          try await scheduleResponse(.updated(result), false, session, id)
         } catch {
           if Task.isCancelled || error is CancellationError {
             if self?.updateIdentity.id == id { processingState.setHidden(true) }
             return
           }
-          try? await scheduleResponse(.failed((error as? ErrorEnvelope) ?? .couldNotParseJSON), false, userID, generation, id)
+          try? await scheduleResponse(.failed((error as? ErrorEnvelope) ?? .couldNotParseJSON), false, session, id)
         }
       }
     }

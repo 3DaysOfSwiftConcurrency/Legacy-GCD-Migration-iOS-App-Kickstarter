@@ -149,16 +149,16 @@ public final class PledgeFeature {
     type.url(withBaseUrl: self.platform.serverConfig().webBaseUrl)?.absoluteString
   }
 
-  private struct Session: Hashable {
+  struct CheckoutSession: Hashable, Sendable {
     let userID: Int?
     let generation: Int
   }
-  private var session: Session {
-    Session(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
+  var checkoutSession: CheckoutSession {
+    CheckoutSession(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
-  private func requireCurrent(_ session: Session) throws {
+  private func requireCurrent(_ session: CheckoutSession) throws {
     try Task.checkCancellation()
-    guard self.session == session else { throw CancellationError() }
+    guard self.checkoutSession == session else { throw CancellationError() }
   }
 
   private enum Command: Equatable {
@@ -187,12 +187,12 @@ public final class PledgeFeature {
     let command: Command
     let task: Task<Value, Error>
   }
-  private var writeVersion: [Session: Int] = [:]
-  private var tails: [Session: Pending] = [:]
+  private var writeVersion: [CheckoutSession: Int] = [:]
+  private var tails: [CheckoutSession: Pending] = [:]
   private var commands: [UUID: Task<Value, Error>] = [:]
 
   private func request(_ command: Command) -> Task<Value, Error> {
-    let session = self.session
+    let session = self.checkoutSession
     let previous = self.tails[session]
     if let previous, previous.command == command { return previous.task }
     self.writeVersion[session, default: 0] += 1
@@ -243,7 +243,7 @@ public final class PledgeFeature {
     return task
   }
 
-  private func awaitAdmitted(_ command: Task<Value, Error>, session: Session) async throws -> Value {
+  private func awaitAdmitted(_ command: Task<Value, Error>, session: CheckoutSession) async throws -> Value {
     do {
       let value = try await command.value
       try self.requireCurrent(session)
@@ -256,7 +256,7 @@ public final class PledgeFeature {
 
   private func execute(_ command: Command) async throws -> Value {
     try Task.checkCancellation()
-    let session = self.session
+    let session = self.checkoutSession
     do {
       let value = try await self.request(command).value
       try self.requireCurrent(session)
@@ -282,7 +282,7 @@ public final class PledgeFeature {
     try Self.created(await self.execute(.create(input)))
   }
   func startCreate(_ input: KsApi.CreateBackingInput) -> Task<CreateBackingEnvelope, Error> {
-    let session = self.session
+    let session = self.checkoutSession
     let command = self.request(.create(input))
     return Task {
       try Self.created(await self.awaitAdmitted(command, session: session))
@@ -293,7 +293,7 @@ public final class PledgeFeature {
     try Self.updated(await self.execute(.update(input)))
   }
   func startUpdate(_ input: KsApi.UpdateBackingInput) -> Task<UpdateBackingEnvelope, Error> {
-    let session = self.session
+    let session = self.checkoutSession
     let command = self.request(.update(input))
     return Task {
       try Self.updated(await self.awaitAdmitted(command, session: session))
@@ -305,7 +305,7 @@ public final class PledgeFeature {
   }
   /// Keep the existing presentation delay and suppress results from a replaced session.
   func cancelWithPresentationDelay(_ input: KsApi.CancelBackingInput) async throws {
-    let session = self.session
+    let session = self.checkoutSession
     let delay = self.platform.responseDelaySeconds()
     let result: Result<Void, Error>
     do { try await self.cancel(input); result = .success(()) }
@@ -322,7 +322,7 @@ public final class PledgeFeature {
   /// Admit writes synchronously so rapid toggle changes keep their order even if
   /// their presentation tasks are cancelled.
   func startReceived(projectID: Int, userID: Int, received: Bool) -> Task<Backing, Error> {
-    let session = self.session
+    let session = self.checkoutSession
     let command = self.request(.received(projectID: projectID, userID: userID, received: received))
     return Task { try Self.received(await self.awaitAdmitted(command, session: session)) }
   }
@@ -334,7 +334,7 @@ public final class PledgeFeature {
     try Self.checkout(await self.execute(.openCheckout(input)))
   }
   func startOpenCheckout(_ input: KsApi.CreateCheckoutInput) -> Task<CreateCheckoutEnvelope, Error> {
-    let session = self.session
+    let session = self.checkoutSession
     let command = self.request(.openCheckout(input))
     return Task {
       try Self.checkout(await self.awaitAdmitted(command, session: session))
@@ -351,7 +351,7 @@ public final class PledgeFeature {
   func startValidateCheckout(checkoutID: String, sourceID: String, secret: String)
     -> Task<ValidateCheckoutEnvelope, Error>
   {
-    let session = self.session
+    let session = self.checkoutSession
     let command = self.request(.validateCheckout(checkoutID: checkoutID, sourceID: sourceID, secret: secret))
     return Task {
       try Self.validated(await self.awaitAdmitted(command, session: session))
@@ -359,7 +359,7 @@ public final class PledgeFeature {
   }
 
   func startCompleteCheckout(_ input: GraphAPI.CompleteOnSessionCheckoutInput) -> Task<Void, Error> {
-    let session = self.session
+    let session = self.checkoutSession
     let command = self.request(.completeCheckout(input))
     return Task {
       try Self.completed(await self.awaitAdmitted(command, session: session))
@@ -417,7 +417,7 @@ public final class PledgeFeature {
     let id: UUID
     let input: Read
     let version: Int
-    let session: Session
+    let session: CheckoutSession
     let task: Task<Void, Never>
     let outcome: ReadOutcome
 
@@ -432,7 +432,7 @@ public final class PledgeFeature {
   private var readTasks: [UUID: Task<Void, Never>] = [:]
 
   private func requestRead(route: UUID, input: Read) -> PendingRead {
-    let session = self.session
+    let session = self.checkoutSession
     let version = self.writeVersion[session, default: 0]
     if let pending = self.reads[route], pending.input == input, pending.session == session,
       pending.version == version
@@ -469,7 +469,7 @@ public final class PledgeFeature {
         outcome.result = .success(value)
       } catch {
         outcome.result = .failure(
-          Task.isCancelled || self.session != session ? CancellationError() : error)
+          Task.isCancelled || self.checkoutSession != session ? CancellationError() : error)
       }
     }
     let pending = PendingRead(
@@ -486,7 +486,7 @@ public final class PledgeFeature {
     Project, Update
   ) {
     try Task.checkCancellation()
-    let session = self.session
+    let session = self.checkoutSession
     do {
       let request = self.requestRead(route: route, input: .updateContext(param, updateID))
       let version = self.readVersions[route]
@@ -507,7 +507,7 @@ public final class PledgeFeature {
   }
 
   func requestPaymentPlan(route: UUID, slug: String, amount: String) -> Task<PledgePaymentPlan?, Error> {
-    let session = self.session
+    let session = self.checkoutSession
     let request = self.requestRead(route: route, input: .plan(slug, amount))
     let version = self.readVersions[route]
     return Task {
@@ -536,7 +536,7 @@ public final class PledgeFeature {
   }
   public func project(route: UUID, param: Param) async throws -> Project {
     try Task.checkCancellation()
-    let session = self.session
+    let session = self.checkoutSession
     do {
       let request = self.requestRead(route: route, input: .project(param))
       let version = self.readVersions[route]
@@ -551,7 +551,7 @@ public final class PledgeFeature {
   }
   public func backing(route: UUID, id: Int) async throws -> Backing {
     try Task.checkCancellation()
-    let session = self.session
+    let session = self.checkoutSession
     do {
       let request = self.requestRead(route: route, input: .backing(id))
       let version = self.readVersions[route]

@@ -24,6 +24,28 @@ final class PledgeFeatureTests: TestCase {
     try await super.tearDown()
   }
 
+  func testCheckoutIdentityTracksAccountAndSameUserSessionReplacement() {
+    var currentUser: User? = .template
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) },
+      currentUser: { currentUser }, updateUser: { _ in }
+    )
+    let feature = PledgeFeature(
+      platform: .live(), sessionFeature: session, makeProvider: { self.provider }
+    )
+    let admitted = feature.checkoutSession
+    XCTAssertEqual(feature.checkoutSession, admitted)
+
+    currentUser = nil
+    XCTAssertEqual(session.generation, admitted.generation)
+    XCTAssertNotEqual(feature.checkoutSession, admitted)
+
+    currentUser = .template
+    session.sessionChanged()
+    XCTAssertEqual(feature.checkoutSession.userID, admitted.userID)
+    XCTAssertNotEqual(feature.checkoutSession, admitted)
+  }
+
   func testEquivalentCreateSharesPendingWriteAndPreservesSCACheckout() async throws {
     let input = self.createInput()
     let first = self.feature.startCreate(input)

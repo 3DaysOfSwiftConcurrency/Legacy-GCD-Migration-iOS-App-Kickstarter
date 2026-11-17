@@ -1,4 +1,5 @@
 @testable import Kickstarter_iOS
+@testable import KsApi
 
 
 import Stripe
@@ -94,12 +95,19 @@ final class StripeConfirmationOperationTests: XCTestCase {
 
   func testSessionChangeSuppressesResultAndReleasesPendingOperation() async {
     let operation = StripeConfirmationOperation()
-    var session = 1
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) },
+      currentUser: { .template }, updateUser: { _ in }
+    )
+    let pledge = PledgeFeature(platform: .live(), sessionFeature: session, makeProvider: {
+      AsyncPledgeProvider(service: MockService())
+    })
+    let admitted = pledge.checkoutSession
     var callback: (@Sendable (StripeConfirmationOutcome) -> Void)?
-    operation.start(identity: self.identity, isCurrent: { session == 1 }, begin: { callback = $0 }, completed: { _ in
+    operation.start(identity: self.identity, isCurrent: { pledge.checkoutSession == admitted }, begin: { callback = $0 }, completed: { _ in
       XCTFail("A previous session must not commit checkout work")
     })
-    session = 2
+    session.sessionChanged()
     callback?(.init(status: .succeeded, error: nil))
     await operation.task?.value
     XCTAssertNil(operation.task)

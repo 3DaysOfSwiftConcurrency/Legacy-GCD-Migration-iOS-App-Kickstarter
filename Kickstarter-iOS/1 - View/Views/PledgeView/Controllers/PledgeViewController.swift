@@ -127,11 +127,12 @@ final class PledgeViewController: UIViewController,
   private let confirmation = StripeConfirmationOperation()
   private let applePayToken = ApplePayTokenOperation()
   private weak var applePayController: PKPaymentAuthorizationViewController?
-  private var applePaySessionGeneration: Int?
+  private var applePaySession: PledgeFeature.CheckoutSession?
 
   private var sessionStartedObserver: MainActorNotificationObservation?
-  private let viewModel: PledgeViewModelType = PledgeViewModel(
-    feature: AppModel.shared.pledgeFeature,
+  private let pledgeFeature = AppModel.shared.pledgeFeature
+  private lazy var viewModel: PledgeViewModelType = PledgeViewModel(
+    feature: self.pledgeFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
     currencyContext: { .live() },
     hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
@@ -151,7 +152,7 @@ final class PledgeViewController: UIViewController,
       self.confirmation.cancelObservation()
       self.applePayToken.cancelObservation()
       self.applePayController = nil
-      self.applePaySessionGeneration = nil
+      self.applePaySession = nil
     }
   }
 
@@ -398,7 +399,7 @@ final class PledgeViewController: UIViewController,
     else { return }
     guard self.applePayController == nil else { return }
     self.applePayController = paymentAuthorizationViewController
-    self.applePaySessionGeneration = AppModel.shared.sessionFeature.generation
+    self.applePaySession = self.pledgeFeature.checkoutSession
     paymentAuthorizationViewController.delegate = self
 
     self.present(paymentAuthorizationViewController, animated: true)
@@ -455,9 +456,11 @@ final class PledgeViewController: UIViewController,
   private func beginSCAFlow(withClientSecret secret: String) {
     let setupIntentConfirmParams = STPSetupIntentConfirmParams(clientSecret: secret)
 
-    let session = AppModel.shared.sessionFeature
-    let generation = session.generation
-    self.confirmation.start(identity: .init(kind: .setup, clientSecret: secret), isCurrent: { session.generation == generation }, begin: { completion in
+    let feature = self.pledgeFeature
+    let session = feature.checkoutSession
+    self.confirmation.start(identity: .init(kind: .setup, clientSecret: secret), isCurrent: {
+      feature.checkoutSession == session
+    }, begin: { completion in
       STPPaymentHandler.shared().confirmSetupIntent(setupIntentConfirmParams, with: self) { status, _, error in
         completion(.init(status: status, error: error))
       }
@@ -526,12 +529,11 @@ extension PledgeViewController: @MainActor PKPaymentAuthorizationViewControllerD
     handler completion: @escaping (PKPaymentAuthorizationResult)
       -> Void
   ) {
-    let session = AppModel.shared.sessionFeature
-    guard self.applePayController === controller, self.applePaySessionGeneration == session.generation else {
+    guard self.applePayController === controller, let session = self.applePaySession,
+          self.pledgeFeature.checkoutSession == session else {
       completion(PKPaymentAuthorizationResult(status: .failure, errors: []))
       return
     }
-    let generation = session.generation
     let paymentDisplayName = payment.token.paymentMethod.displayName
     let paymentNetworkName = payment.token.paymentMethod.network?.rawValue
     let transactionId = payment.token.transactionIdentifier
@@ -545,7 +547,7 @@ extension PledgeViewController: @MainActor PKPaymentAuthorizationViewControllerD
     self.applePayToken.start(
       isCurrent: { [weak self, weak controller] in
         guard let self, let controller else { return false }
-        return self.applePayController === controller && session.generation == generation
+        return self.applePayController === controller && self.pledgeFeature.checkoutSession == session
       },
       begin: { callback in
         STPAPIClient.shared.createToken(with: payment) { token, error in
@@ -561,13 +563,13 @@ extension PledgeViewController: @MainActor PKPaymentAuthorizationViewControllerD
 
   func paymentAuthorizationViewControllerDidFinish(_ controller: PKPaymentAuthorizationViewController) {
     guard self.applePayController === controller else { return }
-    let generation = self.applePaySessionGeneration
+    let session = self.applePaySession
     self.applePayToken.cancelObservation()
     self.applePayController = nil
-    self.applePaySessionGeneration = nil
+    self.applePaySession = nil
     controller.dismiss(animated: true, completion: { [weak self] in
-      guard AppModel.shared.sessionFeature.generation == generation else { return }
-      self?.viewModel.inputs.paymentAuthorizationViewControllerDidFinish()
+      guard let self, self.pledgeFeature.checkoutSession == session else { return }
+      self.viewModel.inputs.paymentAuthorizationViewControllerDidFinish()
     })
   }
 }

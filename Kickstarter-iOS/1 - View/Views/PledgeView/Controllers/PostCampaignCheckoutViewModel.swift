@@ -287,8 +287,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       self.activeCheckoutData = data
       self.paymentIntentTask?.cancel()
       self.checkoutTask?.cancel()
-      let userID = pledgeFeature.sessionFeature.currentUser?.id
-      let generation = pledgeFeature.sessionFeature.generation
+      let session = pledgeFeature.checkoutSession
       let id = UUID()
       self.checkoutIdentity.id = id
       let request = pledgeFeature.startOpenCheckout(input)
@@ -297,13 +296,13 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
           let checkout = try await request.value
           try await waitForPostCampaignPresentationDelay(responseDelay())
           guard !Task.isCancelled, let self, self.checkoutIdentity.id == id,
-                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.checkoutSession == session else { return }
           self.deliverCheckout?(.success(checkout))
         } catch {
           guard !Task.isCancelled, !(error is CancellationError) else { return }
           do { try await waitForPostCampaignPresentationDelay(responseDelay()) } catch { return }
           guard let self, self.checkoutIdentity.id == id,
-                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.checkoutSession == session else { return }
           self.deliverCheckout?(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))
         }
       }
@@ -311,8 +310,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     self.startCompletion = { [weak self] input in
       guard let self else { return }
       self.completionTask?.cancel()
-      let userID = pledgeFeature.sessionFeature.currentUser?.id
-      let generation = pledgeFeature.sessionFeature.generation
+      let session = pledgeFeature.checkoutSession
       let id = UUID()
       self.completionIdentity.id = id
       let request = pledgeFeature.startCompleteCheckout(input)
@@ -320,7 +318,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
         do {
           try await request.value
           guard !Task.isCancelled, let self, self.completionIdentity.id == id,
-                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.checkoutSession == session else { return }
           self.onProcessingHidden?(true)
           if let data = self.activeCheckoutData, let reward = data.rewards.first {
             self.onCheckoutComplete?((data.project, reward, nil, PostCampaignAmounts(data).total))
@@ -328,7 +326,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
           self.onProcessingHidden?(true)
         } catch {
           guard !Task.isCancelled, !(error is CancellationError), let self, self.completionIdentity.id == id,
-                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.checkoutSession == session else { return }
           self.onProcessingHidden?(true)
           self.onCheckoutError?((error as? ErrorEnvelope) ?? .couldNotParseJSON)
         }
@@ -376,19 +374,18 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
           pledgeTotal: PostCampaignAmounts(data).total
         )
         let checkoutIdentity = self.checkoutIdentity.id
-        let userID = pledgeFeature.sessionFeature.currentUser?.id
-        let generation = pledgeFeature.sessionFeature.generation
+        let session = pledgeFeature.checkoutSession
         self.paymentIntentTask = Task { [weak self] in
           do {
             let intent = try await request.value
             guard !Task.isCancelled, let self, self.checkoutIdentity.id == checkoutIdentity,
-                  pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                  pledgeFeature.checkoutSession == session else { return }
             cardState.setIntentSecret(intent.clientSecret)
             appleState.setIntentSecret(intent.clientSecret)
           } catch {
             guard !Task.isCancelled, !(error is CancellationError), let self,
                   self.checkoutIdentity.id == checkoutIdentity,
-                  pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                  pledgeFeature.checkoutSession == session else { return }
             self.onProcessingHidden?(true)
           }
         }
@@ -676,8 +673,7 @@ private final class CheckoutValidationLane {
 
   func start(feature: PledgeFeature, checkoutID: String, sourceID: String, secret: String) {
     self.task?.cancel()
-    let userID = feature.sessionFeature.currentUser?.id
-    let generation = feature.sessionFeature.generation
+    let session = feature.checkoutSession
     let id = UUID()
     self.identity.id = id
     let request = feature.startValidateCheckout(checkoutID: checkoutID, sourceID: sourceID, secret: secret)
@@ -686,13 +682,13 @@ private final class CheckoutValidationLane {
         let result = try await request.value
         try await waitForPostCampaignPresentationDelay(responseDelay())
         guard !Task.isCancelled, let self, self.identity.id == id,
-              feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+              feature.checkoutSession == session else { return }
         self.onResult?(.success(result))
       } catch {
         guard !Task.isCancelled, !(error is CancellationError) else { return }
         do { try await waitForPostCampaignPresentationDelay(responseDelay()) } catch { return }
         guard let self, self.identity.id == id,
-              feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+              feature.checkoutSession == session else { return }
         self.onResult?(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))
       }
     }

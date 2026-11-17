@@ -1,4 +1,5 @@
 @testable import Kickstarter_iOS
+@testable import KsApi
 
 import PassKit
 import XCTest
@@ -61,16 +62,25 @@ final class ApplePayTokenOperationTests: XCTestCase {
     XCTAssertEqual(replies, [.failure])
   }
 
-  func testSessionReplacementSuppressesBackingButRepliesFailure() async {
+  func testAccountChangeBeforeTheSessionNotificationSuppressesBackingButRepliesFailure() async {
     let operation = ApplePayTokenOperation()
     var callback: (@Sendable (ApplePayTokenOutcome) -> Void)?
-    var current = true
+    var currentUser: User? = .template
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) },
+      currentUser: { currentUser }, updateUser: { _ in }
+    )
+    let pledge = PledgeFeature(platform: .live(), sessionFeature: session, makeProvider: {
+      AsyncPledgeProvider(service: MockService())
+    })
+    let admitted = pledge.checkoutSession
     var replies: [PKPaymentAuthorizationStatus] = []
-    operation.start(isCurrent: { current }, begin: { callback = $0 }, apply: { _ in
+    operation.start(isCurrent: { pledge.checkoutSession == admitted }, begin: { callback = $0 }, apply: { _ in
       XCTFail("Obsolete session"); return .success
     }, reply: { replies.append($0.status) })
     let task = operation.task
-    current = false
+    currentUser = nil
+    XCTAssertEqual(session.generation, admitted.generation)
     callback?(.init(tokenID: "late", error: nil))
     await task?.value
     XCTAssertEqual(replies, [.failure])
