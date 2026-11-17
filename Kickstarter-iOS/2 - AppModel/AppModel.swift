@@ -2,6 +2,20 @@ import Foundation
 import KsApi
 import Prelude
 
+extension ProjectDetailsFeature.Platform {
+  @MainActor
+  static func live() -> Self {
+    Self(
+      serverConfig: { AppEnvironment.current.apiService.serverConfig },
+      prepareWebRequest: { AppEnvironment.current.apiService.preparedRequest(forURL: $0) },
+      cookieStorage: { AppEnvironment.current.cookieStorage },
+      dateType: { AppEnvironment.current.dateType },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      recordThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) }
+    )
+  }
+}
+
 extension RewardsFeature.Platform {
   @MainActor
   static func live() -> Self {
@@ -524,9 +538,12 @@ public final class AppModel {
       profileFeature: profileFeature,
       searchFeature: SearchFeature(provider: searchProvider, lookupProvider: AsyncSearchLookupProvider()),
       discoveryFeature: discoveryFeature,
-      projectDetailsFeature: ProjectDetailsFeature(sessionFeature: sessionFeature, discussionFeature: discussionFeature, makeProvider: {
-        AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService)
-      }),
+      projectDetailsFeature: ProjectDetailsFeature(
+        platform: .live(),
+        sessionFeature: sessionFeature,
+        discussionFeature: discussionFeature,
+        makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) }
+      ),
       rewardsFeature: RewardsFeature(
         platform: .live(),
         sessionFeature: sessionFeature,

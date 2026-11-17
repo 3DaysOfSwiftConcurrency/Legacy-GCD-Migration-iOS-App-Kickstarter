@@ -6,9 +6,8 @@ private let escapedCookieSeparator = "%3F"
 
 // Extracts the ref tag stored in cookies for a particular project. Returns `nil` if no such cookie has
 // been previously set.
-@MainActor
-public func cookieRefTagFor(project: Project) -> RefTag? {
-  return AppEnvironment.current.cookieStorage.cookies?
+public func cookieRefTagFor(project: Project, cookies: [HTTPCookie]?) -> RefTag? {
+  return cookies?
     .filter { cookie in cookie.name == cookieName(project) }
     .first
     .map(refTagName(fromCookie:))
@@ -47,9 +46,8 @@ private func cleanUp(refTagString: String) -> String {
 }
 
 // Constructs a cookie from a ref tag and project.
-@MainActor
-public func cookieFrom(refTag: RefTag, project: Project) -> HTTPCookie? {
-  let timestamp = Int(AppEnvironment.current.dateType.init().timeIntervalSince1970)
+public func cookieFrom(refTag: RefTag, project: Project, dateType: DateProtocol.Type) -> HTTPCookie? {
+  let timestamp = Int(dateType.init().timeIntervalSince1970)
 
   var properties: [HTTPCookiePropertyKey: Any] = [:]
   properties[.name] = cookieName(project)
@@ -59,7 +57,7 @@ public func cookieFrom(refTag: RefTag, project: Project) -> HTTPCookie? {
   properties[.version] = 0
 
   if let deadline = project.dates.deadline {
-    properties[.expires] = AppEnvironment.current.dateType.init(timeIntervalSince1970: deadline).date
+    properties[.expires] = dateType.init(timeIntervalSince1970: deadline).date
   }
 
   return HTTPCookie(properties: properties)

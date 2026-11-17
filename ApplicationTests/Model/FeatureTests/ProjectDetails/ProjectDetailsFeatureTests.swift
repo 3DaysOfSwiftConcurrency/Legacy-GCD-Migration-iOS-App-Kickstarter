@@ -180,9 +180,11 @@ final class ProjectDetailsFeatureTests: TestCase {
 
   private func feature(
     _ provider: ControlledProjectDetailsProvider,
-    fast: Bool = false
+    fast: Bool = false,
+    platform: ProjectDetailsFeature.Platform = .live()
   ) -> ProjectDetailsFeature {
     ProjectDetailsFeature(
+      platform: platform,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }),
       makeProvider: { provider },
@@ -190,6 +192,28 @@ final class ProjectDetailsFeatureTests: TestCase {
       includeRichText: { true },
       sleep: { _ in try Task.checkCancellation() }
     )
+  }
+
+  func testReferralUsesInjectedCookieStorageAndClock() throws {
+    let storage = MockCookieStorage()
+    let feature = self.feature(
+      ControlledProjectDetailsProvider(),
+      platform: .init(
+        serverConfig: { ServerConfig.staging },
+        prepareWebRequest: { URLRequest(url: $0) },
+        cookieStorage: { storage },
+        dateType: { MockDate.self },
+        responseDelaySeconds: { 0 },
+        recordThirdPartyEvent: { _ in }
+      )
+    )
+    let project = Project.template
+    feature.storeReferral(for: project, fallback: .search)
+    let cookie = try XCTUnwrap(storage.cookies?.first)
+    XCTAssertEqual(cookie.value, "search?\(Int(MockDate().timeIntervalSince1970))")
+
+    feature.storeReferral(for: project, fallback: .discovery)
+    XCTAssertEqual(cookieRefTagFor(project: project, cookies: storage.cookies)?.stringTag, RefTag.search.stringTag)
   }
 
   func testNativeUpdatesKeepRouteAndStopOnCancellation() async {

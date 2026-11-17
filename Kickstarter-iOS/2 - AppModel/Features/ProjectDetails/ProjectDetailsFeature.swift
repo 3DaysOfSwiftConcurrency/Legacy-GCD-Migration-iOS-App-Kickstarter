@@ -60,8 +60,35 @@ public struct AsyncProjectDetailsProvider: ProjectDetailsProvider {
 /// it. Cancellation invalidates publication even if a provider completes late.
 @MainActor
 public final class ProjectDetailsFeature {
+  public struct Platform {
+    let serverConfig: @MainActor () -> any ServerConfigType
+    let prepareWebRequest: @MainActor (URL) -> URLRequest
+    let cookieStorage: @MainActor () -> any HTTPCookieStorageProtocol
+    let dateType: @MainActor () -> DateProtocol.Type
+    let responseDelaySeconds: @MainActor () -> TimeInterval
+    let recordThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
+
+    public init(
+      serverConfig: @escaping @MainActor () -> any ServerConfigType,
+      prepareWebRequest: @escaping @MainActor (URL) -> URLRequest,
+      cookieStorage: @escaping @MainActor () -> any HTTPCookieStorageProtocol,
+      dateType: @escaping @MainActor () -> DateProtocol.Type,
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
+      recordThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
+    ) {
+      self.serverConfig = serverConfig
+      self.prepareWebRequest = prepareWebRequest
+      self.cookieStorage = cookieStorage
+      self.dateType = dateType
+      self.responseDelaySeconds = responseDelaySeconds
+      self.recordThirdPartyEvent = recordThirdPartyEvent
+    }
+  }
+
+  let platform: Platform
+
   /// Project-page links use the same configured web host as project detail requests.
-  public var webBaseURL: URL { AppEnvironment.current.apiService.serverConfig.webBaseUrl }
+  public var webBaseURL: URL { self.platform.serverConfig().webBaseUrl }
   public func helpType(for url: URL) -> HelpType? {
     HelpType.helpType(from: url, baseURL: self.webBaseURL)
   }
@@ -69,10 +96,10 @@ public final class ProjectDetailsFeature {
     type.url(withBaseUrl: self.webBaseURL)?.absoluteString
   }
   public func recordThirdPartyEvent(_ input: KsApi.TriggerThirdPartyEventInput) {
-    _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: input)
+    self.platform.recordThirdPartyEvent(input)
   }
   public func redemptionURL(for project: Project) -> String {
-    AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString + project.redemptionPageUrl
+    self.webBaseURL.absoluteString + project.redemptionPageUrl
   }
   public let discussionFeature: DiscussionFeature
   public let sessionFeature: SessionFeature
@@ -80,9 +107,10 @@ public final class ProjectDetailsFeature {
   private var attributionOperations: [UUID: Task<Void, Error>] = [:]
 
   public func storeReferral(for project: Project, fallback: RefTag?) {
-    guard let tag = cookieRefTagFor(project: project) ?? fallback,
-          let cookie = cookieFrom(refTag: tag, project: project) else { return }
-    AppEnvironment.current.cookieStorage.setCookie(cookie)
+    let storage = self.platform.cookieStorage()
+    guard let tag = cookieRefTagFor(project: project, cookies: storage.cookies) ?? fallback,
+          let cookie = cookieFrom(refTag: tag, project: project, dateType: self.platform.dateType()) else { return }
+    storage.setCookie(cookie)
   }
 
   /// One admitted page-view event per route, including after failure. Repeated
@@ -233,6 +261,7 @@ public final class ProjectDetailsFeature {
   }
 
   public init(
+    platform: Platform,
     sessionFeature: SessionFeature,
     discussionFeature: DiscussionFeature,
     makeProvider: @escaping @MainActor () -> any ProjectDetailsProvider,
@@ -246,6 +275,7 @@ public final class ProjectDetailsFeature {
       try Task.checkCancellation()
     }
   ) {
+    self.platform = platform
     self.discussionFeature = discussionFeature
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
@@ -277,7 +307,7 @@ public final class ProjectDetailsFeature {
     let requestID = UUID()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.platform.responseDelaySeconds()
     let sleep = self.sleep
     page.snapshot.isLoading = true
     page.snapshot.error = nil

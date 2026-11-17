@@ -58,12 +58,12 @@ final class AppModelTests: XCTestCase {
     let secondSession = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     let firstDiscussion = DiscussionFeature(platform: .live(), sessionFeature: firstSession, makeProvider: { AsyncDiscussionProvider(service: MockService()) })
     let firstDetails =
-      ProjectDetailsFeature(sessionFeature: firstSession,
+      ProjectDetailsFeature(platform: .live(), sessionFeature: firstSession,
       discussionFeature: firstDiscussion,
       makeProvider: { AsyncProjectDetailsProvider(service: MockService()) })
     let secondDiscussion = DiscussionFeature(platform: .live(), sessionFeature: secondSession, makeProvider: { AsyncDiscussionProvider(service: MockService()) })
     let secondDetails =
-      ProjectDetailsFeature(sessionFeature: secondSession,
+      ProjectDetailsFeature(platform: .live(), sessionFeature: secondSession,
       discussionFeature: secondDiscussion,
       makeProvider: { AsyncProjectDetailsProvider(service: MockService()) })
     let firstSettings = SettingsFeature(sessionFeature: firstSession, makeProvider: {

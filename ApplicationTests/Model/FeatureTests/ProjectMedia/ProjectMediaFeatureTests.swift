@@ -21,6 +21,7 @@ final class ProjectMediaFeatureTests: TestCase {
       makeProvider: { AsyncDiscussionProvider(service: service) }
     )
     let details = ProjectDetailsFeature(
+      platform: .live(),
       sessionFeature: media.sessionFeature,
       discussionFeature: discussion,
       makeProvider: { AsyncProjectDetailsProvider(service: service) },

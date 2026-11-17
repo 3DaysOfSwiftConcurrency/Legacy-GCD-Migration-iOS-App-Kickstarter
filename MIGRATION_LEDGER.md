@@ -3464,6 +3464,13 @@ Rewards and Add-on Selection receive it from their controllers. The CFA
 check guards view models against direct eligibility lookups. All 175
 focused checkout tests and 96 Manage Pledge and Rewards regressions passed.
 
+Project Details now receives URL configuration, authenticated request
+preparation, referral cookie storage and clock, timing, and event recording
+from composition. The CFA check guards the feature and referral helpers.
+One standalone backing-details URL builder still uses the environment.
+All 94 focused tests and 26 AppModel, Similar Projects and deep-link
+regressions passed on the simulator.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

@@ -5,11 +5,11 @@ extension ProjectDetailsFeature {
   /// Preserves the authenticated request preparation used by the creator bio.
   public func creatorBiographyRequest(projectURL: String) -> URLRequest? {
     guard let url = URL(string: projectURL)?.appendingPathComponent("creator_bio") else { return nil }
-    return AppEnvironment.current.apiService.preparedRequest(forURL: url)
+    return self.platform.prepareWebRequest(url)
   }
 
   public func isCreatorMessage(request: URLRequest) -> Bool {
-    let config = AppEnvironment.current.apiService.serverConfig
+    let config = self.platform.serverConfig()
     if let url = request.url,
        let navigation = Navigation.match(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl),
        case .project(_, .messageCreator, _, _) = navigation { return true }

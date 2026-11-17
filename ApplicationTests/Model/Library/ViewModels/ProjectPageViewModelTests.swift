@@ -2102,6 +2102,7 @@ final class ProjectPageViewModelTests: TestCase {
 
   private static func isolatedFeature() -> ProjectDetailsFeature {
     ProjectDetailsFeature(
+      platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }),
       makeProvider: { AsyncProjectDetailsProvider(service: AppEnvironment.current.apiService) },
