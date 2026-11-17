@@ -3351,3 +3351,9 @@ The Pledged Projects hosting controller now supplies Pledge and Pledged
 Projects to the container and screen view models. SwiftUI retains the screen
 model with StateObject. The focused simulator runs passed seven feature and
 19 presentation tests. The CFA source check covers both view models.
+
+DeepLinkRouter now classifies URLs for app callbacks, universal links and
+Braze, and owns browser fallback. The legacy AppDelegate handler still
+dispatches presentation and follow-up actions such as email verification.
+Focused simulator runs passed all 124 AppDelegate presentation tests and
+all 19 Navigation and DeepLinkRouter tests. The CFA source check passed.

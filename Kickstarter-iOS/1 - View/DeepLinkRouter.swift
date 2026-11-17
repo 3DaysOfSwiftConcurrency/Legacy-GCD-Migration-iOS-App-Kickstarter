@@ -1,12 +1,51 @@
+import FirebaseCrashlytics
 import Foundation
 import KsApi
 import Prelude
 import UIKit
 
-/// Resolves deep-link destinations before UIKit presents them.
+/// Matches incoming URLs and resolves deep-link destinations before UIKit presents them.
 /// Project links publish only after the complete project, update and reply chain loads.
 @MainActor
 public final class DeepLinkRouter {
+  enum URLSource {
+    case application
+    case braze
+  }
+
+  struct URLMatch {
+    let navigation: Navigation?
+    let hasDeepLinkMatch: Bool
+
+    func shouldOpenInBrowser(_ url: URL) -> Bool {
+      guard !self.hasDeepLinkMatch else { return false }
+      guard url.scheme != "ksr" else {
+        print(
+          "Error: Unable to open 'ksr' deeplink. Please doublecheck that the url "
+            + "is included in the list of deeplinks and that you're not trying to "
+            + "use a staging url in prod (or vice versa)."
+        )
+        let error = NSError(domain: "Kickstarter.Deeplink", code: 0, userInfo: [
+          NSLocalizedDescriptionKey: "Unable to open unsupported ksr deeplink."
+        ])
+        Crashlytics.crashlytics().record(error: error)
+        return false
+      }
+      return true
+    }
+  }
+
+  static func match(_ url: URL, source: URLSource, config: ServerConfigType) -> URLMatch {
+    let deepLink = Navigation.deepLinkMatch(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
+    switch source {
+    case .application:
+      let navigation = Navigation.match(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
+      return URLMatch(navigation: navigation, hasDeepLinkMatch: deepLink != nil)
+    case .braze:
+      return URLMatch(navigation: deepLink, hasDeepLinkMatch: deepLink != nil)
+    }
+  }
+
   public let sessionFeature: SessionFeature
   public let messagingFeature: MessagingFeature
   public struct ProjectDestination: Sendable {

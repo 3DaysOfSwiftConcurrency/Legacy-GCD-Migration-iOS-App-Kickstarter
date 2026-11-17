@@ -1,5 +1,4 @@
 import Experimentation
-import FirebaseCrashlytics
 import KsApi
 
 import Prelude
@@ -487,10 +486,13 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func applicationContinueUserActivity(_ userActivity: NSUserActivity) -> Bool {
     if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
-      self.continueUserActivityReturnValue = userActivity.webpageURL.flatMap { self.navigationMatch($0) } != nil
-    }
-    if userActivity.activityType == NSUserActivityTypeBrowsingWeb, let url = userActivity.webpageURL {
-      self.handleURL(url)
+      if let url = userActivity.webpageURL {
+        let match = DeepLinkRouter.match(url, source: .application, config: self.serverConfig())
+        self.continueUserActivityReturnValue = match.navigation != nil
+        self.handleURL(url, match: match)
+      } else {
+        self.continueUserActivityReturnValue = false
+      }
     }
     return self.continueUserActivityReturnValue
   }
@@ -636,8 +638,9 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func urlFromBrazeNotification(_ url: URL?) {
     guard let url else { return }
-    if let navigation = self.deepLinkMatch(url) { self.handleNavigation(navigation) }
-    if shouldOpenUrlInBrowser(url, hasDeepLinkMatch: self.deepLinkMatch(url) != nil) { self.onGoToMobileSafari?(url) }
+    let match = DeepLinkRouter.match(url, source: .braze, config: self.serverConfig())
+    if let navigation = match.navigation { self.handleNavigation(navigation) }
+    if match.shouldOpenInBrowser(url) { self.onGoToMobileSafari?(url) }
   }
 
   private func handleNavigation(_ navigation: Navigation) {
@@ -657,23 +660,17 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func handleURL(_ url: URL) {
-    let navigation = self.navigationMatch(url)
+    self.handleURL(url, match: DeepLinkRouter.match(url, source: .application, config: self.serverConfig()))
+  }
+
+  private func handleURL(_ url: URL, match: DeepLinkRouter.URLMatch) {
+    let navigation = match.navigation
     if let navigation { self.handleNavigation(navigation) }
     if navigation == .profile(.verifyEmail), let token = accessTokenFromUrl(url) {
       self.verifyEmail(token: token)
     }
     if navigation == .emailClick { self.onFindRedirectUrl?(url) }
-    if shouldOpenUrlInBrowser(url, hasDeepLinkMatch: self.deepLinkMatch(url) != nil) { self.onGoToMobileSafari?(url) }
-  }
-
-  private func navigationMatch(_ url: URL) -> Navigation? {
-    let config = self.serverConfig()
-    return Navigation.match(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
-  }
-
-  private func deepLinkMatch(_ url: URL) -> Navigation? {
-    let config = self.serverConfig()
-    return Navigation.deepLinkMatch(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
+    if match.shouldOpenInBrowser(url) { self.onGoToMobileSafari?(url) }
   }
 
   private func updateNotification(name: String, enabled: Bool) {
@@ -766,29 +763,6 @@ private func deviceToken(fromData data: Data) -> String {
   return data
     .map { String(format: "%02.2hhx", $0 as CVarArg) }
     .joined()
-}
-
-@MainActor
-private func shouldOpenUrlInBrowser(_ url: URL, hasDeepLinkMatch: Bool) -> Bool {
-  // If url has a deeplink match, never attempt to open the url in the browser.
-  if hasDeepLinkMatch {
-    return false
-  }
-  // Never attempt to open `ksr` urls in the browser; they'll redirect straight back to our app.
-  if let scheme = url.scheme, scheme == "ksr" {
-    print(
-      "Error: Unable to open 'ksr' deeplink. Please doublecheck that the url "
-        + "is included in the list of deeplinks and that you're not trying to "
-        + "use a staging url in prod (or vice versa)."
-    )
-    let error = NSError(domain: "Kickstarter.Deeplink", code: 0, userInfo: [
-      NSLocalizedDescriptionKey: "Unable to open unsupported ksr deeplink."
-    ])
-    Crashlytics.crashlytics().record(error: error)
-    return false
-  }
-  // Otherwise, open url in browser.
-  return true
 }
 
 @MainActor
