@@ -46,7 +46,9 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
   private lazy var youreABackerView = { UIView(frame: .zero) }()
 
   private let viewModel = DiscoveryProjectCardViewModel()
-  private let watchProjectViewModel = WatchProjectViewModel()
+  private let watchProjectViewModel = WatchProjectViewModel(
+    projectMediaFeature: AppModel.shared.projectMediaFeature
+  )
 
   // MARK: - Notification Observers
 

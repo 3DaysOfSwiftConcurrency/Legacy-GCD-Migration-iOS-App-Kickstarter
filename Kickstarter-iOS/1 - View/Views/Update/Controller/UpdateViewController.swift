@@ -6,7 +6,9 @@ import UIKit
 import WebKit
 
 internal final class UpdateViewController: WebViewController {
-  fileprivate let viewModel: UpdateViewModel = UpdateViewModel()
+  fileprivate let viewModel: UpdateViewModel = UpdateViewModel(
+    discussionFeature: AppModel.shared.discussionFeature
+  )
   fileprivate let shareViewModel = ShareViewModel()
 
   fileprivate let closeButton = UIBarButtonItem()

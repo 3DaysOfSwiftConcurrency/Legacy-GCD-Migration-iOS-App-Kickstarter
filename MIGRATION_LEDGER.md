@@ -3305,3 +3305,8 @@ Search now receives SearchFeature and SessionFeature from its controller.
 The multi-screen test fixture shares these explicit dependencies. The view
 model, lookup and cancellation suites passed 67 focused simulator tests.
 `make check-cfa` now guards the Search view-model boundary.
+
+Project Creator, Project Updates, Update, Video and Watch now receive their
+features at controller or cell construction. The focused simulator runs passed
+71 Project Page and media tests plus seven Update presentation tests.
+`make check-cfa` guards the Project Page and Update view-model directories.

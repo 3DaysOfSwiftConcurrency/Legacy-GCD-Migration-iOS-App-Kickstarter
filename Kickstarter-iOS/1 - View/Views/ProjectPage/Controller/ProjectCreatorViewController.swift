@@ -5,7 +5,9 @@ import SafariServices
 import WebKit
 
 internal final class ProjectCreatorViewController: WebViewController {
-  fileprivate let viewModel = ProjectCreatorViewModel()
+  fileprivate let viewModel = ProjectCreatorViewModel(
+    projectDetailsFeature: AppModel.shared.projectDetailsFeature
+  )
 
   var isPresentedFromVideoFeed = false
 

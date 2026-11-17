@@ -7,7 +7,9 @@ import SafariServices
 import WebKit
 
 internal final class ProjectUpdatesViewController: WebViewController {
-  fileprivate let viewModel = ProjectUpdatesViewModel()
+  fileprivate let viewModel = ProjectUpdatesViewModel(
+    discussionFeature: AppModel.shared.discussionFeature
+  )
   fileprivate let activityIndicator = UIActivityIndicatorView()
   internal static func configuredWith(project: Project) -> ProjectUpdatesViewController {
     let vc = ProjectUpdatesViewController()

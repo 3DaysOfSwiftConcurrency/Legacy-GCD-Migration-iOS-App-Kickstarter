@@ -28,12 +28,12 @@ final class WatchProjectViewModel {
   private var pendingIntent: ProjectMediaFeature.WatchIntent?
   private var task: Task<Void, Never>?
 
-  init(projectMediaFeature: ProjectMediaFeature? = nil, sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
+  init(projectMediaFeature: ProjectMediaFeature, sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
     if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
     else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     try Task.checkCancellation()
   }) {
-    self.projectMediaFeature = projectMediaFeature ?? AppModel.shared.projectMediaFeature
+    self.projectMediaFeature = projectMediaFeature
     self.sleep = sleep
   }
 

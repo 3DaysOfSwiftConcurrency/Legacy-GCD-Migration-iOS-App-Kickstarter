@@ -25,8 +25,8 @@ public final class ProjectUpdatesViewModel {
   private(set) var loadingTask: Task<Void, Never>?
   private(set) var contextTask: Task<Void, Never>?
 
-  public init(discussionFeature: DiscussionFeature? = nil) {
-    self.discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
+  public init(discussionFeature: DiscussionFeature) {
+    self.discussionFeature = discussionFeature
   }
 
   public func configureWith(project: Project) {

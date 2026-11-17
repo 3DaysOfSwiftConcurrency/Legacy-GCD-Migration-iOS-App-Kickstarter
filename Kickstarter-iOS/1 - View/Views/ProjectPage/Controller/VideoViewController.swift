@@ -15,7 +15,9 @@ public protocol VideoViewControllerDelegate: AnyObject {
 public final class VideoViewController: UIViewController {
   internal weak var delegate: VideoViewControllerDelegate?
   internal weak var playbackDelegate: AudioVideoViewControllerPlaybackDelegate?
-  fileprivate let viewModel = VideoViewModel()
+  fileprivate let viewModel = VideoViewModel(
+    projectMediaFeature: AppModel.shared.projectMediaFeature
+  )
   fileprivate var playerController: AVPlayerViewController!
   private var videoObservation: ProjectVideoObservation?
   private var backgroundObserver: PlatformObservation?

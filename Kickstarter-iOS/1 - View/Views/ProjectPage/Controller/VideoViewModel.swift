@@ -36,8 +36,8 @@ public final class VideoViewModel {
   private var startTask: Task<Void, Never>?
   private var completionTask: Task<Void, Never>?
 
-  public init(projectMediaFeature: ProjectMediaFeature? = nil) {
-    self.projectMediaFeature = projectMediaFeature ?? AppModel.shared.projectMediaFeature
+  public init(projectMediaFeature: ProjectMediaFeature) {
+    self.projectMediaFeature = projectMediaFeature
   }
 
   public func configureWith(project: any VideoViewConfiguration) {

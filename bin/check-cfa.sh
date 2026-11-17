@@ -46,6 +46,8 @@ reject_matches 'Pledge management view models must receive dependencies from the
   'AppModel[.]shared|AppEnvironment[.]current' "$manage_pledge_view_model" "$cancel_pledge_view_model"
 reject_matches 'ProjectPageViewModel must receive dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$project_page_view_model"
+reject_matches 'Project Page and update view models must receive their feature dependencies explicitly.' \
+  'AppModel[.]shared' "$app_view/Views/ProjectPage/*ViewModel.swift" "$app_view/Views/Update/*ViewModel.swift"
 reject_matches 'DiscoveryFeature must receive its session lookup explicitly.' \
   'AppModel[.]shared|AppEnvironment[.]current[.]currentUser' "$discovery_feature"
 reject_matches 'Discovery view models must receive feature dependencies from their controllers.' \

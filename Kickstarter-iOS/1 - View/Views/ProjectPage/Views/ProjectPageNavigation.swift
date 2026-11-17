@@ -54,7 +54,9 @@ final class ProjectPageNavigation {
   // MARK: - Private properties
 
   private let shareViewModel = ShareViewModel()
-  private let watchProjectViewModel = WatchProjectViewModel()
+  private let watchProjectViewModel = WatchProjectViewModel(
+    projectMediaFeature: AppModel.shared.projectMediaFeature
+  )
 
   private lazy var navigationShareButton: UIButton = { UIButton(type: .custom) }()
   private lazy var navigationSaveButton: UIButton = { UIButton(type: .custom) }()

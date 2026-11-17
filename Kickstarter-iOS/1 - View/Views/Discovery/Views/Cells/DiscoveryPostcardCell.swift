@@ -16,7 +16,9 @@ internal protocol DiscoveryPostcardCellDelegate: AnyObject {
 
 internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
   fileprivate let viewModel = DiscoveryPostcardViewModel()
-  private let watchProjectViewModel = WatchProjectViewModel()
+  private let watchProjectViewModel = WatchProjectViewModel(
+    projectMediaFeature: AppModel.shared.projectMediaFeature
+  )
   internal weak var delegate: DiscoveryPostcardCellDelegate?
 
   @IBOutlet fileprivate var cardView: UIView!

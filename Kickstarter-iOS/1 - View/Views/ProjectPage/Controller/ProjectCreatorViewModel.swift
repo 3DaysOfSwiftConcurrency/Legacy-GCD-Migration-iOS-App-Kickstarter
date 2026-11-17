@@ -40,8 +40,8 @@ public typealias ProjectCreatorConfiguration = HasProjectCreatorProperties & Has
   private var project: (any ProjectCreatorConfiguration)?
   private var loaded = false
 
-  public init(projectDetailsFeature: ProjectDetailsFeature? = nil) {
-    self.projectDetailsFeature = projectDetailsFeature ?? AppModel.shared.projectDetailsFeature
+  public init(projectDetailsFeature: ProjectDetailsFeature) {
+    self.projectDetailsFeature = projectDetailsFeature
   }
 
   public func configureWith(project: any ProjectCreatorConfiguration) {

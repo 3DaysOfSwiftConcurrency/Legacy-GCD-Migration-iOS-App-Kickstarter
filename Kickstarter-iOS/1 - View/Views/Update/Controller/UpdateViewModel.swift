@@ -19,8 +19,8 @@ internal final class UpdateViewModel {
   private var updateRevision = 0
   private var projectRevision = 0
 
-  internal init(discussionFeature: DiscussionFeature? = nil) {
-    self.discussionFeature = discussionFeature ?? AppModel.shared.discussionFeature
+  internal init(discussionFeature: DiscussionFeature) {
+    self.discussionFeature = discussionFeature
   }
 
   internal func configureWith(project: Project, update: Update) {
