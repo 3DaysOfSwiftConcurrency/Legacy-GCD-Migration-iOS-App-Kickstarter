@@ -3870,3 +3870,21 @@ caught a change in refresh completion after a failed read. Restoring the
 existing refresh completion behavior resolved the failure. The remaining
 Manage Pledge task ownership gap is the unretained presentation delay.
 Live payments and visual parity remain unverified.
+
+### Manage Pledge presentation task ownership — Matthew Thomas
+
+Manage Pledge retains a cancellation handle for each delayed project
+result, backing result, and refresh completion. Starting a replacement
+read cancels the old result for that read. Replacing the route or
+session, or releasing the ViewModel, cancels all pending presentation
+work. Refresh completions already admitted for the same route keep
+their individual callbacks so retries retain their existing behavior.
+
+Controlled-clock tests verify cancellation on route replacement and
+ViewModel release. The reward receipt ViewModel still reads analytics
+and timing from the shared environment.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 105 focused
+Manage Pledge and Pledge Feature tests and 129 bounded cancellation,
+reward receipt, checkout, and installment regressions. Live payments
+and visual parity remain unverified.

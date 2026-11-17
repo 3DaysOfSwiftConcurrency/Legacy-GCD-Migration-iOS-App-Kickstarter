@@ -1,5 +1,6 @@
 @testable import Kickstarter_iOS
 import Foundation
+import os
 import Prelude
 import XCTest
 
@@ -9,25 +10,34 @@ import XCTest
 @MainActor
 private final class ManagePledgeTestClock {
   private var now: TimeInterval = 0
-  private var actions: [(TimeInterval, @MainActor () -> Void)] = []
+  private struct ScheduledAction {
+    let time: TimeInterval
+    let action: @MainActor @Sendable () -> Void
+    let cancelled: OSAllocatedUnfairLock<Bool>
+  }
 
-  func schedule(_ delay: TimeInterval, action: @escaping @MainActor () -> Void) {
-    guard !delay.isInfinite else { return }
-    actions.append((now + max(0, delay), action))
+  private var actions: [ScheduledAction] = []
+  var pendingCount: Int { self.actions.filter { !$0.cancelled.withLock { $0 } }.count }
+
+  func schedule(_ delay: TimeInterval, action: @escaping @MainActor @Sendable () -> Void) -> (@Sendable () -> Void) {
+    let cancelled = OSAllocatedUnfairLock(initialState: false)
+    self.actions.append(.init(time: self.now + max(0, delay), action: action, cancelled: cancelled))
+    return { cancelled.withLock { $0 = true } }
   }
 
   func advance(by interval: TimeInterval) {
-    let target = now + interval
-    while let index = actions.indices.filter({ actions[$0].0 <= target }).min(by: { actions[$0].0 < actions[$1].0 }) {
-      let (time, action) = actions.remove(at: index)
-      now = time
-      action()
+    let target = self.now + interval
+    while let index = self.actions.indices.filter({ self.actions[$0].time <= target })
+      .min(by: { self.actions[$0].time < self.actions[$1].time }) {
+      let scheduled = self.actions.remove(at: index)
+      self.now = scheduled.time
+      if !scheduled.cancelled.withLock({ $0 }) { scheduled.action() }
     }
-    now = target
+    self.now = target
   }
 
   func run() {
-    while let next = actions.map(\.0).min() { advance(by: max(0, next - now)) }
+    while let next = actions.map(\.time).min() { advance(by: max(0, next - now)) }
   }
 }
 
@@ -229,6 +239,52 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.configurePaymentMethodView.assertDidNotEmitValue()
       self.endRefreshing.assertDidNotEmitValue()
+    }
+  }
+
+  func testRouteReplacementCancelsAllPendingPresentation() async {
+    let service = MockService(
+      fetchManagePledgeViewBackingResult: .success(.template),
+      fetchProjectResult: .success(.template),
+      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
+    )
+    await withEnvironment(apiService: service, currentUser: .template) {
+      self.vm.inputs.configureWith((.slug("original"), .id(1)))
+      self.vm.inputs.viewDidLoad()
+      await self.advancePledges()
+      XCTAssertEqual(self.clock.pendingCount, 1, "The previous backing queued refresh completion")
+
+      self.vm.inputs.beginRefresh()
+      await (self.vm as? ManagePledgeViewModel)?.waitForReads()
+      XCTAssertEqual(self.clock.pendingCount, 2, "Refresh completion and the new backing are pending")
+
+      self.vm.inputs.configureWith((.slug("replacement"), .id(2)))
+      XCTAssertEqual(self.clock.pendingCount, 0)
+      self.clock.advance(by: 0.3)
+      self.endRefreshing.assertDidNotEmitValue()
+
+      await self.runPledges()
+      self.endRefreshing.assertValueCount(1)
+    }
+  }
+
+  func testReleasingTheViewModelCancelsPendingPresentation() async {
+    let service = MockService(
+      fetchManagePledgeViewBackingResult: .success(.template),
+      fetchProjectResult: .success(.template),
+      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
+    )
+    await withEnvironment(apiService: service, currentUser: .template) {
+      self.vm.inputs.configureWith((.slug("project"), .id(1)))
+      self.vm.inputs.viewDidLoad()
+      await (self.vm as? ManagePledgeViewModel)?.waitForReads()
+      XCTAssertEqual(self.clock.pendingCount, 2)
+
+      self.vm = nil
+      XCTAssertEqual(self.clock.pendingCount, 0)
+      self.clock.run()
+      self.configurePaymentMethodView.assertDidNotEmitValue()
+      self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
     }
   }
 
