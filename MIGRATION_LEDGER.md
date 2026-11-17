@@ -3628,3 +3628,18 @@ The simulator passed 43 focused Navigation and Authentication tests and
 137 bounded delegate and Root Tabs tests. Injected redirect results
 exercise project presentation and Safari fallback through the actual
 routing path.
+
+### Settings link feedback — Matthew Thomas
+
+Navigation sends incoming settings links to a focused presentation owner.
+SettingsFeature still admits notification and verification writes. The
+presentation owner holds the feedback tasks, waits through the existing
+delay, and discards feedback from obsolete sessions. AppDelegate checks
+the session again before its queued UIKit and analytics updates. The
+legacy delegate handler forwards completion actions. The source check
+guards the task ownership and composition boundaries.
+
+The simulator passed 51 focused Navigation and Settings tests and 137
+bounded delegate and Root Tabs tests. Coverage includes verification
+feedback, superseded notification-setting feedback, and preservation of
+newer account data through the presentation delay.

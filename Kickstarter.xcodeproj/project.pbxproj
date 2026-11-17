@@ -8241,6 +8241,7 @@
 				"414FFF3C2EEF013E1869F894",
 				"18730CB31B8976851E5CB6F4",
 				"ED3FBF9E46346230EAB17425",
+				"46E4BDC8CD8B4778A2DF45B7",
 				"BE98FB3FEC1860B0B012B1E6",
 				"DA28191A52061270D4E5AFF0",
 				"CFA031200000000000000008",
@@ -18587,6 +18588,17 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "8707ECDF95A9341C472C5975";
 		};
+		"46E4BDC8CD8B4778A2DF45B7" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "58960C4F706A43BBBD50DCB3";
+		};
+		"58960C4F706A43BBBD50DCB3" = {
+			"name" = "SettingsLinkPresentation.swift";
+			"path" = "Kickstarter-iOS/1 - View/Navigation/SettingsLinkPresentation.swift";
+			"isa" = "PBXFileReference";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
 		"ED3FBF9E46346230EAB17425" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "C79F9AA290B4147C1C26B922";
@@ -19813,6 +19825,7 @@
 			"children" = (
 				"984AAE5C2E31702B7EF6DF51",
 				"C79F9AA290B4147C1C26B922",
+				"58960C4F706A43BBBD50DCB3",
 			);
 		};
 		"CFA031200000000000000005" = {

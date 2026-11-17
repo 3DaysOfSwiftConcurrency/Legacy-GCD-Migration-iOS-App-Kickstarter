@@ -18,8 +18,8 @@ public final class DeepLinkRouter {
     case selectSearch
     case selectProfile
     case showLogin(LoginIntent)
-    case updateNotification(name: String, enabled: Bool)
-    case verifyEmail(String)
+    case notificationSettingsUpdated
+    case emailVerificationCompleted(String, Bool)
     case openBrowser(URL)
     case resolveDestination(Navigation)
   }
@@ -73,7 +73,9 @@ public final class DeepLinkRouter {
         self.route(navigation, perform: perform)
         if source == .application, navigation == .profile(.verifyEmail),
            let token = accessTokenFromUrl(url) {
-          perform(.verifyEmail(token))
+          self.settingsLinks.verifyEmail(token: token) { message, success in
+            perform(.emailVerificationCompleted(message, success))
+          }
         }
       }
     }
@@ -81,20 +83,22 @@ public final class DeepLinkRouter {
     return match.navigation != nil
   }
 
-  func route(push envelope: PushEnvelope, perform: (Action) -> Void) {
+  func route(push envelope: PushEnvelope, perform: @escaping @MainActor (Action) -> Void) {
     if let navigation = navigation(fromPushEnvelope: envelope, webBaseURL: self.serverConfig().webBaseUrl) {
       self.route(navigation, perform: perform)
     }
   }
 
-  func route(shortcut: ShortcutItem, perform: (Action) -> Void) {
+  func route(shortcut: ShortcutItem, perform: @escaping @MainActor (Action) -> Void) {
     self.route(navigation(fromShortcutItem: shortcut), perform: perform)
   }
 
-  private func route(_ navigation: Navigation, perform: (Action) -> Void) {
+  private func route(_ navigation: Navigation, perform: @escaping @MainActor (Action) -> Void) {
     switch navigation {
     case let .settings(.notifications(name, enabled)):
-      perform(.updateNotification(name: name, enabled: enabled))
+      self.settingsLinks.updateNotification(name: name, enabled: enabled) {
+        perform(.notificationSettingsUpdated)
+      }
     case .tab(.activity): perform(.selectActivity)
     case .tab(.search): perform(.selectSearch)
     case .tab(.me): perform(.selectProfile)
@@ -135,6 +139,7 @@ public final class DeepLinkRouter {
   private let discoveryFeature: DiscoveryFeature
   private let activityFeature: ActivityFeature
   private let authenticationFeature: AuthenticationFeature
+  private let settingsLinks: SettingsLinkPresentation
   private let serverConfig: () -> ServerConfigType
   private let discoveryResponseDelay: () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
@@ -149,6 +154,7 @@ public final class DeepLinkRouter {
     discussionFeature: DiscussionFeature,
     discoveryFeature: DiscoveryFeature, activityFeature: ActivityFeature,
     authenticationFeature: AuthenticationFeature,
+    settingsLinks: SettingsLinkPresentation,
     serverConfig: @escaping () -> ServerConfigType,
     discoveryResponseDelay: @escaping () -> TimeInterval,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
@@ -161,6 +167,7 @@ public final class DeepLinkRouter {
     self.discoveryFeature = discoveryFeature
     self.activityFeature = activityFeature
     self.authenticationFeature = authenticationFeature
+    self.settingsLinks = settingsLinks
     self.serverConfig = serverConfig
     self.discoveryResponseDelay = discoveryResponseDelay
     self.sleep = sleep

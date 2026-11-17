@@ -49,6 +49,11 @@ reject_matches 'The app delegate owns startup analytics wiring and preference sy
 reject_matches 'RemoteConfigurationService owns activation and publishes its outcome.' \
   'remoteConfig(Task|Version)|didUpdateRemoteConfigClient|remoteConfigClientConfigurationFailed|ksr_remoteConfigClientConfigured' \
   "$app_view/AppDelegate.swift" "$delegate_handler"
+reject_matches 'Settings link completion tasks belong to Navigation presentation.' \
+  'requestNotification\(|requestVerification\(|settingsPresentationDelay|notificationTasks|verificationTask' \
+  "$delegate_handler"
+reject_matches 'Settings link presentation receives its dependencies from composition.' \
+  'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Navigation/SettingsLinkPresentation.swift"
 reject_matches 'DeepLinkRouter receives platform dependencies from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Navigation/DeepLinkRouter.swift"
 reject_matches 'Navigation owns incoming URL, push envelope, and shortcut routing decisions.' \

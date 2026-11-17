@@ -149,16 +149,9 @@ public protocol AppDelegateViewModelType {
 @MainActor
 public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateViewModelInputs,
   AppDelegateViewModelOutputs {
-  var settingsPresentationDelay: @MainActor (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    try Task.checkCancellation()
-  }
-  private var notificationTasks: [UUID: Task<Void, Never>] = [:]
-  private var verificationTask: Task<Void, Never>?
   private let deepLinkRouter: DeepLinkRouter
   private let pushRegistration: () -> PushRegistrationType.Type
   private let trackingAdapter: () -> any AppTrackingTransparencyType
-  private let settingsPresentationDelaySeconds: () -> TimeInterval
   private let applicationShortcuts: ApplicationShortcutService
   private let devicePushRegistration: DevicePushRegistrationService
   private let sessionFeature: SessionFeature
@@ -178,7 +171,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     deepLinkRouter: DeepLinkRouter,
     pushRegistration: @escaping () -> PushRegistrationType.Type,
     trackingAdapter: @escaping () -> any AppTrackingTransparencyType,
-    settingsPresentationDelaySeconds: @escaping () -> TimeInterval,
     applicationShortcuts: ApplicationShortcutService,
     devicePushRegistration: DevicePushRegistrationService,
     sessionFeature: SessionFeature,
@@ -190,7 +182,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.deepLinkRouter = deepLinkRouter
     self.pushRegistration = pushRegistration
     self.trackingAdapter = trackingAdapter
-    self.settingsPresentationDelaySeconds = settingsPresentationDelaySeconds
     self.applicationShortcuts = applicationShortcuts
     self.devicePushRegistration = devicePushRegistration
     self.sessionFeature = sessionFeature
@@ -200,8 +191,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
 
   deinit {
-    self.notificationTasks.values.forEach { $0.cancel() }
-    self.verificationTask?.cancel()
     let devicePushRegistration = self.devicePushRegistration
     let settingsFeature = self.settingsFeature
     self.pushTasks.values.forEach { $0.cancel() }
@@ -413,7 +402,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func applicationPerformActionForShortcutItem(_ item: UIApplicationShortcutItem) {
     guard let shortcut = ShortcutItem(typeString: item.type) else { return }
-    self.deepLinkRouter.route(shortcut: shortcut, perform: self.performNavigationAction)
+    self.deepLinkRouter.route(shortcut: shortcut, perform: self.navigationActionHandler)
   }
 
   public func currentUserUpdatedInEnvironment() {
@@ -425,7 +414,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public func didReceive(pushEnvelope: PushEnvelope) {
-    self.deepLinkRouter.route(push: pushEnvelope, perform: self.performNavigationAction)
+    self.deepLinkRouter.route(push: pushEnvelope, perform: self.navigationActionHandler)
   }
 
   public func didRegisterForRemoteNotifications(withDeviceTokenData data: Data) {
@@ -485,65 +474,11 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     case .selectSearch: self.onGoToSearch?()
     case .selectProfile: self.onGoToProfile?()
     case let .showLogin(intent): self.onGoToLoginWithIntent?(intent)
-    case let .updateNotification(name, enabled): self.updateNotification(name: name, enabled: enabled)
-    case let .verifyEmail(token): self.verifyEmail(token: token)
+    case .notificationSettingsUpdated: self.onNotificationSettingsUpdated?()
+    case let .emailVerificationCompleted(message, success): self.onEmailVerificationCompleted?(message, success)
     case let .openBrowser(url): self.onGoToMobileSafari?(url)
     case let .resolveDestination(navigation): self.resolveDestination(navigation)
     }
-  }
-
-  private func updateNotification(name: String, enabled: Bool) {
-    guard let request = self.settingsFeature.requestNotification(named: name, enabled: enabled) else { return }
-    let session = self.sessionFeature
-    let userID = session.currentUser?.id
-    let generation = session.generation
-    let operation = session.sessionBound { try await request.value }
-    let delay = self.settingsPresentationDelay
-    let seconds = self.settingsPresentationDelaySeconds()
-    let id = UUID()
-    self.notificationTasks[id] = Task { [weak self] in
-      defer { self?.notificationTasks[id] = nil }
-      do {
-        _ = try await operation()
-        try await delay(seconds)
-        try Task.checkCancellation()
-        guard session.isCurrent(userID: userID, generation: generation) else { return }
-        self?.onNotificationSettingsUpdated?()
-      } catch { /* Failed, cancelled or obsolete writes do not report success. */ }
-    }
-  }
-
-  private func verifyEmail(token: String) {
-    self.verificationTask?.cancel()
-    let request = self.settingsFeature.requestVerification(token: token)
-    let session = self.sessionFeature
-    let userID = session.currentUser?.id
-    let generation = session.generation
-    let operation = session.sessionBound { try await request.value }
-    let delay = self.settingsPresentationDelay
-    let seconds = self.settingsPresentationDelaySeconds()
-    self.verificationTask = Task { [weak self] in
-      let result: Result<EmailVerificationResponseEnvelope, Error>
-      do { result = .success(try await operation()) }
-      catch { result = .failure(error) }
-      do {
-        try await delay(seconds)
-        try Task.checkCancellation()
-        guard session.isCurrent(userID: userID, generation: generation) else { return }
-        switch result {
-        case let .success(response): self?.onEmailVerificationCompleted?(response.message, true)
-        case let .failure(error):
-          if error is CancellationError { return }
-          let message = (error as? ErrorEnvelope)?.errorMessages.first ?? Strings.Something_went_wrong_please_try_again()
-          self?.onEmailVerificationCompleted?(message, false)
-        }
-      } catch { /* A newer request or owner cancellation suppresses presentation. */ }
-    }
-  }
-
-  func waitForSettingsPresentation() async {
-    for task in Array(self.notificationTasks.values) { await task.value }
-    await self.verificationTask?.value
   }
 
   public private(set) var applicationDidFinishLaunchingReturnValue = true

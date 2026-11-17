@@ -18,6 +18,7 @@ final class DeepLinkRouterTests: XCTestCase {
   private var discoveryDelay: TimeInterval = 0
   private var discoverySleeps: [TimeInterval] = []
   private let redirects = AccountRequestGate<URL?>()
+  private var settingsLinks: SettingsLinkPresentation!
 
   override func setUp() async throws {
     try await super.setUp()
@@ -32,6 +33,12 @@ final class DeepLinkRouterTests: XCTestCase {
       self?.monitorStarts += 1
       return self?.connectivityMonitor
     })
+    let settings = SettingsFeature(sessionFeature: session, makeProvider: {
+      AsyncAccountPreferencesProvider(service: MockService(
+        verifyEmailResult: .success(EmailVerificationResponseEnvelope(message: "Verified"))
+      ))
+    })
+    self.settingsLinks = SettingsLinkPresentation(settingsFeature: settings, responseDelay: { 0 })
     self.feature = DeepLinkRouter(
       sessionFeature: session, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session, makeProvider: { provider }),
@@ -48,6 +55,7 @@ final class DeepLinkRouterTests: XCTestCase {
         makeProvider: { AsyncAuthenticationProvider(service: MockService()) },
         resolveRedirect: { [redirects = self.redirects] _ in try await redirects.request() }
       ),
+      settingsLinks: self.settingsLinks,
       serverConfig: { ServerConfig.local },
       discoveryResponseDelay: { [weak self] in self?.discoveryDelay ?? 0 },
       sleep: { [weak self] seconds in
@@ -75,15 +83,18 @@ final class DeepLinkRouterTests: XCTestCase {
     }
   }
 
-  func testVerificationLinkUsesConfiguredHostAndOnlyApplicationRunsVerification() throws {
+  func testVerificationLinkUsesConfiguredHostAndOnlyApplicationRunsVerification() async throws {
     let url = try XCTUnwrap(URL(string: "http://ksr.test/profile/verify_email?at=fixture"))
     var actions: [DeepLinkRouter.Action] = []
 
     XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
-    XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail)), .verifyEmail("fixture")])
+    XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail))])
+    await self.settingsLinks.waitForOperations()
+    XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail)), .emailVerificationCompleted("Verified", true)])
 
     actions.removeAll()
     XCTAssertTrue(self.feature.route(url: url, route: self.route, source: .braze) { actions.append($0) })
+    await self.settingsLinks.waitForOperations()
     XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail))])
   }
 

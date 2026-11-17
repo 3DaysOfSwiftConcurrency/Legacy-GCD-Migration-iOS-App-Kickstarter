@@ -71,6 +71,14 @@ final class AppDelegateViewModelTests: TestCase {
     sessionFeature: self.settingsFeature.sessionFeature,
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
+  private var settingsLinkDelay: @MainActor (TimeInterval) async throws -> Void = { _ in
+    try Task.checkCancellation()
+  }
+  private lazy var settingsLinks = SettingsLinkPresentation(
+    settingsFeature: self.settingsFeature,
+    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+    sleep: { [weak self] seconds in try await self?.settingsLinkDelay(seconds) }
+  )
   private lazy var deepLinkRouter = DeepLinkRouter(
     sessionFeature: self.settingsFeature.sessionFeature,
     messagingFeature: self.messagingFeature,
@@ -91,6 +99,7 @@ final class AppDelegateViewModelTests: TestCase {
         await self?.recordEmailRedirect(url)
       }
     ),
+    settingsLinks: self.settingsLinks,
     serverConfig: { AppEnvironment.current.apiService.serverConfig },
     discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     sleep: { _ in try Task.checkCancellation() }
@@ -180,7 +189,6 @@ final class AppDelegateViewModelTests: TestCase {
       deepLinkRouter: self.deepLinkRouter,
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
-      settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       applicationShortcuts: ApplicationShortcutService(
         session: session,
         hasRecommendations: { [discoveryFeature = self.discoveryFeature] in
@@ -197,7 +205,6 @@ final class AppDelegateViewModelTests: TestCase {
 
   private func bindOutputs() {
     self.vm = self.makeDelegateHandler()
-    (self.vm as? AppDelegateViewModel)?.settingsPresentationDelay = { _ in try Task.checkCancellation() }
     self.vm.outputs.onNotificationSettingsUpdated = { [weak self] in self?.notificationSettingsUpdated.record(()) }
 
     self.vm.outputs.onApplicationIconBadgeNumber = { [weak self] in self?.applicationIconBadgeNumber.record($0) }
@@ -1879,7 +1886,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       await self.settingsFeature.waitForOperations()
 
-      await (self.vm as? AppDelegateViewModel)?.waitForSettingsPresentation()
+      await self.settingsLinks.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([true])
       self.emailVerificationCompletedMessage.assertValues(
         ["Thanks—you’ve successfully verified your email address."]
@@ -1913,7 +1920,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       await self.settingsFeature.waitForOperations()
 
-      await (self.vm as? AppDelegateViewModel)?.waitForSettingsPresentation()
+      await self.settingsLinks.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([false])
       self.emailVerificationCompletedMessage.assertValues(
         ["Error Message"]
@@ -1947,7 +1954,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
       await self.settingsFeature.waitForOperations()
 
-      await (self.vm as? AppDelegateViewModel)?.waitForSettingsPresentation()
+      await self.settingsLinks.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([false])
       self.emailVerificationCompletedMessage.assertValues(
         ["Something went wrong, please try again."]
@@ -1964,8 +1971,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertTrue(self.vm.inputs.applicationOpenUrl(
         application: UIApplication.shared, url: url, options: [:]
       ))
-      await self.settingsFeature.waitForOperations()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsLinks.waitForOperations()
       self.notificationSettingsUpdated.assertDidNotEmitValue()
       self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
       XCTAssertEqual(AppEnvironment.current.currentUser?.notifications, original)
@@ -1975,7 +1981,7 @@ final class AppDelegateViewModelTests: TestCase {
 
   func testDeepLinkCompletionDoesNotReplaySavedUserAfterPresentationDelay() async throws {
     let (stream, continuation) = AsyncStream<Void>.makeStream()
-    (self.vm as? AppDelegateViewModel)?.settingsPresentationDelay = { _ in
+    self.settingsLinkDelay = { _ in
       for await _ in stream { break }
       try Task.checkCancellation()
     }
@@ -1993,7 +1999,7 @@ final class AppDelegateViewModelTests: TestCase {
     AppEnvironment.updateCurrentUser(newer)
     continuation.yield(())
     continuation.finish()
-    await (self.vm as? AppDelegateViewModel)?.waitForSettingsPresentation()
+    await self.settingsLinks.waitForOperations()
     self.notificationSettingsUpdated.assertValueCount(1)
     self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
     XCTAssertEqual(AppEnvironment.current.currentUser?.newsletters.games, true)
@@ -2003,7 +2009,7 @@ final class AppDelegateViewModelTests: TestCase {
     let delayStarted = self.expectation(description: "Settings write reached the presentation delay")
     let (delayGate, release) = AsyncStream<Void>.makeStream()
     let handler = try XCTUnwrap(self.vm as? AppDelegateViewModel)
-    handler.settingsPresentationDelay = { _ in
+    self.settingsLinkDelay = { _ in
       delayStarted.fulfill()
       for await _ in delayGate { break }
     }
@@ -2017,7 +2023,7 @@ final class AppDelegateViewModelTests: TestCase {
     self.settingsFeature.sessionFeature.sessionChanged()
     release.yield(())
     release.finish()
-    await handler.waitForSettingsPresentation()
+    await self.settingsLinks.waitForOperations()
 
     self.notificationSettingsUpdated.assertDidNotEmitValue()
   }
@@ -2060,7 +2066,7 @@ final class AppDelegateViewModelTests: TestCase {
       await self.settingsFeature.waitForOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([user])
-      await (self.vm as? AppDelegateViewModel)?.waitForSettingsPresentation()
+      await self.settingsLinks.waitForOperations()
       self.notificationSettingsUpdated.assertValueCount(1)
       XCTAssertEqual(AppEnvironment.current.currentUser?.notifications, updatedUser.notifications)
     }

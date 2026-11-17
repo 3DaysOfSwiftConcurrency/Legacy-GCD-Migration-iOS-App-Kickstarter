@@ -30,6 +30,10 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       discoveryFeature: model.discoveryFeature,
       activityFeature: model.activityFeature,
       authenticationFeature: model.authenticationFeature,
+      settingsLinks: SettingsLinkPresentation(
+        settingsFeature: model.settingsFeature,
+        responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      ),
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
     )
@@ -37,7 +41,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       deepLinkRouter: router,
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
-      settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       applicationShortcuts: model.applicationShortcuts,
       devicePushRegistration: model.devicePushRegistrationService,
       sessionFeature: model.sessionFeature,
@@ -144,10 +147,14 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     self.viewModel.outputs.onNotificationSettingsUpdated = { [weak self] in
+      let session = AppModel.shared.sessionFeature
+      let userID = session.currentUser?.id
+      let generation = session.generation
       DispatchQueue.main.async { [weak self] in
         // The Feature committed the edit. Read the latest session rather than
         // restoring an older command snapshot after presentation scheduling.
-        guard let user = AppModel.shared.sessionFeature.currentUser else { return }
+        guard session.isCurrent(userID: userID, generation: generation),
+              let user = session.currentUser else { return }
         self?.braze?.changeUser(userId: String(user.id))
         AppEnvironment.current.identify(user: user)
         self?.viewModel.inputs.currentUserUpdatedInEnvironment()
@@ -257,7 +264,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     self.viewModel.outputs.onEmailVerificationCompleted = { [weak self] message, success in
+      let session = AppModel.shared.sessionFeature
+      let userID = session.currentUser?.id
+      let generation = session.generation
       DispatchQueue.main.async { [weak self] in
+        guard session.isCurrent(userID: userID, generation: generation) else { return }
         self?.rootTabBarController?.dismiss(animated: false, completion: nil)
         self?.rootTabBarController?
           .messageBannerViewController?.showBanner(with: success ? .success : .error, message: message)
