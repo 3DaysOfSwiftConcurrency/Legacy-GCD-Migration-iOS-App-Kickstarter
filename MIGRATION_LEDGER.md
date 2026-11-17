@@ -3989,3 +3989,21 @@ The first regression run exposed two Settings tests that released
 their mock environment before the ViewModel finished its read.
 Awaiting the ViewModel resolved both. Live Stripe and visual parity
 remain unverified.
+
+### Payment presentation task ownership — Matthew Thomas
+
+Payment Settings and stored-card checkout each own their active
+presentation tasks. A finished task removes its own handle. Replacing
+a task cancels its observation, and an older completion cannot remove
+the replacement. Canceling PaymentSheet setup also stops delayed
+error presentation. PaymentsFeature retains ownership of admitted
+card mutations.
+
+Controlled tests cover replacement while the old task is suspended
+and cancellation while a setup error waits to be presented. The
+stored-card PaymentSheet still uses session identity alone to check
+callbacks when checkout is reconfigured within the same session.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 55 focused
+presentation and view-model tests and 115 Payments and checkout
+regressions. Live Stripe behavior and visual parity remain unverified.

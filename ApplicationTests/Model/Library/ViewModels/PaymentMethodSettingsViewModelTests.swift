@@ -69,6 +69,30 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     }
   }
 
+  func testCancelingSetupSuppressesAnErrorAlreadyWaitingToBePresented() async {
+    let gate = PaymentDelayGate()
+    let delayCompleted = XCTestExpectation(description: "Setup error delay resumes")
+    let model = self.makeViewModel(sleep: { _ in
+      try await gate.wait()
+      delayCompleted.fulfill()
+    })
+    var errors = 0
+    model.onEvent = { event in
+      if case .errorLoadingPaymentMethodsOrSetupIntent = event { errors += 1 }
+    }
+    let service = MockService(createStripeSetupIntentResult: .failure(.couldNotParseJSON))
+    await withEnvironment(apiService: service) {
+      model.paymentMethodsFooterViewDidTapAddNewCardButton()
+      await gate.waitUntilBlocked()
+      model.shouldCancelPaymentSheetAppearance(state: true)
+      gate.resume()
+      let result = await XCTWaiter().fulfillment(of: [delayCompleted], timeout: 2)
+      XCTAssertEqual(result, .completed)
+      await model.waitForPending()
+      XCTAssertEqual(errors, 0)
+    }
+  }
+
   func testSessionChangeDuringPresentationDelaySuppressesOldCards() async {
     let gate = PaymentDelayGate()
     let vm = self.makeViewModel(sleep: { _ in
@@ -599,6 +623,28 @@ private final class PaymentRecorder<Value> {
 private extension PaymentRecorder where Value: Equatable {
   func assertValues(_ expected: [Value], _ message: String = "", file: StaticString = #filePath, line: UInt = #line) { XCTAssertEqual(self.values, expected, message, file: file, line: line) }
   func assertValue(_ expected: Value, _ message: String = "", file: StaticString = #filePath, line: UInt = #line) { self.assertValues([expected], message, file: file, line: line) }
+}
+
+@MainActor
+final class PaymentPresentationTasksTests: XCTestCase {
+  func testAnOldCompletionDoesNotReleaseItsReplacement() async {
+    let tasks = PaymentPresentationTasks()
+    let oldDelay = PaymentDelayGate()
+    let newDelay = PaymentDelayGate()
+    let original = tasks.replace(.cards) { try? await oldDelay.wait() }
+    await oldDelay.waitUntilBlocked()
+
+    let replacement = tasks.replace(.cards) { try? await newDelay.wait() }
+    await newDelay.waitUntilBlocked()
+    XCTAssertTrue(original.isCancelled)
+    oldDelay.resume()
+    await original.value
+    XCTAssertFalse(tasks.isIdle)
+
+    newDelay.resume()
+    await replacement.value
+    XCTAssertTrue(tasks.isIdle)
+  }
 }
 
 @MainActor

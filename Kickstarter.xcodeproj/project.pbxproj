@@ -3582,6 +3582,10 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "82E01898D8F17B1DF16C6D6E";
 		};
+		"651EEAD94EAF4A5EB7B97F4E" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "82CC1239472940C3BDF72214";
+		};
 		"80A24B5A240238DD5CF13898" = {
 			"isa" = "PBXBuildFile";
 			"productRef" = "D3BFB6B4AA416646ACC11AA2";
@@ -7690,6 +7694,7 @@
 				"A5D25A007C603EDB8D1930EC",
 				"7D120D404E582F8F17BBB5A9",
 				"8133A61E97603C767D59F1CD",
+				"651EEAD94EAF4A5EB7B97F4E",
 				"B41F20F76FF60E2A8206FEC4",
 				"410FD9B581E414BD9E7AE507",
 				"8A70546B4705DCF88A328F7F",
@@ -9660,6 +9665,7 @@
 				"BEC3F9831C8B5415D692468D",
 				"FF5EA6799E88F9DA6681B807",
 				"82E01898D8F17B1DF16C6D6E",
+				"82CC1239472940C3BDF72214",
 				"E62F8157B4FE35D0D8542A18",
 				"0AB95B4CB24E3B2F5A94BDCA",
 				"20A8F48909DE8104BC32728E",
@@ -21060,6 +21066,13 @@
 		"82E01898D8F17B1DF16C6D6E" = {
 			"name" = "PaymentSheetOperation.swift";
 			"path" = "Kickstarter-iOS/1 - View/Shared Views/PaymentSheetOperation.swift";
+			"isa" = "PBXFileReference";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"82CC1239472940C3BDF72214" = {
+			"name" = "PaymentPresentationTasks.swift";
+			"path" = "Kickstarter-iOS/1 - View/Shared Views/PaymentPresentationTasks.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";

@@ -15,10 +15,7 @@ final class PaymentMethodSettingsViewModel {
   private let responseDelay: @MainActor () -> TimeInterval
   private let stripePublishableKey: @MainActor () -> String
   private let sleep: @MainActor (TimeInterval) async throws -> Void
-  private var loadTask: Task<Void, Never>?
-  private var deleteTask: Task<Void, Never>?
-  private var storeTask: Task<Void, Never>?
-  private var setupTask: Task<Void, Never>?
+  private let presentationTasks = PaymentPresentationTasks()
   private var isEditing = false
   private var hasEditingState = false
   private var enabled: Bool?
@@ -39,13 +36,6 @@ final class PaymentMethodSettingsViewModel {
     self.sleep = sleep
   }
 
-  deinit {
-    self.loadTask?.cancel()
-    self.deleteTask?.cancel()
-    self.storeTask?.cancel()
-    self.setupTask?.cancel()
-  }
-
   func isCurrent(_ identity: PaymentsFeature.SessionIdentity) -> Bool {
     self.paymentsFeature.sessionIdentity == identity
   }
@@ -58,12 +48,11 @@ final class PaymentMethodSettingsViewModel {
   }
   func failedToAddNewCard() { self.loadCards() }
   private func loadCards() {
-    self.loadTask?.cancel()
     let feature = self.paymentsFeature
     let delay = self.responseDelay()
     let sleep = self.sleep
     let identity = feature.sessionIdentity
-    self.loadTask = Task { [weak self] in
+    self.presentationTasks.replace(.cards) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let cards = try await feature.cards().me.storedCards.storedCards
@@ -84,11 +73,10 @@ final class PaymentMethodSettingsViewModel {
     let identity = self.paymentsFeature.sessionIdentity
     guard self.latestCards?.session == identity else { return }
     self.setEnabled(visibleCellCount > 0)
-    self.deleteTask?.cancel()
     let feature = self.paymentsFeature
     let delay = self.responseDelay()
     let sleep = self.sleep
-    self.deleteTask = Task { [weak self] in
+    self.presentationTasks.replace(.delete) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let cards = try await feature.remove(id: card.id).storedCards
@@ -114,12 +102,11 @@ final class PaymentMethodSettingsViewModel {
   }
   func paymentMethodsFooterViewDidTapAddNewCardButton() {
     self.shouldCancel = false
-    self.setupTask?.cancel()
     let feature = self.paymentsFeature
     let delay = self.responseDelay()
     let sleep = self.sleep
     let identity = feature.sessionIdentity
-    self.setupTask = Task { [weak self] in
+    self.presentationTasks.replace(.setup) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let envelope = try await feature.setupForPaymentSettings()
@@ -143,11 +130,10 @@ final class PaymentMethodSettingsViewModel {
   }
   func paymentSheetDidAdd(setupIntent: String, session identity: PaymentsFeature.SessionIdentity) {
     guard self.isCurrent(identity) else { return }
-    self.storeTask?.cancel()
     let feature = self.paymentsFeature
     let delay = self.responseDelay()
     let sleep = self.sleep
-    self.storeTask = Task { [weak self] in
+    self.presentationTasks.replace(.store) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         _ = try await feature.store(secret: setupIntent)
@@ -169,7 +155,10 @@ final class PaymentMethodSettingsViewModel {
   }
   func shouldCancelPaymentSheetAppearance(state: Bool) {
     self.shouldCancel = state
-    if state { self.onEvent?(.cancelAddNewCardLoadingState) }
+    if state {
+      self.presentationTasks.cancel(.setup)
+      self.onEvent?(.cancelAddNewCardLoadingState)
+    }
   }
   private func reportError(_ error: Error) {
     let message = ((error as? ErrorEnvelope) ?? .couldNotParseJSON).localizedDescription
@@ -188,10 +177,5 @@ final class PaymentMethodSettingsViewModel {
     self.onEvent?(.tableViewIsEditing(editing))
     self.onEvent?(.editButtonTitle(editing ? Strings.Done() : Strings.discovery_favorite_categories_buttons_edit()))
   }
-  func waitForPending() async {
-    await self.setupTask?.value
-    await self.deleteTask?.value
-    await self.storeTask?.value
-    await self.loadTask?.value
-  }
+  func waitForPending() async { await self.presentationTasks.waitForPending() }
 }

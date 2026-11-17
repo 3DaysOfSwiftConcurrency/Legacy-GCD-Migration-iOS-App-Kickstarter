@@ -49,9 +49,7 @@ final class PledgePaymentMethodsViewModel {
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var configuration: PledgePaymentMethodsValue?
   private var loaded = false
-  private var cardsTask: Task<Void, Never>?
-  private var setupTask: Task<Void, Never>?
-  private var storeTask: Task<Void, Never>?
+  private let presentationTasks = PaymentPresentationTasks()
   private var shouldCancel = true
   private var cancellationKnown = false
   private var cardSelection = CheckoutCardSelection()
@@ -71,8 +69,6 @@ final class PledgePaymentMethodsViewModel {
     self.sleep = sleep
   }
 
-  deinit { self.cardsTask?.cancel(); self.setupTask?.cancel(); self.storeTask?.cancel() }
-
   var sessionIdentity: PaymentsFeature.SessionIdentity? {
     guard let configuredSession, self.paymentsFeature.sessionIdentity == configuredSession else { return nil }
     return configuredSession
@@ -85,8 +81,8 @@ final class PledgePaymentMethodsViewModel {
   func configure(with value: PledgePaymentMethodsValue) {
     let session = self.paymentsFeature.sessionIdentity
     if let previous = self.configuredSession, previous != session {
-      self.setupTask?.cancel()
-      self.storeTask?.cancel()
+      self.presentationTasks.cancel(.setup)
+      self.presentationTasks.cancel(.store)
       self.shouldCancel = true
       self.cardSelection = CheckoutCardSelection()
       self.lastSelection = nil
@@ -105,12 +101,10 @@ final class PledgePaymentMethodsViewModel {
   }
   private func loadCards() {
     guard let config = self.configuration, let identity = self.sessionIdentity else { return }
-    self.cardsTask?.cancel()
     self.cardSelection.beginLoading()
-    self.publish(.init(), isLoading: true)
     let feature = self.paymentsFeature
     let sleep = self.sleep
-    self.cardsTask = Task { [weak self] in
+    self.presentationTasks.replace(.cards) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let result = try await feature.cards()
@@ -125,14 +119,14 @@ final class PledgePaymentMethodsViewModel {
         self.publishError(error)
       }
     }
+    self.publish(.init(), isLoading: true)
   }
   func paymentSheetDidAdd(clientSecret: String, paymentMethod: String?) {
     guard let identity = self.sessionIdentity else { return }
-    self.storeTask?.cancel()
     let feature = self.paymentsFeature
     let delay = self.responseDelay()
     let sleep = self.sleep
-    self.storeTask = Task { [weak self] in
+    self.presentationTasks.replace(.store) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let envelope = try await feature.store(secret: clientSecret)
@@ -155,6 +149,7 @@ final class PledgePaymentMethodsViewModel {
   func shouldCancelPaymentSheetAppearance(state: Bool) {
     self.shouldCancel = state
     self.cancellationKnown = true
+    if state { self.presentationTasks.cancel(.setup) }
     if self.configuration != nil, self.loaded { self.onEvent?(.updateAddNewCardLoading(!state)) }
   }
   func willSelectRowAtIndexPath(_ indexPath: IndexPath) -> IndexPath? {
@@ -178,12 +173,10 @@ final class PledgePaymentMethodsViewModel {
 
   private func startSetup() {
     guard self.loaded, let config = self.configuration, let identity = self.sessionIdentity else { return }
-    self.shouldCancelPaymentSheetAppearance(state: false)
-    self.setupTask?.cancel()
     let feature = self.paymentsFeature
     let delay = self.responseDelay()
     let sleep = self.sleep
-    self.setupTask = Task { [weak self] in
+    self.presentationTasks.replace(.setup) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let envelope = try await feature.setupForPledge(projectID: config.project.graphID, context: config.context)
@@ -202,6 +195,7 @@ final class PledgePaymentMethodsViewModel {
         self.onEvent?(.updateAddNewCardLoading(false))
       }
     }
+    self.shouldCancelPaymentSheetAppearance(state: false)
   }
   private func publish(_ cards: CheckoutCardSelection.Snapshot, isLoading: Bool = false) {
     self.onEvent?(.reloadPaymentMethods(.init(
@@ -225,9 +219,5 @@ final class PledgePaymentMethodsViewModel {
     )
   }
 
-  func waitForPending() async {
-    await self.cardsTask?.value
-    await self.setupTask?.value
-    await self.storeTask?.value
-  }
+  func waitForPending() async { await self.presentationTasks.waitForPending() }
 }
