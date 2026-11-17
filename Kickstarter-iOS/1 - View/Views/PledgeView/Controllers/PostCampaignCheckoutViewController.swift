@@ -86,7 +86,13 @@ final class PostCampaignCheckoutViewController: UIViewController,
   private var sessionStartedObserver: MainActorNotificationObservation?
 
   private let viewModel: PostCampaignCheckoutViewModelType =
-    PostCampaignCheckoutViewModel(stripeIntentService: StripeIntentService())
+    PostCampaignCheckoutViewModel(
+      stripeIntentService: StripeIntentService(),
+      pledgeFeature: AppModel.shared.pledgeFeature,
+      analytics: { AppEnvironment.current.ksrAnalytics },
+      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
+    )
 
   // MARK: - Lifecycle
 

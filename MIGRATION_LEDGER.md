@@ -3185,6 +3185,11 @@ does not reach into the application singletons. The focused iOS Simulator run
 passed 115 tests across PledgeFeature and PledgeViewModel. Post-campaign checkout
 and other pledge screens have separate composition boundaries to review.
 
+The post-campaign checkout controller now supplies the same dependencies to its
+view model, including response timing for card and Apple Pay validation.
+`make check-cfa` covers both checkout view models. The focused post-campaign
+checkout and Pledge feature suites passed 61 simulator tests.
+
 ### Project Page composition — Matthew Thomas
 
 The Project Page controller supplies project details, media and analytics

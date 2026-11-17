@@ -28,9 +28,14 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       precondition(AppEnvironment.current.apiService is MockService, "Tests require MockService")
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
     })
-  private lazy var vm = PostCampaignCheckoutViewModel(
-    stripeIntentService: MockStripeIntentService(), pledgeFeature: self.pledgeFeature)
   private let mockStripeIntentService = MockStripeIntentService()
+  private lazy var vm = PostCampaignCheckoutViewModel(
+    stripeIntentService: self.mockStripeIntentService,
+    pledgeFeature: self.pledgeFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
+  )
 
   private let checkoutResponse = CreateCheckoutEnvelope(
     checkout: CreateCheckoutEnvelope.Checkout(id: "19", paymentUrl: "fake", backingId: "93")
@@ -61,9 +66,6 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
   override func setUp() async throws {
     try await super.setUp()
     MainActor.assumeIsolated {
-
-      self.vm = PostCampaignCheckoutViewModel(
-        stripeIntentService: self.mockStripeIntentService, pledgeFeature: self.pledgeFeature)
 
       self.vm.outputs.onApplePayAuthorization = { [weak self] in self?.goToApplePayPaymentAuthorization.record($0) }
       self.vm.outputs.onCheckoutComplete = { [weak self] in self?.checkoutComplete.record($0) }

@@ -214,12 +214,19 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   PostCampaignCheckoutViewModelInputs,
   PostCampaignCheckoutViewModelOutputs {
   let stripeIntentService: StripeIntentServiceType
+  private let analytics: () -> KSRAnalytics
 
   public init(
     stripeIntentService: StripeIntentServiceType,
-    pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature
+    pledgeFeature: PledgeFeature,
+    analytics: @escaping () -> KSRAnalytics,
+    responseDelay: @escaping @MainActor () -> TimeInterval,
+    stripePublishableKey: @escaping () -> String
   ) {
     self.stripeIntentService = stripeIntentService
+    self.analytics = analytics
+    self.cardValidation = CheckoutValidationLane(responseDelay: responseDelay)
+    self.applePayValidation = CheckoutValidationLane(responseDelay: responseDelay)
 
     let ctaState = self.ctaState
     let cardState = self.cardState
@@ -282,13 +289,13 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       self.checkoutTask = Task { [weak self] in
         do {
           let checkout = try await request.value
-          try await waitForPostCampaignPresentationDelay()
+          try await waitForPostCampaignPresentationDelay(responseDelay())
           guard !Task.isCancelled, let self, self.checkoutIdentity.id == id,
                 pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.deliverCheckout?(.success(checkout))
         } catch {
           guard !Task.isCancelled, !(error is CancellationError) else { return }
-          do { try await waitForPostCampaignPresentationDelay() } catch { return }
+          do { try await waitForPostCampaignPresentationDelay(responseDelay()) } catch { return }
           guard let self, self.checkoutIdentity.id == id,
                 pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           self.deliverCheckout?(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))
@@ -416,7 +423,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       guard !data.context.paymentMethodsViewHidden else { return }
       self?.onConfigureStripe?(
         Secrets.ApplePay.merchantIdentifier,
-        AppEnvironment.current.environmentType.stripePublishableKey
+        stripePublishableKey()
       )
     }
     self.configureState = { data in
@@ -481,7 +488,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     let amounts = PostCampaignAmounts(data)
     let checkout = trackingDataFromCheckoutParams(data, baseReward: reward, pledgeTotal: amounts.total,
       shippingTotal: amounts.shipping, checkoutId: trackingCheckoutID)
-    AppEnvironment.current.ksrAnalytics.trackCheckoutPaymentPageViewed(
+    self.analytics().trackCheckoutPaymentPageViewed(
       project: data.project, reward: reward, pledgeViewContext: data.context,
       checkoutData: checkout, refTag: data.refTag
     )
@@ -492,7 +499,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     let amounts = PostCampaignAmounts(data)
     let checkout = trackingDataFromCheckoutParams(data, baseReward: reward, pledgeTotal: amounts.total,
       shippingTotal: amounts.shipping, checkoutId: trackingCheckoutID, isApplePay: isApplePay)
-    AppEnvironment.current.ksrAnalytics.trackPledgeSubmitButtonClicked(
+    self.analytics().trackPledgeSubmitButtonClicked(
       project: data.project, reward: reward, typeContext: isApplePay ? .applePay : .creditCard,
       checkoutData: checkout, refTag: data.refTag
     )
@@ -614,8 +621,8 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   private let completionIdentity = CheckoutRequestIdentity()
   private var startCompletion: ((GraphAPI.CompleteOnSessionCheckoutInput) -> Void)?
   private var completionTask: Task<Void, Never>?
-  private let cardValidation = CheckoutValidationLane()
-  private let applePayValidation = CheckoutValidationLane()
+  private let cardValidation: CheckoutValidationLane
+  private let applePayValidation: CheckoutValidationLane
   private var paymentIntentTask: Task<Void, Never>?
 
   func waitForOperations() async {
@@ -640,8 +647,7 @@ private final class CheckoutRequestIdentity {
   var id = UUID()
 }
 
-private func waitForPostCampaignPresentationDelay() async throws {
-  let delay = await AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+private func waitForPostCampaignPresentationDelay(_ delay: TimeInterval) async throws {
   if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
   else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
 }
@@ -650,7 +656,12 @@ private func waitForPostCampaignPresentationDelay() async throws {
 private final class CheckoutValidationLane {
   var onResult: ((Result<ValidateCheckoutEnvelope, ErrorEnvelope>) -> Void)?
   private let identity = CheckoutRequestIdentity()
+  private let responseDelay: @MainActor () -> TimeInterval
   private var task: Task<Void, Never>?
+
+  init(responseDelay: @escaping @MainActor () -> TimeInterval) {
+    self.responseDelay = responseDelay
+  }
 
   deinit { self.task?.cancel() }
 
@@ -663,16 +674,16 @@ private final class CheckoutValidationLane {
     let id = UUID()
     self.identity.id = id
     let request = feature.startValidateCheckout(checkoutID: checkoutID, sourceID: sourceID, secret: secret)
-    self.task = Task { [weak self] in
+    self.task = Task { [weak self, responseDelay = self.responseDelay] in
       do {
         let result = try await request.value
-        try await waitForPostCampaignPresentationDelay()
+        try await waitForPostCampaignPresentationDelay(responseDelay())
         guard !Task.isCancelled, let self, self.identity.id == id,
               feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self.onResult?(.success(result))
       } catch {
         guard !Task.isCancelled, !(error is CancellationError) else { return }
-        do { try await waitForPostCampaignPresentationDelay() } catch { return }
+        do { try await waitForPostCampaignPresentationDelay(responseDelay()) } catch { return }
         guard let self, self.identity.id == id,
               feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self.onResult?(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))
