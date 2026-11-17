@@ -102,7 +102,6 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
     hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
     responseDelay: @escaping () -> TimeInterval,
-    stripePublishableKey: @escaping () -> String,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -236,7 +235,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       guard !data.context.paymentMethodsViewHidden else { return }
       self?.onConfigureStripe?(
         Secrets.ApplePay.merchantIdentifier,
-        stripePublishableKey()
+        paymentsFeature.stripePublishableKey
       )
     }
     requestState.onCreate = { [weak self] in self?.latestCreateBackingData = $0 }

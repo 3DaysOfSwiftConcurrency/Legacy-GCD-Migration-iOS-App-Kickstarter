@@ -219,8 +219,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     analytics: @escaping () -> KSRAnalytics,
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
     hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
-    responseDelay: @escaping @MainActor () -> TimeInterval,
-    stripePublishableKey: @escaping () -> String
+    responseDelay: @escaping @MainActor () -> TimeInterval
   ) {
     self.pledgeFeature = pledgeFeature
     self.analytics = analytics
@@ -419,7 +418,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       guard !data.context.paymentMethodsViewHidden else { return }
       self?.onConfigureStripe?(
         Secrets.ApplePay.merchantIdentifier,
-        stripePublishableKey()
+        paymentsFeature.stripePublishableKey
       )
     }
     self.configureState = { data in

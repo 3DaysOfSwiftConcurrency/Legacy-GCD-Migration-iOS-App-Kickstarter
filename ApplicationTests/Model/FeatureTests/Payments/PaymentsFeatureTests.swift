@@ -16,6 +16,16 @@ final class PaymentsFeatureTests: TestCase {
                                        currentUser: { .template }, updateUser: { _ in })
   private lazy var feature = PaymentsFeature(sessionFeature: self.session, makeProvider: { self.provider })
 
+  func testStripePublishableKeyUsesComposedPolicy() {
+    let feature = PaymentsFeature(
+      sessionFeature: self.session,
+      makeProvider: { self.provider },
+      stripePublishableKey: { "pk_test_composed" }
+    )
+
+    XCTAssertEqual(feature.stripePublishableKey, "pk_test_composed")
+  }
+
   func testApplePayRequestUsesComposedNetworkPolicy() {
     let feature = PaymentsFeature(
       sessionFeature: self.session,

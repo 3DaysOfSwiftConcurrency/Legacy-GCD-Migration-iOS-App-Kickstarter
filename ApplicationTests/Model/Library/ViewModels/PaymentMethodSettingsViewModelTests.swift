@@ -21,7 +21,9 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
   private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
   private let paymentsProvider = CheckoutPaymentsProvider()
   private lazy var paymentsFeature = PaymentsFeature(
-    sessionFeature: self.sessionFeature, makeProvider: { [paymentsProvider] in paymentsProvider }
+    sessionFeature: self.sessionFeature,
+    makeProvider: { [paymentsProvider] in paymentsProvider },
+    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
   )
 
   private func makeViewModel(
@@ -30,7 +32,6 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     PaymentMethodSettingsViewModel(
       paymentsFeature: self.paymentsFeature,
       responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
       sleep: sleep
     )
   }

@@ -33,7 +33,11 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
 
   private let activityFeature: ActivityFeature
 
-  init(pledgeFeature: PledgeFeature, activityFeature: ActivityFeature) {
+  init(
+    pledgeFeature: PledgeFeature,
+    activityFeature: ActivityFeature,
+    paymentsFeature: PaymentsFeature
+  ) {
     self.pledgeFeature = pledgeFeature
     self.activityFeature = activityFeature
     let sessionStarted = NotificationCenter.default
@@ -59,7 +63,7 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
     self.viewWillAppearSubject
       .map { _ -> PPOStripeConfiguration in
         (
-          publishableKey: AppEnvironment.current.environmentType.stripePublishableKey,
+          publishableKey: paymentsFeature.stripePublishableKey,
           merchantIdentifier: Secrets.ApplePay.merchantIdentifier
         )
       }

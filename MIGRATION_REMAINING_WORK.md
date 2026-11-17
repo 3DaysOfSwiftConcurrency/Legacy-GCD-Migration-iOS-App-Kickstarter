@@ -94,6 +94,9 @@ Swift packages are excluded.
 - SettingsFeature now receives application-version metadata from AppModel. The
   Settings view model formats the footer; section metadata no longer reads the
   process environment.
+- PaymentsFeature now owns the Stripe publishable-key policy used by crowdfunding,
+  post-campaign, payment-settings and Pledged Projects presentation. Those screens
+  no longer compose independent global key closures.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

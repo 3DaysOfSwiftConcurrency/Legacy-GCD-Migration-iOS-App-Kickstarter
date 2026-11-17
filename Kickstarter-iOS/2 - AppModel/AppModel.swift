@@ -332,7 +332,8 @@ public final class AppModel {
         trackThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) },
         supportedApplePayNetworks: {
           AppEnvironment.current.applePayCapabilities.supportedNetworks(for: $0)
-        }
+        },
+        stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
       ),
       messagingFeature: messagingFeature,
       sessionFeature: sessionFeature,

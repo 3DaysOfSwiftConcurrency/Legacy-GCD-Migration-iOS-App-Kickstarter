@@ -1931,3 +1931,15 @@ safe for arbitrary concurrent environment mutation.
 - Controlled coverage proves the supplied version reaches the rating footer and
   unrelated sections have no footer text. Visual rendering and release-bundle
   metadata remain outside this checkpoint.
+
+## Stripe publishable-key ownership — 17 November 2026
+
+- AppModel supplies the current Stripe publishable key to PaymentsFeature. Pledged
+  Projects, crowdfunding checkout, post-campaign checkout and payment settings read
+  the same Feature-owned value rather than independent AppEnvironment closures.
+- Existing staging/production selection, Apple Pay merchant identifier, SDK setup
+  timing, card selection and checkout task ownership are unchanged. PaymentsFeature
+  remains the application boundary; Stripe SDK mutation remains presentation work.
+- Controlled Feature and Pledged Projects tests prove the supplied value reaches
+  presentation. Live Stripe, wallet, authorization and reference-device snapshots
+  remain outside this checkpoint.

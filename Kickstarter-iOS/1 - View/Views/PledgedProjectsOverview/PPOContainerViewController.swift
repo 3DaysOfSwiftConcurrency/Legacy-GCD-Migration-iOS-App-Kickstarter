@@ -11,7 +11,9 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
   MessageBannerViewControllerPresenting {
   private let confirmation = StripeConfirmationOperation()
   private let viewModel = PPOContainerViewModel(
-    pledgeFeature: AppModel.shared.pledgeFeature, activityFeature: AppModel.shared.activityFeature
+    pledgeFeature: AppModel.shared.pledgeFeature,
+    activityFeature: AppModel.shared.activityFeature,
+    paymentsFeature: AppModel.shared.paymentsFeature
   )
 
   public override func viewWillDisappear(_ animated: Bool) {

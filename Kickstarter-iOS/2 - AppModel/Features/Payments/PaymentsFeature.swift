@@ -40,18 +40,23 @@ public final class PaymentsFeature {
   private let makeProvider: () -> any PaymentsProvider
   private let trackThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
   private let supportedApplePayNetworks: @MainActor (Project) -> [PKPaymentNetwork]
+  private let stripeKey: @MainActor () -> String
 
   public init(
     sessionFeature: SessionFeature,
     makeProvider: @escaping () -> any PaymentsProvider,
     trackThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void = { _ in },
-    supportedApplePayNetworks: @escaping @MainActor (Project) -> [PKPaymentNetwork] = { _ in [] }
+    supportedApplePayNetworks: @escaping @MainActor (Project) -> [PKPaymentNetwork] = { _ in [] },
+    stripePublishableKey: @escaping @MainActor () -> String = { "" }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
     self.trackThirdPartyEvent = trackThirdPartyEvent
     self.supportedApplePayNetworks = supportedApplePayNetworks
+    self.stripeKey = stripePublishableKey
   }
+
+  public var stripePublishableKey: String { self.stripeKey() }
 
   public func paymentRequest(
     for project: Project,

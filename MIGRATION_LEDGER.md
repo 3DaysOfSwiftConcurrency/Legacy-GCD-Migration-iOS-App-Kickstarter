@@ -4952,3 +4952,30 @@ The CFA gate rejects restored AppEnvironment access in SettingsCellType. Visual
 rendering, release-bundle metadata and the whole Library suite remain unverified.
 This is not full CFA compliance. Swift packages, target identifiers and existing
 history are unchanged. No push.
+
+### Payments owns Stripe publishable-key policy — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now composes the environment-specific Stripe publishable key once into
+PaymentsFeature. Pledged Projects, crowdfunding checkout, post-campaign checkout and
+payment settings consume that same Feature-owned value. Their view models no longer
+accept independent key closures, and their controllers no longer read the global
+environment for Stripe policy. Stripe SDK mutation remains presentation-owned.
+
+Focused validation passed all 17 PaymentsFeature tests and all 7 PPO container tests.
+The bounded PaymentsFeature, AppModel, crowdfunding, post-campaign and payment-settings
+Library selection passed all 147 tests. The bounded non-snapshot PPO/native-payment
+presentation selection passed all 15 tests. All successful runs had zero failures and
+skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-payments-stripe-focused.xcresult`,
+`/private/tmp/kickstarter-payments-stripe-ppo-2.xcresult`,
+`/private/tmp/kickstarter-payments-stripe-library.xcresult` and
+`/private/tmp/kickstarter-payments-stripe-presentation-nonsnapshot.xcresult`.
+
+The controller snapshot selection was stopped after its existing guard required the
+unavailable iPad mini (A17 Pro) iOS 18.6 reference runtime; no snapshot result is
+claimed. The CFA gate rejects restored per-screen environment key reads. Live Stripe,
+wallet authorization and the whole Library suite remain unverified. This is not full
+CFA compliance. Swift packages, target identifiers and existing history are unchanged.
+No push.

@@ -13,7 +13,6 @@ final class PaymentMethodSettingsViewModel {
   var onEvent: ((Event) -> Void)?
   private let paymentsFeature: PaymentsFeature
   private let responseDelay: @MainActor () -> TimeInterval
-  private let stripePublishableKey: @MainActor () -> String
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private let presentationTasks = PaymentPresentationTasks()
   private var isEditing = false
@@ -25,14 +24,12 @@ final class PaymentMethodSettingsViewModel {
   init(
     paymentsFeature: PaymentsFeature,
     responseDelay: @escaping @MainActor () -> TimeInterval,
-    stripePublishableKey: @escaping @MainActor () -> String,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.paymentsFeature = paymentsFeature
     self.responseDelay = responseDelay
-    self.stripePublishableKey = stripePublishableKey
     self.sleep = sleep
   }
 
@@ -43,7 +40,7 @@ final class PaymentMethodSettingsViewModel {
   func viewDidLoad() {
     self.onEvent?(.reloadData)
     self.setEnabled(false)
-    self.onEvent?(.setStripePublishableKey(self.stripePublishableKey()))
+    self.onEvent?(.setStripePublishableKey(self.paymentsFeature.stripePublishableKey))
     self.loadCards()
   }
   func failedToAddNewCard() { self.loadCards() }

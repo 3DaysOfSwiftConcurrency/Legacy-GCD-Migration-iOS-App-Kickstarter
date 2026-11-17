@@ -238,6 +238,12 @@ reject_matches 'Onboarding permission policy belongs to OnboardingFeature.' \
   'AppEnvironment[.]current|allowTrackingTapped' "$app_model/Features/Onboarding/OnboardingUseCase.swift"
 reject_matches 'Apple Pay request policy belongs to PaymentsFeature composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Payments/PKPaymentRequest+Helpers.swift"
+reject_matches 'Payment presentation reads Stripe policy through PaymentsFeature.' \
+  'environmentType[.]stripePublishableKey' \
+  "$app_view/Views/PledgedProjectsOverview/PPOContainerViewModel.swift" \
+  "$app_view/Views/PledgeView/Controllers/PledgeViewController.swift" \
+  "$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewController.swift" \
+  "$app_view/Views/PaymentMethods/Controller/PaymentMethodSettingsViewController.swift"
 reject_matches 'Pledged Projects card formatting receives locale from its Feature.' \
   'AppEnvironment[.]current' "$app_model/Features/PledgedProjects/PPOProjectCardModel+Parsing.swift"
 reject_matches 'Settings presentation receives application metadata from SettingsFeature.' \

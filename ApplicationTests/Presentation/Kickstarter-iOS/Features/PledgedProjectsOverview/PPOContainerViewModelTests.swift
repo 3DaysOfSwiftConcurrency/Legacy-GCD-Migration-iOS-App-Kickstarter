@@ -6,6 +6,18 @@ import XCTest
 
 @MainActor
 final class PPOContainerViewModelTests: XCTestCase {
+  func testStripeConfigurationUsesPaymentsFeaturePolicy() {
+    let model = self.makeModel(MockService(), stripePublishableKey: "pk_test_composed")
+    var configuration: PPOStripeConfiguration?
+    let observation = model.stripeConfiguration.sink { configuration = $0 }
+    defer { observation.cancel() }
+
+    model.viewWillAppear()
+
+    XCTAssertEqual(configuration?.publishableKey, "pk_test_composed")
+    XCTAssertEqual(configuration?.merchantIdentifier, Secrets.ApplePay.merchantIdentifier)
+  }
+
   func testAddressAcknowledgedShowsSuccessAndRefreshesOnce() async {
     let model = self.makeModel(MockService(confirmBackingAddressResult: .success(true)))
     var progress: [PPOActionState] = []
@@ -99,7 +111,9 @@ final class PPOContainerViewModelTests: XCTestCase {
   }
 
   private func makeModel(
-    _ service: MockService, currentUser: @escaping @MainActor () -> User? = { AppEnvironment.current.currentUser }
+    _ service: MockService,
+    currentUser: @escaping @MainActor () -> User? = { AppEnvironment.current.currentUser },
+    stripePublishableKey: String = "pk_test_default"
   ) -> PPOContainerViewModel {
     let sessionFeature = SessionFeature(
       makeProvider: { AsyncSessionProvider(service: service) }, currentUser: currentUser
@@ -110,6 +124,11 @@ final class PPOContainerViewModelTests: XCTestCase {
       ),
       activityFeature: ActivityFeature(
         sessionFeature: sessionFeature, makeProvider: { AsyncActivityProvider(service: service) }
+      ),
+      paymentsFeature: PaymentsFeature(
+        sessionFeature: sessionFeature,
+        makeProvider: { AsyncPaymentsProvider(service: service) },
+        stripePublishableKey: { stripePublishableKey }
       )
     )
   }
