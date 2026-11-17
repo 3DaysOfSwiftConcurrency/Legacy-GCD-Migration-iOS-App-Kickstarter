@@ -86,6 +86,9 @@ reject_matches 'Payment Settings uses Payments without environment or session ac
 reject_matches 'Payment Settings uses the session that requested the PaymentSheet.' \
   'AppModel[.]shared[.]sessionFeature' \
   "$app_view/Views/PaymentMethods/Controller/PaymentMethodSettingsViewController.swift"
+reject_matches 'Payments owns checkout card eligibility, ranking, and selection.' \
+  'availableCardTypes|stripeCardId|[.]sorted[(]|[.]isErroredPaymentMethod' \
+  "$app_view/Views/PledgePaymentMethods/Controller/PledgePaymentMethodsViewModel.swift"
 reject_matches 'The checkout PaymentSheet uses the configured Payments session.' \
   'AppModel[.]shared[.]sessionFeature' \
   "$app_view/Views/PledgePaymentMethods/Controller/PledgePaymentMethodsViewController.swift"

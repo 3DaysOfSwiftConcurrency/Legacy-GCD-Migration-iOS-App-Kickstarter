@@ -1,6 +1,7 @@
 @testable import Kickstarter_iOS
 import Foundation
 import GraphAPI
+import Prelude
 @testable import KsApi
 
 
@@ -18,6 +19,53 @@ final class PaymentsFeatureTests: TestCase {
     self.provider.releaseAll()
     await self.feature.waitForOperations()
     try await super.tearDown()
+  }
+
+  func testCheckoutCardSelectionPreservesBackingPreferenceAndRejectsDisabledTaps() throws {
+    let visa = UserCreditCards.visa
+    let amex = UserCreditCards.amex
+    let visaBrand = try XCTUnwrap(visa.type?.rawValue)
+    let source = Backing.PaymentSource.template |> \.id .~ visa.id
+    let backing = Backing.template |> Backing.lens.paymentSource .~ source
+    let project = Project.template
+      |> \.availableCardTypes .~ [visaBrand]
+      |> Project.lens.personalization.backing .~ backing
+
+    var selection = CheckoutCardSelection()
+    let cards = try XCTUnwrap(selection.load([amex, visa], for: project))
+    XCTAssertEqual(cards.existing.map { $0.card.id }, [visa.id, amex.id])
+    XCTAssertEqual(cards.selected?.savedCreditCardId, visa.id)
+    XCTAssertFalse(selection.canSelect(row: 1))
+    XCTAssertNil(selection.select(row: 1))
+    XCTAssertEqual(selection.snapshot?.selected?.savedCreditCardId, visa.id)
+
+    let errored = backing |> Backing.lens.status .~ .errored
+    let retryProject = project |> Project.lens.personalization.backing .~ errored
+    let retryCards = try XCTUnwrap(selection.load([amex, visa], for: retryProject))
+    XCTAssertNil(retryCards.selected)
+    XCTAssertEqual(retryCards.existing.first?.isErroredPaymentMethod, true)
+  }
+
+  func testCheckoutCardSelectionKeepsDefaultUntilAnEligibleNewCardIsAdded() throws {
+    let visa = UserCreditCards.visa
+    let amex = UserCreditCards.amex
+    let visaBrand = try XCTUnwrap(visa.type?.rawValue)
+    let project = Project.template
+      |> \.availableCardTypes .~ [visaBrand]
+      |> Project.lens.personalization.backing .~ nil
+    var selection = CheckoutCardSelection()
+    _ = selection.load([visa], for: project)
+
+    let unsupported = try XCTUnwrap(selection.add(amex, stripePaymentMethodID: nil, for: project))
+    XCTAssertEqual(unsupported.selected?.savedCreditCardId, visa.id)
+    XCTAssertEqual(unsupported.added.first?.isSelected, false)
+
+    var added = visa
+    added.stripeCardId = nil
+    let supported = try XCTUnwrap(selection.add(added, stripePaymentMethodID: "method-fixture", for: project))
+    XCTAssertEqual(supported.selected?.stripePaymentMethodId, "method-fixture")
+    XCTAssertEqual(supported.existing.first?.isSelected, false)
+    XCTAssertEqual(supported.added.map(\.isSelected), [true, false])
   }
 
   func testCheckoutTrackingRejectsAnObsoleteSession() {

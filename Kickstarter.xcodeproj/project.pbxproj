@@ -20125,7 +20125,6 @@
 				"7E585EC88EEA254C4E069285",
 				"1D39D61B39853A0878E57BE0",
 				"07CEA6BD4FA24617C5FDD04A",
-				"B70588579FCAB1AE435001FF",
 				"B1D9B949DA98FE1AA0A17026",
 				"8BFED3C072AB8A56DAB63211",
 				"7E356C535F1A42D699D4BB08",
@@ -21010,6 +21009,7 @@
 				"6043D85A5B75F4C4C09CD37C",
 				"C374749FD04EA08C49438BBB",
 				"717CE1DAD330BA48623425F8",
+				"B70588579FCAB1AE435001FF",
 				"8C1E75391FE1CD75791DF304",
 				"A9726F96D31576C631644710",
 			);
@@ -21071,8 +21071,8 @@
 			"lastKnownFileType" = "sourcecode.swift";
 		};
 		"B70588579FCAB1AE435001FF" = {
-			"name" = "PledgePaymentMethodsAndSelectionData.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/Pledge/PledgePaymentMethodsAndSelectionData.swift";
+			"name" = "CheckoutCardSelection.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Payments/CheckoutCardSelection.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";

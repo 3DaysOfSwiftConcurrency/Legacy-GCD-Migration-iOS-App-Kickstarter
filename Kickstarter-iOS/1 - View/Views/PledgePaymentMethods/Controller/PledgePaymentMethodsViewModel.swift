@@ -24,6 +24,14 @@ public typealias PaymentSheetSetupData = (
   configuration: PaymentSheet.Configuration
 )
 
+public struct PledgePaymentMethodsAndSelectionData {
+  public var existingPaymentMethods: [PledgePaymentMethodCellData]
+  public var newPaymentMethods: [PledgePaymentMethodCellData]
+  public var selectedPaymentMethod: PaymentSourceSelected?
+  public var isLoading: Bool
+  public var shouldReload: Bool
+}
+
 @MainActor
 final class PledgePaymentMethodsViewModel {
   enum Event {
@@ -46,9 +54,7 @@ final class PledgePaymentMethodsViewModel {
   private var storeTask: Task<Void, Never>?
   private var shouldCancel = true
   private var cancellationKnown = false
-  private var initialCards: PledgePaymentMethodsAndSelectionData?
-  private var currentCards: PledgePaymentMethodsAndSelectionData?
-  private var newCards: [UserCreditCards.CreditCard] = []
+  private var cardSelection = CheckoutCardSelection()
   private var lastSelection: PaymentSourceSelected?
 
   init(
@@ -82,9 +88,7 @@ final class PledgePaymentMethodsViewModel {
       self.setupTask?.cancel()
       self.storeTask?.cancel()
       self.shouldCancel = true
-      self.initialCards = nil
-      self.currentCards = nil
-      self.newCards = []
+      self.cardSelection = CheckoutCardSelection()
       self.lastSelection = nil
     }
     self.configuredSession = session
@@ -102,7 +106,8 @@ final class PledgePaymentMethodsViewModel {
   private func loadCards() {
     guard let config = self.configuration, let identity = self.sessionIdentity else { return }
     self.cardsTask?.cancel()
-    self.publish(PledgePaymentMethodsAndSelectionData(existingPaymentMethods: [], newPaymentMethods: [], selectedPaymentMethod: nil, isLoading: true, shouldReload: true))
+    self.cardSelection.beginLoading()
+    self.publish(.init(), isLoading: true)
     let feature = self.paymentsFeature
     let sleep = self.sleep
     self.cardsTask = Task { [weak self] in
@@ -111,13 +116,10 @@ final class PledgePaymentMethodsViewModel {
         let result = try await feature.cards()
         try await sleep(1)
         try Task.checkCancellation()
-        guard let self, self.isCurrent(identity), let types = config.project.availableCardTypes else { return }
-        let ordered = cards(result.me.storedCards.storedCards, orderedBy: config.project.personalization.backing)
-        let (data, selected) = pledgePaymentMethodCellDataAndSelectedCard(with: ordered, availableCardTypes: types, project: config.project, newCardAdded: false)
-        let selectedPayment = selected.map(createSelectedPaymentMethod(from:))
-        let configured = PledgePaymentMethodsAndSelectionData(existingPaymentMethods: data, newPaymentMethods: [], selectedPaymentMethod: selectedPayment, isLoading: false, shouldReload: true)
-        self.initialCards = configured
-        self.publish(configured)
+        guard let self, self.isCurrent(identity),
+              let cards = self.cardSelection.load(result.me.storedCards.storedCards, for: config.project)
+        else { return }
+        self.publish(cards)
       } catch {
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.publishError(error)
@@ -137,15 +139,12 @@ final class PledgePaymentMethodsViewModel {
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity), envelope.createPaymentSource.isSuccessful,
-              let config = self.configuration, let types = config.project.availableCardTypes else { return }
-        var card = envelope.createPaymentSource.paymentSource
-        if card.stripeCardId == nil { card.stripeCardId = paymentMethod }
-        self.newCards.insert(card, at: 0)
-        let (newData, selected) = pledgePaymentMethodCellDataAndSelectedCard(with: self.newCards, availableCardTypes: types, project: config.project, newCardAdded: true)
-        guard var updated = self.initialCards else { return }
-        updated.newPaymentMethods = newData
-        if let selected { updated.selectedPaymentMethod = createSelectedPaymentMethod(from: selected) }
-        self.publish(pledgePaymentSheetMethodCellDataAndSelectedCardSetupIntent(with: updated))
+              let config = self.configuration else { return }
+        if let cards = self.cardSelection.add(
+          envelope.createPaymentSource.paymentSource, stripePaymentMethodID: paymentMethod, for: config.project
+        ) {
+          self.publish(cards)
+        }
       } catch {
         do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
@@ -159,12 +158,12 @@ final class PledgePaymentMethodsViewModel {
     if self.configuration != nil, self.loaded { self.onEvent?(.updateAddNewCardLoading(!state)) }
   }
   func willSelectRowAtIndexPath(_ indexPath: IndexPath) -> IndexPath? {
-    guard self.sessionIdentity != nil, let data = self.currentCards, indexPath.row >= 0 else { return nil }
+    guard self.sessionIdentity != nil, self.cardSelection.snapshot != nil, indexPath.row >= 0 else { return nil }
     if indexPath.section == PaymentMethodsTableViewSection.addNewCard.rawValue { return indexPath }
     guard indexPath.section == PaymentMethodsTableViewSection.paymentMethods.rawValue else { return nil }
-    let enabled = data.newPaymentMethods.map(\.isEnabled) + data.existingPaymentMethods.map(\.isEnabled)
-    return indexPath.row < enabled.count && enabled[indexPath.row] ? indexPath : nil
+    return self.cardSelection.canSelect(row: indexPath.row) ? indexPath : nil
   }
+
   func didSelectRowAtIndexPath(_ indexPath: IndexPath) {
     guard self.sessionIdentity != nil else { return }
     if indexPath.section == PaymentMethodsTableViewSection.addNewCard.rawValue {
@@ -172,26 +171,11 @@ final class PledgePaymentMethodsViewModel {
       return
     }
     guard indexPath.section == PaymentMethodsTableViewSection.paymentMethods.rawValue,
-          indexPath.row >= 0, var data = self.currentCards else { return }
-    let newCount = data.newPaymentMethods.count
-    let card: UserCreditCards.CreditCard
-    if indexPath.row < newCount {
-      card = data.newPaymentMethods[indexPath.row].card
-      data.newPaymentMethods = cellData(data.newPaymentMethods, selecting: card)
-      data.existingPaymentMethods = cellData(data.existingPaymentMethods, selecting: nil)
-    } else {
-      let row = indexPath.row - newCount
-      guard row < data.existingPaymentMethods.count else { return }
-      card = data.existingPaymentMethods[row].card
-      data.existingPaymentMethods = cellData(data.existingPaymentMethods, selecting: card)
-      data.newPaymentMethods = cellData(data.newPaymentMethods, selecting: nil)
-    }
-    data.selectedPaymentMethod = createSelectedPaymentMethod(from: card)
-    data.isLoading = false
-    data.shouldReload = true
+          let cards = self.cardSelection.select(row: indexPath.row) else { return }
     self.shouldCancelPaymentSheetAppearance(state: true)
-    self.publish(data)
+    self.publish(cards)
   }
+
   private func startSetup() {
     guard self.loaded, let config = self.configuration, let identity = self.sessionIdentity else { return }
     self.shouldCancelPaymentSheetAppearance(state: false)
@@ -219,10 +203,12 @@ final class PledgePaymentMethodsViewModel {
       }
     }
   }
-  private func publish(_ data: PledgePaymentMethodsAndSelectionData) {
-    self.currentCards = data
-    self.onEvent?(.reloadPaymentMethods(data))
-    if let selected = data.selectedPaymentMethod, self.lastSelection != selected {
+  private func publish(_ cards: CheckoutCardSelection.Snapshot, isLoading: Bool = false) {
+    self.onEvent?(.reloadPaymentMethods(.init(
+      existingPaymentMethods: cards.existing, newPaymentMethods: cards.added, selectedPaymentMethod: cards.selected,
+      isLoading: isLoading, shouldReload: true
+    )))
+    if let selected = cards.selected, self.lastSelection != selected {
       self.lastSelection = selected
       self.onEvent?(.notifyDelegateCreditCardSelected(selected))
     }
@@ -244,172 +230,4 @@ final class PledgePaymentMethodsViewModel {
     await self.setupTask?.value
     await self.storeTask?.value
   }
-}
-
-private func pledgePaymentSheetMethodCellDataAndSelectedCardSetupIntent(
-  with paymentMethodData: PledgePaymentMethodsAndSelectionData
-) -> PledgePaymentMethodsAndSelectionData {
-  // We know we have a new payment sheet card, so de-select all existing non-payment sheet cards.
-  let preexistingCardDataUnselected: [PledgePaymentMethodCellData] = {
-    paymentMethodData.existingPaymentMethods
-      .compactMap { data -> PledgePaymentMethodCellData? in
-
-        (
-          card: data.card,
-          isEnabled: data.isEnabled,
-          isSelected: false,
-          projectCountry: data.projectCountry,
-          isErroredPaymentMethod: data.isErroredPaymentMethod
-        )
-      }
-  }()
-
-  // First ensure all existing payment sheet payment methods are not selected.
-  let newCardDataUnselected: [PledgePaymentMethodCellData] = {
-    var updatedNewPaymentMethodData = paymentMethodData.newPaymentMethods
-
-    updatedNewPaymentMethodData = updatedNewPaymentMethodData.map { data in
-      (
-        card: data.card,
-        isEnabled: data.isEnabled,
-        isSelected: false,
-        projectCountry: data.projectCountry,
-        isErroredPaymentMethod: data.isErroredPaymentMethod
-      )
-    }
-
-    return updatedNewPaymentMethodData
-  }()
-
-  let updatedDataWithSelection: PledgePaymentMethodsAndSelectionData = {
-    guard let newestPaymentSheetPaymentMethod = paymentMethodData.newPaymentMethods.first,
-          // If the new payment method is disabled, exit and keep the previous selection. (MBL-1550)
-          newestPaymentSheetPaymentMethod.isEnabled == true
-    else {
-      return paymentMethodData
-    }
-
-    // We know the first new payment sheet card added is the newest one, so by default select it.
-    var data = newCardDataUnselected
-
-    var updatedSelectedPaymentSheetPaymentMethod = data[0]
-
-    if updatedSelectedPaymentSheetPaymentMethod.isEnabled {
-      updatedSelectedPaymentSheetPaymentMethod.isSelected = true
-    }
-
-    data[0] = updatedSelectedPaymentSheetPaymentMethod
-
-    var updatePaymentMethodData = paymentMethodData
-    updatePaymentMethodData.existingPaymentMethods = preexistingCardDataUnselected
-    updatePaymentMethodData.newPaymentMethods = data
-
-    if newestPaymentSheetPaymentMethod.isEnabled {
-      updatePaymentMethodData
-        .selectedPaymentMethod = createSelectedPaymentMethod(from: newestPaymentSheetPaymentMethod.card)
-    }
-
-    return updatePaymentMethodData
-  }()
-
-  return updatedDataWithSelection
-
-  /**
-   Unlike the existing logic inside `pledgePaymentMethodCellDataAndSelectedCard`, we don't know the card id after its' been added, because new payment sheet cards only contain an image and a redacted card number. If we did we can ensure that an errored backing does not highlight the new card if it matches the payment source id on the backing. Right now this flow only handles the latest cards from the payment sheet, so we can simply select the first one added. If this code path is taken the method above is not called again for the same instance of this view controller, the flag is lazy initialized and doesn't change while this page is displayed.
-   */
-}
-
-private func pledgePaymentMethodCellDataAndSelectedCard(
-  with cards: [UserCreditCards.CreditCard],
-  availableCardTypes: [String],
-  project: Project,
-  newCardAdded: Bool
-) -> ([PledgePaymentMethodCellData], UserCreditCards.CreditCard?) {
-  let data = cards.compactMap { card -> PledgePaymentMethodCellData? in
-    guard let cardBrand = card.type?.rawValue else { return nil }
-
-    let backing = project.personalization.backing
-    let isAvailableCardType = availableCardTypes.contains(cardBrand)
-
-    let isErroredPaymentMethod = card.id == backing?.paymentSource?.id && backing?.status == .errored
-
-    return (
-      card: card,
-      isEnabled: isAvailableCardType,
-      isSelected: false,
-      projectCountry: project.location?.displayableName ?? "",
-      isErroredPaymentMethod: isErroredPaymentMethod
-    )
-  }
-  // Position unavailable cards last
-  .sorted { data1, data2 -> Bool in data1.isEnabled && !data2.isEnabled }
-
-  let orderedCards = data.map { $0.card }
-
-  // If there is no backing, simply select the first card in the list when it is an available card type.
-  guard let backing = project.personalization.backing else {
-    guard let cardData = data.first, cardData.isEnabled else {
-      return (data, nil)
-    }
-
-    let selected = orderedCards.first
-
-    return (cellData(data, selecting: selected), selected)
-  }
-
-  // If we're working with a backing, but we have a newly added card, select the newly added card.
-  if newCardAdded {
-    let selected = orderedCards.first
-
-    return (cellData(data, selecting: selected), selected)
-  }
-
-  if cards.first(where: { $0.id == backing.paymentSource?.id }) != nil, backing.status == .errored {
-    return (data, nil)
-  }
-
-  /*
-   If we're working with a backing, and a new card hasn't been added,
-   select the card that the backing is associated with.
-   */
-  let backedCard = orderedCards.first(where: { $0.id == backing.paymentSource?.id })
-
-  return (cellData(data, selecting: backedCard), backedCard)
-}
-
-private func cellData(
-  _ data: [PledgePaymentMethodCellData],
-  selecting card: UserCreditCards.CreditCard?
-) -> [PledgePaymentMethodCellData] {
-  return data.map { value in
-    (
-      value.card,
-      value.isEnabled,
-      value.card == card,
-      value.projectCountry,
-      value.isErroredPaymentMethod
-    )
-  }
-}
-
-private func isCreatingPledge(_ project: Project) -> Bool {
-  guard let isBacking = project.personalization.isBacking else { return true }
-
-  return !isBacking
-}
-
-private func cards(
-  _ cards: [UserCreditCards.CreditCard],
-  orderedBy backing: Backing?
-) -> [UserCreditCards.CreditCard] {
-  return cards.sorted { card1, _ in card1.id == backing?.paymentSource?.id }
-}
-
-private func createSelectedPaymentMethod(from card: UserCreditCards.CreditCard) -> PaymentSourceSelected {
-  guard let stripeCardId = card.stripeCardId, !stripeCardId.isEmpty else {
-    assert(false, "Expected stripeCardId to be set. Late pledges may fail if this value is missing.")
-    return .savedCreditCard(card.id, nil)
-  }
-
-  return .savedCreditCard(card.id, stripeCardId)
 }

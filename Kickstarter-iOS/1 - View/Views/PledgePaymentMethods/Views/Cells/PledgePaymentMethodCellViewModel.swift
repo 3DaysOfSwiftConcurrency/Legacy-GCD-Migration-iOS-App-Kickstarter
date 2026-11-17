@@ -2,13 +2,7 @@ import KDS
 import KsApi
 import UIKit
 
-public typealias PledgePaymentMethodCellData = (
-  card: UserCreditCards.CreditCard,
-  isEnabled: Bool,
-  isSelected: Bool,
-  projectCountry: String,
-  isErroredPaymentMethod: Bool
-)
+public typealias PledgePaymentMethodCellData = CheckoutPaymentCard
 
 @MainActor
 public final class PledgePaymentMethodCellViewModel {

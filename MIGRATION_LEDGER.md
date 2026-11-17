@@ -3951,3 +3951,20 @@ The iPhone 17 Pro Max simulator on iOS 26.2 passed 34 focused tests,
 134 bounded checkout regressions, and 12 PaymentSheet operation tests.
 Live Stripe and visual parity remain unverified. Stored-card checkout
 still owns card eligibility and default selection in its ViewModel.
+
+### Stored-card checkout selection rules — Matthew Thomas
+
+The Payments model owns card ranking, eligibility, backing-card
+defaults, new-card selection, and the Stripe ID fallback after adding
+a card. It retains the legacy automatic defaults for backed pledges.
+Manual selection enforces eligibility at the same boundary used to
+decide whether the table row can be selected. The ViewModel publishes
+the selection as loading and table data.
+
+The focused tests cover backing preference, an errored backing,
+disabled taps, and the effect of adding eligible and ineligible cards.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 54 focused tests
+and 125 bounded payment settings and checkout regressions. Live
+payments and visual parity remain unverified. Concurrent card reads
+still issue independent provider requests.
