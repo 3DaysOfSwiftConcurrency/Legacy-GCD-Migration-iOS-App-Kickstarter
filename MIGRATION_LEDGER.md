@@ -3234,3 +3234,8 @@ their feature dependencies at construction. The focused simulator run passed
 65 tests across those flows and post-campaign checkout. `make check-cfa` guards
 all four adapters. The remaining direct AppModel singleton references under
 Features are in project currency formatting and push permission registration.
+
+Push permission registration now calls the authorization function supplied by
+the AppDelegate handler, using its injected OnboardingFeature. The demo and
+test adapters still control their own authorization responses. All 124
+AppDelegate simulator tests passed and the CFA check covers this adapter.

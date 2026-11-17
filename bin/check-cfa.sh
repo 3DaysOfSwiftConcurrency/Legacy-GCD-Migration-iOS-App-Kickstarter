@@ -51,6 +51,7 @@ reject_matches 'DiscoveryFeature must receive its session lookup explicitly.' \
 reject_matches 'Feature adapters and use cases must receive their feature dependencies explicitly.' \
   'AppModel[.]shared' \
   "$app_model/Features/Authentication/OAuth.swift" \
+  "$app_model/Features/AppLifecycle/PushRegistration.swift" \
   "$app_model/Features/Payments/StripeIntentService.swift" \
   "$app_model/Features/Pledge/PledgeOverTimeUseCase.swift" \
   "$app_model/Features/Recommendations/SimilarProjectsUseCase.swift"

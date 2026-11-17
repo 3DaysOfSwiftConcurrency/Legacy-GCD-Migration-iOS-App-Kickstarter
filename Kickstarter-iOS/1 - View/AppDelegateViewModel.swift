@@ -355,7 +355,13 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   private func beginPushRegistration() {
     self.performPushOperation({ completion in
-      AppEnvironment.current.pushRegistrationType.register(for: [.alert, .sound, .badge], completion: completion)
+      AppEnvironment.current.pushRegistrationType.register(
+        for: [.alert, .sound, .badge],
+        requestAuthorization: { [onboardingFeature = self.onboardingFeature] options in
+          await onboardingFeature.requestNotifications(options: options)
+        },
+        completion: completion
+      )
     }) { [weak self] _ in self?.onPushTokenRegistrationStarted?() }
   }
 

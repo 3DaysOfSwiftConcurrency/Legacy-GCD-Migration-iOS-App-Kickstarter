@@ -627,7 +627,11 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
   // These local substitutes report unavailable capabilities without requesting
   // system permissions or claiming that a demo token was registered remotely.
   private enum DemoPushRegistration: PushRegistrationType {
-    static func register(for _: UNAuthorizationOptions, completion: @escaping @MainActor (Bool) -> Void) -> Task<Void, Never>? {
+    static func register(
+      for _: UNAuthorizationOptions,
+      requestAuthorization _: @escaping @MainActor (UNAuthorizationOptions) async -> Bool,
+      completion: @escaping @MainActor (Bool) -> Void
+    ) -> Task<Void, Never>? {
       completion(false)
       return nil
     }

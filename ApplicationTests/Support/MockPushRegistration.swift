@@ -6,7 +6,11 @@ import UserNotifications
 public struct MockPushRegistration: PushRegistrationType {
   static var registerValue: Bool?
   static var authorizedValue: Bool?
-  public static func register(for _: UNAuthorizationOptions, completion: @escaping @MainActor (Bool) -> Void) -> Task<Void, Never>? {
+  public static func register(
+    for _: UNAuthorizationOptions,
+    requestAuthorization _: @escaping @MainActor (UNAuthorizationOptions) async -> Bool,
+    completion: @escaping @MainActor (Bool) -> Void
+  ) -> Task<Void, Never>? {
     if let value = self.registerValue { completion(value) }
     return nil
   }
