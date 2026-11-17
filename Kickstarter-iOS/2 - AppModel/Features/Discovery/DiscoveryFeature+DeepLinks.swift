@@ -1,6 +1,29 @@
+import Foundation
 import KsApi
+import Prelude
 
-func deepLinkCategories(rawParams: [String: String]) -> (Param?, Param?) {
+
+extension DiscoveryFeature {
+  /// Resolves URL filter values through the same category data used by Discovery.
+  func parametersForDeepLink(
+    _ rawParams: [String: String]?, responseDelay: TimeInterval
+  ) async throws -> DiscoveryParams? {
+    try Task.checkCancellation()
+    guard let rawParams, let params = DiscoveryParams.decodeJSONDictionary(rawParams) else { return nil }
+    let (category, subcategory) = deepLinkCategories(rawParams: rawParams)
+    guard let category else { return params }
+    let envelope = try await self.rootCategories()
+    try Task.checkCancellation()
+    let matched = findCategoryFromRootCategories(
+      envelope: envelope, categoryParam: category, subcategoryParam: subcategory
+    )
+    try await self.waitForDeepLinkResponse(responseDelay)
+    try Task.checkCancellation()
+    return params |> DiscoveryParams.lens.category .~ matched
+  }
+}
+
+private func deepLinkCategories(rawParams: [String: String]) -> (Param?, Param?) {
   let parentCategoryParams = rawParams["parent_category_id"]
   let subCategoryParams = rawParams["category_id"]
   var categoryParam: Param?
@@ -43,7 +66,7 @@ func deepLinkCategories(rawParams: [String: String]) -> (Param?, Param?) {
 }
 
 /// Will check id and name of category and subcategory against all available categories and subcategories inside envelope
-func findCategoryFromRootCategories(
+private func findCategoryFromRootCategories(
   envelope: RootCategoriesEnvelope,
   categoryParam: Param,
   subcategoryParam: Param?

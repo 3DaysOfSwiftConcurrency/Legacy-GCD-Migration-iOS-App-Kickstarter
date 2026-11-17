@@ -24,12 +24,10 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   private let deepLinkRouter: DeepLinkRouter = {
     let model = AppModel.shared
     return DeepLinkRouter(
-      sessionFeature: model.sessionFeature,
-      messagingFeature: model.messagingFeature,
-      discussionFeature: model.discussionFeature,
-      discoveryFeature: model.discoveryFeature,
-      activityFeature: model.activityFeature,
-      authenticationFeature: model.authenticationFeature,
+      currentSession: { AppModel.shared.deepLinkSession },
+      resolveDestination: { try await AppModel.shared.resolveDeepLink($0, discoveryResponseDelay: $1) },
+      firstRedirect: { try await AppModel.shared.resolveEmailLink($0, route: $1) },
+      releaseRedirect: { AppModel.shared.releaseEmailLink(route: $0) },
       settingsLinks: SettingsLinkPresentation(
         settingsFeature: model.settingsFeature,
         responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }

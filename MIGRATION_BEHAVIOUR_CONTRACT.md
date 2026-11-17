@@ -13,9 +13,37 @@ behavior while migrating those responsibilities.
 
 The current source has removed AppDelegateViewModel and AppLifecycleFeature.
 DeepLinkRouter currently lives in the navigation layer and is called directly
-by AppDelegate. It still coordinates multiple Features; completing that ownership
-review is outstanding. Removing the former names does not prove that application
-composition or deep-link routing fully conforms to CFA.
+by AppDelegate. It requests destination and email-redirect resolution through
+AppModel. AppModel coordinates the existing Features and returns data;
+DeepLinkRouter retains navigation task lifetime and UIKit construction.
+AppModel's remaining infrastructure properties and the wider application
+composition still need migration; this checkpoint does not establish full CFA
+compliance.
+
+## Deep-link model coordination — 17 November 2026
+
+Author: Matthew Thomas.
+
+- Keep configured-host URL matching, application/Braze source differences, browser
+  fallback, push and shortcut destination mapping, and synchronous delegate replies.
+- Project links require the complete requested project/update/reply context before
+  UIKit builds the destination. A prelaunch project exposes its root only and must
+  not start requests for private subresources.
+- Equivalent pending links within one route share resolution. A new destination,
+  route release, caller cancellation or session replacement prevents obsolete
+  navigation, including results delivered after cancellation by a transport.
+- A cancelled model caller must not start a Feature request. A survey failure
+  after session replacement is treated as cancellation; a new request may succeed.
+- Discovery retains category/subcategory matching and the response delay captured
+  at admission. Settings writes retain their independent completion lifetime.
+
+AppModelTests directly covers cancellation before request admission and a late
+survey failure followed by a successful new-session request. DeepLinkRouterTests
+covers shared chains, replacement, session changes, prelaunch restrictions,
+redirects and delivery validity. ApplicationRoutingTests and Root Tabs tests cover
+the existing navigation and UIKit handoff. The final runs passed 86 LibraryTests
+and 145 PresentationTests on iPhone 17 Pro Max, iOS 26.2, with no failures or skips.
+Live system URL/push delivery and visual transition parity remain unverified.
 
 ## Project Page related projects — 17 November 2026
 

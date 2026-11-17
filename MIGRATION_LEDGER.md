@@ -4161,3 +4161,40 @@ and AppModel's remaining infrastructure properties require further review;
 the removed ViewModel name is not proof of full CFA compliance. The behavior
 contract's obsolete connectivity owner is corrected to ConnectivityService.
 Earlier ledger entries retain their historical descriptions.
+
+### Deep-link resolution through AppModel — Matthew Thomas
+
+AppDelegate's navigation adapter now requests domain resolution through AppModel.
+AppModel returns a DeepLinkDestination value and checks cancellation and session
+identity before and after the request. It stores no new routing task or controller.
+DeepLinkRouter retains per-route sharing, replacement, delivery validity, redirect
+observation and UIKit construction. Its initializer no longer receives six Features.
+
+| Responsibility | Previous owner | Current owner |
+| --- | --- | --- |
+| Selecting the domain capability for an incoming link | DeepLinkRouter | AppModel |
+| Complete project/update/reply context and prelaunch restriction | DeepLinkRouter | ProjectDetailsFeature, using DiscussionFeature |
+| Category/subcategory resolution | Navigation helper and DeepLinkRouter | DiscoveryFeature |
+| Email redirect request/release coordination | DeepLinkRouter calling AuthenticationFeature | AppModel calling AuthenticationFeature |
+| Navigation replacement, delivery validity and UIKit stack | DeepLinkRouter | DeepLinkRouter |
+
+Navigation.swift moves unchanged from Shared Views to the model directory.
+Category matching moves into the Discovery feature directory; the Xcode navigator
+and target membership follow both moves. The routing tests use an isolated AppModel
+graph shared by the model and presentation test targets. The old fixture's unused
+lifecycle collaborators are removed and its name now describes deep-link requests.
+
+The initial focused run passed 78 tests. After adding direct AppModel checks and
+the Navigation suite, the final focused run passed 86 tests. The bounded application
+routing, delegate analytics and Root Tabs run passed 145 tests. Both final runs had
+zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Result bundles:
+`/private/tmp/kickstarter-deep-link-model-verified.xcresult` and
+`/private/tmp/kickstarter-deep-link-model-presentation.xcresult`.
+`make check-cfa` guards against restoring Feature coordination in the router or
+UIKit controllers in the AppModel resolution API.
+
+The full suite, live system links/push delivery and visual transitions remain
+unverified. Swift packages are unchanged. AppModel still retains consent,
+authorization, connectivity, configuration, device-registration, shortcut and
+account-refresh infrastructure. Those ownership boundaries remain outstanding;
+no lifecycle Feature or delegate ViewModel is introduced to hide them.

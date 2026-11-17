@@ -9,8 +9,9 @@ import SystemConfiguration
 
 @MainActor
 final class DeepLinkRouterTests: XCTestCase {
-  private var provider: ControlledLifecycleProvider!
-  private var feature: DeepLinkRouter!
+  private var provider: ControlledDeepLinkProvider!
+  private var router: DeepLinkRouter!
+  private var model: AppModel!
   private var connectivityService: ConnectivityService!
   private let route = UUID()
   private var connectivityMonitor: ControlledReachabilityMonitor!
@@ -22,7 +23,7 @@ final class DeepLinkRouterTests: XCTestCase {
 
   override func setUp() async throws {
     try await super.setUp()
-    let provider = ControlledLifecycleProvider()
+    let provider = ControlledDeepLinkProvider()
     self.provider = provider
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     let messaging = MessagingFeature(
@@ -39,11 +40,15 @@ final class DeepLinkRouterTests: XCTestCase {
       ))
     })
     self.settingsLinks = SettingsLinkPresentation(settingsFeature: settings, responseDelay: { 0 })
-    self.feature = DeepLinkRouter(
-      sessionFeature: session, messagingFeature: messaging,
+    self.model = makeDeepLinkTestModel(
+      sessionFeature: session, settingsFeature: settings, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session, makeProvider: { provider }),
       discoveryFeature: DiscoveryFeature(
         provider: AsyncDiscoveryProvider(), loadCategories: { try await provider.categories() },
+        sleep: { [weak self] seconds in
+          try Task.checkCancellation()
+          self?.discoverySleeps.append(seconds)
+        },
         currentUser: { session.currentUser }
       ),
       activityFeature: ActivityFeature(
@@ -54,21 +59,25 @@ final class DeepLinkRouterTests: XCTestCase {
         sessionFeature: session,
         makeProvider: { AsyncAuthenticationProvider(service: MockService()) },
         resolveRedirect: { [redirects = self.redirects] _ in try await redirects.request() }
-      ),
+      )
+    )
+    let model = try XCTUnwrap(self.model)
+    self.router = DeepLinkRouter(
+      currentSession: { model.deepLinkSession },
+      resolveDestination: { try await model.resolveDeepLink($0, discoveryResponseDelay: $1) },
+      firstRedirect: { try await model.resolveEmailLink($0, route: $1) },
+      releaseRedirect: { model.releaseEmailLink(route: $0) },
       settingsLinks: self.settingsLinks,
       serverConfig: { ServerConfig.local },
-      discoveryResponseDelay: { [weak self] in self?.discoveryDelay ?? 0 },
-      sleep: { [weak self] seconds in
-        try Task.checkCancellation()
-        self?.discoverySleeps.append(seconds)
-      }
+      discoveryResponseDelay: { [weak self] in self?.discoveryDelay ?? 0 }
     )
   }
+
   override func tearDown() async throws {
-    self.feature?.reset()
+    self.router?.reset()
     self.provider.releaseAll()
     self.redirects.releaseAll()
-    await self.feature?.waitForOperations()
+    await self.router?.waitForOperations()
     try await super.tearDown()
   }
   private func link(_ id: Int = 1, _ subpage: Navigation.Project = .root) -> Navigation {
@@ -87,13 +96,13 @@ final class DeepLinkRouterTests: XCTestCase {
     let url = try XCTUnwrap(URL(string: "http://ksr.test/profile/verify_email?at=fixture"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
+    XCTAssertTrue(self.router.route(url: url, route: self.route) { actions.append($0.action) })
     XCTAssertTrue(actions.isEmpty)
     await self.settingsLinks.waitForOperations()
     XCTAssertEqual(actions, [.emailVerificationCompleted("Verified", true)])
 
     actions.removeAll()
-    XCTAssertTrue(self.feature.route(url: url, route: self.route, source: .braze) { actions.append($0.action) })
+    XCTAssertTrue(self.router.route(url: url, route: self.route, source: .braze) { actions.append($0.action) })
     await self.settingsLinks.waitForOperations()
     XCTAssertTrue(actions.isEmpty)
   }
@@ -103,13 +112,13 @@ final class DeepLinkRouterTests: XCTestCase {
     let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
+    XCTAssertTrue(self.router.route(url: url, route: self.route) { actions.append($0.action) })
     await self.redirects.waitFor(1)
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
+    XCTAssertTrue(self.router.route(url: url, route: self.route) { actions.append($0.action) })
     XCTAssertTrue(actions.isEmpty)
 
     try self.redirects.finish(0, .success(destination))
-    await self.feature.waitForOperations()
+    await self.router.waitForOperations()
     XCTAssertEqual(self.redirects.count, 1)
     XCTAssertEqual(actions, [.selectActivity])
   }
@@ -119,23 +128,23 @@ final class DeepLinkRouterTests: XCTestCase {
     let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
+    XCTAssertTrue(self.router.route(url: url, route: self.route) { actions.append($0.action) })
     await self.redirects.waitFor(1)
-    _ = try await self.feature.resolve(.tab(.discovery(nil)), route: self.route)
+    _ = try await self.router.resolve(.tab(.discovery(nil)), route: self.route)
 
     try self.redirects.finish(0, .success(destination))
-    await self.feature.waitForOperations()
+    await self.router.waitForOperations()
     XCTAssertTrue(actions.isEmpty)
   }
 
   func testNewDestinationCanReplaceAnEmailClickBeforeRedirectStarts() async throws {
     let url = try XCTUnwrap(URL(string: "https://clicks.kickstarter.com/?qs=fixture"))
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { _ in
+    XCTAssertTrue(self.router.route(url: url, route: self.route) { _ in
       XCTFail("A replaced email click delivered an action")
     })
-    _ = try await self.feature.resolve(.tab(.discovery(nil)), route: self.route)
+    _ = try await self.router.resolve(.tab(.discovery(nil)), route: self.route)
 
-    await self.feature.waitForOperations()
+    await self.router.waitForOperations()
     XCTAssertEqual(self.redirects.count, 0)
   }
 
@@ -144,18 +153,18 @@ final class DeepLinkRouterTests: XCTestCase {
     let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
+    XCTAssertTrue(self.router.route(url: url, route: self.route) { actions.append($0.action) })
     await self.redirects.waitFor(1)
-    self.feature.sessionFeature.sessionChanged()
+    self.model.sessionFeature.sessionChanged()
 
     try self.redirects.finish(0, .success(destination))
-    await self.feature.waitForOperations()
+    await self.router.waitForOperations()
     XCTAssertTrue(actions.isEmpty)
   }
 
   func testDiscoveryTimingUsesTheDelayAtRequestAdmission() async throws {
     self.discoveryDelay = 0.25
-    let task = self.feature.requestDestination(
+    let task = self.router.requestDestination(
       .tab(.discovery(["category_id": "art"])), route: self.route
     )
     await self.provider.categoriesGate.waitFor(1)
@@ -171,20 +180,20 @@ final class DeepLinkRouterTests: XCTestCase {
     let discovery = try XCTUnwrap(URL(string: "http://ksr.test/discover/categories/art"))
     var earlier: DeepLinkRouter.Delivery?
     var later: DeepLinkRouter.Delivery?
-    XCTAssertTrue(self.feature.route(url: activity, route: self.route) { earlier = $0 })
+    XCTAssertTrue(self.router.route(url: activity, route: self.route) { earlier = $0 })
     let delivery = try XCTUnwrap(earlier)
     XCTAssertEqual(delivery.action, .selectActivity)
 
-    self.feature.route(url: activity, route: UUID()) { _ in }
+    self.router.route(url: activity, route: UUID()) { _ in }
     XCTAssertTrue(delivery.isCurrent)
 
-    XCTAssertTrue(self.feature.route(url: discovery, route: self.route) { later = $0 })
+    XCTAssertTrue(self.router.route(url: discovery, route: self.route) { later = $0 })
     XCTAssertFalse(delivery.isCurrent)
     await self.provider.categoriesGate.waitFor(1)
     XCTAssertNil(later)
 
     try self.provider.categoriesGate.finish(0, .success(.template))
-    await self.feature.waitForOperations()
+    await self.router.waitForOperations()
     XCTAssertTrue(try XCTUnwrap(later).isCurrent)
     XCTAssertFalse(delivery.isCurrent)
   }
@@ -192,17 +201,17 @@ final class DeepLinkRouterTests: XCTestCase {
   func testSessionReplacementAndReleaseInvalidateDeliveredActions() throws {
     let activity = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
     var latest: DeepLinkRouter.Delivery?
-    XCTAssertTrue(self.feature.route(url: activity, route: self.route) { latest = $0 })
+    XCTAssertTrue(self.router.route(url: activity, route: self.route) { latest = $0 })
     let beforeSessionChange = try XCTUnwrap(latest)
     XCTAssertTrue(beforeSessionChange.isCurrent)
 
-    self.feature.sessionFeature.sessionChanged()
+    self.model.sessionFeature.sessionChanged()
     XCTAssertFalse(beforeSessionChange.isCurrent)
 
-    XCTAssertTrue(self.feature.route(url: activity, route: self.route) { latest = $0 })
+    XCTAssertTrue(self.router.route(url: activity, route: self.route) { latest = $0 })
     let beforeRelease = try XCTUnwrap(latest)
     XCTAssertTrue(beforeRelease.isCurrent)
-    self.feature.release(route: self.route)
+    self.router.release(route: self.route)
     XCTAssertFalse(beforeRelease.isCurrent)
   }
 
@@ -223,7 +232,7 @@ final class DeepLinkRouterTests: XCTestCase {
     }
     XCTAssertEqual(first, [.wifi])
     XCTAssertEqual(second, [.wifi])
-    self.feature.reset()
+    self.router.reset()
     self.connectivityMonitor.continuation.yield(.wwan)
     self.connectivityMonitor.continuation.yield(.none)
     await fulfillment(of: [delivered], timeout: 2)
@@ -292,9 +301,9 @@ final class DeepLinkRouterTests: XCTestCase {
   }
 
   func testEquivalentDestinationSharesCompleteChain() async throws {
-    let first = self.feature.requestDestination(
+    let first = self.router.requestDestination(
       self.link(1, .update(42, .commentThread("comment", "reply"))), route: self.route)
-    let second = self.feature.requestDestination(
+    let second = self.router.requestDestination(
       self.link(1, .update(42, .commentThread("comment", "reply"))), route: self.route)
     await self.provider.projects.waitFor(1)
     try self.provider.projects.finish(0, .success(.template |> Project.lens.id .~ 77))
@@ -320,21 +329,21 @@ final class DeepLinkRouterTests: XCTestCase {
   }
 
   func testNewTabInvalidatesLateProjectAndDoesNotStartItsUpdate() async throws {
-    let old = self.feature.requestDestination(self.link(1, .update(42, .root)), route: self.route)
+    let old = self.router.requestDestination(self.link(1, .update(42, .root)), route: self.route)
     await self.provider.projects.waitFor(1)
-    _ = try await self.feature.resolve(.tab(.search), route: self.route)
+    _ = try await self.router.resolve(.tab(.search), route: self.route)
     try self.provider.projects.finish(0, .success(.template))
     await self.assertCancelled(old)
     XCTAssertEqual(self.provider.updates.count, 0)
   }
 
   func testNewProjectSuppressesOldRepliesEvenIfTransportIgnoresCancellation() async throws {
-    let old = self.feature.requestDestination(
+    let old = self.router.requestDestination(
       self.link(1, .commentThread("old", nil)), route: self.route)
     await self.provider.projects.waitFor(1)
     try self.provider.projects.finish(0, .success(.template))
     await self.provider.repliesGate.waitFor(1)
-    let new = self.feature.requestDestination(self.link(2), route: self.route)
+    let new = self.router.requestDestination(self.link(2), route: self.route)
     await self.provider.projects.waitFor(2)
     try self.provider.projects.finish(1, .success(.template |> Project.lens.id .~ 2))
     try self.provider.repliesGate.finish(
@@ -351,32 +360,32 @@ final class DeepLinkRouterTests: XCTestCase {
   }
 
   func testReleasingRouteSuppressesLateFailure() async throws {
-    let old = self.feature.requestDestination(self.link(), route: self.route)
+    let old = self.router.requestDestination(self.link(), route: self.route)
     await self.provider.projects.waitFor(1)
-    self.feature.release(route: self.route)
+    self.router.release(route: self.route)
     try self.provider.projects.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     // Cancellation takes priority over transport failure for removed routes.
     await self.assertCancelled(old)
   }
 
   func testSameAccountReauthenticationRejectsOldUpdateAndSkipsReplies() async throws {
-    let old = self.feature.requestDestination(
+    let old = self.router.requestDestination(
       self.link(1, .update(42, .commentThread("old", nil))), route: self.route)
     await self.provider.projects.waitFor(1)
     try self.provider.projects.finish(0, .success(.template))
     await self.provider.updates.waitFor(1)
-    self.feature.sessionFeature.sessionChanged()
+    self.model.sessionFeature.sessionChanged()
     try self.provider.updates.finish(0, .success(.template))
     await self.assertCancelled(old)
     XCTAssertEqual(self.provider.repliesGate.count, 0)
   }
 
   func testCategoryLookupClearedByNonCategoryDiscoveryLink() async throws {
-    let old = self.feature.requestDestination(
+    let old = self.router.requestDestination(
       .tab(.discovery(["category_id": "art"])), route: self.route)
     await self.provider.categoriesGate.waitFor(1)
     guard
-      case .discovery(nil)? = try await self.feature.resolve(
+      case .discovery(nil)? = try await self.router.resolve(
         .tab(.discovery(nil)), route: self.route)
     else {
       return XCTFail("Cleared discovery must still navigate")
@@ -386,7 +395,7 @@ final class DeepLinkRouterTests: XCTestCase {
   }
 
   func testPrelaunchDoesNotLoadPrivateSubpages() async throws {
-    let task = self.feature.requestDestination(self.link(1, .update(42, .root)), route: self.route)
+    let task = self.router.requestDestination(self.link(1, .update(42, .root)), route: self.route)
     await self.provider.projects.waitFor(1)
     try self.provider.projects.finish(
       0, .success(.template |> Project.lens.displayPrelaunch .~ true))
@@ -398,26 +407,13 @@ final class DeepLinkRouterTests: XCTestCase {
 }
 
 @MainActor
-private final class ControlledLifecycleProvider: DiscussionProvider {
-  let permissions = AccountRequestGate<Bool>()
-  let tracking = AccountRequestGate<UInt>()
-  var permissionOptions: [UInt] = []
-  var registrationCount = 0
-  let config = AccountRequestGate<Config>()
-  let registrations = AccountRequestGate<Void>()
-  let recommendationsGate = AccountRequestGate<Int>()
+private final class ControlledDeepLinkProvider: DiscussionProvider {
   let categoriesGate = AccountRequestGate<RootCategoriesEnvelope>()
   let surveys = AccountRequestGate<SurveyResponse>()
   let projects = AccountRequestGate<Project>()
   let updates = AccountRequestGate<Update>()
   let repliesGate = AccountRequestGate<CommentRepliesEnvelope>()
-  var tokens: [String] = []
   var updateInputs: [(Int, Param)] = []
-  func register(token: String) async throws {
-    self.tokens.append(token)
-    try await self.registrations.request()
-  }
-  func recommendations() async throws -> Int { try await self.recommendationsGate.request() }
   func categories() async throws -> RootCategoriesEnvelope {
     try await self.categoriesGate.request()
   }
@@ -436,11 +432,6 @@ private final class ControlledLifecycleProvider: DiscussionProvider {
     try await self.repliesGate.request()
   }
   func releaseAll() {
-    self.permissions.releaseAll()
-    self.tracking.releaseAll()
-    self.config.releaseAll()
-    self.registrations.releaseAll()
-    self.recommendationsGate.releaseAll()
     self.categoriesGate.releaseAll()
     self.surveys.releaseAll()
     self.projects.releaseAll()

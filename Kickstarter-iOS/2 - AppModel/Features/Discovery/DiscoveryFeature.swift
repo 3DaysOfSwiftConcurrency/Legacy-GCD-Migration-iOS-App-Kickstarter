@@ -237,6 +237,10 @@ public final class DiscoveryFeature {
     self.currentUser = currentUser
   }
 
+  func waitForDeepLinkResponse(_ seconds: TimeInterval) async throws {
+    try await self.sleep(seconds)
+  }
+
   func rootCategories() async throws -> RootCategoriesEnvelope {
     try await self.loadCategories()
   }

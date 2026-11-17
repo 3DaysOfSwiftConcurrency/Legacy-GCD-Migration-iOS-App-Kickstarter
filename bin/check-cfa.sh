@@ -29,6 +29,12 @@ cancel_pledge_view_model="$app_view/Views/CancelPledge/Controller/CancelPledgeVi
 project_page_view_model="$app_view/Views/ProjectPage/Controller/ProjectPageViewModel.swift"
 discovery_feature="$app_model/Features/Discovery/DiscoveryFeature.swift"
 
+reject_matches 'Deep-link data resolution belongs to AppModel and its Features.' \
+  'discussionFeature|discoveryFeature|activityFeature|messagingFeature|authenticationFeature|sessionFeature' \
+  "$app_view/Navigation/DeepLinkRouter.swift"
+reject_matches 'AppModel deep-link coordination returns data, not UIKit controllers.' \
+  'import UIKit|UIViewController|UINavigationController' "$app_model/AppModel+DeepLinks.swift"
+
 test -f "$root_view_model"
 test -f "$root_tabs"
 test -f "$account_refresh"

@@ -4,8 +4,8 @@ import KsApi
 import Prelude
 import UIKit
 
-/// Matches incoming URLs and resolves deep-link destinations before UIKit presents them.
-/// Project links publish only after the complete project, update and reply chain loads.
+/// Matches incoming URLs and owns the lifetime of their UIKit presentation.
+/// AppModel resolves domain data before the router builds a destination controller.
 @MainActor
 public final class DeepLinkRouter {
   enum URLSource {
@@ -145,7 +145,7 @@ public final class DeepLinkRouter {
       case let .discovery(params): deliver(.showDiscovery(params))
       case let .message(thread): deliver(.showMessageThread(thread))
       case .survey, .project:
-        if let controller = destination.makeViewController(isLoggedIn: self.sessionFeature.currentUser != nil) {
+        if let controller = destination.makeViewController(isLoggedIn: self.session.userID != nil) {
           deliver(.showViewController(controller))
         }
       }
@@ -159,92 +159,63 @@ public final class DeepLinkRouter {
     case .tab(.search): deliver(.selectSearch)
     case .tab(.me): deliver(.selectProfile)
     case .tab(.login): deliver(.showLogin(.generic))
-    case .project(_, .pledge(.manage), _, _) where self.sessionFeature.currentUser == nil:
+    case .project(_, .pledge(.manage), _, _) where self.session.userID == nil:
       deliver(.showLogin(.erroredPledge))
     default: break
     }
     if let browserFallback { deliver(.openBrowser(browserFallback)) }
   }
 
-  public let sessionFeature: SessionFeature
-  public let messagingFeature: MessagingFeature
-  public struct ProjectDestination: Sendable {
-    public let project: Project
-    public let subpage: Navigation.Project
-    public let refInfo: RefInfo?
-    public let secretRewardToken: String?
-    public let update: Update?
-    public let replies: CommentRepliesEnvelope?
-  }
-  public enum Destination: Sendable {
-    case discovery(DiscoveryParams?)
-    case project(ProjectDestination)
-    case survey(String)
-    case message(MessageThread)
-  }
-  private struct Session: Equatable {
-    let userID: Int?
-    let generation: Int
-  }
   private struct Pending<Value: Sendable> {
     let id: UUID
-    let session: Session
+    let session: DeepLinkSession
     let task: Task<Value, Error>
   }
-  private let discussionFeature: DiscussionFeature
-  private let discoveryFeature: DiscoveryFeature
-  private let activityFeature: ActivityFeature
-  private let authenticationFeature: AuthenticationFeature
+  private let currentSession: () -> DeepLinkSession
+  private let resolveDestination: (Navigation, TimeInterval) async throws -> DeepLinkDestination?
+  private let firstRedirect: (URL, UUID) async throws -> URL?
+  private let releaseRedirect: (UUID) -> Void
   private let settingsLinks: SettingsLinkPresentation
   private let serverConfig: () -> ServerConfigType
   private let discoveryResponseDelay: () -> TimeInterval
-  private let sleep: (TimeInterval) async throws -> Void
-  private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
-  private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
+  private var destinations: [UUID: (navigation: Navigation, request: Pending<DeepLinkDestination?>)] = [:]
+  private var destinationTasks: [UUID: Task<DeepLinkDestination?, Error>] = [:]
   private var presentations: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
   private var deliveryIDs: [UUID: UUID] = [:]
-  private var redirects: [UUID: (url: URL, session: Session, id: UUID)] = [:]
+  private var redirects: [UUID: (url: URL, session: DeepLinkSession, id: UUID)] = [:]
   private var redirectTasks: [UUID: Task<Void, Never>] = [:]
 
   public init(
-    sessionFeature: SessionFeature, messagingFeature: MessagingFeature,
-    discussionFeature: DiscussionFeature,
-    discoveryFeature: DiscoveryFeature, activityFeature: ActivityFeature,
-    authenticationFeature: AuthenticationFeature,
+    currentSession: @escaping () -> DeepLinkSession,
+    resolveDestination: @escaping (Navigation, TimeInterval) async throws -> DeepLinkDestination?,
+    firstRedirect: @escaping (URL, UUID) async throws -> URL?,
+    releaseRedirect: @escaping (UUID) -> Void,
     settingsLinks: SettingsLinkPresentation,
     serverConfig: @escaping () -> ServerConfigType,
-    discoveryResponseDelay: @escaping () -> TimeInterval,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    discoveryResponseDelay: @escaping () -> TimeInterval
   ) {
-    self.sessionFeature = sessionFeature
-    self.messagingFeature = messagingFeature
-    self.discussionFeature = discussionFeature
-    self.discoveryFeature = discoveryFeature
-    self.activityFeature = activityFeature
-    self.authenticationFeature = authenticationFeature
+    self.currentSession = currentSession
+    self.resolveDestination = resolveDestination
+    self.firstRedirect = firstRedirect
+    self.releaseRedirect = releaseRedirect
     self.settingsLinks = settingsLinks
     self.serverConfig = serverConfig
     self.discoveryResponseDelay = discoveryResponseDelay
-    self.sleep = sleep
   }
-  private var session: Session {
-    Session(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
-  }
-  private func requireCurrent(_ session: Session) throws {
+  private var session: DeepLinkSession { self.currentSession() }
+  private func requireCurrent(_ session: DeepLinkSession) throws {
     try Task.checkCancellation()
     guard self.session == session else { throw CancellationError() }
   }
 
-  public func resolve(_ navigation: Navigation, route: UUID) async throws -> Destination? {
+  public func resolve(_ navigation: Navigation, route: UUID) async throws -> DeepLinkDestination? {
     try Task.checkCancellation()
     let result = try await self.requestDestination(navigation, route: route).value
     try Task.checkCancellation()
     return result
   }
   @discardableResult public func requestDestination(_ navigation: Navigation, route: UUID) -> Task<
-    Destination?, Error
+    DeepLinkDestination?, Error
   > {
     let session = self.session
     if let pending = self.destinations[route], pending.navigation == navigation,
@@ -261,10 +232,9 @@ public final class DeepLinkRouter {
         if self.destinations[route]?.request.id == id { self.destinations[route] = nil }
       }
       try self.requireCurrent(session)
-      let destination: Destination?
+      let destination: DeepLinkDestination?
       do {
-        destination = try await self.load(
-          navigation, session: session, delay: delay)
+        destination = try await self.resolveDestination(navigation, delay)
       } catch {
         try self.requireCurrent(session)
         throw error
@@ -278,56 +248,6 @@ public final class DeepLinkRouter {
     return task
   }
 
-  private func load(
-    _ navigation: Navigation, session: Session,
-    delay: TimeInterval
-  ) async throws -> Destination? {
-    switch navigation {
-    case .tab(.discovery(let rawParams)):
-      guard let rawParams, let params = DiscoveryParams.decodeJSONDictionary(rawParams) else {
-        return .discovery(nil)
-      }
-      let (category, subcategory) = deepLinkCategories(rawParams: rawParams)
-      guard let category else { return .discovery(params) }
-      let envelope = try await self.discoveryFeature.rootCategories()
-      try self.requireCurrent(session)
-      let matched = findCategoryFromRootCategories(
-        envelope: envelope, categoryParam: category, subcategoryParam: subcategory)
-      try await self.sleep(delay)
-      return .discovery(params |> DiscoveryParams.lens.category .~ matched)
-    case .user(_, .survey(let id)):
-      let url = try await self.activityFeature.surveyURL(id: id)
-      return .survey(url)
-    case .messages(let id):
-      return try await self.messagingFeature.thread(id: id).map { .message($0.messageThread) }
-    case .project(_, .pledgeManagerWebview(let url), _, _):
-      return .survey(url)
-    case .project(let param, let subpage, let refInfo, let token):
-      let project = try await self.discussionFeature.projectContext(param: param)
-      try self.requireCurrent(session)
-      // Prelaunch projects only expose their root, as before.
-      guard project.displayPrelaunch != true || subpage == .root else { return nil }
-      var update: Update?
-      var replies: CommentRepliesEnvelope?
-      switch subpage {
-      case .commentThread(let id?, _):
-        replies = try await self.discussionFeature.initialReplies(id: id)
-      case .update(let id, let child):
-        update = try await self.discussionFeature.updateContext(id: id, project: .id(project.id))
-        try self.requireCurrent(session)
-        if case .commentThread(let commentID?, _) = child {
-          replies = try await self.discussionFeature.initialReplies(id: commentID)
-        }
-      default: break
-      }
-      return .project(
-        ProjectDestination(
-          project: project, subpage: subpage, refInfo: refInfo, secretRewardToken: token,
-          update: update, replies: replies))
-    default: return nil  // Synchronous destinations still invalidate an earlier async link.
-    }
-  }
-
   public func release(route: UUID) {
     self.deliveryIDs[route] = nil
     self.cancelPresentation(route: route)
@@ -335,7 +255,7 @@ public final class DeepLinkRouter {
     if let redirect = self.redirects.removeValue(forKey: route) {
       self.redirectTasks[redirect.id]?.cancel()
     }
-    self.authenticationFeature.releaseEmailRedirect(route: route)
+    self.releaseRedirect(route)
   }
 
   private func resolveEmailRedirect(
@@ -345,30 +265,31 @@ public final class DeepLinkRouter {
     if let pending = self.redirects[route], pending.url == url, pending.session == session { return }
     self.release(route: route)
     let id = UUID()
-    let authentication = self.authenticationFeature
+    let releaseRedirect = self.releaseRedirect
+    let firstRedirect = self.firstRedirect
     self.redirects[route] = (url, session, id)
     self.redirectTasks[id] = Task { [weak self] in
       defer {
         self?.redirectTasks[id] = nil
         if self?.redirects[route]?.id == id {
           self?.redirects[route] = nil
-          authentication.releaseEmailRedirect(route: route)
+          releaseRedirect(route)
         }
       }
       do {
-        let destination = try await authentication.firstRedirect(url, route: route)
+        let destination = try await firstRedirect(url, route)
         guard let self, self.redirects[route]?.id == id, let destination else { return }
         try self.requireCurrent(session)
         self.redirects[route] = nil
-        authentication.releaseEmailRedirect(route: route)
+        releaseRedirect(route)
         self.route(url: destination, route: route, perform: perform)
       } catch { /* Failed or cancelled redirects do not navigate. */ }
     }
   }
 
   private func presentDestination(
-    _ request: Task<Destination?, Error>, route: UUID,
-    onDestination: @escaping @MainActor (Destination) -> Void
+    _ request: Task<DeepLinkDestination?, Error>, route: UUID,
+    onDestination: @escaping @MainActor (DeepLinkDestination) -> Void
   ) {
     let session = self.session
     let id = UUID()
@@ -422,7 +343,7 @@ public final class DeepLinkRouter {
 
 }
 
-extension DeepLinkRouter.Destination {
+extension DeepLinkDestination {
   @MainActor
   func makeViewController(isLoggedIn: Bool) -> UINavigationController? {
     switch self {
@@ -443,7 +364,7 @@ extension DeepLinkRouter.Destination {
 @MainActor
 private enum ProjectDeepLink {
   static func viewController(
-    _ destination: DeepLinkRouter.ProjectDestination, isLoggedIn: Bool
+    _ destination: ProjectDetailsFeature.LinkContext, isLoggedIn: Bool
   ) -> UINavigationController? {
     let project = destination.project
     let page = ProjectPageViewController.configuredWith(

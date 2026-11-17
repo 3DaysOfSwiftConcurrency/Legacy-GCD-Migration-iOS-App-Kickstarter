@@ -71,6 +71,50 @@ final class AppTrackingConsentTests: XCTestCase {
 
 @MainActor
 final class AppModelTests: XCTestCase {
+  func testSurveyLinkRejectsLateFailureAfterSessionReplacementAndCanResolveAgain() async throws {
+    let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    let surveys = AccountRequestGate<SurveyResponse>()
+    defer { surveys.releaseAll() }
+    let model = makeDeepLinkTestModel(
+      sessionFeature: session,
+      activityFeature: ActivityFeature(
+        sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },
+        loadSurvey: { _ in try await surveys.request() }
+      )
+    )
+    let first = Task { try await model.resolveDeepLink(.user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    await surveys.waitFor(1)
+    session.sessionChanged()
+    try surveys.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
+    guard case .failure(is CancellationError) = await first.result else {
+      return XCTFail("An obsolete survey result escaped the AppModel boundary")
+    }
+
+    let current = Task { try await model.resolveDeepLink(.user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    await surveys.waitFor(2)
+    try surveys.finish(1, .success(.template))
+    guard case let .survey(url)? = try await current.value else { return XCTFail("Expected the survey URL") }
+    XCTAssertEqual(url, SurveyResponse.template.urls.web.survey)
+  }
+
+  func testCancelledDeepLinkCallerDoesNotStartFeatureWork() async {
+    let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    var surveyRequests = 0
+    let model = makeDeepLinkTestModel(
+      sessionFeature: session,
+      activityFeature: ActivityFeature(
+        sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },
+        loadSurvey: { _ in surveyRequests += 1; return .template }
+      )
+    )
+    let task = Task { try await model.resolveDeepLink(.user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    task.cancel()
+    guard case .failure(is CancellationError) = await task.result else {
+      return XCTFail("Cancelled link resolution must throw cancellation")
+    }
+    XCTAssertEqual(surveyRequests, 0)
+  }
+
   func testShortcutRefreshDropsResultAfterSameUserSessionReplacement() async throws {
     let user = User.template
     let session = SessionFeature(

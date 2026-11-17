@@ -5,6 +5,43 @@
 	"objectVersion" = "60";
 	"archiveVersion" = "1";
 	"objects" = {
+		"7080852EF66D20E843717366" = {
+			"isa" = "PBXFileReference";
+			"name" = "DeepLinkTestModel.swift";
+			"path" = "ApplicationTests/Support/DeepLinkTestModel.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"BD32CD56E62A97C13707B7A1" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7080852EF66D20E843717366";
+		};
+		"6C43C611CB8D305D917FDC05" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7080852EF66D20E843717366";
+		};
+		"7BABAC2B16C4B0DC64482314" = {
+			"isa" = "PBXFileReference";
+			"name" = "ProjectDetailsFeature+DeepLinks.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/ProjectDetails/ProjectDetailsFeature+DeepLinks.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"90F81993353CE00EBDC1B162" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7BABAC2B16C4B0DC64482314";
+		};
+		"642E2002A2401D5EA2010A32" = {
+			"isa" = "PBXFileReference";
+			"name" = "AppModel+DeepLinks.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/AppModel+DeepLinks.swift";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"2F1C416A2FE7F2C7F3BB9E2F" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "642E2002A2401D5EA2010A32";
+		};
 		"21328D6589981ECB86CA07E2" = {
 			"isa" = "PBXGroup";
 			"name" = "Onboarding";
@@ -408,6 +445,7 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				"6C43C611CB8D305D917FDC05",
 				"EAC8516A1BC17470F9CD9AEC",
 				"5E5F5776D8036B5E51775292",
 				"3A24BFA945FA77E6C5B0FFF6",
@@ -798,6 +836,7 @@
 			"name" = "Support";
 			"sourceTree" = "<group>";
 			"children" = (
+				"7080852EF66D20E843717366",
 				"0A87A6585B153D8982C960CA",
 				"3E5E6D51F206E3C31655A53F",
 				"01C9EAFDE82F117210D3FF9E",
@@ -3141,6 +3180,8 @@
 			"name" = "2 - AppModel";
 			"sourceTree" = "<group>";
 			"children" = (
+				"DA7F5FEED9F1A1A4D49F0321",
+				"642E2002A2401D5EA2010A32",
 				"48D6E9A9AD923608A65F217F",
 				"CB2EEB463DEA0E7D0A3889B2",
 				"92214D99DCCD62B409563F15",
@@ -4674,6 +4715,7 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				"BD32CD56E62A97C13707B7A1",
 				"AAF548D72F2445C0001DB5AC",
 				"AAF548D82F2445C0001DB5AC",
 				"AAF548D92F2445C0001DB5AC",
@@ -7643,6 +7685,8 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				"90F81993353CE00EBDC1B162",
+				"2F1C416A2FE7F2C7F3BB9E2F",
 				"29558905CF4DC9874ACBC0CD",
 				"948E68B92712BF3F9CBD6FC2",
 				"6B7B7BB2A7334A1378EC0D62",
@@ -9650,7 +9694,6 @@
 				"F069672A0753BF7A620D5C92",
 				"EFF90F8B8A82D86E3A27FC6A",
 				"76A142EEC21CAA3A82C3E3FF",
-				"DA7F5FEED9F1A1A4D49F0321",
 				"CB28EC79CDDD8C2488644EAF",
 				"CF138775ADCE76E9419356A8",
 				"BEC3F9831C8B5415D692468D",
@@ -10906,7 +10949,7 @@
 		};
 		"DA7F5FEED9F1A1A4D49F0321" = {
 			"name" = "Navigation.swift";
-			"path" = "Kickstarter-iOS/1 - View/Shared Views/Navigation.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Navigation.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -13333,6 +13376,7 @@
 			"name" = "ProjectDetails";
 			"sourceTree" = "<group>";
 			"children" = (
+				"7BABAC2B16C4B0DC64482314",
 				"73ECF3D5D4C82A141A86773E",
 				"14FA9EA546FA47BC5131C336",
 				"C8B959CED5F3D3B2E3440BD6",
@@ -15494,8 +15538,8 @@
 			"sourceTree" = "<group>";
 		};
 		"984AAE5C2E31702B7EF6DF51" = {
-			"name" = "DeepLinkRouter+Categories.swift";
-			"path" = "Kickstarter-iOS/1 - View/Navigation/DeepLinkRouter+Categories.swift";
+			"name" = "DiscoveryFeature+DeepLinks.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Discovery/DiscoveryFeature+DeepLinks.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -19818,7 +19862,6 @@
 			"name" = "Navigation";
 			"sourceTree" = "<group>";
 			"children" = (
-				"984AAE5C2E31702B7EF6DF51",
 				"C79F9AA290B4147C1C26B922",
 				"58960C4F706A43BBBD50DCB3",
 			);
@@ -21135,6 +21178,7 @@
 			"name" = "Discovery";
 			"sourceTree" = "<group>";
 			"children" = (
+				"984AAE5C2E31702B7EF6DF51",
 				"92FC29A4FD8C2F3248265B37",
 			);
 		};

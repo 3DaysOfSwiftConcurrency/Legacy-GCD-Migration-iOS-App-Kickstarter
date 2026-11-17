@@ -92,8 +92,9 @@ final class ApplicationRoutingTests: TestCase {
     responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     sleep: { [weak self] seconds in try await self?.settingsLinkDelay(seconds) }
   )
-  private lazy var deepLinkRouter = DeepLinkRouter(
+  private lazy var deepLinkModel = makeDeepLinkTestModel(
     sessionFeature: self.settingsFeature.sessionFeature,
+    settingsFeature: self.settingsFeature,
     messagingFeature: self.messagingFeature,
     discussionFeature: DiscussionFeature(
       platform: .live(),
@@ -111,14 +112,22 @@ final class ApplicationRoutingTests: TestCase {
       resolveRedirect: { [weak self] url in
         await self?.recordEmailRedirect(url)
       }
-    ),
+    )
+  )
+  private lazy var deepLinkRouter = DeepLinkRouter(
+    currentSession: { [model = self.deepLinkModel] in model.deepLinkSession },
+    resolveDestination: { [model = self.deepLinkModel] in
+      try await model.resolveDeepLink($0, discoveryResponseDelay: $1)
+    },
+    firstRedirect: { [model = self.deepLinkModel] in try await model.resolveEmailLink($0, route: $1) },
+    releaseRedirect: { [model = self.deepLinkModel] in model.releaseEmailLink(route: $0) },
     settingsLinks: self.settingsLinks,
     serverConfig: { AppEnvironment.current.apiService.serverConfig },
-    discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-    sleep: { _ in try Task.checkCancellation() }
+    discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
   private lazy var discoveryFeature = DiscoveryFeature(
-    provider: AsyncDiscoveryProvider(), currentUser: { [session = self.settingsFeature.sessionFeature] in
+    provider: AsyncDiscoveryProvider(), sleep: { _ in try Task.checkCancellation() },
+    currentUser: { [session = self.settingsFeature.sessionFeature] in
       session.currentUser
     }
   )

@@ -3,7 +3,22 @@
 The real Xcode target is LibraryTests in Kickstarter.xcodeproj, using scheme
 Library-iOS. The package test stub is not the migration regression suite.
 
-## Latest checkpoint — Project Page related projects
+## Latest checkpoint — deep-link model coordination
+
+86 focused Navigation, DeepLinkRouter, AppModel, Discovery and Project Details tests
+passed in LibraryTests. The bounded application-routing, delegate analytics and
+Root Tabs selection passed 145 PresentationTests. Both final selections used
+iPhone 17 Pro Max, iOS 26.2, with no failures or skips.
+
+AppModelTests now checks pre-admission cancellation and a survey failure after
+session replacement followed by a successful retry. DeepLinkRouterTests exercises
+the isolated AppModel graph while retaining its sharing/replacement and presentation
+assertions. Shared test composition is in `ApplicationTests/Support/DeepLinkTestModel.swift`.
+Result bundles: `/private/tmp/kickstarter-deep-link-model-verified.xcresult` and
+`/private/tmp/kickstarter-deep-link-model-presentation.xcresult`.
+Live delivery, visual transition parity and the full suite were not verified.
+
+## Previous checkpoint — Project Page related projects
 
 106 focused ProjectPageViewModelTests, ProjectPageRelatedProjectsTests and
 ProjectDetailsFeatureTests passed, followed by 89 bounded tracking, creator,
