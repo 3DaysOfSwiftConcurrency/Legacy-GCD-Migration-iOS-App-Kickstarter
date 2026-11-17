@@ -65,6 +65,10 @@ public final class OnboardingFeature {
   public var hasSeenOnboarding: Bool { self.completionStore().hasSeenOnboarding }
   public func recordCompletion() { self.completionStore().hasSeenOnboarding = true }
   public var shouldOfferOnboarding: Bool { self.shouldRequestTracking() && !self.hasSeenOnboarding }
+  public var shouldRequestTrackingAuthorization: Bool {
+    guard let tracking = self.tracking() else { return false }
+    return tracking.advertisingIdentifier == nil && tracking.shouldRequestAuthorizationStatus()
+  }
   public func currentNotificationStatus() async -> UNAuthorizationStatus { await self.notificationStatus() }
 
   /// A system prompt is application-scoped. Equal callers share it, while a

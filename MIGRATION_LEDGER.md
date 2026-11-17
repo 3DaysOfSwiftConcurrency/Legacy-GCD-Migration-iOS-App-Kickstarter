@@ -4860,3 +4860,25 @@ Pro Max, iOS 26.2. Evidence:
 The CFA gate rejects direct AppEnvironment access in OAuth. The system browser and
 live OAuth service remain integration boundaries. This is not full CFA compliance.
 Swift packages, target identifiers and existing history are unchanged. No push.
+
+### Onboarding permission eligibility joins its Feature — 17 November 2026
+
+Author: Matthew Thomas.
+
+OnboardingFeature now owns the application-scoped tracking authorization eligibility
+decision through its composed tracking adapter. OnboardingViewModel asks that Feature
+before presenting the prompt. OnboardingUseCase is now a localized content source and
+no longer reads AppEnvironment or exposes a permission-policy input. The existing
+advertising-identifier and authorization-status conditions are preserved.
+
+Two Feature tests prove eligible, already-identified and missing-adapter behavior.
+Focused Onboarding Feature, content and ViewModel validation passed all 24 tests. The
+bounded selection added AppModel composition and passed all 32 tests. Both successful
+runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-onboarding-ownership-focused-2.xcresult` and
+`/private/tmp/kickstarter-onboarding-ownership-bounded.xcresult`.
+
+The CFA gate rejects restored global permission policy or button behavior in the
+content source. Live system consent UI and the whole Library suite remain unverified.
+This is not full CFA compliance. Swift packages, target identifiers and existing
+history are unchanged. No push.

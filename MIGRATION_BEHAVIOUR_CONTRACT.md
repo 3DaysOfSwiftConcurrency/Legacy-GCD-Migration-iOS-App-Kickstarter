@@ -1885,3 +1885,15 @@ safe for arbitrary concurrent environment mutation.
 - Controlled coverage verifies the injected URL/client ID and existing redirect,
   cancellation, failure and success cases. The system browser, live OAuth server and
   end-to-end external callback remain unverified.
+
+## Onboarding tracking eligibility ownership — 17 November 2026
+
+- The same composed tracking adapter now answers both onboarding prompt eligibility
+  and the application-owned authorization request. Eligibility remains true only
+  while the advertising identifier is absent and authorization may be requested.
+- The localized onboarding item source remains responsible only for its five display
+  items. Button analytics, prompt presentation, prompt sharing, cancellation and
+  completion behavior are unchanged.
+- Controlled coverage verifies eligible, already-identified and unavailable-adapter
+  cases. Live system consent UI, visual behavior and the whole Library suite remain
+  outside this checkpoint.

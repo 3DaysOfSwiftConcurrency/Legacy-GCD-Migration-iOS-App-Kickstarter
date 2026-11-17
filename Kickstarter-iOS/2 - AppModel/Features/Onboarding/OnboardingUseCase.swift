@@ -54,14 +54,7 @@ public struct OnboardingItem: Identifiable, Equatable {
 
 @MainActor
 public protocol OnboardingUseCaseType {
-  var uiInputs: OnboardingUseCaseUIInputs { get }
   var uiOutputs: OnboardingUseCaseUIOutputs { get }
-}
-
-@MainActor
-public protocol OnboardingUseCaseUIInputs {
-  /// Indicates whether the tracking permission prompt is needed.
-  func allowTrackingTapped() -> Bool
 }
 
 @MainActor
@@ -69,10 +62,9 @@ public protocol OnboardingUseCaseUIOutputs {
   var onboardingItems: [OnboardingItem] { get }
 }
 
-/// Provides onboarding content and determines whether tracking permission is needed.
+/// Provides the localized content displayed by onboarding.
 @MainActor
-public final class OnboardingUseCase: OnboardingUseCaseType, OnboardingUseCaseUIInputs,
-  OnboardingUseCaseUIOutputs {
+public final class OnboardingUseCase: OnboardingUseCaseType, OnboardingUseCaseUIOutputs {
   // MARK: - Initialization
 
   /// Injecting a bundle so that we can test that the correct Lottie JSON files are being loaded as expected.
@@ -82,20 +74,12 @@ public final class OnboardingUseCase: OnboardingUseCaseType, OnboardingUseCaseUI
     self.onboardingItems = onboardingItems
   }
 
-  // MARK: - Inputs
-
-  public func allowTrackingTapped() -> Bool {
-    let tracking = AppEnvironment.current.appTrackingTransparency
-    return tracking.advertisingIdentifier == nil && tracking.shouldRequestAuthorizationStatus()
-  }
-
   // MARK: - Data Outputs
 
   public let onboardingItems: [OnboardingItem]
 
   // MARK: - Type
 
-  public var uiInputs: any OnboardingUseCaseUIInputs { return self }
   public var uiOutputs: any OnboardingUseCaseUIOutputs { return self }
 }
 

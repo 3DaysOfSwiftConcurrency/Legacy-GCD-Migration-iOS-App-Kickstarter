@@ -23,16 +23,4 @@ final class OnboardingUseCaseTests: TestCase {
     XCTAssertEqual(self.useCase.uiOutputs.onboardingItems.count, 5)
   }
 
-  func testUseCase_completedAllowTrackingRequest_SetsAdvertisingID_WhenShouldRequestAuthStatus_isTrue() {
-    let appTrackingTransparency = MockAppTrackingTransparency()
-    appTrackingTransparency.requestAndSetAuthorizationStatusFlag = true
-    appTrackingTransparency.shouldRequestAuthStatus = true
-
-    withEnvironment(
-      appTrackingTransparency: appTrackingTransparency
-    ) {
-      XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
-      XCTAssertTrue(self.useCase.uiInputs.allowTrackingTapped())
-    }
-  }
 }

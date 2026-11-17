@@ -6,6 +6,29 @@ import XCTest
 
 @MainActor
 final class OnboardingFeatureTests: XCTestCase {
+  func testTrackingAuthorizationEligibilityUsesComposedTrackingAdapter() {
+    let tracking = MockAppTrackingTransparency()
+    tracking.shouldRequestAuthStatus = true
+    let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store },
+      tracking: { tracking }
+    )
+
+    XCTAssertTrue(feature.shouldRequestTrackingAuthorization)
+
+    tracking.updateAdvertisingIdentifier()
+
+    XCTAssertFalse(feature.shouldRequestTrackingAuthorization)
+  }
+
+  func testTrackingAuthorizationIsIneligibleWithoutTrackingAdapter() {
+    let feature = OnboardingFeature(
+      completionStore: { [store = MockKeyValueStore()] in store }
+    )
+
+    XCTAssertFalse(feature.shouldRequestTrackingAuthorization)
+  }
+
   func testApplicationAndOnboardingShareTheSameTrackingPrompt() async throws {
     let response = AccountRequestGate<UInt>()
     defer { response.releaseAll() }

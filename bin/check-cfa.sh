@@ -234,6 +234,8 @@ reject_matches 'Activity receives platform dependencies from AppModel compositio
   'AppEnvironment[.]current' "$app_model/Features/Activity/ActivityFeature.swift"
 reject_matches 'OAuth authorization receives server policy from Authentication composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Authentication/OAuth.swift"
+reject_matches 'Onboarding permission policy belongs to OnboardingFeature.' \
+  'AppEnvironment[.]current|allowTrackingTapped' "$app_model/Features/Onboarding/OnboardingUseCase.swift"
 reject_matches 'Creator Drafts receives response policy from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/CreatorDrafts/CreatorDraftsFeature.swift"
 reject_matches 'Pledge receives environment dependencies from composition.' \

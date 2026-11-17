@@ -100,7 +100,7 @@ public final class OnboardingViewModel {
   }
 
   public func allowTrackingTapped() {
-    if self.useCase.uiInputs.allowTrackingTapped(), let prompt = self.onTrackingPrompt {
+    if self.onboardingFeature.shouldRequestTrackingAuthorization, let prompt = self.onTrackingPrompt {
       AppEnvironment.current.ksrAnalytics.trackSystemPermissionsDialogViewed(on: .onboardingAppTrackingDialog)
       prompt()
     }

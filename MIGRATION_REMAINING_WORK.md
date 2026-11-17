@@ -83,6 +83,9 @@ Swift packages are excluded.
 - CreatorDraftsFeature now receives read and write response policy from AppModel.
   Draft reads still wait for admitted writes, and saves, uploads and removals retain
   their ordered mutation and route/session invalidation rules.
+- OnboardingFeature now owns tracking-authorization eligibility through its composed
+  tracking adapter. The onboarding content source no longer reads AppEnvironment or
+  decides whether the application-scoped permission prompt is needed.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and
