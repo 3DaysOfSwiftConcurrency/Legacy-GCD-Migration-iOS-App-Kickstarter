@@ -37,6 +37,7 @@ public final class DeepLinkRouter {
   private let sleep: (TimeInterval) async throws -> Void
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
   private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
+  private var presentations: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
 
   public init(
     sessionFeature: SessionFeature, messagingFeature: MessagingFeature,
@@ -153,15 +154,47 @@ public final class DeepLinkRouter {
   }
 
   public func release(route: UUID) {
+    self.cancelPresentation(route: route)
     self.destinations.removeValue(forKey: route)?.request.task.cancel()
   }
+
+  func presentDestination(
+    _ navigation: Navigation, route: UUID,
+    onDestination: @escaping @MainActor (Destination) -> Void
+  ) {
+    self.cancelPresentation(route: route)
+    let session = self.session
+    let request = self.requestDestination(navigation, route: route)
+    let id = UUID()
+    let task = Task { [weak self] in
+      defer {
+        if self?.presentations[route]?.id == id { self?.presentations[route] = nil }
+      }
+      do {
+        let destination = try await request.value
+        guard let self, let destination else { return }
+        try self.requireCurrent(session)
+        onDestination(destination)
+      } catch { /* Failed or cancelled links do not navigate. */ }
+    }
+    self.presentations[route] = (id, task)
+  }
+
+  func cancelPresentation(route: UUID) {
+    self.presentations.removeValue(forKey: route)?.task.cancel()
+  }
+
+  func waitForPresentation(route: UUID) async {
+    await self.presentations[route]?.task.value
+  }
   public func reset() {
-    for route in Array(self.destinations.keys) { self.release(route: route) }
+    for route in Set(self.destinations.keys).union(self.presentations.keys) { self.release(route: route) }
   }
   public func waitForOperations() async {
-    while !self.destinationTasks.isEmpty
+    while !self.destinationTasks.isEmpty || !self.presentations.isEmpty
     {
       for task in Array(self.destinationTasks.values) { _ = await task.result }
+      for presentation in Array(self.presentations.values) { await presentation.task.value }
     }
   }
 

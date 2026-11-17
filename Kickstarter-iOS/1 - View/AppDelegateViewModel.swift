@@ -238,7 +238,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var pushPresentationTask: Task<Void, Never>?
   private var configurationTask: Task<Void, Never>?
   private var shortcutTask: Task<Void, Never>?
-  private var destinationTask: Task<Void, Never>?
   private var setupRequest: Task<GraphUserSetup, Error>?
   private var setupObservation: Task<Void, Never>?
   private var lastSegmentEnabled: Bool?
@@ -287,7 +286,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelayTasks.values.forEach { $0.cancel() }
     self.configurationTask?.cancel()
     self.shortcutTask?.cancel()
-    self.destinationTask?.cancel()
     self.setupObservation?.cancel()
     self.setupRequest?.cancel()
     let redirectObservation = self.redirectObservation
@@ -305,36 +303,37 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public var inputs: AppDelegateViewModelInputs { return self }
   public var outputs: AppDelegateViewModelOutputs { return self }
-
   private func resolveDestination(_ navigation: Navigation) {
-    self.destinationTask?.cancel()
-    guard navigation != .emailClick else { return }
+    if navigation == .emailClick {
+      self.deepLinkRouter.cancelPresentation(route: self.navigationRoute)
+      return
+    }
     self.redirectObservation.cancel()
     self.authenticationFeature.releaseEmailRedirect(route: self.navigationRoute)
-    let request = self.deepLinkRouter.requestDestination(navigation, route: self.navigationRoute)
-    self.destinationTask = Task { [weak self] in
-      do {
-        let destination = try await request.value
-        try Task.checkCancellation()
-        guard let self, let destination else { return }
-        switch destination {
-        case let .discovery(params): self.onGoToDiscovery?(params)
-        case let .message(thread): self.onGoToMessageThread?(thread)
-        case let .survey(url):
-          let controller = PledgeManagerWebViewController.configuredWith(url: url)
-          let navigation = UINavigationController(rootViewController: controller)
-          navigation.modalPresentationStyle = .pageSheet
-          self.onPresentViewController?(navigation)
-        case let .project(project):
-          if let controller = ProjectDeepLink.viewController(
-            project, isLoggedIn: self.sessionFeature.currentUser != nil
-          ) { self.onPresentViewController?(controller) }
-        }
-      } catch { /* Invalid, cancelled or failed links do not navigate. */ }
+    self.deepLinkRouter.presentDestination(navigation, route: self.navigationRoute) { [weak self] destination in
+      self?.present(destination)
     }
   }
 
-  func waitForDestination() async { await self.destinationTask?.value }
+  private func present(_ destination: DeepLinkRouter.Destination) {
+    switch destination {
+    case let .discovery(params): self.onGoToDiscovery?(params)
+    case let .message(thread): self.onGoToMessageThread?(thread)
+    case let .survey(url):
+      let controller = PledgeManagerWebViewController.configuredWith(url: url)
+      let navigation = UINavigationController(rootViewController: controller)
+      navigation.modalPresentationStyle = .pageSheet
+      self.onPresentViewController?(navigation)
+    case let .project(project):
+      if let controller = ProjectDeepLink.viewController(
+        project, isLoggedIn: self.sessionFeature.currentUser != nil
+      ) { self.onPresentViewController?(controller) }
+    }
+  }
+
+  func waitForDestination() async {
+    await self.deepLinkRouter.waitForPresentation(route: self.navigationRoute)
+  }
 
   private final class PushOperationState {
     var finished = false
