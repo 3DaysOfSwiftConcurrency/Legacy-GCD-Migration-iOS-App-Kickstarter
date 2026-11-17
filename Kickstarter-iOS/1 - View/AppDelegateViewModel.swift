@@ -1,4 +1,3 @@
-import Experimentation
 import KsApi
 
 import Prelude
@@ -41,9 +40,6 @@ public protocol AppDelegateViewModelInputs {
   /// Call after having invoked AppEnvironment.updateCurrentUser with a fresh user.
   func currentUserUpdatedInEnvironment()
 
-  /// Call when the `ksr_configUpdated` notification is observed (config updated elsewhere, eg. debug tools).
-  func configUpdatedNotificationObserved()
-
   /// Call when the user taps "OK" from the contextual alert.
   func didAcceptReceivingRemoteNotifications()
 
@@ -84,15 +80,6 @@ public protocol AppDelegateViewModelOutputs: AnyObject {
 
   /// Emits the application icon badge number
   var onApplicationIconBadgeNumber: ((Int) -> Void)? { get set }
-
-  /// Emits when the application should configure Firebase
-  var onConfigureFirebase: (() -> Void)? { get set }
-
-  /// Emits when the application should configure Segment with an instance of Braze.
-  var onConfigureSegmentWithBraze: ((String) -> Void)? { get set }
-
-  /// Emits when the application should configure Statsig
-  var onConfigureStatsig: ((StatsigClientSDKKey) -> Void)? { get set }
 
   /// Return this value in the delegate method.
   var continueUserActivityReturnValue: Bool { get }
@@ -146,17 +133,11 @@ public protocol AppDelegateViewModelOutputs: AnyObject {
   /// Emits when application didFinishLaunchingWithOptions.
   var onRequestTrackingAuthorization: (() -> Void)? { get set }
 
-  /// Emits when our config updates with the enabled state for Semgent Analytics.
-  var onSegmentEnabled: ((Bool) -> Void)? { get set }
-
   /// Emits an array of short cut items to put into the shared application.
   var onSetApplicationShortcutItems: (([ShortcutItem]) -> Void)? { get set }
 
   /// Emits when an alert should be shown.
   var onShowAlert: ((Notification) -> Void)? { get set }
-
-  /// Emits to synchronize iCloud on app launch.
-  var onSynchronizeUbiquitousStore: (() -> Void)? { get set }
 
   /// Emits immediately and when the user's authorization status changes
   var onTrackingAuthorizationStatus: ((AppTrackingAuthorization) -> Void)? { get set }
@@ -194,8 +175,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private let serverConfig: () -> ServerConfigType
   private let pushRegistration: () -> PushRegistrationType.Type
   private let trackingAdapter: () -> any AppTrackingTransparencyType
-  private let mainBundle: () -> any NSBundleType
-  private let isSegmentEnabled: () -> Bool
   private let settingsPresentationDelaySeconds: () -> TimeInterval
   private let applicationShortcuts: ApplicationShortcutService
   private let devicePushRegistration: DevicePushRegistrationService
@@ -215,7 +194,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var hasLaunchEvent = false
   private var latestActiveState: Bool?
   private var lastScheduledActiveState: Bool?
-  private var lastSegmentEnabled: Bool?
   private var pushTasks: [UUID: Task<Void, Never>] = [:]
   private var hasDeniedPushAuthorization = false
   private var trackingObserver: ((any AppTrackingTransparencyType), UUID)?
@@ -225,8 +203,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     serverConfig: @escaping () -> ServerConfigType,
     pushRegistration: @escaping () -> PushRegistrationType.Type,
     trackingAdapter: @escaping () -> any AppTrackingTransparencyType,
-    mainBundle: @escaping () -> any NSBundleType,
-    isSegmentEnabled: @escaping () -> Bool,
     settingsPresentationDelaySeconds: @escaping () -> TimeInterval,
     authenticationFeature: AuthenticationFeature,
     applicationShortcuts: ApplicationShortcutService,
@@ -242,8 +218,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.serverConfig = serverConfig
     self.pushRegistration = pushRegistration
     self.trackingAdapter = trackingAdapter
-    self.mainBundle = mainBundle
-    self.isSegmentEnabled = isSegmentEnabled
     self.settingsPresentationDelaySeconds = settingsPresentationDelaySeconds
     self.applicationShortcuts = applicationShortcuts
     self.devicePushRegistration = devicePushRegistration
@@ -482,12 +456,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.observeTrackingAuthorization()
     self.scheduleUserRefresh()
     self.refreshUserSetup()
-    self.onSynchronizeUbiquitousStore?()
-    self.onConfigureFirebase?()
-    self.onConfigureStatsig?(statsigSDKKey(for: self.mainBundle()))
-    self.onConfigureSegmentWithBraze?(
-      self.mainBundle().isRelease ? Secrets.Segment.production : Secrets.Segment.staging
-    )
   }
 
   public func applicationWillEnterForeground() {
@@ -509,13 +477,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func currentUserUpdatedInEnvironment() {
     self.onPostNotification?(Notification(name: .ksr_userUpdated, object: nil))
-  }
-
-  public func configUpdatedNotificationObserved() {
-    let enabled = self.isSegmentEnabled()
-    guard self.lastSegmentEnabled != enabled else { return }
-    self.lastSegmentEnabled = enabled
-    self.onSegmentEnabled?(enabled)
   }
 
   public func didReceive(remoteNotification notification: [AnyHashable: Any]) {
@@ -676,9 +637,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public var onApplicationIconBadgeNumber: ((Int) -> Void)?
-  public var onConfigureFirebase: (() -> Void)?
-  public var onConfigureSegmentWithBraze: ((String) -> Void)?
-  public var onConfigureStatsig: ((StatsigClientSDKKey) -> Void)?
   public private(set) var continueUserActivityReturnValue = false
   public var onEmailVerificationCompleted: ((String, Bool) -> Void)?
   public var onFindRedirectUrl: ((URL) -> Void)?
@@ -696,10 +654,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public var onPushTokenSuccessfullyRegistered: ((String) -> Void)?
   public var onRegisterPushTokenInBraze: ((Data) -> Void)?
   public var onRequestTrackingAuthorization: (() -> Void)?
-  public var onSegmentEnabled: ((Bool) -> Void)?
   public var onSetApplicationShortcutItems: (([ShortcutItem]) -> Void)?
   public var onShowAlert: ((Notification) -> Void)?
-  public var onSynchronizeUbiquitousStore: (() -> Void)?
   public var onTrackingAuthorizationStatus: ((AppTrackingAuthorization) -> Void)?
   public var onTriggerOnboardingFlow: (() -> Void)?
   public var onUnregisterForRemoteNotifications: (() -> Void)?
@@ -850,17 +806,4 @@ private func accessTokenFromUrl(_ url: URL?) -> String? {
   }?
     .first { item in item.name == "at" }?
     .value
-}
-
-@MainActor
-private func statsigSDKKey(for mainBundle: any NSBundleType) -> StatsigClientSDKKey {
-  if mainBundle.isRelease {
-    return .productionTier(Secrets.Statsig.production)
-  } else if mainBundle.isBeta {
-    return .stagingTier(Secrets.Statsig.staging)
-  } else if mainBundle.isDebug {
-    return .developmentTier(Secrets.Statsig.development)
-  }
-
-  return .stagingTier(Secrets.Statsig.sandbox)
 }

@@ -1,4 +1,5 @@
 import AppTrackingTransparency
+import Experimentation
 import UIKit
 @testable import Kickstarter_iOS
 import GraphAPI
@@ -9,6 +10,51 @@ import GraphAPI
 import Prelude
 import UserNotifications
 import XCTest
+
+@MainActor
+final class AppDelegateAnalyticsTests: XCTestCase {
+  func testSegmentUsesProductionOnlyForRelease() {
+    let release = MockBundle(bundleIdentifier: KickstarterBundleIdentifier.release.rawValue)
+    let beta = MockBundle(bundleIdentifier: KickstarterBundleIdentifier.beta.rawValue)
+
+    XCTAssertTrue(AppDelegate.segmentWriteKey(for: release) == Secrets.Segment.production)
+    XCTAssertTrue(AppDelegate.segmentWriteKey(for: beta) == Secrets.Segment.staging)
+  }
+
+  func testStatsigSelectsTheKeyAndTierForEachBuild() {
+    for identifier in [KickstarterBundleIdentifier.release, .beta, .debug, .alpha] {
+      let bundle = MockBundle(bundleIdentifier: identifier.rawValue)
+      switch (identifier, AppDelegate.statsigSDKKey(for: bundle)) {
+      case let (.release, .productionTier(key)): XCTAssertTrue(key == Secrets.Statsig.production)
+      case let (.beta, .stagingTier(key)): XCTAssertTrue(key == Secrets.Statsig.staging)
+      case let (.debug, .developmentTier(key)): XCTAssertTrue(key == Secrets.Statsig.development)
+      case let (.alpha, .stagingTier(key)): XCTAssertTrue(key == Secrets.Statsig.sandbox)
+      default: XCTFail("Unexpected Statsig tier for \(identifier)")
+      }
+    }
+  }
+
+  func testSegmentConfigurationPublishesChangesWithoutRepeatingTheSameFlag() async {
+    let center = NotificationCenter()
+    let values = ValueRecorder<Bool>()
+    let observer = AppDelegate.observeSegmentConfiguration(center: center, update: values.record)
+    defer { observer.cancel() }
+
+    let enabled = Config.template |> Config.lens.features .~ [Feature.segment.rawValue: true]
+    await withEnvironment(config: enabled) {
+      values.assertDidNotEmitValue()
+      center.post(name: .ksr_configUpdated, object: nil)
+      center.post(name: .ksr_configUpdated, object: nil)
+      values.assertValues([true])
+    }
+
+    let disabled = Config.template |> Config.lens.features .~ [Feature.segment.rawValue: false]
+    await withEnvironment(config: disabled) {
+      center.post(name: .ksr_configUpdated, object: nil)
+      values.assertValues([true, false])
+    }
+  }
+}
 
 @MainActor
 final class AppDelegateViewModelTests: TestCase {
@@ -48,8 +94,6 @@ final class AppDelegateViewModelTests: TestCase {
   var vm: AppDelegateViewModelType!
 
   private let applicationIconBadgeNumber = ValueRecorder<Int>()
-  private let configureFirebase = ValueRecorder<()>()
-  private let configureSegmentWithBraze = ValueRecorder<String>()
   private let didAcceptReceivingRemoteNotifications = ValueRecorder<()>()
   private let emailVerificationCompletedMessage = ValueRecorder<String>()
   private let emailVerificationCompletedSuccess = ValueRecorder<Bool>()
@@ -68,7 +112,6 @@ final class AppDelegateViewModelTests: TestCase {
   private let registerPushTokenInBraze = ValueRecorder<Data>()
   private let requestATTrackingAuthorizationStatus = ValueRecorder<Void>()
   private let setApplicationShortcutItems = ValueRecorder<[ShortcutItem]>()
-  private let segmentIsEnabled = ValueRecorder<Bool>()
   private let showAlert = ValueRecorder<Notification>()
   private let trackingAuthorizationStatus = ValueRecorder<AppTrackingAuthorization>()
   private let triggerOnboardingFlow = ValueRecorder<()>()
@@ -128,8 +171,6 @@ final class AppDelegateViewModelTests: TestCase {
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
-      mainBundle: { AppEnvironment.current.mainBundle },
-      isSegmentEnabled: { featureSegmentIsEnabled() },
       settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       authenticationFeature: AuthenticationFeature(sessionFeature: session, makeProvider: {
         AsyncAuthenticationProvider(service: AppEnvironment.current.apiService)
@@ -154,8 +195,6 @@ final class AppDelegateViewModelTests: TestCase {
     self.vm.outputs.onNotificationSettingsUpdated = { [weak self] in self?.notificationSettingsUpdated.record(()) }
 
     self.vm.outputs.onApplicationIconBadgeNumber = { [weak self] in self?.applicationIconBadgeNumber.record($0) }
-    self.vm.outputs.onConfigureFirebase = { [weak self] in self?.configureFirebase.record(()) }
-    self.vm.outputs.onConfigureSegmentWithBraze = { [weak self] in self?.configureSegmentWithBraze.record($0) }
     self.vm.outputs.onEmailVerificationCompleted = { [weak self] message, success in
       self?.emailVerificationCompletedMessage.record(message)
       self?.emailVerificationCompletedSuccess.record(success)
@@ -181,7 +220,6 @@ final class AppDelegateViewModelTests: TestCase {
     }
     self.vm.outputs.onSetApplicationShortcutItems = { [weak self] in self?.setApplicationShortcutItems.record($0) }
     self.vm.outputs.onShowAlert = { [weak self] in self?.showAlert.record($0) }
-    self.vm.outputs.onSegmentEnabled = { [weak self] in self?.segmentIsEnabled.record($0) }
     self.vm.outputs.onTrackingAuthorizationStatus = { [weak self] in
       self?.trackingAuthorizationStatus.record($0)
     }
@@ -236,12 +274,6 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.applicationIconBadgeNumber.assertValues([])
     }
-  }
-
-  func testConfigureFirebase() async {
-    self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
-
-    self.configureFirebase.assertValueCount(1)
   }
 
   func testCurrentUserUpdating_NothingHappensWhenLoggedOut() async {
@@ -2001,66 +2033,6 @@ final class AppDelegateViewModelTests: TestCase {
       self.emailVerificationCompletedMessage.assertValues(
         ["Something went wrong, please try again."]
       )
-    }
-  }
-
-  func testConfigureSegment_Release() async {
-    let mockBundle = MockBundle(
-      bundleIdentifier: KickstarterBundleIdentifier.release.rawValue
-    )
-
-    self.configureSegmentWithBraze.assertDidNotEmitValue()
-
-    await withEnvironment(mainBundle: mockBundle) {
-      self.vm.inputs.applicationDidFinishLaunching(
-        application: .shared,
-        launchOptions: [:]
-      )
-
-      self.configureSegmentWithBraze.assertValues([Secrets.Segment.production])
-    }
-  }
-
-  func testConfigureSegment_NotRelease() async {
-    let mockBundle = MockBundle(
-      bundleIdentifier: KickstarterBundleIdentifier.beta.rawValue
-    )
-
-    self.configureSegmentWithBraze.assertDidNotEmitValue()
-
-    await withEnvironment(mainBundle: mockBundle) {
-      self.vm.inputs.applicationDidFinishLaunching(
-        application: .shared,
-        launchOptions: [:]
-      )
-
-      self.configureSegmentWithBraze.assertValues([Secrets.Segment.staging])
-    }
-  }
-
-  func testSegmentIsEnabled_IsEnabled_ConfigUpdatedNotificationObserved() async {
-    self.segmentIsEnabled.assertDidNotEmitValue()
-
-    let config = Config.template
-      |> Config.lens.features .~ [Feature.segment.rawValue: true]
-
-    await withEnvironment(config: config) {
-      self.vm.inputs.configUpdatedNotificationObserved()
-
-      self.segmentIsEnabled.assertValues([true])
-    }
-  }
-
-  func testSegmentIsEnabled_IsDisabled_ConfigUpdatedNotificationObserved() async {
-    self.segmentIsEnabled.assertDidNotEmitValue()
-
-    let config = Config.template
-      |> Config.lens.features .~ [Feature.segment.rawValue: false]
-
-    await withEnvironment(config: config) {
-      self.vm.inputs.configUpdatedNotificationObserved()
-
-      self.segmentIsEnabled.assertValues([false])
     }
   }
 

@@ -3568,3 +3568,18 @@ Eight focused model tests passed, covering visitor cookies at launch,
 foreground entry, sign-in, and sign-out, as well as feature flag overrides
 and rejection of obsolete requests. The bounded simulator run passed 116
 delegate and 28 Root Tabs presentation tests.
+
+### Startup analytics wiring — Matthew Thomas
+
+AppDelegate now wires Firebase, Statsig, and Segment with Braze directly
+from the UIKit launch callback. It also signals AppModel to synchronize
+preferences. The legacy handler has no startup SDK callbacks or bundle
+dependency. AppDelegate retains the configuration observer for Segment
+and forwards a change only when the enabled flag differs from its last
+reported value. Firebase's build condition and the public-demo guards
+remain in the launch path. The source check guards the handler boundary.
+
+Three focused simulator tests passed for Segment key selection, Statsig
+tier selection, and Segment flag changes. The bounded run passed 111
+legacy delegate and 28 Root Tabs tests. Live SDK initialization was
+outside the simulator test coverage.

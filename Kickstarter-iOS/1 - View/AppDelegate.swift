@@ -35,8 +35,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
-      mainBundle: { AppEnvironment.current.mainBundle },
-      isSegmentEnabled: { featureSegmentIsEnabled() },
       settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       authenticationFeature: model.authenticationFeature,
       applicationShortcuts: model.applicationShortcuts,
@@ -245,35 +243,8 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { UIApplication.shared.unregisterForRemoteNotifications() }
     }
 
-    #if RELEASE || INTERNAL_BUILD
-      self.viewModel.outputs.onConfigureFirebase = { [weak self] in
-        DispatchQueue.main.async { [weak self] in
-          guard let self else { return }
-          FirebaseApp.configure()
-          AppEnvironment.current.ksrAnalytics.logEventCallback = { event, _ in
-            Crashlytics.crashlytics().log(format: "%@", arguments: getVaList([event]))
-          }
-          self.configureRemoteConfig()
-        }
-      }
-    #endif
-
-    self.viewModel.outputs.onConfigureStatsig = { [weak self] key in
-      DispatchQueue.main.async { [weak self] in
-        guard self?.isPublicDemo == false else { return }
-        self?.configureStatsig(with: key)
-      }
-    }
-
     self.viewModel.outputs.onTrackingAuthorizationStatus = { [weak self] status in
       DispatchQueue.main.async { [weak self] in self?.appTrackingAuthorizationChanged(status: status) }
-    }
-
-    self.viewModel.outputs.onSynchronizeUbiquitousStore = { [weak self] in
-      DispatchQueue.main.async { [weak self] in
-        guard self?.isPublicDemo == false else { return }
-        AppModel.shared.synchronizePreferences()
-      }
     }
 
     self.viewModel.outputs.onSetApplicationShortcutItems = { shortcutItems in
@@ -312,38 +283,9 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       }
     ]
 
-    self.viewModel.outputs.onConfigureSegmentWithBraze = { [weak self] writeKey in
-        guard let self, !self.isPublicDemo else { return }
-
-        let configuration = Analytics.configuredClient(withWriteKey: writeKey)
-        let brazeDestination = self.configuredBrazeDestination(for: configuration)
-        configuration.add(plugin: brazeDestination)
-
-        let middleware = BrazeDebounceMiddlewarePlugin()
-        configuration.add(plugin: middleware)
-
-        self.analytics = configuration
-
-        AppEnvironment.current.ksrAnalytics.configureSegmentClient(configuration)
-
-        // Once Segment loads, update the Statsig Client with segment's anonymous identifier.
-        AppEnvironment.current.statsigClient?.reload(withUser: AppEnvironment.current.statsigUser())
-      }
-
-    self.viewModel.outputs.onSegmentEnabled = { [weak self] enabled in
+    self.appNotificationObservers.append(Self.observeSegmentConfiguration { [weak self] enabled in
       self?.analytics?.enabled = enabled
-    }
-
-    NotificationCenter.default
-      .addObserver(
-        forName: Notification.Name.ksr_configUpdated,
-        object: nil,
-        queue: .main
-      ) { [weak self] _ in
-        MainActor.assumeIsolated {
-          self?.viewModel.inputs.configUpdatedNotificationObserved()
-        }
-      }
+    })
 
     self.window?.tintColor = LegacyColors.ksr_create_700.uiColor()
 
@@ -355,6 +297,9 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       application: application,
       launchOptions: launchOptions
     )
+
+    self.synchronizePreferences()
+    self.configureAnalytics()
 
     UNUserNotificationCenter.current().delegate = self
 
@@ -487,6 +432,69 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       .adUserData: consentStatus,
       .adPersonalization: consentStatus
     ])
+  }
+
+  private func synchronizePreferences() {
+    guard !self.isPublicDemo else { return }
+    DispatchQueue.main.async { AppModel.shared.synchronizePreferences() }
+  }
+
+  private func configureAnalytics() {
+    #if RELEASE || INTERNAL_BUILD
+      DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+        FirebaseApp.configure()
+        AppEnvironment.current.ksrAnalytics.logEventCallback = { event, _ in
+          Crashlytics.crashlytics().log(format: "%@", arguments: getVaList([event]))
+        }
+        self.configureRemoteConfig()
+      }
+    #endif
+
+    guard !self.isPublicDemo else { return }
+    let bundle = AppEnvironment.current.mainBundle
+    let statsigKey = Self.statsigSDKKey(for: bundle)
+    DispatchQueue.main.async { [weak self] in self?.configureStatsig(with: statsigKey) }
+    self.configureSegment(with: Self.segmentWriteKey(for: bundle))
+  }
+
+  private func configureSegment(with writeKey: String) {
+    let configuration = Analytics.configuredClient(withWriteKey: writeKey)
+    configuration.add(plugin: self.configuredBrazeDestination(for: configuration))
+    configuration.add(plugin: BrazeDebounceMiddlewarePlugin())
+    self.analytics = configuration
+    AppEnvironment.current.ksrAnalytics.configureSegmentClient(configuration)
+
+    // Once Segment loads, update the Statsig Client with Segment's anonymous identifier.
+    AppEnvironment.current.statsigClient?.reload(withUser: AppEnvironment.current.statsigUser())
+  }
+
+  static func segmentWriteKey(for bundle: any NSBundleType) -> String {
+    bundle.isRelease ? Secrets.Segment.production : Secrets.Segment.staging
+  }
+
+  static func statsigSDKKey(for mainBundle: any NSBundleType) -> StatsigClientSDKKey {
+    if mainBundle.isRelease {
+      return .productionTier(Secrets.Statsig.production)
+    } else if mainBundle.isBeta {
+      return .stagingTier(Secrets.Statsig.staging)
+    } else if mainBundle.isDebug {
+      return .developmentTier(Secrets.Statsig.development)
+    }
+
+    return .stagingTier(Secrets.Statsig.sandbox)
+  }
+
+  static func observeSegmentConfiguration(
+    center: NotificationCenter = .default, update: @escaping @MainActor (Bool) -> Void
+  ) -> MainActorNotificationObservation {
+    var lastEnabled: Bool?
+    return MainActorNotificationObservation(center: center, name: .ksr_configUpdated) { _ in
+      let enabled = featureSegmentIsEnabled()
+      guard enabled != lastEnabled else { return }
+      lastEnabled = enabled
+      update(enabled)
+    }
   }
 
   private func configureRemoteConfig() {
