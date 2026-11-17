@@ -51,7 +51,7 @@ public final class LoginToutViewController: UIViewController, @MainActor MFMailC
 
   private lazy var separatorView: UIView = { UIView(frame: .zero) }()
   private var sessionStartedObserver: MainActorNotificationObservation?
-  private let oauth = OAuth()
+  private let oauth = OAuth(authenticationFeature: AppModel.shared.authenticationFeature)
 
   private let viewModel: LoginToutViewModel = LoginToutViewModel()
 

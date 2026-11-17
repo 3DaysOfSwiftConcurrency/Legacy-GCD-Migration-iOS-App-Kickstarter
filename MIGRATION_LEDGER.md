@@ -3226,3 +3226,11 @@ Discovery now requires a current-user lookup. Production supplies the composed
 SessionFeature and the focused tests supply their own lookup. The CFA source
 check guards this boundary. Discovery, its view models, the deep-link router and
 AppModel passed 95 focused simulator tests.
+
+### Feature adapters — Matthew Thomas
+
+OAuth, Stripe intent creation, Pledge Over Time and Similar Projects now require
+their feature dependencies at construction. The focused simulator run passed
+65 tests across those flows and post-campaign checkout. `make check-cfa` guards
+all four adapters. The remaining direct AppModel singleton references under
+Features are in project currency formatting and push permission registration.

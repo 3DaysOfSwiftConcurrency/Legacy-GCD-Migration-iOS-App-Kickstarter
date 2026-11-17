@@ -26,7 +26,7 @@ public final class PledgeOverTimeUseCase {
   private var planRevision = UUID()
   @ObservationIgnored private var planTask: Task<Void, Never>?
 
-  init(pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature) {
+  init(pledgeFeature: PledgeFeature) {
     self.pledgeFeature = pledgeFeature
   }
 

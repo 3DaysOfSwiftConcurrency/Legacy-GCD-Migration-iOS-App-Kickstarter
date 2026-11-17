@@ -48,5 +48,11 @@ reject_matches 'ProjectPageViewModel must receive dependencies from the controll
   'AppModel[.]shared|AppEnvironment[.]current' "$project_page_view_model"
 reject_matches 'DiscoveryFeature must receive its session lookup explicitly.' \
   'AppModel[.]shared|AppEnvironment[.]current[.]currentUser' "$discovery_feature"
+reject_matches 'Feature adapters and use cases must receive their feature dependencies explicitly.' \
+  'AppModel[.]shared' \
+  "$app_model/Features/Authentication/OAuth.swift" \
+  "$app_model/Features/Payments/StripeIntentService.swift" \
+  "$app_model/Features/Pledge/PledgeOverTimeUseCase.swift" \
+  "$app_model/Features/Recommendations/SimilarProjectsUseCase.swift"
 reject_matches 'Application lifecycle signals belong at the AppModel boundary.' \
   'AppLifecycleFeature|appLifecycleFeature' "$app_view" "$app_model"

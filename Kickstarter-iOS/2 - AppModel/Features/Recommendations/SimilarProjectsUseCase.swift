@@ -13,8 +13,8 @@ public final class SimilarProjectsUseCase {
   private var revision = UUID()
   @ObservationIgnored internal private(set) var loadingTask: Task<Void, Never>?
 
-  init(projectDetailsFeature: ProjectDetailsFeature? = nil) {
-    self.projectDetailsFeature = projectDetailsFeature ?? AppModel.shared.projectDetailsFeature
+  init(projectDetailsFeature: ProjectDetailsFeature) {
+    self.projectDetailsFeature = projectDetailsFeature
   }
 
   deinit {

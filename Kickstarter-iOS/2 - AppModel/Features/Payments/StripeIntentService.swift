@@ -18,7 +18,7 @@ public protocol StripeIntentServiceType {
 @MainActor
 public class StripeIntentService: StripeIntentServiceType {
   public let paymentsFeature: PaymentsFeature
-  public init(paymentsFeature: PaymentsFeature = AppModel.shared.paymentsFeature) {
+  public init(paymentsFeature: PaymentsFeature) {
     self.paymentsFeature = paymentsFeature
   }
 

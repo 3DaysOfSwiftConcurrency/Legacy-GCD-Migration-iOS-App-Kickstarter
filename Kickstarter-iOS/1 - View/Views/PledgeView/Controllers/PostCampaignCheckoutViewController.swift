@@ -87,7 +87,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
   private let viewModel: PostCampaignCheckoutViewModelType =
     PostCampaignCheckoutViewModel(
-      stripeIntentService: StripeIntentService(),
+      stripeIntentService: StripeIntentService(paymentsFeature: AppModel.shared.paymentsFeature),
       pledgeFeature: AppModel.shared.pledgeFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },

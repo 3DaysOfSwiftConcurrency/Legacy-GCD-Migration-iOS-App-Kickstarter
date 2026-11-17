@@ -16,8 +16,8 @@ public final class OAuth {
   private var browserSession: ASWebAuthenticationSession?
   private var authorizationID = UUID()
 
-  public init(authenticationFeature: AuthenticationFeature? = nil) {
-    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
+  public init(authenticationFeature: AuthenticationFeature) {
+    self.authenticationFeature = authenticationFeature
   }
 
   deinit { self.redirectTask?.cancel() }

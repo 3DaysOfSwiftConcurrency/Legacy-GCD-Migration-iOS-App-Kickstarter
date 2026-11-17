@@ -15,7 +15,7 @@ protocol PaymentMethodSettingsViewControllerDelegate: AnyObject {
 internal final class PaymentMethodSettingsViewController: UIViewController,
   MessageBannerViewControllerPresenting {
   private let dataSource = PaymentMethodsDataSource()
-  private let viewModel = PaymentMethodSettingsViewModel(stripeIntentService: StripeIntentService())
+  private let viewModel = PaymentMethodSettingsViewModel(stripeIntentService: StripeIntentService(paymentsFeature: AppModel.shared.paymentsFeature))
   private let paymentSheet = PaymentSheetOperation()
   private weak var cancellationDelegate: PaymentMethodSettingsViewControllerDelegate?
   @IBOutlet private var tableView: UITableView!
