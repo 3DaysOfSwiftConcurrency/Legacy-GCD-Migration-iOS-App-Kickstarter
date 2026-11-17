@@ -84,6 +84,8 @@ final class AppDelegateViewModelTests: TestCase {
       sessionFeature: self.settingsFeature.sessionFeature,
       makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }
     ),
+    serverConfig: { AppEnvironment.current.apiService.serverConfig },
+    discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     sleep: { _ in try Task.checkCancellation() }
   )
   private lazy var discoveryFeature = DiscoveryFeature(
@@ -168,7 +170,6 @@ final class AppDelegateViewModelTests: TestCase {
     )
     return AppDelegateViewModel(
       deepLinkRouter: self.deepLinkRouter,
-      serverConfig: { AppEnvironment.current.apiService.serverConfig },
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
       settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },

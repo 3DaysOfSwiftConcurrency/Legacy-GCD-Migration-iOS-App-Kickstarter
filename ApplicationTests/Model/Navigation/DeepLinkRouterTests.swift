@@ -15,6 +15,8 @@ final class DeepLinkRouterTests: XCTestCase {
   private let route = UUID()
   private var connectivityMonitor: ControlledReachabilityMonitor!
   private var monitorStarts = 0
+  private var discoveryDelay: TimeInterval = 0
+  private var discoverySleeps: [TimeInterval] = []
 
   override func setUp() async throws {
     try await super.setUp()
@@ -40,7 +42,13 @@ final class DeepLinkRouterTests: XCTestCase {
         sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },
         loadSurvey: { try await provider.survey(id: $0) }
       ),
-      sleep: { _ in try Task.checkCancellation() })
+      serverConfig: { ServerConfig.local },
+      discoveryResponseDelay: { [weak self] in self?.discoveryDelay ?? 0 },
+      sleep: { [weak self] seconds in
+        try Task.checkCancellation()
+        self?.discoverySleeps.append(seconds)
+      }
+    )
   }
   override func tearDown() async throws {
     self.feature?.reset()
@@ -58,6 +66,39 @@ final class DeepLinkRouterTests: XCTestCase {
     } else {
       XCTFail("Obsolete result escaped its owner", file: file, line: line)
     }
+  }
+
+  func testVerificationLinkUsesConfiguredHostAndOnlyApplicationRunsVerification() throws {
+    let url = try XCTUnwrap(URL(string: "http://ksr.test/profile/verify_email?at=fixture"))
+    var actions: [DeepLinkRouter.Action] = []
+
+    XCTAssertTrue(self.feature.route(url: url) { actions.append($0) })
+    XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail)), .verifyEmail("fixture")])
+
+    actions.removeAll()
+    XCTAssertTrue(self.feature.route(url: url, source: .braze) { actions.append($0) })
+    XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail))])
+  }
+
+  func testApplicationEmailClickCancelsDestinationBeforeResolvingRedirect() throws {
+    let url = try XCTUnwrap(URL(string: "https://clicks.kickstarter.com/?qs=fixture"))
+    var actions: [DeepLinkRouter.Action] = []
+
+    XCTAssertTrue(self.feature.route(url: url) { actions.append($0) })
+    XCTAssertEqual(actions, [.cancelDestinationPresentation, .resolveEmailRedirect(url)])
+  }
+
+  func testDiscoveryTimingUsesTheDelayAtRequestAdmission() async throws {
+    self.discoveryDelay = 0.25
+    let task = self.feature.requestDestination(
+      .tab(.discovery(["category_id": "art"])), route: self.route
+    )
+    await self.provider.categoriesGate.waitFor(1)
+    self.discoveryDelay = 0.5
+    try self.provider.categoriesGate.finish(0, .success(.template))
+
+    guard case .discovery? = try await task.value else { return XCTFail("Expected Discovery") }
+    XCTAssertEqual(self.discoverySleeps, [0.25])
   }
 
   func testConnectivitySharesNativeMonitorAndSurvivesSessionReset() async {

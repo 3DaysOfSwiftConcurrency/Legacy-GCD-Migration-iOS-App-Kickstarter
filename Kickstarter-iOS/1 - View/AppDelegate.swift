@@ -28,11 +28,12 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       messagingFeature: model.messagingFeature,
       discussionFeature: model.discussionFeature,
       discoveryFeature: model.discoveryFeature,
-      activityFeature: model.activityFeature
+      activityFeature: model.activityFeature,
+      serverConfig: { AppEnvironment.current.apiService.serverConfig },
+      discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
     )
     return AppDelegateViewModel(
       deepLinkRouter: router,
-      serverConfig: { AppEnvironment.current.apiService.serverConfig },
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       trackingAdapter: { AppEnvironment.current.appTrackingTransparency },
       settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },

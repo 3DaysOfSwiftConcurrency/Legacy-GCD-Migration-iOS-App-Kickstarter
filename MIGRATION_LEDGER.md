@@ -3599,3 +3599,18 @@ retry, and suppression of late success and failure after client
 replacement. The bounded runs passed 20 Discovery and configuration
 tests and 112 delegate and analytics presentation tests. The tests use
 controlled clients and do not exercise live Firebase or Crashlytics.
+
+### Incoming navigation decisions — Matthew Thomas
+
+DeepLinkRouter decides the ordered actions for app URLs, Braze URLs,
+push payloads, and application shortcuts. The legacy delegate handler
+forwards those actions to UIKit, Settings, and Authentication. Server
+configuration and the Discovery response delay are supplied at
+composition. The delay is captured when a destination request starts.
+The source check guards the router from
+global reads and the legacy handler from reacquiring input parsing.
+
+The simulator passed 22 focused Navigation tests and 137 bounded
+regressions across the legacy delegate handler and Root Tabs. The new
+cases cover a configured host, app versus Braze verification, email
+redirect ordering, and Discovery timing at request admission.

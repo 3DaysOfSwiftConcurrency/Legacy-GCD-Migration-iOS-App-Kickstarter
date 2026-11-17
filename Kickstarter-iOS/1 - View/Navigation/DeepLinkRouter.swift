@@ -13,7 +13,20 @@ public final class DeepLinkRouter {
     case braze
   }
 
-  struct URLMatch {
+  enum Action: Equatable {
+    case selectActivity
+    case selectSearch
+    case selectProfile
+    case showLogin(LoginIntent)
+    case updateNotification(name: String, enabled: Bool)
+    case verifyEmail(String)
+    case resolveEmailRedirect(URL)
+    case openBrowser(URL)
+    case cancelDestinationPresentation
+    case resolveDestination(Navigation)
+  }
+
+  private struct URLMatch {
     let navigation: Navigation?
     let hasDeepLinkMatch: Bool
 
@@ -35,7 +48,7 @@ public final class DeepLinkRouter {
     }
   }
 
-  static func match(_ url: URL, source: URLSource, config: ServerConfigType) -> URLMatch {
+  private static func match(_ url: URL, source: URLSource, config: ServerConfigType) -> URLMatch {
     let deepLink = Navigation.deepLinkMatch(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
     switch source {
     case .application:
@@ -44,6 +57,54 @@ public final class DeepLinkRouter {
     case .braze:
       return URLMatch(navigation: deepLink, hasDeepLinkMatch: deepLink != nil)
     }
+  }
+
+  @discardableResult
+  func route(
+    url: URL, source: URLSource = .application, perform: (Action) -> Void
+  ) -> Bool {
+    let match = Self.match(url, source: source, config: self.serverConfig())
+    if let navigation = match.navigation {
+      self.route(navigation, perform: perform)
+      if source == .application {
+        switch navigation {
+        case .profile(.verifyEmail):
+          if let token = accessTokenFromUrl(url) { perform(.verifyEmail(token)) }
+        case .emailClick: perform(.resolveEmailRedirect(url))
+        default: break
+        }
+      }
+    }
+    if match.shouldOpenInBrowser(url) { perform(.openBrowser(url)) }
+    return match.navigation != nil
+  }
+
+  func route(push envelope: PushEnvelope, perform: (Action) -> Void) {
+    if let navigation = navigation(fromPushEnvelope: envelope, webBaseURL: self.serverConfig().webBaseUrl) {
+      self.route(navigation, perform: perform)
+    }
+  }
+
+  func route(shortcut: ShortcutItem, perform: (Action) -> Void) {
+    self.route(navigation(fromShortcutItem: shortcut), perform: perform)
+  }
+
+  private func route(_ navigation: Navigation, perform: (Action) -> Void) {
+    switch navigation {
+    case let .settings(.notifications(name, enabled)):
+      perform(.updateNotification(name: name, enabled: enabled))
+    case .tab(.activity): perform(.selectActivity)
+    case .tab(.search): perform(.selectSearch)
+    case .tab(.me): perform(.selectProfile)
+    case .tab(.login): perform(.showLogin(.generic))
+    case .project(_, .pledge(.manage), _, _) where self.sessionFeature.currentUser == nil:
+      perform(.showLogin(.erroredPledge))
+    case .emailClick:
+      perform(.cancelDestinationPresentation)
+      return
+    default: break
+    }
+    perform(.resolveDestination(navigation))
   }
 
   public let sessionFeature: SessionFeature
@@ -74,6 +135,8 @@ public final class DeepLinkRouter {
   private let discussionFeature: DiscussionFeature
   private let discoveryFeature: DiscoveryFeature
   private let activityFeature: ActivityFeature
+  private let serverConfig: () -> ServerConfigType
+  private let discoveryResponseDelay: () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
   private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
@@ -83,6 +146,8 @@ public final class DeepLinkRouter {
     sessionFeature: SessionFeature, messagingFeature: MessagingFeature,
     discussionFeature: DiscussionFeature,
     discoveryFeature: DiscoveryFeature, activityFeature: ActivityFeature,
+    serverConfig: @escaping () -> ServerConfigType,
+    discoveryResponseDelay: @escaping () -> TimeInterval,
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
@@ -92,6 +157,8 @@ public final class DeepLinkRouter {
     self.discussionFeature = discussionFeature
     self.discoveryFeature = discoveryFeature
     self.activityFeature = activityFeature
+    self.serverConfig = serverConfig
+    self.discoveryResponseDelay = discoveryResponseDelay
     self.sleep = sleep
   }
   private var session: Session {
@@ -119,7 +186,7 @@ public final class DeepLinkRouter {
     }
     self.release(route: route)
     let id = UUID()
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.discoveryResponseDelay()
     let task = Task { [self] in
       defer {
         self.destinationTasks[id] = nil
@@ -306,4 +373,106 @@ private enum ProjectDeepLink {
     }
     return ProjectPageViewController.navigationController(withViewControllers: controllers)
   }
+}
+
+@MainActor
+private func navigation(fromPushEnvelope envelope: PushEnvelope, webBaseURL: URL) -> Navigation? {
+  if let activity = envelope.activity {
+    switch activity.category {
+    case .backing:
+      guard let projectId = activity.projectId else { return nil }
+      return .project(.id(projectId), .root, refInfo: RefInfo(.push))
+    case .failure, .launch, .success, .cancellation, .suspension:
+      guard let projectId = activity.projectId else { return nil }
+      return .project(.id(projectId), .root, refInfo: RefInfo(.push))
+
+    case .update:
+      guard let projectId = activity.projectId, let updateId = activity.updateId else { return nil }
+      return .project(.id(projectId), .update(updateId, .root), refInfo: RefInfo(.push))
+
+    case .commentPost:
+      guard let projectId = activity.projectId, let updateId = activity.updateId else { return nil }
+
+      if let commentId = activity.commentId {
+        return .project(
+          .id(projectId),
+          .update(updateId, .commentThread(commentId, activity.replyId)),
+          refInfo: RefInfo(.push)
+        )
+      }
+      return .project(.id(projectId), .update(updateId, .comments), refInfo: RefInfo(.push))
+
+    case .commentProject:
+      guard let projectId = activity.projectId else { return nil }
+
+      if let commentId = activity.commentId {
+        return .project(.id(projectId), .commentThread(commentId, activity.replyId), refInfo: RefInfo(.push))
+      }
+      return .project(.id(projectId), .comments, refInfo: RefInfo(.push))
+
+    case .follow:
+      return .tab(.activity)
+
+    case .funding, .shipped, .unknown, .watch:
+      return nil
+    }
+  }
+
+  if let order = envelope.order {
+    let path = order.pledgeManagerPath
+    let url = webBaseURL.absoluteString + path
+    return .project(.id(order.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
+  }
+
+  if let project = envelope.project {
+    return .project(.id(project.id), .root, refInfo: RefInfo(.push))
+  }
+
+  if let message = envelope.message {
+    return .messages(messageThreadId: message.messageThreadId)
+  }
+
+  if let survey = envelope.survey {
+    let path = survey.urls.web.survey
+    let url = webBaseURL.absoluteString + path
+    return .project(.id(survey.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
+  }
+
+  if let update = envelope.update {
+    return .project(.id(update.projectId), .update(update.id, .root), refInfo: RefInfo(.push))
+  }
+
+  if let erroredPledge = envelope.erroredPledge {
+    return .project(.id(erroredPledge.projectId), .pledge(.manage), refInfo: RefInfo(.push))
+  }
+
+  return nil
+}
+
+// Figures out a `Navigation` to route the user to from a shortcut item.
+private func navigation(fromShortcutItem shortcutItem: ShortcutItem) -> Navigation {
+  switch shortcutItem {
+  case .recommendedForYou:
+    let params = .defaults
+      |> DiscoveryParams.lens.recommended .~ true
+      |> DiscoveryParams.lens.sort .~ .magic
+    return .tab(.discovery(params.queryParams))
+
+  case .projectsWeLove:
+    let params = .defaults
+      |> DiscoveryParams.lens.staffPicks .~ true
+      |> DiscoveryParams.lens.sort .~ .magic
+    return .tab(.discovery(params.queryParams))
+
+  case .search:
+    return .tab(.search)
+  }
+}
+
+private func accessTokenFromUrl(_ url: URL?) -> String? {
+  return url.flatMap { url in
+    URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
+  }?
+    .first { item in item.name == "at" }?
+    .value
 }

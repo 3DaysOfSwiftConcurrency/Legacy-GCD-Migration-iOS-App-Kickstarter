@@ -1,6 +1,5 @@
 import KsApi
 
-import Prelude
 import UIKit
 import UserNotifications
 
@@ -166,7 +165,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var verificationTask: Task<Void, Never>?
   private let authenticationFeature: AuthenticationFeature
   private let deepLinkRouter: DeepLinkRouter
-  private let serverConfig: () -> ServerConfigType
   private let pushRegistration: () -> PushRegistrationType.Type
   private let trackingAdapter: () -> any AppTrackingTransparencyType
   private let settingsPresentationDelaySeconds: () -> TimeInterval
@@ -194,7 +192,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   init(
     deepLinkRouter: DeepLinkRouter,
-    serverConfig: @escaping () -> ServerConfigType,
     pushRegistration: @escaping () -> PushRegistrationType.Type,
     trackingAdapter: @escaping () -> any AppTrackingTransparencyType,
     settingsPresentationDelaySeconds: @escaping () -> TimeInterval,
@@ -209,7 +206,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelay = trackingDelay
     self.authenticationFeature = authenticationFeature
     self.deepLinkRouter = deepLinkRouter
-    self.serverConfig = serverConfig
     self.pushRegistration = pushRegistration
     self.trackingAdapter = trackingAdapter
     self.settingsPresentationDelaySeconds = settingsPresentationDelaySeconds
@@ -247,10 +243,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public var inputs: AppDelegateViewModelInputs { return self }
   public var outputs: AppDelegateViewModelOutputs { return self }
   private func resolveDestination(_ navigation: Navigation) {
-    if navigation == .emailClick {
-      self.deepLinkRouter.cancelPresentation(route: self.navigationRoute)
-      return
-    }
     self.redirectObservation.cancel()
     self.authenticationFeature.releaseEmailRedirect(route: self.navigationRoute)
     self.deepLinkRouter.presentDestination(navigation, route: self.navigationRoute) { [weak self] destination in
@@ -425,9 +417,9 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   public func applicationContinueUserActivity(_ userActivity: NSUserActivity) -> Bool {
     if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
       if let url = userActivity.webpageURL {
-        let match = DeepLinkRouter.match(url, source: .application, config: self.serverConfig())
-        self.continueUserActivityReturnValue = match.navigation != nil
-        self.handleURL(url, match: match)
+        self.continueUserActivityReturnValue = self.deepLinkRouter.route(
+          url: url, perform: self.performNavigationAction
+        )
       } else {
         self.continueUserActivityReturnValue = false
       }
@@ -466,7 +458,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func applicationPerformActionForShortcutItem(_ item: UIApplicationShortcutItem) {
     guard let shortcut = ShortcutItem(typeString: item.type) else { return }
-    self.handleNavigation(navigation(fromShortcutItem: shortcut))
+    self.deepLinkRouter.route(shortcut: shortcut, perform: self.performNavigationAction)
   }
 
   public func currentUserUpdatedInEnvironment() {
@@ -478,9 +470,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public func didReceive(pushEnvelope: PushEnvelope) {
-    if let navigation = navigation(fromPushEnvelope: pushEnvelope, webBaseURL: self.serverConfig().webBaseUrl) {
-      self.handleNavigation(navigation)
-    }
+    self.deepLinkRouter.route(push: pushEnvelope, perform: self.performNavigationAction)
   }
 
   public func didRegisterForRemoteNotifications(withDeviceTokenData data: Data) {
@@ -499,7 +489,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public func foundRedirectUrl(_ url: URL) {
-    self.handleURL(url)
+    self.deepLinkRouter.route(url: url, perform: self.performNavigationAction)
   }
 
   public func applicationOpenUrl(
@@ -507,7 +497,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any]
   ) -> Bool {
-    self.handleURL(url)
+    self.deepLinkRouter.route(url: url, perform: self.performNavigationAction)
     return true
   }
 
@@ -531,39 +521,22 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func urlFromBrazeNotification(_ url: URL?) {
     guard let url else { return }
-    let match = DeepLinkRouter.match(url, source: .braze, config: self.serverConfig())
-    if let navigation = match.navigation { self.handleNavigation(navigation) }
-    if match.shouldOpenInBrowser(url) { self.onGoToMobileSafari?(url) }
+    self.deepLinkRouter.route(url: url, source: .braze, perform: self.performNavigationAction)
   }
 
-  private func handleNavigation(_ navigation: Navigation) {
-    if case let .settings(.notifications(name, enabled)) = navigation {
-      self.updateNotification(name: name, enabled: enabled)
+  private func performNavigationAction(_ action: DeepLinkRouter.Action) {
+    switch action {
+    case .selectActivity: self.onGoToActivity?()
+    case .selectSearch: self.onGoToSearch?()
+    case .selectProfile: self.onGoToProfile?()
+    case let .showLogin(intent): self.onGoToLoginWithIntent?(intent)
+    case let .updateNotification(name, enabled): self.updateNotification(name: name, enabled: enabled)
+    case let .verifyEmail(token): self.verifyEmail(token: token)
+    case let .resolveEmailRedirect(url): self.onFindRedirectUrl?(url)
+    case let .openBrowser(url): self.onGoToMobileSafari?(url)
+    case .cancelDestinationPresentation: self.deepLinkRouter.cancelPresentation(route: self.navigationRoute)
+    case let .resolveDestination(navigation): self.resolveDestination(navigation)
     }
-    if navigation == .tab(.activity) { self.onGoToActivity?() }
-    if navigation == .tab(.search) { self.onGoToSearch?() }
-    if navigation == .tab(.me) { self.onGoToProfile?() }
-    if navigation == .tab(.login) { self.onGoToLoginWithIntent?(.generic) }
-    if case let .project(_, subpage, _, _) = navigation,
-       case .pledge(.manage) = subpage,
-       self.sessionFeature.currentUser == nil {
-      self.onGoToLoginWithIntent?(.erroredPledge)
-    }
-    self.resolveDestination(navigation)
-  }
-
-  private func handleURL(_ url: URL) {
-    self.handleURL(url, match: DeepLinkRouter.match(url, source: .application, config: self.serverConfig()))
-  }
-
-  private func handleURL(_ url: URL, match: DeepLinkRouter.URLMatch) {
-    let navigation = match.navigation
-    if let navigation { self.handleNavigation(navigation) }
-    if navigation == .profile(.verifyEmail), let token = accessTokenFromUrl(url) {
-      self.verifyEmail(token: token)
-    }
-    if navigation == .emailClick { self.onFindRedirectUrl?(url) }
-    if match.shouldOpenInBrowser(url) { self.onGoToMobileSafari?(url) }
   }
 
   private func updateNotification(name: String, enabled: Bool) {
@@ -656,105 +629,6 @@ private func deviceToken(fromData data: Data) -> String {
     .joined()
 }
 
-@MainActor
-private func navigation(fromPushEnvelope envelope: PushEnvelope, webBaseURL: URL) -> Navigation? {
-  if let activity = envelope.activity {
-    switch activity.category {
-    case .backing:
-      guard let projectId = activity.projectId else { return nil }
-      return .project(.id(projectId), .root, refInfo: RefInfo(.push))
-    case .failure, .launch, .success, .cancellation, .suspension:
-      guard let projectId = activity.projectId else { return nil }
-      return .project(.id(projectId), .root, refInfo: RefInfo(.push))
-
-    case .update:
-      guard let projectId = activity.projectId, let updateId = activity.updateId else { return nil }
-      return .project(.id(projectId), .update(updateId, .root), refInfo: RefInfo(.push))
-
-    case .commentPost:
-      guard let projectId = activity.projectId, let updateId = activity.updateId else { return nil }
-
-      if let commentId = activity.commentId {
-        return .project(
-          .id(projectId),
-          .update(updateId, .commentThread(commentId, activity.replyId)),
-          refInfo: RefInfo(.push)
-        )
-      }
-      return .project(.id(projectId), .update(updateId, .comments), refInfo: RefInfo(.push))
-
-    case .commentProject:
-      guard let projectId = activity.projectId else { return nil }
-
-      if let commentId = activity.commentId {
-        return .project(.id(projectId), .commentThread(commentId, activity.replyId), refInfo: RefInfo(.push))
-      }
-      return .project(.id(projectId), .comments, refInfo: RefInfo(.push))
-
-    case .follow:
-      return .tab(.activity)
-
-    case .funding, .shipped, .unknown, .watch:
-      return nil
-    }
-  }
-
-  if let order = envelope.order {
-    let path = order.pledgeManagerPath
-    let url = webBaseURL.absoluteString + path
-    return .project(.id(order.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
-  }
-
-  if let project = envelope.project {
-    return .project(.id(project.id), .root, refInfo: RefInfo(.push))
-  }
-
-  if let message = envelope.message {
-    return .messages(messageThreadId: message.messageThreadId)
-  }
-
-  if let survey = envelope.survey {
-    let path = survey.urls.web.survey
-    let url = webBaseURL.absoluteString + path
-    return .project(.id(survey.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
-  }
-
-  if let update = envelope.update {
-    return .project(.id(update.projectId), .update(update.id, .root), refInfo: RefInfo(.push))
-  }
-
-  if let erroredPledge = envelope.erroredPledge {
-    return .project(.id(erroredPledge.projectId), .pledge(.manage), refInfo: RefInfo(.push))
-  }
-
-  return nil
-}
-
-// Figures out a `Navigation` to route the user to from a shortcut item.
-private func navigation(fromShortcutItem shortcutItem: ShortcutItem) -> Navigation {
-  switch shortcutItem {
-  case .recommendedForYou:
-    let params = .defaults
-      |> DiscoveryParams.lens.recommended .~ true
-      |> DiscoveryParams.lens.sort .~ .magic
-    return .tab(.discovery(params.queryParams))
-
-  case .projectsWeLove:
-    let params = .defaults
-      |> DiscoveryParams.lens.staffPicks .~ true
-      |> DiscoveryParams.lens.sort .~ .magic
-    return .tab(.discovery(params.queryParams))
-
-  case .search:
-    return .tab(.search)
-  }
-}
-
-private func dictionary(fromUrlComponents urlComponents: URLComponents) -> [String: String] {
-  let queryItems = urlComponents.queryItems ?? []
-  return [String: String?].keyValuePairs(queryItems.map { ($0.name, $0.value) }).compact()
-}
-
 extension ShortcutItem {
   public var applicationShortcutItem: UIApplicationShortcutItem {
     switch self {
@@ -784,12 +658,4 @@ extension ShortcutItem {
       )
     }
   }
-}
-
-private func accessTokenFromUrl(_ url: URL?) -> String? {
-  return url.flatMap { url in
-    URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
-  }?
-    .first { item in item.name == "at" }?
-    .value
 }
