@@ -120,7 +120,7 @@ final class AppDelegateViewModelTests: TestCase {
       deepLinkRouter: self.deepLinkRouter,
       discoveryFeature: self.discoveryFeature,
       requestApplicationConfiguration: { [self] in
-        self.applicationConfigurationService.requestConfiguration()
+        self.applicationConfigurationService.refresh()
       },
       sessionFeature: self.deepLinkRouter.sessionFeature,
       settingsFeature: self.settingsFeature,

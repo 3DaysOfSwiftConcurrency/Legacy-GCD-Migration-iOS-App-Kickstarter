@@ -24,7 +24,6 @@ public protocol AppDelegateViewModelInputs {
   )
 
   func recordOnboardingCompletion()
-  func synchronizePreferences()
 
   /// Call when the application will enter foreground.
   func applicationWillEnterForeground()
@@ -498,7 +497,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func refreshConfiguration() {
-    AppModel.shared.installVisitorCookies()
     self.configurationTask?.cancel()
     let request = self.requestApplicationConfiguration()
     self.configurationTask = Task { [weak self] in
@@ -569,10 +567,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public func recordOnboardingCompletion() {
     self.onboardingFeature.recordCompletion()
-  }
-
-  public func synchronizePreferences() {
-    _ = AppEnvironment.current.ubiquitousStore.synchronize()
   }
 
   public func applicationWillEnterForeground() {

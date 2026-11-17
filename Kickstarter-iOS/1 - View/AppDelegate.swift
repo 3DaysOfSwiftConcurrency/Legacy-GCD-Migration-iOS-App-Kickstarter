@@ -288,7 +288,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     self.viewModel.outputs.onSynchronizeUbiquitousStore = { [weak self] in
       DispatchQueue.main.async { [weak self] in
         guard self?.isPublicDemo == false else { return }
-        self?.viewModel.inputs.synchronizePreferences()
+        AppModel.shared.synchronizePreferences()
       }
     }
 

@@ -43,6 +43,27 @@ public final class ApplicationConfigurationService {
     self.load = load
   }
 
+  func refresh() -> Task<Config, Error> {
+    self.installVisitorCookies()
+    return self.requestConfiguration()
+  }
+
+  /// Installs the device visitor identity for both web and API domains.
+  private func installVisitorCookies() {
+    let uuidString = (AppEnvironment.current.device.identifierForVendor ?? UUID()).uuidString
+    let server = AppEnvironment.current.apiService.serverConfig
+    [HTTPCookie?](arrayLiteral:
+      HTTPCookie(properties: [
+        .name: "vis", .value: uuidString, .domain: server.webBaseUrl.host as Any,
+        .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
+      ]),
+      HTTPCookie(properties: [
+        .name: "vis", .value: uuidString, .domain: server.apiBaseUrl.host as Any,
+        .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
+      ])
+    ).compact().forEach(AppEnvironment.current.cookieStorage.setCookie)
+  }
+
   public func configuration() async throws -> Config {
     try Task.checkCancellation()
     let value = try await self.requestConfiguration().value
@@ -206,7 +227,11 @@ public final class AppModel {
   }
 
   @discardableResult public func requestApplicationConfiguration() -> Task<Config, Error> {
-    self.applicationConfigurationService.requestConfiguration()
+    self.applicationConfigurationService.refresh()
+  }
+
+  public func synchronizePreferences() {
+    _ = AppEnvironment.current.ubiquitousStore.synchronize()
   }
 
   @discardableResult public func requestDevicePushRegistration(token: String) -> Task<String, Error> {
@@ -234,22 +259,6 @@ public final class AppModel {
     self.messagingFeature.reset()
     self.pledgeFeature.reset()
     self.pledgedProjectsFeature.reset()
-  }
-
-  /// Installs the device visitor identity for both web and API domains.
-  public func installVisitorCookies() {
-    let uuidString = (AppEnvironment.current.device.identifierForVendor ?? UUID()).uuidString
-    let server = AppEnvironment.current.apiService.serverConfig
-    [HTTPCookie?](arrayLiteral:
-      HTTPCookie(properties: [
-        .name: "vis", .value: uuidString, .domain: server.webBaseUrl.host as Any,
-        .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
-      ]),
-      HTTPCookie(properties: [
-        .name: "vis", .value: uuidString, .domain: server.apiBaseUrl.host as Any,
-        .path: "/", .version: 0, .expires: Date.distantFuture, .secure: true
-      ])
-    ).compact().forEach(AppEnvironment.current.cookieStorage.setCookie)
   }
 
   public static func live() -> AppModel {
