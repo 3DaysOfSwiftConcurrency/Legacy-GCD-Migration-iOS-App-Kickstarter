@@ -105,7 +105,7 @@ final class PPOProjectCardModelTests: XCTestCase {
     let fragment = node.fragments.pPOCardFragment
     let project = try XCTUnwrap(fragment.backing?.fragments.pPOBackingFragment.project)
     let response = PledgedProjectsResponse.Card(fragment)
-    let card = try XCTUnwrap(PPOProjectCardModel(card: response))
+    let card = try XCTUnwrap(PPOProjectCardModel(card: response, showRewardReceivedToggle: false))
     XCTAssertEqual(card.image.absoluteString, project.fragments.pPOProjectFragment.image?.url)
     XCTAssertEqual(card.projectAnalytics.id, project.fragments.projectAnalyticsFragment.id)
     XCTAssertEqual(card.projectAnalytics.name, project.fragments.projectAnalyticsFragment.name)
@@ -133,6 +133,6 @@ final class PPOProjectCardModelTests: XCTestCase {
     let mockEdge = GraphAPI.FetchPledgedProjectsQuery.mockEdge(addressMock: address)
     let node = GraphAPI.FetchPledgedProjectsQuery.Data.PledgeProjectsOverview.Pledges.Edge.Node
       .from(mockEdge.node!)
-    return PPOProjectCardModel(node: node)
+    return PPOProjectCardModel(node: node, showRewardReceivedToggle: false)
   }
 }

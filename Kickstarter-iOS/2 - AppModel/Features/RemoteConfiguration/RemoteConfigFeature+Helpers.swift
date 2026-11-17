@@ -35,13 +35,3 @@ public func featureUseKeychainForOAuthTokenEnabled() -> Bool {
 public func featureFloatingTabBarEnabled() -> Bool {
   featureEnabled(feature: .floatingTabBar)
 }
-
-@MainActor
-public func featurePledgedProjectsOverviewV2Enabled() -> Bool {
-  featureEnabled(feature: .pledgedProjectsOverviewV2Enabled)
-}
-
-@MainActor
-public func featurePledgedProjectsOverviewV4Enabled() -> Bool {
-  featureEnabled(feature: .pledgedProjectsOverviewV4Enabled)
-}

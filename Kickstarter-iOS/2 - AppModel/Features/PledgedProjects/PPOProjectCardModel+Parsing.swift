@@ -9,11 +9,17 @@ private struct PPOParsedAction {
 
 @MainActor
 extension PPOProjectCardModel {
-  public init?(node: GraphAPI.FetchPledgedProjectsQuery.Data.PledgeProjectsOverview.Pledges.Edge.Node) {
-    self.init(card: PledgedProjectsResponse.Card(node.fragments.pPOCardFragment))
+  public init?(
+    node: GraphAPI.FetchPledgedProjectsQuery.Data.PledgeProjectsOverview.Pledges.Edge.Node,
+    showRewardReceivedToggle: Bool
+  ) {
+    self.init(
+      card: PledgedProjectsResponse.Card(node.fragments.pPOCardFragment),
+      showRewardReceivedToggle: showRewardReceivedToggle
+    )
   }
 
-  public init?(card: PledgedProjectsResponse.Card) {
+  public init?(card: PledgedProjectsResponse.Card, showRewardReceivedToggle: Bool) {
     let image = card.imageURL
     let projectName = card.projectName
     let projectId = card.projectId
@@ -56,7 +62,7 @@ extension PPOProjectCardModel {
     let projectAnalytics = card.analytics
 
     // Show the reward toggle if the backend says to show it and the v2 feature flag is on.
-    let showRewardToggle = featurePledgedProjectsOverviewV2Enabled() && card.showRewardReceivedToggle
+    let showRewardToggle = showRewardReceivedToggle && card.showRewardReceivedToggle
     let toggleState: PPORewardToggleState
     if !showRewardToggle {
       toggleState = .hidden

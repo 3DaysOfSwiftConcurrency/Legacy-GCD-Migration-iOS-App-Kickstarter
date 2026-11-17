@@ -46,11 +46,7 @@ struct PPOView: View {
   }
 
   @ViewBuilder func listViewHeader(numberOfValues: Int) -> some View {
-    Text(
-      featurePledgedProjectsOverviewV2Enabled() ?
-        Strings.Backings() :
-        Strings.Alerts_count(count: numberOfValues.formatted())
-    )
+    Text(self.viewModel.listHeaderTitle(numberOfValues: numberOfValues))
     .font(Font(PPOStyles.header.font()))
     .background(Color(PPOStyles.header.background))
     .foregroundStyle(Color(PPOStyles.header.foreground))
@@ -96,6 +92,7 @@ struct PPOView: View {
 
   @ViewBuilder var emptyView: some View {
     PPOEmptyStateView(
+      presentation: self.viewModel.emptyStatePresentation,
       onOpenBackedProjects: { self.onHandleEvent?(.backedProjects) },
       onExploreProjects: { self.onHandleEvent?(.exploreProjects) }
     )

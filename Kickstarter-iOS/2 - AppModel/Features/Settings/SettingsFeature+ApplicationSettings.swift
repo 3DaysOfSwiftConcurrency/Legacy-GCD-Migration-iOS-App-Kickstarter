@@ -63,11 +63,12 @@ extension SettingsFeature {
   }
 
   public var remoteConfigurationFlags: [(RemoteConfigFeature, Bool)] {
-    let overrides = self.applicationSettings?.userDefaults().remoteConfigFeatureFlags ?? [:]
-    let client = self.applicationSettings?.remoteClient()
-    return RemoteConfigFeature.allCases.map {
-      ($0, overrides[$0.rawValue] ?? client?.isFeatureEnabled(featureKey: $0) ?? false)
-    }
+    RemoteConfigFeature.allCases.map { ($0, self.isRemoteConfigurationEnabled($0)) }
+  }
+
+  public func isRemoteConfigurationEnabled(_ feature: RemoteConfigFeature) -> Bool {
+    let override = self.applicationSettings?.userDefaults().remoteConfigFeatureFlags[feature.rawValue]
+    return override ?? self.applicationSettings?.remoteClient()?.isFeatureEnabled(featureKey: feature) ?? false
   }
 
   public func setRemoteConfigurationOverride(_ feature: RemoteConfigFeature, enabled: Bool) {

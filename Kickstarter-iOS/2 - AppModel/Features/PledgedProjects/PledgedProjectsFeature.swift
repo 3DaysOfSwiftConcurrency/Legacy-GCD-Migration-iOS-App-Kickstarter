@@ -24,23 +24,44 @@ public struct AsyncPledgedProjectsProvider: PledgedProjectsProvider {
 @MainActor
 public final class PledgedProjectsFeature {
   public typealias Snapshot = PaginationResult<PPOProjectCardModel, String, ErrorEnvelope>
-  private let sessionFeature: SessionFeature
-  private let makeProvider: () -> any PledgedProjectsProvider
-  private let tiers: @MainActor () -> [PledgeProjectsOverviewSort]
-
-  public init(
-    sessionFeature: SessionFeature, makeProvider: @escaping () -> any PledgedProjectsProvider,
-    tiers: @escaping @MainActor () -> [PledgeProjectsOverviewSort] = PledgedProjectsFeature.enabledTiers
-  ) {
-    self.sessionFeature = sessionFeature
-    self.makeProvider = makeProvider
-    self.tiers = tiers
+  public enum OverviewVersion: Equatable {
+    case projectAlerts
+    case fundedProjects
+    case allBackings
   }
 
-  public static func enabledTiers() -> [PledgeProjectsOverviewSort] {
-    if featurePledgedProjectsOverviewV4Enabled() { return PPOTierType.allGraphQLTypes() }
-    if featurePledgedProjectsOverviewV2Enabled() { return PPOTierType.fundedProjectGraphQLTypes() }
-    return PPOTierType.projectAlertGraphQLTypes()
+  private let sessionFeature: SessionFeature
+  private let settingsFeature: SettingsFeature
+  private let makeProvider: () -> any PledgedProjectsProvider
+
+  public init(
+    sessionFeature: SessionFeature,
+    settingsFeature: SettingsFeature,
+    makeProvider: @escaping () -> any PledgedProjectsProvider
+  ) {
+    self.sessionFeature = sessionFeature
+    self.settingsFeature = settingsFeature
+    self.makeProvider = makeProvider
+  }
+
+  public var overviewVersion: OverviewVersion {
+    if self.settingsFeature.isRemoteConfigurationEnabled(.pledgedProjectsOverviewV4Enabled) {
+      return .allBackings
+    }
+    if self.isOverviewV2Enabled { return .fundedProjects }
+    return .projectAlerts
+  }
+
+  public var isOverviewV2Enabled: Bool {
+    self.settingsFeature.isRemoteConfigurationEnabled(.pledgedProjectsOverviewV2Enabled)
+  }
+
+  public var enabledTiers: [PledgeProjectsOverviewSort] {
+    switch self.overviewVersion {
+    case .allBackings: return PPOTierType.allGraphQLTypes()
+    case .fundedProjects: return PPOTierType.fundedProjectGraphQLTypes()
+    case .projectAlerts: return PPOTierType.projectAlertGraphQLTypes()
+    }
   }
 
   private struct Session: Equatable {
@@ -87,7 +108,7 @@ public final class PledgedProjectsFeature {
   public func loadMore(route id: UUID) async {
     guard !Task.isCancelled else { return }
     let route = self.route(id)
-    if route.session != self.session || route.tiers != self.tiers() {
+    if route.session != self.session || route.tiers != self.enabledTiers {
       await self.refresh(route: id)
     } else if let pending = route.pending {
       await pending.task.value
@@ -100,7 +121,7 @@ public final class PledgedProjectsFeature {
   private func request(route id: UUID, cursor: String?) -> Task<Void, Never> {
     let route = self.route(id)
     let session = self.session
-    let tiers = self.tiers()
+    let tiers = self.enabledTiers
     if let pending = route.pending, pending.cursor == cursor, pending.session == session,
       pending.tiers == tiers
     {
@@ -127,7 +148,9 @@ public final class PledgedProjectsFeature {
         let data = try await provider.page(tiers: tiers, cursor: cursor, limit: 10)
         try Task.checkCancellation()
         guard route.pending?.id == requestID, self.session == session else { return }
-        let newCards = data.cards.compactMap { PPOProjectCardModel(card: $0) }
+        let newCards = data.cards.compactMap {
+          PPOProjectCardModel(card: $0, showRewardReceivedToggle: self.isOverviewV2Enabled)
+        }
         let cards = (cursor == nil ? [] : previous.values) + newCards
         let page =
           newCards.isEmpty

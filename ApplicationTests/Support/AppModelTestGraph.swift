@@ -51,9 +51,11 @@ func makeTestAppModel(
     friendsFeature: FriendsFeature(sessionFeature: sessionFeature, makeProvider: {
       AsyncFriendsProvider(service: MockService())
     }),
-    pledgedProjectsFeature: PledgedProjectsFeature(sessionFeature: sessionFeature, makeProvider: {
-      AsyncPledgedProjectsProvider(service: MockService())
-    }),
+    pledgedProjectsFeature: PledgedProjectsFeature(
+      sessionFeature: sessionFeature, settingsFeature: settingsFeature, makeProvider: {
+        AsyncPledgedProjectsProvider(service: MockService())
+      }
+    ),
     pledgeFeature: PledgeFeature(platform: .live(), sessionFeature: sessionFeature, makeProvider: {
       AsyncPledgeProvider(service: MockService())
     }),
@@ -105,7 +107,8 @@ extension SettingsFeature.ApplicationSettings {
   static func test(
     readConfiguration: @escaping @MainActor () -> Config? = { nil },
     currentCountryCode: @escaping @MainActor () -> String? = { nil },
-    userDefaults: @escaping @MainActor () -> any KeyValueStoreType = { MockKeyValueStore() }
+    userDefaults: @escaping @MainActor () -> any KeyValueStoreType = { MockKeyValueStore() },
+    remoteClient: @escaping @MainActor () -> (any RemoteConfigClientType)? = { nil }
   ) -> Self {
     Self(
       configuration: ApplicationConfigurationService(load: { throw CancellationError() }),
@@ -114,6 +117,7 @@ extension SettingsFeature.ApplicationSettings {
       currentCountryCode: currentCountryCode,
       saveConfigurationOverride: { _ in },
       userDefaults: userDefaults,
+      remoteClient: remoteClient,
       notificationCenter: NotificationCenter()
     )
   }

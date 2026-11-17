@@ -3,6 +3,7 @@ import KDS
 import SwiftUI
 
 struct PPOEmptyStateView: View {
+  let presentation: PPOEmptyStatePresentation
   var onOpenBackedProjects: (() -> Void)?
   var onExploreProjects: (() -> Void)?
 
@@ -14,7 +15,7 @@ struct PPOEmptyStateView: View {
   var body: some View {
     VStack(alignment: .center) {
       Text(
-        self.titleString()
+        self.presentation.title
       )
       .font(Font(UIFont.ksr_title2().bolded))
       .padding(EdgeInsets(
@@ -28,12 +29,12 @@ struct PPOEmptyStateView: View {
 
       VStack(spacing: Constants.largePadding) {
         Text(
-          self.descriptionString()
+          self.presentation.description
         )
         .font(Font(UIFont.ksr_body()))
         .multilineTextAlignment(.center)
 
-        if featurePledgedProjectsOverviewV4Enabled() {
+        if self.presentation.action == .exploreProjects {
           Button(Strings.Explore_projects()) {
             self.onExploreProjects?()
           }
@@ -53,28 +54,12 @@ struct PPOEmptyStateView: View {
       ))
     }
   }
-
-  private func titleString() -> String {
-    if featurePledgedProjectsOverviewV4Enabled() {
-      return Strings.No_backings()
-    }
-    if featurePledgedProjectsOverviewV2Enabled() {
-      return Strings.No_funded_backings()
-    }
-    return Strings.Youre_all_caught_up()
-  }
-
-  private func descriptionString() -> String {
-    if featurePledgedProjectsOverviewV4Enabled() {
-      return Strings.When_youve_backed_a_project_itll_show_up_here()
-    }
-    if featurePledgedProjectsOverviewV2Enabled() {
-      return Strings.When_projects_youve_backed_have_successfully_funded_youll_see_them_here()
-    }
-    return Strings.When_projects_youve_backed_need_your_attention_youll_see_them_here()
-  }
 }
 
 #Preview {
-  PPOEmptyStateView()
+  PPOEmptyStateView(presentation: PPOEmptyStatePresentation(
+    title: Strings.No_backings(),
+    description: Strings.When_youve_backed_a_project_itll_show_up_here(),
+    action: .exploreProjects
+  ))
 }

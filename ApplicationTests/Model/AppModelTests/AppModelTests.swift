@@ -252,7 +252,10 @@ final class AppModelTests: XCTestCase {
       }),
       projectReportingFeature: ProjectReportingFeature(sessionFeature: firstSession, makeProvider: { AsyncProjectReportingProvider(service: MockService()) }),
       friendsFeature: FriendsFeature(sessionFeature: firstSession, makeProvider: { AsyncFriendsProvider(service: MockService()) }),
-      pledgedProjectsFeature: PledgedProjectsFeature(sessionFeature: firstSession, makeProvider: { AsyncPledgedProjectsProvider(service: MockService()) }),
+      pledgedProjectsFeature: PledgedProjectsFeature(
+        sessionFeature: firstSession, settingsFeature: firstSettings,
+        makeProvider: { AsyncPledgedProjectsProvider(service: MockService()) }
+      ),
       pledgeFeature: PledgeFeature(platform: .live(), sessionFeature: firstSession, makeProvider: { AsyncPledgeProvider(service: MockService()) }),
       paymentsFeature: PaymentsFeature(sessionFeature: firstSession, makeProvider: { AsyncPaymentsProvider(service: MockService()) }),
       messagingFeature: firstMessaging,
@@ -305,7 +308,10 @@ final class AppModelTests: XCTestCase {
       }),
       projectReportingFeature: ProjectReportingFeature(sessionFeature: secondSession, makeProvider: { AsyncProjectReportingProvider(service: MockService()) }),
       friendsFeature: FriendsFeature(sessionFeature: secondSession, makeProvider: { AsyncFriendsProvider(service: MockService()) }),
-      pledgedProjectsFeature: PledgedProjectsFeature(sessionFeature: secondSession, makeProvider: { AsyncPledgedProjectsProvider(service: MockService()) }),
+      pledgedProjectsFeature: PledgedProjectsFeature(
+        sessionFeature: secondSession, settingsFeature: secondSettings,
+        makeProvider: { AsyncPledgedProjectsProvider(service: MockService()) }
+      ),
       pledgeFeature: PledgeFeature(platform: .live(), sessionFeature: secondSession, makeProvider: { AsyncPledgeProvider(service: MockService()) }),
       paymentsFeature: PaymentsFeature(sessionFeature: secondSession, makeProvider: { AsyncPaymentsProvider(service: MockService()) }),
       messagingFeature: secondMessaging,

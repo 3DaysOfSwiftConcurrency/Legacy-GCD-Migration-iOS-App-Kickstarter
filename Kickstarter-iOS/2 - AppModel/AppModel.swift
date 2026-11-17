@@ -302,9 +302,11 @@ public final class AppModel {
       friendsFeature: FriendsFeature(sessionFeature: sessionFeature, makeProvider: {
         AsyncFriendsProvider(service: AppEnvironment.current.apiService)
       }),
-      pledgedProjectsFeature: PledgedProjectsFeature(sessionFeature: sessionFeature, makeProvider: {
-        AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
-      }),
+      pledgedProjectsFeature: PledgedProjectsFeature(
+        sessionFeature: sessionFeature, settingsFeature: settingsFeature, makeProvider: {
+          AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
+        }
+      ),
       pledgeFeature: PledgeFeature(
         platform: .live(),
         sessionFeature: sessionFeature,

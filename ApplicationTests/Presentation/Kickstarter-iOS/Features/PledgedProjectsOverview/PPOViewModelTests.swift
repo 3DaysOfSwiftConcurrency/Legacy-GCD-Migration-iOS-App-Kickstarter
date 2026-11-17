@@ -9,8 +9,14 @@ import XCTest
 
 @MainActor
 class PPOViewModelTests: XCTestCase {
-  private let feature = PledgedProjectsFeature(
-    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+  private let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+  private lazy var settings = SettingsFeature(
+    sessionFeature: self.session,
+    applicationSettings: .test(remoteClient: { AppEnvironment.current.remoteConfigClient }),
+    makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+  )
+  private lazy var feature = PledgedProjectsFeature(
+    sessionFeature: self.session, settingsFeature: self.settings,
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
@@ -33,6 +39,33 @@ class PPOViewModelTests: XCTestCase {
       self.cancellables = nil
     }
     try await super.tearDown()
+  }
+
+  func testPresentationReadsFeaturePolicyAndPreservesIndependentV2Heading() {
+    let remoteConfig = MockRemoteConfigClient()
+    remoteConfig.features = [
+      RemoteConfigFeature.pledgedProjectsOverviewV2Enabled.rawValue: true,
+      RemoteConfigFeature.pledgedProjectsOverviewV4Enabled.rawValue: true
+    ]
+    withEnvironment(remoteConfigClient: remoteConfig) {
+      XCTAssertEqual(self.viewModel.listHeaderTitle(numberOfValues: 2), Strings.Backings())
+      XCTAssertEqual(self.viewModel.emptyStatePresentation, PPOEmptyStatePresentation(
+        title: Strings.No_backings(),
+        description: Strings.When_youve_backed_a_project_itll_show_up_here(),
+        action: .exploreProjects
+      ))
+    }
+
+    remoteConfig.features[RemoteConfigFeature.pledgedProjectsOverviewV2Enabled.rawValue] = false
+    remoteConfig.features[RemoteConfigFeature.pledgedProjectsOverviewV4Enabled.rawValue] = false
+    withEnvironment(remoteConfigClient: remoteConfig) {
+      XCTAssertEqual(
+        self.viewModel.listHeaderTitle(numberOfValues: 2),
+        Strings.Alerts_count(count: 2.formatted())
+      )
+      XCTAssertEqual(self.viewModel.emptyStatePresentation.action, .backedProjects)
+      XCTAssertEqual(self.viewModel.emptyStatePresentation.title, Strings.Youre_all_caught_up())
+    }
   }
 
   func testInitialLoading_Once() async throws {

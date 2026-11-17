@@ -7,6 +7,17 @@ import UIKit
 
 typealias PPOViewModelResult = PaginationResult<PPOProjectCardViewModel, String, ErrorEnvelope>
 
+struct PPOEmptyStatePresentation: Equatable {
+  enum Action: Equatable {
+    case backedProjects
+    case exploreProjects
+  }
+
+  let title: String
+  let description: String
+  let action: Action
+}
+
 @MainActor
 protocol PPOViewModelInputs {
   func viewDidAppear()
@@ -160,6 +171,35 @@ final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutp
         )
       }
       .store(in: &self.cancellables)
+  }
+
+  func listHeaderTitle(numberOfValues: Int) -> String {
+    self.pledgedProjectsFeature.isOverviewV2Enabled
+      ? Strings.Backings()
+      : Strings.Alerts_count(count: numberOfValues.formatted())
+  }
+
+  var emptyStatePresentation: PPOEmptyStatePresentation {
+    switch self.pledgedProjectsFeature.overviewVersion {
+    case .allBackings:
+      return PPOEmptyStatePresentation(
+        title: Strings.No_backings(),
+        description: Strings.When_youve_backed_a_project_itll_show_up_here(),
+        action: .exploreProjects
+      )
+    case .fundedProjects:
+      return PPOEmptyStatePresentation(
+        title: Strings.No_funded_backings(),
+        description: Strings.When_projects_youve_backed_have_successfully_funded_youll_see_them_here(),
+        action: .backedProjects
+      )
+    case .projectAlerts:
+      return PPOEmptyStatePresentation(
+        title: Strings.Youre_all_caught_up(),
+        description: Strings.When_projects_youve_backed_need_your_attention_youll_see_them_here(),
+        action: .backedProjects
+      )
+    }
   }
 
   // MARK: Helpers

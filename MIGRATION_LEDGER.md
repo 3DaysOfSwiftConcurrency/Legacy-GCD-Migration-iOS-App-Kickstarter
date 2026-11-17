@@ -4494,3 +4494,42 @@ Remote-config/Statsig helper callers, bootstrap/keychain separation and the wide
 global/session audit remain. This is not full CFA compliance. Swift packages,
 identifiers and existing history are unchanged. The full suite, device, visual,
 live-service and release validation were not performed. No push.
+
+### Pledged Projects owns its rollout policy — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgedProjectsFeature now reads V2/V4 policy through its injected SettingsFeature.
+It owns request-tier selection and supplies the V2 reward-toggle decision when
+parsing returned cards. PPOViewModel converts the Feature policy into localized
+heading and empty-state presentation; PPOView and PPOEmptyStateView render those
+values without remote-config access. The card parser receives its decision
+explicitly. The global Pledged Projects V2/V4 helpers are removed.
+
+The existing independent flag behavior is preserved. V4 takes precedence for
+all-backing tiers and empty-state content. V2 still independently selects the
+`Backings` heading and enables the reward-received toggle, including when both
+flags are true. Neither flag retains project-alert tiers and copy. A changed tier
+policy still causes load-more to refresh rather than append incompatible pages.
+
+Baseline validation passed 7 PledgedProjectsFeature tests and 20 PPO ViewModel/card
+model tests. The final focused main-module selection passed 50 Settings and Pledged
+Projects tests. Focused PPO presentation/model validation passed 21 tests. Expanded
+validation passed 60 AppModel, Settings, Pledged Projects and bootstrap-helper tests,
+then 134 PPO ViewModel/card/container and application-routing presentation tests.
+All final runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-ppo-policy-library-implementation.xcresult`,
+`/private/tmp/kickstarter-ppo-policy-presentation-implementation.xcresult`,
+`/private/tmp/kickstarter-ppo-policy-library-expanded.xcresult` and
+`/private/tmp/kickstarter-ppo-policy-presentation-expanded.xcresult`.
+
+Snapshot sources now receive explicit V1/V2/V4 presentation values, but snapshot
+comparisons were not rerun because the checked-in reference-device gate remains in
+force. No references were regenerated. `make check-cfa`, project plist and diff
+checks passed. The new gate rejects global runtime policy in the Pledged Projects
+Feature, model and Views.
+
+Root Tabs floating policy, Pledge Manager bypass policy and the composed Statsig
+closures remain for subsequent checkpoints. Keychain bootstrap remains deliberately
+independent of AppModel. This is not full CFA compliance. Swift packages, target
+identifiers and existing history are unchanged. No push.

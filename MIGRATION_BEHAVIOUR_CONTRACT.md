@@ -73,6 +73,25 @@ not claim that all configuration dependencies have migrated. Executed validation
 belongs in the dated migration ledger. Live SDK configuration delivery, device
 behavior and visual comparisons remain unverified by this ownership change alone.
 
+## Pledged Projects rollout policy — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgedProjectsFeature owns the V2/V4 remote rollout decision through its injected
+SettingsFeature. Preserve the existing independent behavior:
+
+- V4 takes precedence over V2 when choosing request tiers and empty-state content.
+- V2 independently controls the `Backings` list heading and reward-received toggle,
+  including when V4 is also enabled.
+- With neither flag, request project-alert tiers and retain the existing alert copy.
+- Read current policy when admitting a request and when parsing its returned cards.
+  A route whose tiers no longer match refreshes rather than appending incompatible data.
+
+PPOViewModel converts the Feature decision into localized heading and empty-state
+presentation. PPOView and PPOEmptyStateView render those values and do not read
+remote configuration. Card parsing receives the reward-toggle decision explicitly.
+Bootstrap keychain decisions remain outside this runtime Feature graph.
+
 ## Video-feed availability and connectivity — 17 November 2026
 
 Author: Matthew Thomas.

@@ -11,11 +11,18 @@ import XCTest
 final class PledgedProjectsFeatureTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let provider = ControlledPledgedProjectsProvider()
+  private let remoteConfig = MockRemoteConfigClient()
   private let session = SessionFeature(
     makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template },
     updateUser: { _ in })
+  private lazy var settings = SettingsFeature(
+    sessionFeature: self.session,
+    applicationSettings: .test(remoteClient: { [remoteConfig = self.remoteConfig] in remoteConfig }),
+    makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+  )
   private lazy var feature = PledgedProjectsFeature(
-    sessionFeature: self.session, makeProvider: { self.provider }, tiers: { [.tier1PaymentFailed] })
+    sessionFeature: self.session, settingsFeature: self.settings, makeProvider: { self.provider }
+  )
   private let route = UUID()
   private var snapshots: [PledgedProjectsFeature.Snapshot] = []
   private var subscription: AnyCancellable?
@@ -30,6 +37,25 @@ final class PledgedProjectsFeatureTests: TestCase {
     await self.feature.waitForOperations()
     self.subscription = nil
     try await super.tearDown()
+  }
+  func testOverviewPolicyUsesV4PrecedenceAndKeepsV2RewardPolicyIndependent() {
+    XCTAssertEqual(self.feature.overviewVersion, .projectAlerts)
+    XCTAssertEqual(self.feature.enabledTiers, PPOTierType.projectAlertGraphQLTypes())
+    XCTAssertFalse(self.feature.isOverviewV2Enabled)
+
+    self.remoteConfig.features[RemoteConfigFeature.pledgedProjectsOverviewV2Enabled.rawValue] = true
+    XCTAssertEqual(self.feature.overviewVersion, .fundedProjects)
+    XCTAssertEqual(self.feature.enabledTiers, PPOTierType.fundedProjectGraphQLTypes())
+    XCTAssertTrue(self.feature.isOverviewV2Enabled)
+
+    self.remoteConfig.features[RemoteConfigFeature.pledgedProjectsOverviewV4Enabled.rawValue] = true
+    XCTAssertEqual(self.feature.overviewVersion, .allBackings)
+    XCTAssertEqual(self.feature.enabledTiers, PPOTierType.allGraphQLTypes())
+    XCTAssertTrue(self.feature.isOverviewV2Enabled)
+
+    self.remoteConfig.features[RemoteConfigFeature.pledgedProjectsOverviewV2Enabled.rawValue] = false
+    XCTAssertEqual(self.feature.overviewVersion, .allBackings)
+    XCTAssertFalse(self.feature.isOverviewV2Enabled)
   }
   func testEquivalentFirstPageSharesPendingRequest() async throws {
     self.observe()

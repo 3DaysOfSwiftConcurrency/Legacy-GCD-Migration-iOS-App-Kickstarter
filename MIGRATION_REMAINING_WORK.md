@@ -39,11 +39,15 @@ Swift packages are excluded.
   third-party-event transport through an explicit platform. The newsletter cell
   and Thanks screen obtain policy and save timing from Settings. Neither
   RecommendationsFeature nor SettingsNewslettersCellViewModel reads Environment.
-- Next: classify the remaining remote-config/Statsig helper functions and their
-  callers. Bootstrap/keychain reads must remain independent of AppModel, while
-  screen and Feature decisions should receive explicit policy. Composition inputs
-  may read Environment locally; no consumer should acquire it through a hidden
-  global helper merely to avoid dependency wiring.
+- PledgedProjectsFeature now owns its V2/V4 runtime policy through SettingsFeature.
+  Tier selection, reward-toggle parsing and PPO presentation use that owner; PPO
+  Views no longer call global flag helpers. The removed V2/V4 convenience functions
+  cannot be restored without failing the CFA gate.
+- Next: migrate the remaining runtime helpers independently: Root Tabs floating-tab
+  policy and Pledge Manager bypass policy. Project rich-text and video-feed Statsig
+  inputs are already composed into their Features but still use global helper
+  closures at composition. Bootstrap keychain reads must remain independent of
+  AppModel; do not route them through SettingsFeature.
 - Bootstrap/keychain flag reads intentionally remain independent of AppModel
   construction. Environment configuration persistence, whole-config DebugData
   precedence, cookie installation and SDK integration remain contracts to preserve

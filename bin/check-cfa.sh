@@ -34,6 +34,8 @@ application_settings="$app_model/Features/Settings/SettingsFeature+ApplicationSe
 recommendations_feature="$app_model/Features/Recommendations/RecommendationsFeature.swift"
 newsletter_cell_view_model="$app_view/Views/SettingsNewsletters/Views/Cells/SettingsNewslettersCellViewModel.swift"
 thanks_view_model="$app_view/Views/ThanksProjects/Controller/ThanksViewModel.swift"
+pledged_projects_feature="$app_model/Features/PledgedProjects"
+pledged_projects_view="$app_view/Views/PledgedProjectsOverview"
 
 reject_matches 'Deep-link data resolution belongs to AppModel and its Features.' \
   'discussionFeature|discoveryFeature|activityFeature|messagingFeature|authenticationFeature|sessionFeature' \
@@ -72,6 +74,12 @@ reject_matches 'Newsletter settings policy and delay belong to SettingsFeature.'
   'AppEnvironment|AppModel[.]shared' "$newsletter_cell_view_model"
 reject_matches 'Thanks uses SettingsFeature for newsletter country policy and save delivery timing.' \
   'AppEnvironment[.]current[.](countryCode|apiDelayInterval)' "$thanks_view_model"
+reject_matches 'Pledged Projects rollout policy belongs to PledgedProjectsFeature.' \
+  'featurePledgedProjectsOverview(V2|V4)Enabled|featureEnabled[[:space:]]*[(]|remoteConfigClient' \
+  "$pledged_projects_feature" "$pledged_projects_view"
+reject_matches 'Pledged Projects Views receive presentation-ready policy from PPOViewModel.' \
+  'RemoteConfigFeature|AppEnvironment[.]current[.](config|userDefaults|remoteConfigClient)' \
+  "$pledged_projects_view/PPOView.swift" "$pledged_projects_view/PPOEmptyStateView.swift"
 
 test -f "$root_view_model"
 test -f "$root_tabs"
