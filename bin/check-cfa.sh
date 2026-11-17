@@ -221,7 +221,8 @@ reject_matches 'Discussion receives environment dependencies from composition.' 
   'AppEnvironment[.]current' "$app_model/Features/Discussion/DiscussionFeature.swift"
 reject_matches 'Authentication receives platform dependencies from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Authentication/AuthenticationFeature.swift" \
-  "$app_view/Views/Login/Controller/LoginViewModel.swift"
+  "$app_view/Views/Login/Controller/LoginViewModel.swift" \
+  "$app_view/Views/LoginTout/Controller/LoginToutViewModel.swift"
 reject_matches 'Messaging receives response policy from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Messaging/MessagingFeature.swift"
 reject_matches 'Friends receives response policy from AppModel composition.' \

@@ -383,9 +383,14 @@ public final class AppModel {
           webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
           oauthClientID: { AppEnvironment.current.apiService.serverConfig.apiClientAuth.clientId },
           appleAppID: { AppEnvironment.current.apiService.appId },
+          responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
           trackLoginPageViewed: { AppEnvironment.current.ksrAnalytics.trackLoginPageViewed() },
           trackLoginSubmitButtonClicked: {
             AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
+          },
+          trackLoginToutPageViewed: { AppEnvironment.current.ksrAnalytics.trackLoginTOutPageViewed() },
+          trackLoginInitiateButtonClicked: {
+            AppEnvironment.current.ksrAnalytics.trackLoginInitiateButtonClicked()
           }
         ),
         makeProvider: { AsyncAuthenticationProvider(service: AppEnvironment.current.apiService) }

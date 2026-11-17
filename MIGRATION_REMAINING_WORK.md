@@ -121,6 +121,9 @@ Swift packages are excluded.
 - OnboardingFeature now receives onboarding analytics alongside its completion and
   permission capabilities. OnboardingViewModel reports page, CTA and permission-dialog
   events through the composed Feature rather than the process environment.
+- AuthenticationFeature now supplies Login Tout response timing and its appearance and
+  login-initiation analytics. LoginToutViewModel retains screen presentation and
+  cancellation state without resolving global policy.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

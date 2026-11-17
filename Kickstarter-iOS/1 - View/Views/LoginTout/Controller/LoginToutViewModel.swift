@@ -51,7 +51,7 @@ public final class LoginToutViewModel {
     let version = UUID()
     self.appleVersion = version
     let feature = self.authenticationFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = feature.responseDelaySeconds
     self.setLoading(true)
     self.appleTask = Task { [weak self] in
       let outcome: Result<AccessTokenEnvelope, Error>
@@ -107,7 +107,7 @@ public final class LoginToutViewModel {
     let version = UUID()
     self.facebookVersion = version
     let feature = self.authenticationFeature
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = feature.responseDelaySeconds
     self.setLoading(true)
     self.facebookTask = Task { [weak self] in
       let outcome: Result<AccessTokenEnvelope, Error>
@@ -135,7 +135,7 @@ public final class LoginToutViewModel {
 
   public func signupOrLoginWithOAuthButtonPressed() {
     self.onOAuth?()
-    AppEnvironment.current.ksrAnalytics.trackLoginInitiateButtonClicked()
+    self.authenticationFeature.loginInitiateButtonClicked()
   }
 
   public func userSessionStarted() { if self.isPresented == true { self.onDismiss?() } }
@@ -144,7 +144,7 @@ public final class LoginToutViewModel {
   public func viewWillAppear() {
     if !self.didTrackAppearance {
       self.didTrackAppearance = true
-      AppEnvironment.current.ksrAnalytics.trackLoginTOutPageViewed()
+      self.authenticationFeature.loginToutPageViewed()
     }
     if let intent = self.configuredIntent {
       self.onContext?(statusString(intent), intent != .generic && intent != .discoveryOnboarding)

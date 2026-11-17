@@ -2041,3 +2041,15 @@ safe for arbitrary concurrent environment mutation.
 - Direct Feature coverage proves every composed analytics callback. Focused Onboarding,
   bounded AppModel/root and presentation-root selections pass; live SDK delivery and
   visual rendering remain outside this checkpoint.
+
+## Login Tout composition — 17 November 2026
+
+- AppModel supplies AuthenticationFeature's response-delay policy plus Login Tout page
+  and login-initiation analytics alongside its existing login platform dependencies.
+- LoginToutViewModel still owns transient loading and presentation cancellation, but
+  captures timing from AuthenticationFeature at admission and reports through the
+  Feature. It no longer reads AppEnvironment.
+- Apple/Facebook success, error, two-factor and confirmation routing, OAuth initiation,
+  single appearance tracking and response-delay ordering are unchanged. Focused and
+  bounded Authentication selections pass; live providers and visual behavior remain
+  outside this checkpoint.

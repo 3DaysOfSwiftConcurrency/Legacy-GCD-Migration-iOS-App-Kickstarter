@@ -59,25 +59,37 @@ public final class AuthenticationFeature {
     let webBaseURL: @MainActor () -> URL
     let oauthClientID: @MainActor () -> String
     let appleAppID: @MainActor () -> String
+    let responseDelaySeconds: @MainActor () -> TimeInterval
     let trackLoginPageViewed: @MainActor () -> Void
     let trackLoginSubmitButtonClicked: @MainActor () -> Void
+    let trackLoginToutPageViewed: @MainActor () -> Void
+    let trackLoginInitiateButtonClicked: @MainActor () -> Void
 
     public init(
       webBaseURL: @escaping @MainActor () -> URL,
       oauthClientID: @escaping @MainActor () -> String,
       appleAppID: @escaping @MainActor () -> String,
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
       trackLoginPageViewed: @escaping @MainActor () -> Void,
-      trackLoginSubmitButtonClicked: @escaping @MainActor () -> Void
+      trackLoginSubmitButtonClicked: @escaping @MainActor () -> Void,
+      trackLoginToutPageViewed: @escaping @MainActor () -> Void,
+      trackLoginInitiateButtonClicked: @escaping @MainActor () -> Void
     ) {
       self.webBaseURL = webBaseURL
       self.oauthClientID = oauthClientID
       self.appleAppID = appleAppID
+      self.responseDelaySeconds = responseDelaySeconds
       self.trackLoginPageViewed = trackLoginPageViewed
       self.trackLoginSubmitButtonClicked = trackLoginSubmitButtonClicked
+      self.trackLoginToutPageViewed = trackLoginToutPageViewed
+      self.trackLoginInitiateButtonClicked = trackLoginInitiateButtonClicked
     }
   }
 
   public var webBaseURL: URL { self.platform.webBaseURL() }
+  public var responseDelaySeconds: TimeInterval { self.platform.responseDelaySeconds() }
+  public func loginToutPageViewed() { self.platform.trackLoginToutPageViewed() }
+  public func loginInitiateButtonClicked() { self.platform.trackLoginInitiateButtonClicked() }
   func oauthAuthorizationURL(codeChallenge: String, redirectScheme: String) -> URL? {
     let parameters = [
       URLQueryItem(name: "redirect_uri", value: redirectScheme),

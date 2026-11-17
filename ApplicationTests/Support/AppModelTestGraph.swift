@@ -287,6 +287,15 @@ extension AuthenticationFeature {
     },
     trackLoginPageViewed: @escaping @MainActor () -> Void = {
       AppEnvironment.current.ksrAnalytics.trackLoginPageViewed()
+    },
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = {
+      AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    },
+    trackLoginToutPageViewed: @escaping @MainActor () -> Void = {
+      AppEnvironment.current.ksrAnalytics.trackLoginTOutPageViewed()
+    },
+    trackLoginInitiateButtonClicked: @escaping @MainActor () -> Void = {
+      AppEnvironment.current.ksrAnalytics.trackLoginInitiateButtonClicked()
     }
   ) {
     self.init(
@@ -295,8 +304,11 @@ extension AuthenticationFeature {
         webBaseURL: webBaseURL,
         oauthClientID: oauthClientID,
         appleAppID: appleAppID,
+        responseDelaySeconds: responseDelaySeconds,
         trackLoginPageViewed: trackLoginPageViewed,
-        trackLoginSubmitButtonClicked: trackOAuthLogin
+        trackLoginSubmitButtonClicked: trackOAuthLogin,
+        trackLoginToutPageViewed: trackLoginToutPageViewed,
+        trackLoginInitiateButtonClicked: trackLoginInitiateButtonClicked
       ),
       makeProvider: makeProvider,
       resolveRedirect: resolveRedirect

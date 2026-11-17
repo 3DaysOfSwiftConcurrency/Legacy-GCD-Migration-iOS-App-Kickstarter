@@ -5155,3 +5155,23 @@ Live analytics delivery, system permission UI, visual rendering and the whole Li
 and Presentation suites remain unverified. The CFA gate rejects restored global
 analytics access in OnboardingViewModel. This is not full CFA compliance. Swift packages,
 target identifiers and existing history are unchanged. No push.
+
+### Login Tout composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now supplies AuthenticationFeature's response-delay policy and Login Tout page
+and initiation analytics. LoginToutViewModel captures that timing at request admission
+and reports through the Feature while retaining screen loading, cancellation and routing
+state. It no longer reads AppEnvironment.
+
+Focused AuthenticationFeature and Login Tout validation passed all 46 tests. The bounded
+AppModel, Authentication, email login, Login Tout, OAuth, reset-password and two-factor
+selection passed all 91 tests. Both runs had zero failures and skips on iPhone 17 Pro Max,
+iOS 26.2. Evidence: `/private/tmp/kickstarter-login-tout-composition-focused.xcresult`
+and `/private/tmp/kickstarter-login-tout-composition-bounded.xcresult`.
+
+Live authentication providers, analytics delivery, visual rendering and the whole
+Library suite remain unverified. The CFA gate rejects restored global access in Login
+Tout presentation. This is not full CFA compliance. Swift packages, target identifiers
+and existing history are unchanged. No push.

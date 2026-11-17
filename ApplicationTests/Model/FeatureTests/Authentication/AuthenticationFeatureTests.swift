@@ -16,17 +16,23 @@ final class AuthenticationFeatureTests: XCTestCase {
         webBaseURL: { webBaseURL },
         oauthClientID: { "injected-client-id" },
         appleAppID: { "injected-app-id" },
+        responseDelaySeconds: { 7 },
         trackLoginPageViewed: { events.append("page") },
-        trackLoginSubmitButtonClicked: { events.append("submit") }
+        trackLoginSubmitButtonClicked: { events.append("submit") },
+        trackLoginToutPageViewed: { events.append("tout") },
+        trackLoginInitiateButtonClicked: { events.append("initiate") }
       ),
       makeProvider: { AsyncAuthenticationProvider(service: MockService()) }
     )
 
     feature.loginPageViewed()
     feature.loginSubmitButtonClicked()
+    feature.loginToutPageViewed()
+    feature.loginInitiateButtonClicked()
 
     XCTAssertEqual(feature.webBaseURL, webBaseURL)
     XCTAssertEqual(feature.signInWithAppleAppID, "injected-app-id")
+    XCTAssertEqual(feature.responseDelaySeconds, 7)
     let authorizationURL = try XCTUnwrap(feature.oauthAuthorizationURL(
       codeChallenge: "challenge", redirectScheme: "callback"
     ))
@@ -36,7 +42,7 @@ final class AuthenticationFeatureTests: XCTestCase {
     XCTAssertEqual(components.queryItems?.first(where: { $0.name == "client_id" })?.value, "injected-client-id")
     XCTAssertEqual(components.queryItems?.first(where: { $0.name == "redirect_uri" })?.value, "callback")
     XCTAssertEqual(components.queryItems?.first(where: { $0.name == "code_challenge" })?.value, "challenge")
-    XCTAssertEqual(events, ["page", "submit"])
+    XCTAssertEqual(events, ["page", "submit", "tout", "initiate"])
   }
 
   func testRedirectSharesPendingURL() async throws {
