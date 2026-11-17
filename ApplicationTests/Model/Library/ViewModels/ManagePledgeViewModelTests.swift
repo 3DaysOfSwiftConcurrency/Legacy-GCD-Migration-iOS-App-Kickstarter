@@ -50,9 +50,10 @@ internal final class ManagePledgeViewModelTests: TestCase {
     self.clock.run()
   }
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let pledgeFeature = PledgeFeature(
+  private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+  private lazy var pledgeFeature = PledgeFeature(
     platform: .live(),
-    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    sessionFeature: self.sessionFeature,
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService, "Tests require MockService")
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
@@ -179,6 +180,56 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.pledgeFeature.waitForOperations()
     }
     await self.pledgeFeature.waitForOperations()
+  }
+
+  func testRefreshAfterSameUserSessionReplacementLoadsNewProjectAndBacking() async {
+    let original = MockService(
+      fetchManagePledgeViewBackingResult: .success(.template),
+      fetchProjectResult: .success(.template),
+      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
+    )
+    let updatedProject = Project.template |> Project.lens.name .~ "Reloaded project"
+    let updated = MockService(
+      fetchManagePledgeViewBackingResult: .success(.template),
+      fetchProjectResult: .success(updatedProject),
+      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
+    )
+    await withEnvironment(apiService: original, currentUser: .template) {
+      self.vm.inputs.configureWith((.slug("project-slug"), .id(1)))
+      self.vm.inputs.viewDidLoad()
+      await self.runPledges()
+      self.loadProjectAndRewardsIntoDataSourceProject.assertValueCount(1)
+
+      self.sessionFeature.sessionChanged()
+      self.vm.inputs.menuButtonTapped()
+      self.showActionSheetMenuWithOptions.assertDidNotEmitValue()
+
+      await withEnvironment(apiService: updated) {
+        self.vm.inputs.beginRefresh()
+        await self.runPledges()
+        self.loadProjectAndRewardsIntoDataSourceProject.assertValueCount(2)
+        XCTAssertEqual(self.loadProjectAndRewardsIntoDataSourceProject.lastValue?.name, updatedProject.name)
+      }
+    }
+  }
+
+  func testSessionReplacementDropsReadResultsAlreadyQueuedForPresentation() async {
+    let service = MockService(
+      fetchManagePledgeViewBackingResult: .success(.template),
+      fetchProjectResult: .success(.template),
+      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
+    )
+    await withEnvironment(apiService: service, currentUser: .template) {
+      self.vm.inputs.configureWith((.slug("project-slug"), .id(1)))
+      self.vm.inputs.viewDidLoad()
+      let model = self.vm as? ManagePledgeViewModel
+      await model?.waitForReads()
+      self.sessionFeature.sessionChanged()
+      self.clock.run()
+      self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
+      self.configurePaymentMethodView.assertDidNotEmitValue()
+      self.endRefreshing.assertDidNotEmitValue()
+    }
   }
 
   func testNavigationBarTitle_FinishedProject() async {

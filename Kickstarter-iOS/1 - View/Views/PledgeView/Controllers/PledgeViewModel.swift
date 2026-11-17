@@ -133,11 +133,11 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
 
     let processingState = PledgeProcessingState()
     let completionState = self.completionState
-    let deliverResponse: @MainActor (PledgeResponse, Bool, PledgeFeature.CheckoutSession, UUID) -> Void = { [weak self] response, isCreate, session, id in
+    let deliverResponse: @MainActor (PledgeResponse, Bool, PledgeFeature.SessionIdentity, UUID) -> Void = { [weak self] response, isCreate, session, id in
       guard let self else { return }
       let identity = isCreate ? self.createIdentity : self.updateIdentity
       guard identity.id == id else { return }
-      guard pledgeFeature.checkoutSession == session else {
+      guard pledgeFeature.sessionIdentity == session else {
         identity.id = UUID()
         processingState.setHidden(true)
         return
@@ -161,7 +161,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
         completionState.failed(error)
       }
     }
-    let scheduleResponse: @MainActor (PledgeResponse, Bool, PledgeFeature.CheckoutSession, UUID) async throws -> Void = { response, isCreate, session, id in
+    let scheduleResponse: @MainActor (PledgeResponse, Bool, PledgeFeature.SessionIdentity, UUID) async throws -> Void = { response, isCreate, session, id in
       try await sleep(responseDelay())
       try Task.checkCancellation()
       deliverResponse(response, isCreate, session, id)
@@ -244,7 +244,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     self.startCreate = { [weak self] data, isApplePay in
       guard let self else { return }
       self.createTask?.cancel()
-      let session = pledgeFeature.checkoutSession
+      let session = pledgeFeature.sessionIdentity
       let id = UUID()
       self.createIdentity.id = id
       let request = pledgeFeature.startCreate(data, isApplePay: isApplePay)
@@ -266,7 +266,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     self.startUpdate = { [weak self] data, isApplePay in
       guard let self else { return }
       self.updateTask?.cancel()
-      let session = pledgeFeature.checkoutSession
+      let session = pledgeFeature.sessionIdentity
       let id = UUID()
       self.updateIdentity.id = id
       let request = pledgeFeature.startUpdate(data, isApplePay: isApplePay)

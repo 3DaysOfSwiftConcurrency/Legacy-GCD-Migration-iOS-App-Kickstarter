@@ -64,13 +64,15 @@ public final class ManagePledgeSummaryViewModel {
     self.data = data
     self.configurePledgeStatusLabelViewWithProject = pledgeStatusLabelViewData(with: data)
     self.configurePledgeAmountSummaryViewWithData = pledgeAmountSummaryViewData(with: data)
-    if let user = self.pledgeFeature.sessionFeature.currentUser {
-      let isBacker = data.backerId == user.id
-      self.backerNameLabelHidden = !isBacker
-      if isBacker {
-        self.backerNameText = user.name
-        if let url = URL(string: user.avatar.small) { self.backerImageURLAndPlaceholderImageName = (url, "avatar--placeholder") }
-      }
+    switch self.pledgeFeature.summaryViewer(backerID: data.backerId) {
+    case .guest:
+      break
+    case .other:
+      self.backerNameLabelHidden = true
+    case let .backer(name, avatarURL):
+      self.backerNameLabelHidden = false
+      self.backerNameText = name
+      if let avatarURL { self.backerImageURLAndPlaceholderImageName = (avatarURL, "avatar--placeholder") }
     }
     self.backerNumberText = Strings.backer_modal_backer_number(backer_number: Format.wholeNumber(data.backerSequence))
     self.backingDateText = formattedPledgeDate(data.pledgedOn)

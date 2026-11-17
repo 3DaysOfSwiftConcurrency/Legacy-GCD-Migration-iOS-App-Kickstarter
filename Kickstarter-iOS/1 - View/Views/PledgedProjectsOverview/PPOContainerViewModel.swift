@@ -28,11 +28,14 @@ protocol PPOContainerViewModelOutputs {
 @MainActor
 final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerViewModelOutputs {
   var hasUnseenActivity: Bool {
-    (self.pledgeFeature.sessionFeature.currentUser?.unseenActivityCount ?? 0) > 0
+    (self.activityFeature.unseenActivityCount ?? 0) > 0
   }
 
-  init(pledgeFeature: PledgeFeature) {
+  private let activityFeature: ActivityFeature
+
+  init(pledgeFeature: PledgeFeature, activityFeature: ActivityFeature) {
     self.pledgeFeature = pledgeFeature
+    self.activityFeature = activityFeature
     let sessionStarted = NotificationCenter.default
       .publisher(for: .ksr_sessionStarted)
       .withEmptyValues()
@@ -45,13 +48,13 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
       .publisher(for: .ksr_userUpdated)
       .withEmptyValues()
 
-    let currentUser = Publishers.Merge4(
+    let unseenActivityCount = Publishers.Merge4(
       self.viewWillAppearSubject.withEmptyValues(),
       userUpdated,
       sessionStarted,
       sessionEnded
     )
-    .map { _ in pledgeFeature.sessionFeature.currentUser }
+    .map { _ in activityFeature.unseenActivityCount }
 
     self.viewWillAppearSubject
       .map { _ -> PPOStripeConfiguration in
@@ -64,8 +67,8 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
       .store(in: &self.cancellables)
 
     // Update the activity tab bar badge from the user object when it changes
-    currentUser
-      .map { user in TabBarBadge(count: user?.unseenActivityCount) }
+    unseenActivityCount
+      .map { TabBarBadge(count: $0) }
       .subscribe(self.activityBadgeSubject)
       .store(in: &self.cancellables)
 

@@ -73,9 +73,9 @@ final class ApplePayTokenOperationTests: XCTestCase {
     let pledge = PledgeFeature(platform: .live(), sessionFeature: session, makeProvider: {
       AsyncPledgeProvider(service: MockService())
     })
-    let admitted = pledge.checkoutSession
+    let admitted = pledge.sessionIdentity
     var replies: [PKPaymentAuthorizationStatus] = []
-    operation.start(isCurrent: { pledge.checkoutSession == admitted }, begin: { callback = $0 }, apply: { _ in
+    operation.start(isCurrent: { pledge.sessionIdentity == admitted }, begin: { callback = $0 }, apply: { _ in
       XCTFail("Obsolete session"); return .success
     }, reply: { replies.append($0.status) })
     let task = operation.task

@@ -3815,3 +3815,24 @@ cards and preserve the backing amount for payment repair. The GraphQL
 mapping test exercises fixtures only and opts out of the snapshot
 reference-device check. Live payment and visual parity remain open.
 Manage Pledge still reaches through Pledge into the shared session.
+
+### Manage Pledge session ownership — Matthew Thomas
+
+Pledge now keeps its SessionFeature dependency private. Manage Pledge
+uses the feature's session identity for project and backing delivery,
+including delayed results and refresh completion. A refresh after
+session replacement discards the previous project and backing, and
+old pledge actions cannot use those values. Pledge decides viewer
+roles, managed-pledge sign-in, and the account for reward receipt
+writes. The Pledged Projects activity badge reads through Activity.
+
+The simulator passed 123 focused Manage Pledge, Pledge Manager Web,
+Pledge Feature, and AppModel tests. The AppModel assertion now uses
+the session change already exercised by the fixture. A separate
+presentation run passed 48 Activity badge, Root Tabs, and native
+payment callback regressions. The simulator was iPhone 17 Pro Max
+on iOS 26.2. Live payments and visual parity remain unverified.
+Rebuilding the Library-iOS test host after the presentation run
+resolved a bundle-load failure in the reused build. The rebuilt run
+passed 113 checkout, Activity, and Cancel Pledge regressions.
+Manage Pledge still owns menu eligibility rules in the View layer.

@@ -71,6 +71,8 @@ reject_matches 'Pledge CTA and shipping view models must receive their dependenc
   "$app_view/Views/PledgeShippingLocation/*ViewModel.swift"
 reject_matches 'Pledge management view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$manage_pledge_view_model" "$cancel_pledge_view_model"
+reject_matches 'Pledge keeps the session collaborator private to its feature.' \
+  'pledgeFeature[.]sessionFeature' "$app_view"
 reject_matches 'Pledge summary and web view models must receive Pledge explicitly.' \
   'AppModel[.]shared' "$app_view/Views/ManagePledge/*ViewModel.swift" \
   "$app_view/Views/PledgePaymentMethods/*ViewModel.swift" "$app_view/Views/SurveyResponse/*ViewModel.swift"

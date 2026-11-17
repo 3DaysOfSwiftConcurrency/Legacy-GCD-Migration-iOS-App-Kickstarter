@@ -333,7 +333,6 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(first.friendsFeature.sessionFeature === first.sessionFeature)
     XCTAssertFalse(first.friendsFeature === second.friendsFeature)
     XCTAssertFalse(first.pledgedProjectsFeature === second.pledgedProjectsFeature)
-    XCTAssertTrue(first.pledgeFeature.sessionFeature === first.sessionFeature)
     XCTAssertFalse(first.pledgeFeature === second.pledgeFeature)
     XCTAssertTrue(first.paymentsFeature.sessionFeature === first.sessionFeature)
     XCTAssertFalse(first.paymentsFeature === second.paymentsFeature)
@@ -363,10 +362,14 @@ final class AppModelTests: XCTestCase {
     XCTAssertEqual(secondProvider.requestCount, 0)
     XCTAssertNil(first.searchFeature.parameters)
     XCTAssertNil(second.searchFeature.parameters)
+    let secondPledgeSession = second.pledgeFeature.sessionIdentity
     first.sessionChanged()
     _ = await first.applicationConfigurationService.requestConfiguration().result
     XCTAssertEqual(first.sessionFeature.generation, 1)
     XCTAssertEqual(second.sessionFeature.generation, 0)
+    XCTAssertEqual(first.pledgeFeature.sessionIdentity.generation, first.sessionFeature.generation)
+    XCTAssertNotEqual(first.pledgeFeature.sessionIdentity, secondPledgeSession)
+    XCTAssertEqual(second.pledgeFeature.sessionIdentity, secondPledgeSession)
   }
 }
 

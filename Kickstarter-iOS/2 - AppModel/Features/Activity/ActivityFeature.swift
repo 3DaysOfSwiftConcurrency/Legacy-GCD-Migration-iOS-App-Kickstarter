@@ -77,6 +77,7 @@ public final class ActivityFeature {
 
   /// The Activity tab owns the presentation value for its unread badge.
   public var currentApplicationBadgeNumber: Int { self.applicationBadgeNumber() }
+  var unseenActivityCount: Int? { self.sessionFeature.currentUser?.unseenActivityCount }
 
   func surveyURL(id: Int) async throws -> String {
     try await self.loadSurvey(id).urls.web.survey

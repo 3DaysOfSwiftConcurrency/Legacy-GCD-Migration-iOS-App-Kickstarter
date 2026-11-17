@@ -127,7 +127,7 @@ final class PledgeViewController: UIViewController,
   private let confirmation = StripeConfirmationOperation()
   private let applePayToken = ApplePayTokenOperation()
   private weak var applePayController: PKPaymentAuthorizationViewController?
-  private var applePaySession: PledgeFeature.CheckoutSession?
+  private var applePaySession: PledgeFeature.SessionIdentity?
 
   private var sessionStartedObserver: MainActorNotificationObservation?
   private let pledgeFeature = AppModel.shared.pledgeFeature
@@ -401,7 +401,7 @@ final class PledgeViewController: UIViewController,
     else { return }
     guard self.applePayController == nil else { return }
     self.applePayController = paymentAuthorizationViewController
-    self.applePaySession = self.pledgeFeature.checkoutSession
+    self.applePaySession = self.pledgeFeature.sessionIdentity
     paymentAuthorizationViewController.delegate = self
 
     self.present(paymentAuthorizationViewController, animated: true)
@@ -459,9 +459,9 @@ final class PledgeViewController: UIViewController,
     let setupIntentConfirmParams = STPSetupIntentConfirmParams(clientSecret: secret)
 
     let feature = self.pledgeFeature
-    let session = feature.checkoutSession
+    let session = feature.sessionIdentity
     self.confirmation.start(identity: .init(kind: .setup, clientSecret: secret), isCurrent: {
-      feature.checkoutSession == session
+      feature.sessionIdentity == session
     }, begin: { completion in
       STPPaymentHandler.shared().confirmSetupIntent(setupIntentConfirmParams, with: self) { status, _, error in
         completion(.init(status: status, error: error))
@@ -532,7 +532,7 @@ extension PledgeViewController: @MainActor PKPaymentAuthorizationViewControllerD
       -> Void
   ) {
     guard self.applePayController === controller, let session = self.applePaySession,
-          self.pledgeFeature.checkoutSession == session else {
+          self.pledgeFeature.sessionIdentity == session else {
       completion(PKPaymentAuthorizationResult(status: .failure, errors: []))
       return
     }
@@ -549,7 +549,7 @@ extension PledgeViewController: @MainActor PKPaymentAuthorizationViewControllerD
     self.applePayToken.start(
       isCurrent: { [weak self, weak controller] in
         guard let self, let controller else { return false }
-        return self.applePayController === controller && self.pledgeFeature.checkoutSession == session
+        return self.applePayController === controller && self.pledgeFeature.sessionIdentity == session
       },
       begin: { callback in
         STPAPIClient.shared.createToken(with: payment) { token, error in
@@ -570,7 +570,7 @@ extension PledgeViewController: @MainActor PKPaymentAuthorizationViewControllerD
     self.applePayController = nil
     self.applePaySession = nil
     controller.dismiss(animated: true, completion: { [weak self] in
-      guard let self, self.pledgeFeature.checkoutSession == session else { return }
+      guard let self, self.pledgeFeature.sessionIdentity == session else { return }
       self.viewModel.inputs.paymentAuthorizationViewControllerDidFinish()
     })
   }

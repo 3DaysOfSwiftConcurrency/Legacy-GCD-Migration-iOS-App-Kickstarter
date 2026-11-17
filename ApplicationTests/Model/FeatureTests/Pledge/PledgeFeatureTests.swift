@@ -34,17 +34,17 @@ final class PledgeFeatureTests: TestCase {
     let feature = PledgeFeature(
       platform: .live(), sessionFeature: session, makeProvider: { self.provider }
     )
-    let admitted = feature.checkoutSession
-    XCTAssertEqual(feature.checkoutSession, admitted)
+    let admitted = feature.sessionIdentity
+    XCTAssertEqual(feature.sessionIdentity, admitted)
 
     currentUser = nil
     XCTAssertEqual(session.generation, admitted.generation)
-    XCTAssertNotEqual(feature.checkoutSession, admitted)
+    XCTAssertNotEqual(feature.sessionIdentity, admitted)
 
     currentUser = .template
     session.sessionChanged()
-    XCTAssertEqual(feature.checkoutSession.userID, admitted.userID)
-    XCTAssertNotEqual(feature.checkoutSession, admitted)
+    XCTAssertEqual(feature.sessionIdentity.userID, admitted.userID)
+    XCTAssertNotEqual(feature.sessionIdentity, admitted)
   }
 
   func testEquivalentCreateSharesPendingWriteAndPreservesSCACheckout() async throws {

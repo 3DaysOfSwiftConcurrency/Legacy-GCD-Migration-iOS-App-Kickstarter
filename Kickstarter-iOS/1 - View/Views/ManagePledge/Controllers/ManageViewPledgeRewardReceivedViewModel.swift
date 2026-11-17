@@ -75,10 +75,9 @@ public final class ManageViewPledgeRewardReceivedViewModel {
     AppEnvironment.current.ksrAnalytics.trackRewardReceivedToggled(
       toggleOn: isOn, project: data.project, context: .managePledgeScreen
     )
-    guard let user = self.pledgeFeature.sessionFeature.currentUser else { return }
-    let generation = self.pledgeFeature.sessionFeature.generation
-    let sessionUserID = self.pledgeFeature.sessionFeature.currentUser?.id
-    let task = self.pledgeFeature.startReceived(projectID: data.project.id, userID: user.id, received: isOn)
+    let session = self.pledgeFeature.sessionIdentity
+    guard let task = self.pledgeFeature.startReceivedForCurrentUser(projectID: data.project.id, received: isOn)
+    else { return }
     self.observation?.cancel()
     self.observation = Task { [weak self] in
       do {
@@ -86,8 +85,7 @@ public final class ManageViewPledgeRewardReceivedViewModel {
         guard let self else { return }
         try await self.delay()
         try Task.checkCancellation()
-        guard self.pledgeFeature.sessionFeature.generation == generation,
-              self.pledgeFeature.sessionFeature.currentUser?.id == sessionUserID else { return }
+        guard self.pledgeFeature.sessionIdentity == session else { return }
         self.rewardReceived = backing.backerCompleted ?? false
         self.onChange?()
       } catch { }

@@ -72,7 +72,7 @@ public final class ManagePledgeViewModel:
   ManagePledgeViewModelType, ManagePledgeViewModelInputs, ManagePledgeViewModelOutputs {
   private let pledgeFeature: PledgeFeature
   private let schedule: @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void
-  private var projectHasLoaded = false
+  private var loadedSession: PledgeFeature.SessionIdentity?
   private var configuredParams: ManagePledgeViewParamConfigData?
   private var hasLoadedView = false
   private var configuredBackingWasProvided = false
@@ -136,7 +136,7 @@ public final class ManagePledgeViewModel:
     guard let loadedProject, let backing = self.loadedBacking else { return }
     let project = loadedProject |> Project.lens.personalization.backing .~ backing
     let rewards = distinctRewards([backing.reward ?? .noReward] + (backing.addOns ?? []))
-    let isCreator = currentUserIsCreator(of: project, currentUser: self.pledgeFeature.sessionFeature.currentUser)
+    let isCreator = self.pledgeFeature.viewerIsCreator(of: project)
     self.currentProject = project
     self.currentRewards = rewards
     self.onLoadProjectAndRewards?(project, rewards)
@@ -163,7 +163,7 @@ public final class ManagePledgeViewModel:
       with: (project, backing.reward ?? .noReward), backing: backing,
       rewardReceivedWithData: received,
       rewardReceivedViewControllerViewIsHidden: latestDelivery == 0,
-      currentUser: self.pledgeFeature.sessionFeature.currentUser
+      viewerIsCreator: isCreator
     ) { self.onPledgeSummary?(summary) }
     if let reward = backing.reward {
       let checkout = checkoutProperties(
@@ -200,40 +200,42 @@ public final class ManagePledgeViewModel:
     self.schedule(self.responseDelay(), action)
   }
 
-  private func scheduleRefreshEnd() {
-    self.schedule(0.3) { [weak self] in self?.onEndRefreshing?() }
+  private func scheduleRefreshEnd(session: PledgeFeature.SessionIdentity) {
+    self.schedule(0.3) { [weak self] in
+      guard let self, self.pledgeFeature.sessionIdentity == session else { return }
+      self.onEndRefreshing?()
+    }
   }
 
   private func loadBacking(_ backingID: Int) {
     self.backingReadTask?.cancel()
     let pledgeFeature = self.pledgeFeature
     let route = self.backingRoute
-    let userID = pledgeFeature.sessionFeature.currentUser?.id
-    let generation = pledgeFeature.sessionFeature.generation
+    let session = pledgeFeature.sessionIdentity
     let id = UUID()
     self.backingReadIdentity.id = id
     self.backingReadTask = Task { [weak self] in
       do {
         let backing = try await pledgeFeature.backing(route: route, id: backingID)
         try Task.checkCancellation()
-        guard pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard pledgeFeature.sessionIdentity == session else { return }
         self?.scheduleReadResult { [weak self] in
           guard let self, self.backingReadIdentity.id == id,
-                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionIdentity == session else { return }
           self.loadedBacking = backing
           self.presentCombined()
           self.presentBacking(backing)
-          self.scheduleRefreshEnd()
+          self.scheduleRefreshEnd(session: session)
         }
       } catch is CancellationError {
         return
       } catch {
-        guard !Task.isCancelled, pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard !Task.isCancelled, pledgeFeature.sessionIdentity == session else { return }
         self?.scheduleReadResult { [weak self] in
           guard let self, self.backingReadIdentity.id == id,
-                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionIdentity == session else { return }
           self.handleLoadError()
-          self.scheduleRefreshEnd()
+          self.scheduleRefreshEnd(session: session)
         }
       }
     }
@@ -243,19 +245,17 @@ public final class ManagePledgeViewModel:
     self.projectReadTask?.cancel()
     let pledgeFeature = self.pledgeFeature
     let route = self.projectRoute
-    let userID = pledgeFeature.sessionFeature.currentUser?.id
-    let generation = pledgeFeature.sessionFeature.generation
+    let session = pledgeFeature.sessionIdentity
     let id = UUID()
     self.projectReadIdentity.id = id
     self.projectReadTask = Task { [weak self] in
       do {
         let project = try await pledgeFeature.project(route: route, param: param)
         try Task.checkCancellation()
-        guard pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard pledgeFeature.sessionIdentity == session else { return }
         self?.scheduleReadResult { [weak self] in
           guard let self, self.projectReadIdentity.id == id,
-                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-          self.projectHasLoaded = true
+                pledgeFeature.sessionIdentity == session else { return }
           if !self.configuredBackingWasProvided, let backingID = project.personalization.backing?.id {
             self.currentBackingParam = .id(backingID)
             self.loadBacking(backingID)
@@ -266,10 +266,10 @@ public final class ManagePledgeViewModel:
       } catch is CancellationError {
         return
       } catch {
-        guard !Task.isCancelled, pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+        guard !Task.isCancelled, pledgeFeature.sessionIdentity == session else { return }
         self?.scheduleReadResult { [weak self] in
           guard let self, self.projectReadIdentity.id == id,
-                pledgeFeature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+                pledgeFeature.sessionIdentity == session else { return }
           self.onEndRefreshing?()
           self.handleLoadError()
         }
@@ -277,7 +277,32 @@ public final class ManagePledgeViewModel:
     }
   }
 
+  private var presentsCurrentSession: Bool { self.loadedSession == self.pledgeFeature.sessionIdentity }
+
+  private func prepareSession() {
+    guard !self.presentsCurrentSession else { return }
+    self.loadedSession = self.pledgeFeature.sessionIdentity
+    self.projectReadTask?.cancel()
+    self.projectReadIdentity.id = nil
+    self.backingReadTask?.cancel()
+    self.backingReadIdentity.id = nil
+    self.currentBackingParam = self.configuredParams?.backingParam
+    self.configuredBackingWasProvided = self.currentBackingParam != nil
+    self.loadedProject = nil
+    self.loadedBacking = nil
+    self.currentProject = nil
+    self.currentRewards = nil
+    self.titleProject = nil
+    self.titleIsCreator = nil
+    self.visibilityBacking = nil
+    self.visibilityIsCreator = nil
+    self.backingHasLoaded = false
+    self.hasSeenDisallowedCancellation = false
+    self.setRightBarHidden(true)
+  }
+
   public func beginRefresh() {
+    self.prepareSession()
     self.onStartRefreshing?()
     self.fetchProjectIfNeeded()
     if let id = self.currentBackingParam?.id { self.loadBacking(id) }
@@ -290,6 +315,7 @@ public final class ManagePledgeViewModel:
 
   private func publishParamsWhenReady() {
     guard self.hasLoadedView, let params = self.configuredParams else { return }
+    self.prepareSession()
     if let backing = params.backingParam {
       self.configuredBackingWasProvided = true
       self.currentBackingParam = backing
@@ -334,7 +360,7 @@ public final class ManagePledgeViewModel:
   }
 
   private func fetchProjectIfNeeded() {
-    guard self.hasLoadedView, !self.projectHasLoaded, let params = self.configuredParams else { return }
+    guard self.hasLoadedView, self.loadedProject == nil, let params = self.configuredParams else { return }
     self.loadProject(params.projectParam)
   }
 
@@ -343,17 +369,20 @@ public final class ManagePledgeViewModel:
   }
 
   public func fixButtonTapped() {
+    guard self.presentsCurrentSession else { return }
     guard let data = self.paymentMethodData(context: .fixPaymentMethod) else { return }
     self.onFixPaymentMethod?(data)
   }
 
   public func menuButtonTapped() {
+    guard self.presentsCurrentSession else { return }
     guard let project = self.currentProject, let backing = self.visibilityBacking,
           let isCreator = self.visibilityIsCreator else { return }
     self.onShowMenu?(actionSheetMenuOptionsFor(project: project, backing: backing, userIsCreatorOfProject: isCreator))
   }
 
   public func menuOptionSelected(with action: ManagePledgeAlertAction) {
+    guard self.presentsCurrentSession else { return }
     switch action {
     case .chooseAnotherReward, .viewRewards:
       if let project = self.currentProject { self.onRewards?(project) }
@@ -531,7 +560,7 @@ private func managePledgeSummaryViewData(
   backing: Backing,
   rewardReceivedWithData: ManageViewPledgeRewardReceivedViewData,
   rewardReceivedViewControllerViewIsHidden: Bool,
-  currentUser: User?
+  viewerIsCreator: Bool
 ) -> ManagePledgeSummaryViewData? {
   let (project, backedReward) = projectAndReward
 
@@ -546,10 +575,7 @@ private func managePledgeSummaryViewData(
     backerSequence: backing.sequence,
     backingState: backing.status,
     bonusAmount: backing.bonusAmount,
-    currentUserIsCreatorOfProject: currentUserIsCreator(
-      of: project,
-      currentUser: currentUser
-    ),
+    currentUserIsCreatorOfProject: viewerIsCreator,
     isNoReward: backedReward.id == Reward.noReward.id,
     locationName: backing.locationName,
     needsConversion: project.stats.needsConversion,

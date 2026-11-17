@@ -1257,7 +1257,7 @@ final class PledgeViewModelTests: TestCase {
       self.vm.inputs.paymentAuthorizationViewControllerDidFinish()
       await self.feature.waitForOperations()
       while !self.delayGate.isWaiting { await Task.yield() }
-      self.feature.sessionFeature.sessionChanged()
+      self.sessionFeature.sessionChanged()
       self.delayGate.resume()
       await Task.yield()
       self.goToThanksProject.assertDidNotEmitValue()

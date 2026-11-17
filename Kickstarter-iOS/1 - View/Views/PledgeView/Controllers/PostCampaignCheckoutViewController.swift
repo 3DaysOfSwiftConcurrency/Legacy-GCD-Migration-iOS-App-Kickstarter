@@ -27,7 +27,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
   private struct ApplePayAuthorization {
     let context: STPApplePayContext
-    let session: PledgeFeature.CheckoutSession
+    let session: PledgeFeature.SessionIdentity
     let clientSecret: String
   }
   private var applePayAuthorization: ApplePayAuthorization?
@@ -352,11 +352,11 @@ final class PostCampaignCheckoutViewController: UIViewController,
     }
 
     let feature = self.pledgeFeature
-    let session = feature.checkoutSession
+    let session = feature.sessionIdentity
     self.confirmation.start(
       identity: .init(kind: .payment, clientSecret: validation.paymentIntentClientSecret,
                       paymentMethodID: validation.selectedCardStripeCardId),
-      isCurrent: { feature.checkoutSession == session },
+      isCurrent: { feature.sessionIdentity == session },
       begin: { completion in
         STPPaymentHandler.shared().confirmPayment(paymentParams, with: self) { status, _, error in
           completion(.init(status: status, error: error))
@@ -406,7 +406,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
     self.applePayAuthorization = ApplePayAuthorization(
       context: applePayContext,
-      session: self.pledgeFeature.checkoutSession,
+      session: self.pledgeFeature.sessionIdentity,
       clientSecret: paymentAuthorizationData.paymentIntent
     )
     applePayContext.presentApplePay()
@@ -506,7 +506,7 @@ extension PostCampaignCheckoutViewController: STPApplePayContextDelegate {
     let result: Result<String, PostCampaignCheckoutApplePayError> = MainActor.assumeIsolated {
       guard let authorization = self.applePayAuthorization,
             ObjectIdentifier(authorization.context) == contextID,
-            self.pledgeFeature.checkoutSession == authorization.session else {
+            self.pledgeFeature.sessionIdentity == authorization.session else {
         return .failure(.missingPaymentIntent("Missing PaymentIntent"))
       }
       self.viewModel.inputs.applePayContextDidCreatePayment(with: paymentMethodID)
@@ -538,7 +538,7 @@ extension PostCampaignCheckoutViewController: STPApplePayContextDelegate {
       guard let authorization = self.applePayAuthorization,
             ObjectIdentifier(authorization.context) == contextID else { return }
       self.applePayAuthorization = nil
-      guard self.pledgeFeature.checkoutSession == authorization.session else { return }
+      guard self.pledgeFeature.sessionIdentity == authorization.session else { return }
       switch outcome {
       case .succeeded:
         self.viewModel.inputs.applePayContextDidComplete()

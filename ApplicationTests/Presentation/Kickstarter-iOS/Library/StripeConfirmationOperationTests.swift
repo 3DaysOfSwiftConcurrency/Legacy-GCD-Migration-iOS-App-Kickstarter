@@ -102,9 +102,9 @@ final class StripeConfirmationOperationTests: XCTestCase {
     let pledge = PledgeFeature(platform: .live(), sessionFeature: session, makeProvider: {
       AsyncPledgeProvider(service: MockService())
     })
-    let admitted = pledge.checkoutSession
+    let admitted = pledge.sessionIdentity
     var callback: (@Sendable (StripeConfirmationOutcome) -> Void)?
-    operation.start(identity: self.identity, isCurrent: { pledge.checkoutSession == admitted }, begin: { callback = $0 }, completed: { _ in
+    operation.start(identity: self.identity, isCurrent: { pledge.sessionIdentity == admitted }, begin: { callback = $0 }, completed: { _ in
       XCTFail("A previous session must not commit checkout work")
     })
     session.sessionChanged()

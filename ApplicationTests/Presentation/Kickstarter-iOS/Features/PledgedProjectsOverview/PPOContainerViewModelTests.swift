@@ -7,8 +7,7 @@ import XCTest
 @MainActor
 final class PPOContainerViewModelTests: XCTestCase {
   func testAddressAcknowledgedShowsSuccessAndRefreshesOnce() async {
-    let feature = self.feature(MockService(confirmBackingAddressResult: .success(true)))
-    let model = PPOContainerViewModel(pledgeFeature: feature)
+    let model = self.makeModel(MockService(confirmBackingAddressResult: .success(true)))
     var progress: [PPOActionState] = []
     var banners: [MessageBannerType] = []
     var refreshes = 0
@@ -26,8 +25,7 @@ final class PPOContainerViewModelTests: XCTestCase {
     XCTAssertEqual(refreshes, 1)
   }
   func testAddressNegativeAcknowledgementPreservesProgressAndErrorBanner() async {
-    let feature = self.feature(MockService(confirmBackingAddressResult: .success(false)))
-    let model = PPOContainerViewModel(pledgeFeature: feature)
+    let model = self.makeModel(MockService(confirmBackingAddressResult: .success(false)))
     var progress: [PPOActionState] = []
     var errors = 0
     var refreshes = 0
@@ -44,9 +42,8 @@ final class PPOContainerViewModelTests: XCTestCase {
     XCTAssertEqual(refreshes, 0)
   }
   func testAddressFailureDoesNotReportSuccessOrRefresh() async {
-    let feature = self.feature(
+    let model = self.makeModel(
       MockService(confirmBackingAddressResult: .failure(.couldNotParseJSON)))
-    let model = PPOContainerViewModel(pledgeFeature: feature)
     var progress: [PPOActionState] = []
     var errors = 0
     let banner = model.showBanner.sink { if $0.type == .error { errors += 1 } }
@@ -57,9 +54,8 @@ final class PPOContainerViewModelTests: XCTestCase {
     XCTAssertEqual(errors, 1)
   }
   func testReceiptFailurePublishesOneErrorAndOneRefresh() async {
-    let feature = self.feature(
+    let model = self.makeModel(
       MockService(updateRewardReceivedResult: .failure(.couldNotParseJSON)))
-    let model = PPOContainerViewModel(pledgeFeature: feature)
     var errors = 0
     var refreshes = 0
     let banner = model.showBanner.sink { if $0.type == .error { errors += 1 } }
@@ -74,8 +70,7 @@ final class PPOContainerViewModelTests: XCTestCase {
     XCTAssertEqual(refreshes, 1)
   }
   func testReceiptSuccessKeepsOptimisticCardWithoutBannerOrRefresh() async {
-    let feature = self.feature(MockService(updateRewardReceivedResult: .success(true)))
-    let model = PPOContainerViewModel(pledgeFeature: feature)
+    let model = self.makeModel(MockService(updateRewardReceivedResult: .success(true)))
     var banners = 0
     var refreshes = 0
     let banner = model.showBanner.sink { _ in banners += 1 }
@@ -89,10 +84,33 @@ final class PPOContainerViewModelTests: XCTestCase {
     XCTAssertEqual(banners, 0)
     XCTAssertEqual(refreshes, 0)
   }
-  private func feature(_ service: MockService) -> PledgeFeature {
-    PledgeFeature(
-      platform: .live(),
-      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: service) }),
-      makeProvider: { AsyncPledgeProvider(service: service) })
+  func testActivityBadgeUsesTheActivityFeatureAccount() {
+    var user = User.template
+    user.unseenActivityCount = 3
+    let model = self.makeModel(MockService(), currentUser: { user })
+    var badge: TabBarBadge?
+    let observation = model.activityBadge.sink { badge = $0 }
+    defer { observation.cancel() }
+
+    model.viewWillAppear()
+
+    XCTAssertEqual(badge?.count, 3)
+    XCTAssertTrue(model.hasUnseenActivity)
+  }
+
+  private func makeModel(
+    _ service: MockService, currentUser: @escaping @MainActor () -> User? = { AppEnvironment.current.currentUser }
+  ) -> PPOContainerViewModel {
+    let sessionFeature = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: service) }, currentUser: currentUser
+    )
+    return PPOContainerViewModel(
+      pledgeFeature: PledgeFeature(
+        platform: .live(), sessionFeature: sessionFeature, makeProvider: { AsyncPledgeProvider(service: service) }
+      ),
+      activityFeature: ActivityFeature(
+        sessionFeature: sessionFeature, makeProvider: { AsyncActivityProvider(service: service) }
+      )
+    )
   }
 }
