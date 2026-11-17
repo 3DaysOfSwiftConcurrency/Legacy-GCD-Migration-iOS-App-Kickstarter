@@ -33,7 +33,8 @@ final class DeepLinkRouterTests: XCTestCase {
       sessionFeature: session, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(sessionFeature: session, makeProvider: { provider }),
       discoveryFeature: DiscoveryFeature(
-        provider: AsyncDiscoveryProvider(), loadCategories: { try await provider.categories() }
+        provider: AsyncDiscoveryProvider(), loadCategories: { try await provider.categories() },
+        currentUser: { session.currentUser }
       ),
       activityFeature: ActivityFeature(
         sessionFeature: session, makeProvider: { AsyncActivityProvider(service: MockService()) },

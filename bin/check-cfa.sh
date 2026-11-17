@@ -26,6 +26,7 @@ post_campaign_view_model="$app_view/Views/PledgeView/Controllers/PostCampaignChe
 manage_pledge_view_model="$app_view/Views/ManagePledge/Controllers/ManagePledgeViewModel.swift"
 cancel_pledge_view_model="$app_view/Views/CancelPledge/Controller/CancelPledgeViewModel.swift"
 project_page_view_model="$app_view/Views/ProjectPage/Controller/ProjectPageViewModel.swift"
+discovery_feature="$app_model/Features/Discovery/DiscoveryFeature.swift"
 
 test -f "$root_view_model"
 test -f "$delegate_handler"
@@ -34,6 +35,7 @@ test -f "$post_campaign_view_model"
 test -f "$manage_pledge_view_model"
 test -f "$cancel_pledge_view_model"
 test -f "$project_page_view_model"
+test -f "$discovery_feature"
 reject_matches 'RootViewModel must receive its dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$root_view_model"
 reject_matches 'The delegate handler must receive application dependencies explicitly.' \
@@ -44,5 +46,7 @@ reject_matches 'Pledge management view models must receive dependencies from the
   'AppModel[.]shared|AppEnvironment[.]current' "$manage_pledge_view_model" "$cancel_pledge_view_model"
 reject_matches 'ProjectPageViewModel must receive dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$project_page_view_model"
+reject_matches 'DiscoveryFeature must receive its session lookup explicitly.' \
+  'AppModel[.]shared|AppEnvironment[.]current[.]currentUser' "$discovery_feature"
 reject_matches 'Application lifecycle signals belong at the AppModel boundary.' \
   'AppLifecycleFeature|appLifecycleFeature' "$app_view" "$app_model"

@@ -12,7 +12,7 @@ internal final class DiscoveryViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
   fileprivate lazy var vm = DiscoveryViewModel(
-    discoveryFeature: DiscoveryFeature(provider: AsyncDiscoveryProvider()),
+    discoveryFeature: DiscoveryFeature(provider: AsyncDiscoveryProvider(), currentUser: { AppEnvironment.current.currentUser }),
     deferInitial: { [weak self] action in self?.deferred.append(action) }
   )
 

@@ -3219,3 +3219,10 @@ text. These are review candidates, with no judgment about individual call
 sites from the scan alone. Seven source files under AppModel Features also
 reference `AppModel.shared`. The legacy delegate handler still needs further
 decomposition, and app-wide conformance remains open.
+
+### Discovery session dependency — Matthew Thomas
+
+Discovery now requires a current-user lookup. Production supplies the composed
+SessionFeature and the focused tests supply their own lookup. The CFA source
+check guards this boundary. Discovery, its view models, the deep-link router and
+AppModel passed 95 focused simulator tests.

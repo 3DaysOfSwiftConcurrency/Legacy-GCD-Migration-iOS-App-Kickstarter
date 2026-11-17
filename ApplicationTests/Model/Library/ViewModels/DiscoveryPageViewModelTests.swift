@@ -12,7 +12,7 @@ internal final class DiscoveryPageViewModelTests: TestCase {
   // Logic/output assertions only; visual suites retain their reference-device gate.
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
-  private let feature = DiscoveryFeature(provider: AsyncDiscoveryProvider(), sleep: { _ in })
+  private let feature = DiscoveryFeature(provider: AsyncDiscoveryProvider(), sleep: { _ in }, currentUser: { AppEnvironment.current.currentUser })
   fileprivate lazy var vm = DiscoveryPageViewModel(discoveryFeature: self.feature)
 
   func testSignupActionDeliversDiscoveryLoginIntent() {

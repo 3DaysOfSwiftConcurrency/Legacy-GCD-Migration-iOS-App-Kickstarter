@@ -229,9 +229,7 @@ public final class DiscoveryFeature {
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
       try Task.checkCancellation()
     },
-    // Direct test construction retains this adapter during staged adoption.
-    // Production composition supplies its already-built SessionFeature below.
-    currentUser: @escaping @MainActor () -> User? = { AppModel.shared.sessionFeature.currentUser }
+    currentUser: @escaping @MainActor () -> User?
   ) {
     self.provider = provider
     self.loadCategories = loadCategories
