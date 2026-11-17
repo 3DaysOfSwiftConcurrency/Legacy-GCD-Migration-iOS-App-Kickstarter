@@ -136,7 +136,12 @@ final class AppDelegateViewModelTests: TestCase {
       authenticationFeature: AuthenticationFeature(sessionFeature: session, makeProvider: {
         AsyncAuthenticationProvider(service: AppEnvironment.current.apiService)
       }),
-      discoveryFeature: self.discoveryFeature,
+      applicationShortcuts: ApplicationShortcutService(
+        session: session,
+        hasRecommendations: { [discoveryFeature = self.discoveryFeature] in
+          try await discoveryFeature.hasRecommendations(for: $0)
+        }
+      ),
       requestApplicationConfiguration: { config.refresh() },
       devicePushRegistration: registration,
       sessionFeature: session,

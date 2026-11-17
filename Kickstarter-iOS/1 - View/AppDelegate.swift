@@ -39,7 +39,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       isSegmentEnabled: { featureSegmentIsEnabled() },
       settingsPresentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       authenticationFeature: model.authenticationFeature,
-      discoveryFeature: model.discoveryFeature,
+      applicationShortcuts: model.applicationShortcuts,
       requestApplicationConfiguration: { model.requestApplicationConfiguration() },
       devicePushRegistration: model.devicePushRegistrationService,
       sessionFeature: model.sessionFeature,
@@ -280,7 +280,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     self.viewModel.outputs.onSetApplicationShortcutItems = { shortcutItems in
+      let session = AppModel.shared.sessionFeature
+      let userID = session.currentUser?.id
+      let generation = session.generation
       DispatchQueue.main.async {
+        guard session.isCurrent(userID: userID, generation: generation) else { return }
         UIApplication.shared.shortcutItems = shortcutItems.map { $0.applicationShortcutItem }
       }
     }

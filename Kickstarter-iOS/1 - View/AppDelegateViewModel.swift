@@ -203,7 +203,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private let mainBundle: () -> any NSBundleType
   private let isSegmentEnabled: () -> Bool
   private let settingsPresentationDelaySeconds: () -> TimeInterval
-  private let discoveryFeature: DiscoveryFeature
+  private let applicationShortcuts: ApplicationShortcutService
   private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
   private let devicePushRegistration: DevicePushRegistrationService
   private let sessionFeature: SessionFeature
@@ -223,13 +223,12 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var latestActiveState: Bool?
   private var lastScheduledActiveState: Bool?
   private var configurationTask: Task<Void, Never>?
-  private var shortcutTask: Task<Void, Never>?
   private var lastSegmentEnabled: Bool?
   private var pushTasks: [UUID: Task<Void, Never>] = [:]
   private var hasDeniedPushAuthorization = false
   private var trackingObserver: ((any AppTrackingTransparencyType), UUID)?
 
-  public init(
+  init(
     deepLinkRouter: DeepLinkRouter,
     serverConfig: @escaping () -> ServerConfigType,
     pushRegistration: @escaping () -> PushRegistrationType.Type,
@@ -238,7 +237,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     isSegmentEnabled: @escaping () -> Bool,
     settingsPresentationDelaySeconds: @escaping () -> TimeInterval,
     authenticationFeature: AuthenticationFeature,
-    discoveryFeature: DiscoveryFeature,
+    applicationShortcuts: ApplicationShortcutService,
     requestApplicationConfiguration: @escaping @MainActor () -> Task<Config, Error>,
     devicePushRegistration: DevicePushRegistrationService,
     sessionFeature: SessionFeature,
@@ -255,7 +254,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.mainBundle = mainBundle
     self.isSegmentEnabled = isSegmentEnabled
     self.settingsPresentationDelaySeconds = settingsPresentationDelaySeconds
-    self.discoveryFeature = discoveryFeature
+    self.applicationShortcuts = applicationShortcuts
     self.requestApplicationConfiguration = requestApplicationConfiguration
     self.devicePushRegistration = devicePushRegistration
     self.sessionFeature = sessionFeature
@@ -272,7 +271,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.pushTasks.values.forEach { $0.cancel() }
     self.trackingDelayTasks.values.forEach { $0.cancel() }
     self.configurationTask?.cancel()
-    self.shortcutTask?.cancel()
     let redirectObservation = self.redirectObservation
     let authenticationFeature = self.authenticationFeature
     let trackingObserver = self.trackingObserver
@@ -431,20 +429,14 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func refreshShortcutItems(for user: User?) {
-    self.shortcutTask?.cancel()
-    let feature = self.discoveryFeature
-    self.shortcutTask = Task { [weak self] in
-      do {
-        let recommendations = try await feature.hasRecommendations(for: user)
-        try Task.checkCancellation()
-        let items = shortcutItems(isProjectMember: (user?.stats.memberProjectsCount ?? 0) > 0,
-                                  hasRecommendations: recommendations)
-        self?.onSetApplicationShortcutItems?(items)
-      } catch { /* Failed recommendation reads leave existing shortcuts in place. */ }
+    self.applicationShortcuts.refresh(for: user) { [weak self] available in
+      self?.onSetApplicationShortcutItems?(
+        available ? [.recommendedForYou, .projectsWeLove, .search] : [.projectsWeLove, .search]
+      )
     }
   }
 
-  func waitForShortcutUpdate() async { await self.shortcutTask?.value }
+  func waitForShortcutUpdate() async { await self.applicationShortcuts.waitForRefresh() }
 
   private func refreshUserSetup() {
     self.settingsFeature.refreshAccountSetup {
@@ -853,25 +845,6 @@ private func navigation(fromShortcutItem shortcutItem: ShortcutItem) -> Navigati
   case .search:
     return .tab(.search)
   }
-}
-
-// Figures out which shortcut items to show to a user based on whether they are a project member and/or
-// has recommendations.
-private func shortcutItems(isProjectMember _: Bool, hasRecommendations: Bool)
-  -> [ShortcutItem] {
-  var items: [ShortcutItem] = []
-
-  if hasRecommendations {
-    items.append(.recommendedForYou)
-  }
-
-  items.append(.projectsWeLove)
-
-  if items.count < 4 {
-    items.append(.search)
-  }
-
-  return items
 }
 
 private func dictionary(fromUrlComponents urlComponents: URLComponents) -> [String: String] {

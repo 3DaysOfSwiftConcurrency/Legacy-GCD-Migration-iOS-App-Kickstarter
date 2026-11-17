@@ -6,6 +6,33 @@ import XCTest
 
 @MainActor
 final class AppModelTests: XCTestCase {
+  func testShortcutRefreshDropsResultAfterSameUserSessionReplacement() async throws {
+    let user = User.template
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) },
+      currentUser: { user }
+    )
+    let gate = AccountRequestGate<Bool>()
+    defer { gate.releaseAll() }
+    let shortcuts = ApplicationShortcutService(session: session, hasRecommendations: { _ in
+      try await gate.request()
+    })
+    var results: [Bool] = []
+
+    shortcuts.refresh(for: user) { results.append($0) }
+    await gate.waitFor(1)
+    session.sessionChanged()
+    try gate.finish(0, .success(true))
+    await shortcuts.waitForRefresh()
+    XCTAssertEqual(results, [])
+
+    shortcuts.refresh(for: user) { results.append($0) }
+    await gate.waitFor(2)
+    try gate.finish(1, .success(false))
+    await shortcuts.waitForRefresh()
+    XCTAssertEqual(results, [false])
+  }
+
   func testEnteringBackgroundPublishesTheApplicationNotification() {
     let notificationCenter = NotificationCenter()
     let received = self.expectation(description: "Application entered background")

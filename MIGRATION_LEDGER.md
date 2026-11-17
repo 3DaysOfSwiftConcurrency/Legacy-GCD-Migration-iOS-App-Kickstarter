@@ -3415,3 +3415,10 @@ Dependencies are resolved when used, preserving environment replacement.
 The CFA source check rejects direct environment reads in the handler. All
 46 focused model tests passed after retrying a simulator launch rejection,
 and all 123 AppDelegate presentation tests passed.
+
+AppModel now owns shortcut recommendation refreshes and cancels them on
+session changes. Both result delivery and the queued UIKit update validate
+the admitted session. AppDelegate retains shortcut presentation and the
+existing ordering. All 27 focused AppModel and Discovery tests, including
+same-user session replacement, passed after a simulator launch retry.
+All 123 AppDelegate presentation tests and the CFA source check passed.
