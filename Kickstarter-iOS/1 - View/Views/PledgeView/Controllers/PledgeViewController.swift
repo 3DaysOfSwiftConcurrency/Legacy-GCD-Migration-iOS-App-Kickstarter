@@ -70,7 +70,7 @@ final class PledgeViewController: UIViewController,
   }()
 
   private lazy var paymentMethodsViewController = {
-    PledgePaymentMethodsViewController.instantiate()
+    PledgePaymentMethodsViewController.instantiate(composition: self.composition)
       |> \.messageDisplayingDelegate .~ self
       |> \.delegate .~ self
   }()

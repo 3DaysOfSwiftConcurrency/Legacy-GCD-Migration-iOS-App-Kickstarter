@@ -138,17 +138,23 @@ public struct PledgeCheckoutComposition {
   public let authenticationFeature: AuthenticationFeature
   public let paymentsFeature: PaymentsFeature
   public let analytics: () -> KSRAnalytics
+  public let responseDelay: @MainActor () -> TimeInterval
+  public let advertisingContext: @MainActor () -> (id: String, platformVersion: String)?
 
   public init(
     pledgeFeature: PledgeFeature,
     authenticationFeature: AuthenticationFeature,
     paymentsFeature: PaymentsFeature,
-    analytics: @escaping () -> KSRAnalytics
+    analytics: @escaping () -> KSRAnalytics,
+    responseDelay: @escaping @MainActor () -> TimeInterval,
+    advertisingContext: @escaping @MainActor () -> (id: String, platformVersion: String)?
   ) {
     self.pledgeFeature = pledgeFeature
     self.authenticationFeature = authenticationFeature
     self.paymentsFeature = paymentsFeature
     self.analytics = analytics
+    self.responseDelay = responseDelay
+    self.advertisingContext = advertisingContext
   }
 }
 
@@ -242,7 +248,14 @@ public final class AppModel {
       pledgeFeature: self.pledgeFeature,
       authenticationFeature: self.authenticationFeature,
       paymentsFeature: self.paymentsFeature,
-      analytics: { AppEnvironment.current.ksrAnalytics }
+      analytics: { AppEnvironment.current.ksrAnalytics },
+      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      advertisingContext: {
+        guard let environment = AppEnvironment.current else { return nil }
+        environment.appTrackingTransparency.updateAdvertisingIdentifier()
+        guard let id = environment.appTrackingTransparency.advertisingIdentifier else { return nil }
+        return (id, environment.mainBundle.platformVersion)
+      }
     )
   }
 

@@ -30,19 +30,25 @@ final class PledgePaymentMethodsViewController: UIViewController {
 
   internal weak var delegate: PledgePaymentMethodsViewControllerDelegate?
   internal weak var messageDisplayingDelegate: PledgeViewControllerMessageDisplaying?
-  private lazy var viewModel = self.makeViewModel()
+  private let viewModel: PledgePaymentMethodsViewModel
 
-  private func makeViewModel() -> PledgePaymentMethodsViewModel {
-    PledgePaymentMethodsViewModel(
-      paymentsFeature: AppModel.shared.paymentsFeature,
-      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      advertisingContext: {
-        guard let environment = AppEnvironment.current else { return nil }
-        environment.appTrackingTransparency.updateAdvertisingIdentifier()
-        guard let id = environment.appTrackingTransparency.advertisingIdentifier else { return nil }
-        return (id, environment.mainBundle.platformVersion)
-      }
+  static func instantiate(
+    composition: PledgeCheckoutComposition = AppModel.shared.pledgeCheckoutComposition
+  ) -> PledgePaymentMethodsViewController {
+    PledgePaymentMethodsViewController(composition: composition)
+  }
+
+  private init(composition: PledgeCheckoutComposition) {
+    self.viewModel = PledgePaymentMethodsViewModel(
+      paymentsFeature: composition.paymentsFeature,
+      responseDelay: composition.responseDelay,
+      advertisingContext: composition.advertisingContext
     )
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("PledgePaymentMethodsViewController must be created with a PledgeCheckoutComposition")
   }
   private let paymentSheet = PaymentSheetOperation()
 

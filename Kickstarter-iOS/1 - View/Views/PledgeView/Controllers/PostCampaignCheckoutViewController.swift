@@ -35,7 +35,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
   private lazy var titleLabel = UILabel(frame: .zero)
 
   private lazy var paymentMethodsViewController = {
-    PledgePaymentMethodsViewController.instantiate()
+    PledgePaymentMethodsViewController.instantiate(composition: self.composition)
       |> \.messageDisplayingDelegate .~ self
       |> \.delegate .~ self
   }()

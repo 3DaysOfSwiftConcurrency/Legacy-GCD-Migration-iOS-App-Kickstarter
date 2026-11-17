@@ -2182,3 +2182,13 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel and Manage Pledge coverage passes 58 tests. The bounded AppModel,
   Rewards, Manage Pledge and checkout selection passes 214 tests. Controller snapshots
   and the whole Library suite remain outside this checkpoint.
+
+## Pledge payment-method composition — 17 November 2026
+
+- PledgeCheckoutComposition now owns payment-method response timing and advertising
+  context alongside PaymentsFeature.
+- Both checkout controllers pass that same composition to
+  PledgePaymentMethodsViewController, which no longer resolves AppModel or AppEnvironment.
+- Focused AppModel, payment-method and checkout coverage passes 146 tests. The bounded
+  Rewards, Manage Pledge, payment-method and checkout selection passes 250 tests.
+  Controller snapshots and the whole Library suite remain outside this checkpoint.

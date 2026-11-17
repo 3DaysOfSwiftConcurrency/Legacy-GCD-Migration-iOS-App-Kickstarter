@@ -5419,3 +5419,23 @@ Controller snapshots and the whole Library suite remain unverified. The CFA gate
 restored individual AppModel feature lookups or AppEnvironment reads in the Manage Pledge
 controller. This is not full CFA compliance. Swift packages, target identifiers and
 existing history are unchanged. No push.
+
+### Pledge payment-method composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgeCheckoutComposition now owns payment-method response timing and advertising
+context alongside the shared PaymentsFeature. PledgeViewController and
+PostCampaignCheckoutViewController pass that same graph into their payment-method child,
+which no longer resolves AppModel or AppEnvironment independently.
+
+Focused AppModel, Pledge Payment Methods and checkout validation passed all 146 tests.
+The bounded Rewards, Manage Pledge, payment-method and checkout selection passed all 250
+tests. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-payment-methods-graph-focused.xcresult` and
+`/private/tmp/kickstarter-payment-methods-graph-bounded.xcresult`.
+
+Controller snapshots and the whole Library suite remain unverified. The CFA gate rejects
+restored PaymentsFeature or AppEnvironment lookup in PledgePaymentMethodsViewController.
+This is not full CFA compliance. Swift packages, target identifiers and existing history
+are unchanged. No push.
