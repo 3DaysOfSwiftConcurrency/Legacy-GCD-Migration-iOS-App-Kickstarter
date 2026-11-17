@@ -5,7 +5,11 @@ import XCTest
 @MainActor
 final class BetaToolsViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = BetaToolsViewModel()
+  private let vm = BetaToolsViewModel(
+    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+    serverEnvironment: { AppEnvironment.current.apiService.serverConfig.environment },
+    language: { AppEnvironment.current.language }
+  )
 
   func testInitialStateAndEnvironmentChange() {
     withEnvironment(apiService: MockService(serverConfig: ServerConfig.production), language: .en) {

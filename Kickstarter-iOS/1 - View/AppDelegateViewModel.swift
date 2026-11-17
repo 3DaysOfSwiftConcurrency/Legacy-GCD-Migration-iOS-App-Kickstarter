@@ -209,6 +209,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var verificationTask: Task<Void, Never>?
   private let authenticationFeature: AuthenticationFeature
   private let deepLinkRouter: DeepLinkRouter
+  private let serverConfig: () -> ServerConfigType
   private let discoveryFeature: DiscoveryFeature
   private let requestApplicationConfiguration: @MainActor () -> Task<Config, Error>
   private let devicePushRegistration: DevicePushRegistrationService
@@ -237,6 +238,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
 
   public init(
     deepLinkRouter: DeepLinkRouter,
+    serverConfig: @escaping () -> ServerConfigType,
     authenticationFeature: AuthenticationFeature,
     discoveryFeature: DiscoveryFeature,
     requestApplicationConfiguration: @escaping @MainActor () -> Task<Config, Error>,
@@ -249,6 +251,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelay = trackingDelay
     self.authenticationFeature = authenticationFeature
     self.deepLinkRouter = deepLinkRouter
+    self.serverConfig = serverConfig
     self.discoveryFeature = discoveryFeature
     self.requestApplicationConfiguration = requestApplicationConfiguration
     self.devicePushRegistration = devicePushRegistration
@@ -565,7 +568,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   public func didReceive(pushEnvelope: PushEnvelope) {
-    if let navigation = navigation(fromPushEnvelope: pushEnvelope) {
+    if let navigation = navigation(fromPushEnvelope: pushEnvelope, webBaseURL: self.serverConfig().webBaseUrl) {
       self.handleNavigation(navigation)
     }
   }
@@ -664,12 +667,12 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   }
 
   private func navigationMatch(_ url: URL) -> Navigation? {
-    let config = AppEnvironment.current.apiService.serverConfig
+    let config = self.serverConfig()
     return Navigation.match(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
   }
 
   private func deepLinkMatch(_ url: URL) -> Navigation? {
-    let config = AppEnvironment.current.apiService.serverConfig
+    let config = self.serverConfig()
     return Navigation.deepLinkMatch(url, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl)
   }
 
@@ -789,7 +792,7 @@ private func shouldOpenUrlInBrowser(_ url: URL, hasDeepLinkMatch: Bool) -> Bool 
 }
 
 @MainActor
-private func navigation(fromPushEnvelope envelope: PushEnvelope) -> Navigation? {
+private func navigation(fromPushEnvelope envelope: PushEnvelope, webBaseURL: URL) -> Navigation? {
   if let activity = envelope.activity {
     switch activity.category {
     case .backing:
@@ -833,7 +836,7 @@ private func navigation(fromPushEnvelope envelope: PushEnvelope) -> Navigation? 
 
   if let order = envelope.order {
     let path = order.pledgeManagerPath
-    let url = AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString + path
+    let url = webBaseURL.absoluteString + path
     return .project(.id(order.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
   }
 
@@ -847,7 +850,7 @@ private func navigation(fromPushEnvelope envelope: PushEnvelope) -> Navigation? 
 
   if let survey = envelope.survey {
     let path = survey.urls.web.survey
-    let url = AppEnvironment.current.apiService.serverConfig.webBaseUrl.absoluteString + path
+    let url = webBaseURL.absoluteString + path
     return .project(.id(survey.projectId), .pledgeManagerWebview(url), refInfo: RefInfo(.push))
   }
 

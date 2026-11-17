@@ -50,5 +50,7 @@ reject_matches 'DiscoveryFeature must receive its session lookup explicitly.' \
   'AppModel[.]shared|AppEnvironment[.]current[.]currentUser' "$discovery_feature"
 reject_matches 'Features must receive their application dependencies explicitly.' \
   'AppModel[.]shared' "$app_model/Features"
+reject_matches 'View models must receive API and current-user dependencies from composition.' \
+  'AppEnvironment[.]current[.](apiService|currentUser)([^[:alnum:]_]|$)' "$app_view/*ViewModel.swift"
 reject_matches 'Application lifecycle signals belong at the AppModel boundary.' \
   'AppLifecycleFeature|appLifecycleFeature' "$app_view" "$app_model"

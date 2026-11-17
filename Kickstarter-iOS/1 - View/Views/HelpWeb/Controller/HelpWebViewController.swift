@@ -4,7 +4,10 @@ import Prelude
 import UIKit
 
 internal final class HelpWebViewController: WebViewController {
-  fileprivate let viewModel = HelpWebViewModel()
+  fileprivate let viewModel = HelpWebViewModel(
+    webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
+    prepareRequest: { AppEnvironment.current.apiService.preparedRequest(forURL: $0) }
+  )
 
   @IBOutlet private var logoImageView: UIImageView!
 

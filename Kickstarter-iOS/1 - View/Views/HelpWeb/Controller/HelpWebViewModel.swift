@@ -8,8 +8,8 @@ internal final class HelpWebViewModel {
   private var helpType: HelpType?
 
   init(
-    webBaseURL: @escaping () -> URL = { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
-    prepareRequest: @escaping (URL) -> URLRequest = { AppEnvironment.current.apiService.preparedRequest(forURL: $0) }
+    webBaseURL: @escaping () -> URL,
+    prepareRequest: @escaping (URL) -> URLRequest
   ) {
     self.webBaseURL = webBaseURL
     self.prepareRequest = prepareRequest

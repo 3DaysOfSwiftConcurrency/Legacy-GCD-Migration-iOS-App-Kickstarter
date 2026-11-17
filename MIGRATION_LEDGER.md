@@ -3244,3 +3244,12 @@ Project card currency formatting now takes the session currency from the cell
 composition boundary and keeps project-provided currency ahead of that fallback.
 The focused main-cell, Similar Projects and Project Page suites passed 112 tests.
 `make check-cfa` now rejects direct `AppModel.shared` access throughout Features.
+
+### View-model API and session reads — Matthew Thomas
+
+Help Web receives request preparation and its base URL from its controller.
+Beta Tools receives its session, language and server environment explicitly.
+AppDelegate supplies server configuration to its handler for matching links
+and push destinations. The source check rejects direct API and current-user
+access in tracked view-model files. The focused simulator runs passed 15
+Beta Tools and router tests, plus 125 AppDelegate and Help Web tests.

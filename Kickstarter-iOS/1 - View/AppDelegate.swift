@@ -32,6 +32,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     )
     return AppDelegateViewModel(
       deepLinkRouter: router,
+      serverConfig: { AppEnvironment.current.apiService.serverConfig },
       authenticationFeature: model.authenticationFeature,
       discoveryFeature: model.discoveryFeature,
       requestApplicationConfiguration: { model.requestApplicationConfiguration() },

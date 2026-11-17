@@ -7,7 +7,10 @@ internal final class HelpWebViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
   func testWebRequestURLString() {
-    let vm = HelpWebViewModel()
+    let vm = HelpWebViewModel(
+      webBaseURL: { ServerConfig.production.webBaseUrl },
+      prepareRequest: { URLRequest(url: $0) }
+    )
     XCTAssertNil(vm.requestForViewDidLoad())
     let cases: [(HelpType, String)] = [
       (.cookie, "/cookies"), (.helpCenter, "/help"), (.howItWorks, "/about"),

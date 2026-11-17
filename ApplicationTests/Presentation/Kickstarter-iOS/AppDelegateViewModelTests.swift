@@ -129,6 +129,7 @@ final class AppDelegateViewModelTests: TestCase {
     )
     return AppDelegateViewModel(
       deepLinkRouter: self.deepLinkRouter,
+      serverConfig: { AppEnvironment.current.apiService.serverConfig },
       authenticationFeature: AuthenticationFeature(sessionFeature: session, makeProvider: {
         AsyncAuthenticationProvider(service: AppEnvironment.current.apiService)
       }),

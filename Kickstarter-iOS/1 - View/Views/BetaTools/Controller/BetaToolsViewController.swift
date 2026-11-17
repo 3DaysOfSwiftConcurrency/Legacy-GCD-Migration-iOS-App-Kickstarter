@@ -13,7 +13,11 @@ internal final class BetaToolsViewController: UITableViewController {
 
   private var betaToolsData: BetaToolsData?
   private let helpViewModel: HelpViewModel = HelpViewModel()
-  private let viewModel = BetaToolsViewModel()
+  private let viewModel = BetaToolsViewModel(
+    sessionFeature: AppModel.shared.sessionFeature,
+    serverEnvironment: { AppEnvironment.current.apiService.serverConfig.environment },
+    language: { AppEnvironment.current.language }
+  )
 
   internal static func instantiate() -> BetaToolsViewController {
     return BetaToolsViewController(style: .plain)
