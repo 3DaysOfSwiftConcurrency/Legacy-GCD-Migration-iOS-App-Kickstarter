@@ -21,9 +21,11 @@ Swift packages are excluded.
 - Device-token association with the current account belongs to SessionFeature.
   AppDelegate retains raw-token forwarding to Braze; AppModel forwards account
   registration to Session. The standalone device-registration service is removed.
-- ProjectMediaFeature owns video-feed availability and privately retains the
-  connectivity service. Search and Discovery receive that Feature explicitly;
-  Environment no longer exposes connectivity or starts the application graph.
+- ProjectMediaFeature owns video-feed availability through its composed
+  SettingsFeature and privately retains the connectivity service. Search and
+  Discovery receive ProjectMediaFeature explicitly; Environment no longer exposes
+  connectivity or starts the application graph, and AppModel no longer supplies a
+  global Statsig closure for this policy.
 - AppModel's stored-property boundary now consists of its singleton, concrete
   Features and the private launch guard. Configuration services are retained below
   SettingsFeature, which owns effective configuration reads, overrides, refresh
@@ -51,11 +53,10 @@ Swift packages are excluded.
   SettingsFeature. PledgeManagerWebViewModel asks that Feature for the result, and
   the global bypass helper is removed. Recognized Kickstarter and Stripe navigation
   retain their existing precedence over the fallback decision.
-- Next: remove the remaining composed global Statsig helper closures. Project
-  rich-text and video-feed Statsig
-  inputs are already composed into their Features but still use global helper
-  closures at composition. Bootstrap keychain reads must remain independent of
-  AppModel; do not route them through SettingsFeature.
+- Next: remove the remaining composed global Statsig helper closure for Project
+  rich-text. Its input is already composed into ProjectDetailsFeature but still
+  uses a global helper closure at composition. Bootstrap keychain reads must remain
+  independent of AppModel; do not route them through SettingsFeature.
 - Bootstrap/keychain flag reads intentionally remain independent of AppModel
   construction. Environment configuration persistence, whole-config DebugData
   precedence, cookie installation and SDK integration remain contracts to preserve

@@ -1,5 +1,6 @@
 @testable import Kickstarter_iOS
 import AVFoundation
+import Experimentation
 import Foundation
 @testable import KsApi
 
@@ -31,6 +32,31 @@ final class ProjectMediaFeatureTests: TestCase {
       }
     }
     XCTAssertEqual(provider.feedCount, 0, "Checking availability must not load the video feed")
+  }
+
+  func testVideoFeedAvailabilityUsesInjectedSettingsFeature() {
+    let sessionFeature = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) }
+    )
+    let injectedStatsigClient = MockStatsigWrapper()
+    injectedStatsigClient.features[.videoFeed] = true
+    let globalStatsigClient = MockStatsigWrapper()
+    globalStatsigClient.features[.videoFeed] = false
+    let settingsFeature = SettingsFeature(
+      sessionFeature: sessionFeature,
+      applicationSettings: .test(statsigClient: { injectedStatsigClient }),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    let feature = ProjectMediaFeature(
+      sessionFeature: sessionFeature,
+      settingsFeature: settingsFeature,
+      connectivity: ConnectivityService(state: ConnectivityState(.wifi)),
+      makeProvider: { ControlledMediaProvider() }
+    )
+
+    withEnvironment(statsigClient: globalStatsigClient) {
+      XCTAssertTrue(feature.isVideoFeedAvailable)
+    }
   }
 
   func testVideoFeedObservationReevaluatesConfigurationForEveryConnectivityEvent() {

@@ -4589,3 +4589,38 @@ PledgeManagerWebViewModel. Composed Statsig helper closures and the wider
 global/session audit remain. Keychain bootstrap remains deliberately independent of
 AppModel. This is not full CFA compliance. Swift packages, target identifiers and
 existing history are unchanged. No push.
+
+### Project Media reads video-feed policy through Settings — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProjectMediaFeature now receives the composed SettingsFeature and owns the complete
+video-feed availability rule: the effective Statsig video-feed setting must be true
+and connectivity must not be offline. AppModel no longer supplies a global
+`featureVideoFeedEnabled` closure, and that convenience helper is removed. Search and
+Discovery continue to ask ProjectMediaFeature for domain availability; their existing
+appearance, connectivity-observation and feed-loading behavior is unchanged.
+
+SettingsFeature exposes the effective Statsig decision using the preserved precedence
+of stored override, current injected client and false fallback. A direct Feature test
+provides an enabled injected client against a disabled global client, proving that the
+composed SettingsFeature wins. Test-only composition retains the existing compact
+media-test initializer while constructing an isolated SettingsFeature underneath it.
+
+The 36-test ProjectMediaFeature baseline passed. The recovered continuation bundle
+was terminally cancelled with no tests and was not counted. Two subsequent builds
+found missing explicit Experimentation imports in test support and the direct Feature
+test; both were corrected without changing packages. Final focused validation passed
+80 tests across Project Media, Settings and the remaining Statsig helper test. The
+bounded related AppModel, Search, Discovery, Project Page, video-feed, video and watch
+selection passed 276 tests. Both final runs had zero failures and skips on iPhone 17
+Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-project-media-statsig-focused-5.xcresult` and
+`/private/tmp/kickstarter-project-media-statsig-bounded.xcresult`.
+
+The CFA gate rejects restored global Statsig/video-feed wiring in ProjectMediaFeature
+and AppModel. Project rich-text remains the final known composed global Statsig helper
+closure for the next checkpoint; the wider global/session audit also remains. Keychain
+bootstrap remains deliberately independent of AppModel. This is not full CFA
+compliance. Swift packages, target identifiers and existing history are unchanged.
+No push.

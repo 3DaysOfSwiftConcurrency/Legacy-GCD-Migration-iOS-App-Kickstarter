@@ -26,12 +26,6 @@ public func featureProjectStoryRichTextEnabled() -> Bool {
   statsigFeatureEnabled(feature: .projectStoryRichText)
 }
 
-/// Returns whether the video feed feature is enabled for the current user.
-@MainActor
-public func featureVideoFeedEnabled() -> Bool {
-  statsigFeatureEnabled(feature: .videoFeed)
-}
-
 extension StatsigClientType {
   /* Returns all features the app knows about */
 

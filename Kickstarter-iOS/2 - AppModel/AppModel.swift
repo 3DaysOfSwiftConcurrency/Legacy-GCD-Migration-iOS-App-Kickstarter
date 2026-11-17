@@ -346,7 +346,8 @@ public final class AppModel {
       discussionFeature: discussionFeature,
       projectMediaFeature: ProjectMediaFeature(
         sessionFeature: sessionFeature,
-        connectivity: connectivity, isVideoFeedEnabled: featureVideoFeedEnabled,
+        settingsFeature: settingsFeature,
+        connectivity: connectivity,
         webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
         analytics: { AppEnvironment.current.ksrAnalytics },
         savePrompts: .live(),

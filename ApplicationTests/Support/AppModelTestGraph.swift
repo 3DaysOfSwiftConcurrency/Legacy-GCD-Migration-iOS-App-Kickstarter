@@ -1,6 +1,8 @@
 @testable import Kickstarter_iOS
+import Experimentation
 import Foundation
 @testable import KsApi
+import UIKit
 
 /// Isolated application composition; unrelated capabilities use inert mock services.
 @MainActor
@@ -108,7 +110,8 @@ extension SettingsFeature.ApplicationSettings {
     readConfiguration: @escaping @MainActor () -> Config? = { nil },
     currentCountryCode: @escaping @MainActor () -> String? = { nil },
     userDefaults: @escaping @MainActor () -> any KeyValueStoreType = { MockKeyValueStore() },
-    remoteClient: @escaping @MainActor () -> (any RemoteConfigClientType)? = { nil }
+    remoteClient: @escaping @MainActor () -> (any RemoteConfigClientType)? = { nil },
+    statsigClient: @escaping @MainActor () -> (any StatsigClientType)? = { nil }
   ) -> Self {
     Self(
       configuration: ApplicationConfigurationService(load: { throw CancellationError() }),
@@ -118,6 +121,7 @@ extension SettingsFeature.ApplicationSettings {
       saveConfigurationOverride: { _ in },
       userDefaults: userDefaults,
       remoteClient: remoteClient,
+      statsigClient: statsigClient,
       notificationCenter: NotificationCenter()
     )
   }
@@ -137,6 +141,41 @@ extension PledgeFeature {
         applicationSettings: .test(),
         makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
       ),
+      makeProvider: makeProvider
+    )
+  }
+}
+
+extension ProjectMediaFeature {
+  convenience init(
+    sessionFeature: SessionFeature,
+    connectivity: ConnectivityService = ConnectivityService(),
+    isVideoFeedEnabled: @escaping @MainActor () -> Bool = { false },
+    webBaseURL: @escaping @MainActor () -> URL = { ServerConfig.production.webBaseUrl },
+    analytics: @escaping @MainActor () -> KSRAnalytics? = { nil },
+    savePrompts: SavePrompts? = nil,
+    loadImage: (@MainActor (URL) async throws -> UIImage)? = nil,
+    preparePlayback: (@MainActor (URL, URL?) async throws -> PreparedProjectMedia)? = nil,
+    makeProvider: @escaping () -> any ProjectMediaProvider
+  ) {
+    let settingsFeature = SettingsFeature(
+      sessionFeature: sessionFeature,
+      applicationSettings: .test(statsigClient: {
+        let client = MockStatsigWrapper()
+        client.features[.videoFeed] = isVideoFeedEnabled()
+        return client
+      }),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+    self.init(
+      sessionFeature: sessionFeature,
+      settingsFeature: settingsFeature,
+      connectivity: connectivity,
+      webBaseURL: webBaseURL,
+      analytics: analytics,
+      savePrompts: savePrompts,
+      loadImage: loadImage,
+      preparePlayback: preparePlayback,
       makeProvider: makeProvider
     )
   }

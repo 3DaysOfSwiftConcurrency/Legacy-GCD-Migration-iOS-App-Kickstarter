@@ -33,10 +33,10 @@ public struct AsyncProjectMediaProvider: ProjectMediaProvider {
 @MainActor
 public final class ProjectMediaFeature {
   private let connectivity: ConnectivityService
-  private let isVideoFeedEnabled: @MainActor () -> Bool
+  private let settingsFeature: SettingsFeature
 
   public var isVideoFeedAvailable: Bool {
-    self.isVideoFeedEnabled() && self.connectivity.connectivity != .none
+    self.settingsFeature.isStatsigEnabled(.videoFeed) && self.connectivity.connectivity != .none
   }
 
   /// Consumers receive availability, not the network classification or flag rule.
@@ -443,8 +443,8 @@ public final class ProjectMediaFeature {
   public let sessionFeature: SessionFeature
   public init(
     sessionFeature: SessionFeature,
+    settingsFeature: SettingsFeature,
     connectivity: ConnectivityService = ConnectivityService(),
-    isVideoFeedEnabled: @escaping @MainActor () -> Bool = { false },
     webBaseURL: @escaping @MainActor () -> URL = { ServerConfig.production.webBaseUrl },
     analytics: @escaping @MainActor () -> KSRAnalytics? = { nil },
     savePrompts: SavePrompts? = nil,
@@ -453,7 +453,7 @@ public final class ProjectMediaFeature {
     makeProvider: @escaping () -> any ProjectMediaProvider
   ) {
     self.connectivity = connectivity
-    self.isVideoFeedEnabled = isVideoFeedEnabled
+    self.settingsFeature = settingsFeature
     self.loadImage = loadImage ?? { try await ProjectMediaPreparation.loadImage(url: $0) }
     self.preparePlayback = preparePlayback ?? { try await ProjectMediaPreparation.load(url: $0, thumbnailURL: $1) }
     self.sessionFeature = sessionFeature

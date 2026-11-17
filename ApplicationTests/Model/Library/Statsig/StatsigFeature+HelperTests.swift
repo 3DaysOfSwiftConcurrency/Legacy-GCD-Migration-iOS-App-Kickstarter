@@ -19,22 +19,4 @@ final class StatsigFeatureHelpersTests: TestCase {
       XCTAssertFalse(environmentClient.isFeatureEnabled(featureKey: .videoFeed))
     }
   }
-
-  func testFeatureIsFalse_whenStatsigFeatureOff() {
-    let mockStatsigClient = MockStatsigWrapper()
-    mockStatsigClient.features[.videoFeed] = false
-
-    withEnvironment(statsigClient: mockStatsigClient) {
-      XCTAssertFalse(featureVideoFeedEnabled())
-    }
-  }
-
-  func testFeatureIsTrue_whenStatsigFeatureOn() {
-    let mockStatsigClient = MockStatsigWrapper()
-    mockStatsigClient.features[.videoFeed] = true
-
-    withEnvironment(statsigClient: mockStatsigClient) {
-      XCTAssertTrue(featureVideoFeedEnabled())
-    }
-  }
 }

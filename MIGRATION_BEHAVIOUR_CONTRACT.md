@@ -96,12 +96,15 @@ Bootstrap keychain decisions remain outside this runtime Feature graph.
 
 Author: Matthew Thomas.
 
-ProjectMediaFeature decides whether the video feed is available from the injected
-feature flag and connectivity source. Search and Discovery ViewModels receive
+ProjectMediaFeature decides whether the video feed is available from its injected
+SettingsFeature and connectivity source. The effective Statsig decision preserves
+the existing precedence: a stored override (including explicit false), then the
+injected current Statsig client, then false. Search and Discovery ViewModels receive
 domain availability instead of reading global reachability and repeating the rule.
-AppModel.live constructs one native connectivity service retained privately by the
-media Feature. Environment no longer owns reachability or accesses AppModel to
-construct its defaults. Tests inject their own connectivity state directly.
+AppModel.live composes the same SettingsFeature and one native connectivity service,
+both retained privately by the media Feature. Environment no longer owns reachability
+or supplies this policy through a global helper closure. Tests inject their own
+settings and connectivity state directly.
 
 - Availability requires the flag and either Wi-Fi or cellular connectivity.
   Offline hides the banner. Checking availability does not fetch the video feed.

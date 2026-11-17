@@ -231,6 +231,9 @@ reject_matches 'Project Details receives experiment policy from composition.' \
 reject_matches 'Project Media and its watch view model receive environment dependencies from composition.' \
   'AppEnvironment[.]current' "$app_model/Features/ProjectMedia/ProjectMediaFeature.swift" \
   "$app_view/Views/ProjectPage/Views/WatchProjectViewModel.swift"
+reject_matches 'ProjectMediaFeature reads video-feed policy through SettingsFeature.' \
+  'featureVideoFeedEnabled|statsigFeatureEnabled|statsigClient|isVideoFeedEnabled' \
+  "$app_model/Features/ProjectMedia/ProjectMediaFeature.swift" "$app_model/AppModel.swift"
 reject_matches 'Video Feed receives analytics from composition.' \
   'AppEnvironment[.]current[.]ksrAnalytics' "$app_view/Views/VideoFeed/Controller/VideoFeedViewModel.swift"
 reject_matches 'Video Feed sharing receives its dependencies from the presenter.' \

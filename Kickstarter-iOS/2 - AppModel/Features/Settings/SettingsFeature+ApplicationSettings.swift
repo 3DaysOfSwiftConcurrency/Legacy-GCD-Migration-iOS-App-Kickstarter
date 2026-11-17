@@ -76,11 +76,12 @@ extension SettingsFeature {
   }
 
   public var statsigFlags: [(StatsigFeature, Bool)] {
-    let overrides = self.applicationSettings?.userDefaults().statsigFeatureFlags ?? [:]
-    let client = self.applicationSettings?.statsigClient()
-    return StatsigFeature.allCases.map {
-      ($0, overrides[$0.rawValue] ?? client?.checkGate(for: $0) ?? false)
-    }
+    StatsigFeature.allCases.map { ($0, self.isStatsigEnabled($0)) }
+  }
+
+  public func isStatsigEnabled(_ feature: StatsigFeature) -> Bool {
+    let override = self.applicationSettings?.userDefaults().statsigFeatureFlags[feature.rawValue]
+    return override ?? self.applicationSettings?.statsigClient()?.checkGate(for: feature) ?? false
   }
 
   public func setStatsigOverride(_ feature: StatsigFeature, enabled: Bool) {

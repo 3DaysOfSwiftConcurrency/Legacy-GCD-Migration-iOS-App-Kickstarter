@@ -19,7 +19,8 @@ internal final class DiscoveryPageViewModelTests: TestCase {
   )
   private lazy var projectMediaFeature = ProjectMediaFeature(
     sessionFeature: self.sessionFeature,
-    connectivity: ConnectivityService(state: self.reachability), isVideoFeedEnabled: featureVideoFeedEnabled,
+    connectivity: ConnectivityService(state: self.reachability),
+    isVideoFeedEnabled: { statsigFeatureEnabled(feature: .videoFeed) },
     makeProvider: { AsyncProjectMediaProvider(service: MockService()) }
   )
   fileprivate lazy var vm = DiscoveryPageViewModel(
