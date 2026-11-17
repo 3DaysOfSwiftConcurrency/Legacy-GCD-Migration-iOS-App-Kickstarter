@@ -6,7 +6,9 @@ import UIKit
 
 final class SelectCurrencyViewController: UIViewController, MessageBannerViewControllerPresenting {
   private let dataSource = SelectCurrencyDataSource()
-  private let viewModel = SelectCurrencyViewModel()
+  private let viewModel = SelectCurrencyViewModel(
+    settingsFeature: AppModel.shared.settingsFeature
+  )
 
   internal var messageBannerViewController: MessageBannerViewController?
   private var saveButtonView: LoadingBarButtonItemView!

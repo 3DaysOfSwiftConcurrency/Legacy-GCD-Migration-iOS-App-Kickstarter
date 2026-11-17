@@ -77,7 +77,9 @@ reject_matches 'Discussion view models must receive their dependencies explicitl
 reject_matches 'Recommendation view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/CuratedProjects/*ViewModel.swift" "$app_view/Views/ThanksProjects/*ViewModel.swift"
 reject_matches 'Settings view models must receive their dependencies explicitly.' \
-  'AppModel[.]shared' "$app_view/Views/Settings*/*ViewModel.swift"
+  'AppModel[.]shared' "$app_view/Views/Settings*/*ViewModel.swift" "$app_view/Views/SelectCurrency/*ViewModel.swift"
+reject_matches 'Two-factor authentication must receive Authentication explicitly.' \
+  'AppModel[.]shared' "$app_view/Views/TwoFactorAuthentication/*ViewModel.swift"
 reject_matches 'Project notification view models must receive Settings explicitly.' \
   'AppModel[.]shared' "$app_view/Views/ProjectNotifications/*ViewModel.swift"
 reject_matches 'Report Project view models must receive Project Reporting explicitly.' \

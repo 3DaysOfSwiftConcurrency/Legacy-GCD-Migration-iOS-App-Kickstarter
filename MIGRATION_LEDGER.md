@@ -3335,6 +3335,12 @@ pledge CTA view models receive a current-user lookup and Pledge respectively
 from their owning views. All 41 focused simulator tests passed, and the CFA
 source check guards all three view models.
 
+Select Currency and Two-Factor Authentication receive Settings and
+Authentication from their controllers. The focused model and feature suites
+passed 69 simulator tests. Five tracked view-model files still reference
+`AppModel.shared`: Onboarding, Pagination Example, Rich Text Example,
+Update Draft and Video Feed.
+
 The Pledged Projects hosting controller now supplies Pledge and Pledged
 Projects to the container and screen view models. SwiftUI retains the screen
 model with StateObject. The focused simulator runs passed seven feature and

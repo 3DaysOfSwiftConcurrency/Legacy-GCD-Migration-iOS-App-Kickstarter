@@ -22,8 +22,8 @@ public final class TwoFactorViewModel {
   private var loginVersion = UUID()
   private var resendVersion = UUID()
 
-  public init(authenticationFeature: AuthenticationFeature? = nil) {
-    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
+  public init(authenticationFeature: AuthenticationFeature) {
+    self.authenticationFeature = authenticationFeature
   }
   deinit { self.loginTask?.cancel(); self.resendTask?.cancel() }
 

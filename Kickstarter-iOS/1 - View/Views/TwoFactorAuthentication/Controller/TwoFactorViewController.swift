@@ -5,7 +5,9 @@ import Prelude
 import UIKit
 
 internal final class TwoFactorViewController: UIViewController {
-  fileprivate let viewModel: TwoFactorViewModel = TwoFactorViewModel()
+  fileprivate let viewModel: TwoFactorViewModel = TwoFactorViewModel(
+    authenticationFeature: AppModel.shared.authenticationFeature
+  )
 
   @IBOutlet fileprivate var codeTextField: UITextField!
   @IBOutlet fileprivate var formBackgroundView: UIView!
