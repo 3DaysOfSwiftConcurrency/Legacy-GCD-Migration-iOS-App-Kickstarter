@@ -5355,3 +5355,26 @@ Visual snapshots and the whole Library suite remain unverified. The CFA gate rej
 restoring individual AppModel feature lookups in ProjectPageViewController. This is not
 full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Pledge checkout feature graph — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes PledgeCheckoutComposition as the explicit graph for Pledge,
+Authentication, Payments and checkout analytics. PledgeViewController and
+PostCampaignCheckoutViewController construct their models from that graph instead of
+resolving each application dependency separately. Existing no-argument factory calls
+continue through the AppModel composition boundary and can now be replaced incrementally
+with explicit graphs.
+
+Focused AppModel, PledgeViewModel and PostCampaignCheckoutViewModel validation passed all
+110 tests. The bounded AppModel, Rewards, Reward Add-On Selection, Manage Pledge and
+checkout selection passed all 214 tests. Both runs had zero failures and skips on iPhone
+17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-pledge-checkout-graph-focused-2.xcresult` and
+`/private/tmp/kickstarter-pledge-checkout-graph-bounded.xcresult`.
+
+Controller visual snapshots and the whole Library suite remain unverified. The CFA gate
+rejects restored individual AppModel feature lookups or AppEnvironment reads in both
+checkout controllers. This is not full CFA compliance. Swift packages, target identifiers
+and existing history are unchanged. No push.

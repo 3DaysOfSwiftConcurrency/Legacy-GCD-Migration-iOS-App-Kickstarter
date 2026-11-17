@@ -2149,3 +2149,15 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel and Project Page coverage passes 72 tests. The bounded AppModel,
   Rewards, Manage Pledge and checkout selection passes 214 tests. Visual snapshots and
   the whole Library suite remain outside this checkpoint.
+
+## Pledge checkout feature graph — 17 November 2026
+
+- AppModel exposes one PledgeCheckoutComposition containing the exact Pledge,
+  Authentication and Payments feature instances plus the analytics provider owned by
+  application composition.
+- PledgeViewController and PostCampaignCheckoutViewController construct their models from
+  that graph. Their existing no-argument factories remain compatibility boundaries that
+  default to AppModel composition while allowing explicit injection.
+- Focused AppModel and checkout-model coverage passes 110 tests. The bounded AppModel,
+  Rewards, Manage Pledge and checkout selection passes 214 tests. Visual snapshots and
+  the whole Library suite remain outside this checkpoint.

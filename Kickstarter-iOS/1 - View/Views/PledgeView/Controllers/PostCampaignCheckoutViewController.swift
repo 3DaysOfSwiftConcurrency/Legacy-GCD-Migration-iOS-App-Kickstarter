@@ -88,15 +88,31 @@ final class PostCampaignCheckoutViewController: UIViewController,
 
   private var sessionStartedObserver: MainActorNotificationObservation?
 
-  private let pledgeFeature = AppModel.shared.pledgeFeature
-  private let paymentsFeature = AppModel.shared.paymentsFeature
-  private lazy var viewModel =
-    PostCampaignCheckoutViewModel(
-      pledgeFeature: self.pledgeFeature,
-      authenticationFeature: AppModel.shared.authenticationFeature,
-      paymentsFeature: self.paymentsFeature,
-      analytics: { AppEnvironment.current.ksrAnalytics }
+  private let composition: PledgeCheckoutComposition
+  private let viewModel: PostCampaignCheckoutViewModel
+  private var pledgeFeature: PledgeFeature { self.composition.pledgeFeature }
+  private var paymentsFeature: PaymentsFeature { self.composition.paymentsFeature }
+
+  static func instantiate(
+    composition: PledgeCheckoutComposition = AppModel.shared.pledgeCheckoutComposition
+  ) -> PostCampaignCheckoutViewController {
+    PostCampaignCheckoutViewController(composition: composition)
+  }
+
+  private init(composition: PledgeCheckoutComposition) {
+    self.composition = composition
+    self.viewModel = PostCampaignCheckoutViewModel(
+      pledgeFeature: composition.pledgeFeature,
+      authenticationFeature: composition.authenticationFeature,
+      paymentsFeature: composition.paymentsFeature,
+      analytics: composition.analytics
     )
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("PostCampaignCheckoutViewController must be created with a PledgeCheckoutComposition")
+  }
 
   // MARK: - Lifecycle
 

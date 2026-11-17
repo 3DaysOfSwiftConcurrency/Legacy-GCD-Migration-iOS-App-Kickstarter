@@ -389,6 +389,11 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(
       first.projectPageComposition.projectReportingFeature === first.projectReportingFeature
     )
+    XCTAssertTrue(first.pledgeCheckoutComposition.pledgeFeature === first.pledgeFeature)
+    XCTAssertTrue(
+      first.pledgeCheckoutComposition.authenticationFeature === first.authenticationFeature
+    )
+    XCTAssertTrue(first.pledgeCheckoutComposition.paymentsFeature === first.paymentsFeature)
     XCTAssertTrue(first.discoveryFeature.snapshot(for: .magic).projects.isEmpty)
     XCTAssertEqual(firstProvider.requestCount, 0)
     XCTAssertEqual(secondProvider.requestCount, 0)

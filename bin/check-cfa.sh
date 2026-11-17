@@ -295,6 +295,10 @@ reject_matches 'Checkout presentation policy belongs to PaymentsFeature composit
   "$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewController.swift" \
   "$app_view/Views/ManagePledge/Controllers/ManagePledgeViewController.swift" \
   "$app_view/Views/PaymentMethods/Controller/PaymentMethodSettingsViewController.swift"
+reject_matches 'Pledge checkout controllers receive one composed feature graph.' \
+  'AppModel[.]shared[.](pledgeFeature|authenticationFeature|paymentsFeature)|AppEnvironment[.]current' \
+  "$app_view/Views/PledgeView/Controllers/PledgeViewController.swift" \
+  "$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewController.swift"
 reject_matches 'Reward-received mutation policy belongs to PledgeFeature composition.' \
   'AppEnvironment[.]current|apiDelayInterval|trackRewardReceivedToggled' \
   "$app_view/Views/ManagePledge/Controllers/ManageViewPledgeRewardReceivedViewController.swift"

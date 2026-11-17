@@ -133,6 +133,25 @@ public struct ProjectPageComposition {
   }
 }
 
+public struct PledgeCheckoutComposition {
+  public let pledgeFeature: PledgeFeature
+  public let authenticationFeature: AuthenticationFeature
+  public let paymentsFeature: PaymentsFeature
+  public let analytics: () -> KSRAnalytics
+
+  public init(
+    pledgeFeature: PledgeFeature,
+    authenticationFeature: AuthenticationFeature,
+    paymentsFeature: PaymentsFeature,
+    analytics: @escaping () -> KSRAnalytics
+  ) {
+    self.pledgeFeature = pledgeFeature
+    self.authenticationFeature = authenticationFeature
+    self.paymentsFeature = paymentsFeature
+    self.analytics = analytics
+  }
+}
+
 @MainActor
 public final class AppModel {
   public static let shared = AppModel.live()
@@ -168,6 +187,15 @@ public final class AppModel {
       projectMediaFeature: self.projectMediaFeature,
       rewardsFeature: self.rewardsFeature,
       projectReportingFeature: self.projectReportingFeature
+    )
+  }
+
+  public var pledgeCheckoutComposition: PledgeCheckoutComposition {
+    PledgeCheckoutComposition(
+      pledgeFeature: self.pledgeFeature,
+      authenticationFeature: self.authenticationFeature,
+      paymentsFeature: self.paymentsFeature,
+      analytics: { AppEnvironment.current.ksrAnalytics }
     )
   }
 
