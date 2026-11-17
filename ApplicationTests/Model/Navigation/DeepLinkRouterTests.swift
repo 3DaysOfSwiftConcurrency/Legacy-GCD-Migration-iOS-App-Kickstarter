@@ -87,13 +87,13 @@ final class DeepLinkRouterTests: XCTestCase {
     let url = try XCTUnwrap(URL(string: "http://ksr.test/profile/verify_email?at=fixture"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
     XCTAssertTrue(actions.isEmpty)
     await self.settingsLinks.waitForOperations()
     XCTAssertEqual(actions, [.emailVerificationCompleted("Verified", true)])
 
     actions.removeAll()
-    XCTAssertTrue(self.feature.route(url: url, route: self.route, source: .braze) { actions.append($0) })
+    XCTAssertTrue(self.feature.route(url: url, route: self.route, source: .braze) { actions.append($0.action) })
     await self.settingsLinks.waitForOperations()
     XCTAssertTrue(actions.isEmpty)
   }
@@ -103,9 +103,9 @@ final class DeepLinkRouterTests: XCTestCase {
     let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
     await self.redirects.waitFor(1)
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
     XCTAssertTrue(actions.isEmpty)
 
     try self.redirects.finish(0, .success(destination))
@@ -119,7 +119,7 @@ final class DeepLinkRouterTests: XCTestCase {
     let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
     await self.redirects.waitFor(1)
     _ = try await self.feature.resolve(.tab(.discovery(nil)), route: self.route)
 
@@ -144,7 +144,7 @@ final class DeepLinkRouterTests: XCTestCase {
     let destination = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
     var actions: [DeepLinkRouter.Action] = []
 
-    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
+    XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0.action) })
     await self.redirects.waitFor(1)
     self.feature.sessionFeature.sessionChanged()
 
@@ -164,6 +164,46 @@ final class DeepLinkRouterTests: XCTestCase {
 
     guard case .discovery? = try await task.value else { return XCTFail("Expected Discovery") }
     XCTAssertEqual(self.discoverySleeps, [0.25])
+  }
+
+  func testNewLinkInvalidatesDeliveredActionBeforeItsReadCompletes() async throws {
+    let activity = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
+    let discovery = try XCTUnwrap(URL(string: "http://ksr.test/discover/categories/art"))
+    var earlier: DeepLinkRouter.Delivery?
+    var later: DeepLinkRouter.Delivery?
+    XCTAssertTrue(self.feature.route(url: activity, route: self.route) { earlier = $0 })
+    let delivery = try XCTUnwrap(earlier)
+    XCTAssertEqual(delivery.action, .selectActivity)
+
+    self.feature.route(url: activity, route: UUID()) { _ in }
+    XCTAssertTrue(delivery.isCurrent)
+
+    XCTAssertTrue(self.feature.route(url: discovery, route: self.route) { later = $0 })
+    XCTAssertFalse(delivery.isCurrent)
+    await self.provider.categoriesGate.waitFor(1)
+    XCTAssertNil(later)
+
+    try self.provider.categoriesGate.finish(0, .success(.template))
+    await self.feature.waitForOperations()
+    XCTAssertTrue(try XCTUnwrap(later).isCurrent)
+    XCTAssertFalse(delivery.isCurrent)
+  }
+
+  func testSessionReplacementAndReleaseInvalidateDeliveredActions() throws {
+    let activity = try XCTUnwrap(URL(string: "http://ksr.test/activity"))
+    var latest: DeepLinkRouter.Delivery?
+    XCTAssertTrue(self.feature.route(url: activity, route: self.route) { latest = $0 })
+    let beforeSessionChange = try XCTUnwrap(latest)
+    XCTAssertTrue(beforeSessionChange.isCurrent)
+
+    self.feature.sessionFeature.sessionChanged()
+    XCTAssertFalse(beforeSessionChange.isCurrent)
+
+    XCTAssertTrue(self.feature.route(url: activity, route: self.route) { latest = $0 })
+    let beforeRelease = try XCTUnwrap(latest)
+    XCTAssertTrue(beforeRelease.isCurrent)
+    self.feature.release(route: self.route)
+    XCTAssertFalse(beforeRelease.isCurrent)
   }
 
   func testConnectivitySharesNativeMonitorAndSurvivesSessionReset() async {

@@ -47,6 +47,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   private var standardTabBar: UITabBar?
   private var presentationTask: Task<Void, Never>?
   private var pendingPresentation: [PresentationUpdate] = []
+  private var navigationDelivery: DeepLinkRouter.Delivery?
 
   deinit {
     self.presentationTask?.cancel()
@@ -180,8 +181,16 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     }
   }
 
-  // Apply updates after UIKit finishes its current callback, in the order the ViewModel emitted them.
   private func enqueuePresentation(_ update: @escaping PresentationUpdate) {
+    if let delivery = self.navigationDelivery {
+      if delivery.isCurrent { update(self) }
+    } else {
+      self.schedulePresentation(update)
+    }
+  }
+
+  // Apply updates after UIKit finishes its current callback, in the order the ViewModel emitted them.
+  private func schedulePresentation(_ update: @escaping PresentationUpdate) {
     self.pendingPresentation.append(update)
     guard self.presentationTask == nil else { return }
     self.presentationTask = Task { [weak self] in
@@ -192,6 +201,19 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
         for update in updates { update(self) }
       }
       self.presentationTask = nil
+    }
+  }
+
+  func enqueueNavigation(
+    _ delivery: DeepLinkRouter.Delivery,
+    perform: @escaping @MainActor (RootTabBarViewController) -> Void
+  ) {
+    self.loadViewIfNeeded()
+    self.schedulePresentation { controller in
+      guard delivery.isCurrent else { return }
+      controller.navigationDelivery = delivery
+      defer { controller.navigationDelivery = nil }
+      perform(controller)
     }
   }
 

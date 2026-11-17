@@ -4096,3 +4096,27 @@ Visual transition parity remains unverified.
 AppDelegate still adds a separate dispatch before handing Activity,
 Search, and Discovery routes to Root Tabs. Audit those handoffs and
 how a newer link supersedes a pending tab action.
+
+### Deep-link delivery through Root Tabs — Matthew Thomas
+
+DeepLinkRouter carries the route revision and session through delivery.
+Root Tabs checks both before changing selection or opening a screen.
+AppDelegate hands the action directly to the root's presentation task.
+Replacing the route or releasing its owner invalidates a pending
+delivery. Settings writes retain their own completion lifetime.
+
+The real AppDelegate handoff test queues an Activity universal link
+in the floating layout and follows it with a Search shortcut. The
+shortcut selects Search and leaves Discovery's stack intact. Controlled
+resolver tests verify invalidation while a newer Discovery link is
+waiting for category data, and after session replacement or release.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 36 focused Root Tabs
+tests, 21 focused router tests, 123 routing and Pledged Projects
+regressions, and 59 Activity, Discovery, Profile and Session
+regressions. `make check-cfa` passed. Live system link delivery and
+visual transitions remain unverified.
+
+Project Page still defers related-project admission with an unowned
+main-queue callback. The presentation helper and the ViewModel also
+retain separate related-project state.

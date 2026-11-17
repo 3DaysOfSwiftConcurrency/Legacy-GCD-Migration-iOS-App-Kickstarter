@@ -26,6 +26,21 @@ public final class DeepLinkRouter {
     case showViewController(UINavigationController)
   }
 
+  @MainActor
+  struct Delivery {
+    let action: Action
+    private let validate: @MainActor () -> Bool
+
+    fileprivate init(_ action: Action, validate: @escaping @MainActor () -> Bool = { true }) {
+      self.action = action
+      self.validate = validate
+    }
+
+    var isCurrent: Bool { self.validate() }
+  }
+
+  typealias ActionHandler = @MainActor (Delivery) -> Void
+
   private struct URLMatch {
     let navigation: Navigation?
     let hasDeepLinkMatch: Bool
@@ -62,9 +77,10 @@ public final class DeepLinkRouter {
   @discardableResult
   func route(
     url: URL, route: UUID, source: URLSource = .application,
-    perform: @escaping @MainActor (Action) -> Void
+    perform: @escaping ActionHandler
   ) -> Bool {
     let match = Self.match(url, source: source, config: self.serverConfig())
+    let openInBrowser = match.shouldOpenInBrowser(url)
     if let navigation = match.navigation {
       if navigation == .emailClick {
         self.cancelPresentation(route: route)
@@ -72,21 +88,23 @@ public final class DeepLinkRouter {
           self.resolveEmailRedirect(url, route: route, perform: perform)
         }
       } else {
-        self.route(navigation, route: route, perform: perform)
+        self.route(navigation, route: route, browserFallback: openInBrowser ? url : nil, perform: perform)
         if source == .application, navigation == .profile(.verifyEmail),
            let token = accessTokenFromUrl(url) {
           self.settingsLinks.verifyEmail(token: token) { message, success in
-            perform(.emailVerificationCompleted(message, success))
+            perform(Delivery(.emailVerificationCompleted(message, success)))
           }
         }
       }
+    } else if openInBrowser {
+      self.release(route: route)
+      self.makeDelivery(for: route, perform: perform)(.openBrowser(url))
     }
-    if match.shouldOpenInBrowser(url) { perform(.openBrowser(url)) }
     return match.navigation != nil
   }
 
   func route(
-    userActivity: NSUserActivity, route: UUID, perform: @escaping @MainActor (Action) -> Void
+    userActivity: NSUserActivity, route: UUID, perform: @escaping ActionHandler
   ) -> Bool? {
     guard userActivity.activityType == NSUserActivityTypeBrowsingWeb else { return nil }
     guard let url = userActivity.webpageURL else { return false }
@@ -94,7 +112,7 @@ public final class DeepLinkRouter {
   }
 
   func routeLaunchShortcut(
-    _ item: Any?, route: UUID, perform: @escaping @MainActor (Action) -> Void
+    _ item: Any?, route: UUID, perform: @escaping ActionHandler
   ) -> Bool {
     if let shortcut = item as? UIApplicationShortcutItem {
       self.route(shortcut: shortcut, route: route, perform: perform)
@@ -102,46 +120,50 @@ public final class DeepLinkRouter {
     return item == nil
   }
 
-  func route(push envelope: PushEnvelope, route: UUID, perform: @escaping @MainActor (Action) -> Void) {
+  func route(push envelope: PushEnvelope, route: UUID, perform: @escaping ActionHandler) {
     if let navigation = navigation(fromPushEnvelope: envelope, webBaseURL: self.serverConfig().webBaseUrl) {
       self.route(navigation, route: route, perform: perform)
     }
   }
 
   func route(
-    shortcut item: UIApplicationShortcutItem, route: UUID, perform: @escaping @MainActor (Action) -> Void
+    shortcut item: UIApplicationShortcutItem, route: UUID, perform: @escaping ActionHandler
   ) {
     guard let shortcut = ShortcutItem(typeString: item.type) else { return }
     self.route(navigation(fromShortcutItem: shortcut), route: route, perform: perform)
   }
 
   private func route(
-    _ navigation: Navigation, route: UUID, perform: @escaping @MainActor (Action) -> Void
+    _ navigation: Navigation, route: UUID, browserFallback: URL? = nil, perform: @escaping ActionHandler
   ) {
-    switch navigation {
-    case let .settings(.notifications(name, enabled)):
-      self.settingsLinks.updateNotification(name: name, enabled: enabled) {
-        perform(.notificationSettingsUpdated)
-      }
-    case .tab(.activity): perform(.selectActivity)
-    case .tab(.search): perform(.selectSearch)
-    case .tab(.me): perform(.selectProfile)
-    case .tab(.login): perform(.showLogin(.generic))
-    case .project(_, .pledge(.manage), _, _) where self.sessionFeature.currentUser == nil:
-      perform(.showLogin(.erroredPledge))
-    default: break
-    }
-    self.presentDestination(navigation, route: route) { [weak self] destination in
+    self.cancelPresentation(route: route)
+    let request = self.requestDestination(navigation, route: route)
+    let deliver = self.makeDelivery(for: route, perform: perform)
+    self.presentDestination(request, route: route) { [weak self] destination in
       guard let self else { return }
       switch destination {
-      case let .discovery(params): perform(.showDiscovery(params))
-      case let .message(thread): perform(.showMessageThread(thread))
+      case let .discovery(params): deliver(.showDiscovery(params))
+      case let .message(thread): deliver(.showMessageThread(thread))
       case .survey, .project:
         if let controller = destination.makeViewController(isLoggedIn: self.sessionFeature.currentUser != nil) {
-          perform(.showViewController(controller))
+          deliver(.showViewController(controller))
         }
       }
     }
+    switch navigation {
+    case let .settings(.notifications(name, enabled)):
+      self.settingsLinks.updateNotification(name: name, enabled: enabled) {
+        perform(Delivery(.notificationSettingsUpdated))
+      }
+    case .tab(.activity): deliver(.selectActivity)
+    case .tab(.search): deliver(.selectSearch)
+    case .tab(.me): deliver(.selectProfile)
+    case .tab(.login): deliver(.showLogin(.generic))
+    case .project(_, .pledge(.manage), _, _) where self.sessionFeature.currentUser == nil:
+      deliver(.showLogin(.erroredPledge))
+    default: break
+    }
+    if let browserFallback { deliver(.openBrowser(browserFallback)) }
   }
 
   public let sessionFeature: SessionFeature
@@ -180,6 +202,7 @@ public final class DeepLinkRouter {
   private var destinations: [UUID: (navigation: Navigation, request: Pending<Destination?>)] = [:]
   private var destinationTasks: [UUID: Task<Destination?, Error>] = [:]
   private var presentations: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
+  private var deliveryIDs: [UUID: UUID] = [:]
   private var redirects: [UUID: (url: URL, session: Session, id: UUID)] = [:]
   private var redirectTasks: [UUID: Task<Void, Never>] = [:]
 
@@ -306,6 +329,7 @@ public final class DeepLinkRouter {
   }
 
   public func release(route: UUID) {
+    self.deliveryIDs[route] = nil
     self.cancelPresentation(route: route)
     self.destinations.removeValue(forKey: route)?.request.task.cancel()
     if let redirect = self.redirects.removeValue(forKey: route) {
@@ -315,7 +339,7 @@ public final class DeepLinkRouter {
   }
 
   private func resolveEmailRedirect(
-    _ url: URL, route: UUID, perform: @escaping @MainActor (Action) -> Void
+    _ url: URL, route: UUID, perform: @escaping ActionHandler
   ) {
     let session = self.session
     if let pending = self.redirects[route], pending.url == url, pending.session == session { return }
@@ -343,12 +367,10 @@ public final class DeepLinkRouter {
   }
 
   private func presentDestination(
-    _ navigation: Navigation, route: UUID,
+    _ request: Task<Destination?, Error>, route: UUID,
     onDestination: @escaping @MainActor (Destination) -> Void
   ) {
-    self.cancelPresentation(route: route)
     let session = self.session
-    let request = self.requestDestination(navigation, route: route)
     let id = UUID()
     let task = Task { [weak self] in
       defer {
@@ -368,8 +390,24 @@ public final class DeepLinkRouter {
     self.presentations.removeValue(forKey: route)?.task.cancel()
   }
 
+  private func makeDelivery(for route: UUID, perform: @escaping ActionHandler) -> @MainActor (Action) -> Void {
+    let id = UUID()
+    let session = self.session
+    self.deliveryIDs[route] = id
+    let validate: @MainActor () -> Bool = { [weak self] in
+      guard let self else { return false }
+      return self.deliveryIDs[route] == id && self.session == session
+    }
+    return { action in
+      guard validate() else { return }
+      perform(Delivery(action, validate: validate))
+    }
+  }
+
   public func reset() {
-    for route in Set(self.destinations.keys).union(self.presentations.keys).union(self.redirects.keys) {
+    let routes = Set(self.destinations.keys).union(self.presentations.keys)
+      .union(self.redirects.keys).union(self.deliveryIDs.keys)
+    for route in routes {
       self.release(route: route)
     }
   }

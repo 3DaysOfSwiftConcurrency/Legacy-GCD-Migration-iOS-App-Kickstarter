@@ -1239,7 +1239,8 @@ push debounce, Braze delivery, shortcut ordering/failure fallback, category matc
 and every existing deep-link controller stack. A resolved link is one operation:
 project, optional update and optional replies must belong to the same destination.
 A newer link (including a synchronous tab link), session change or delegate release
-invalidates old navigation. Equivalent pending destinations share work.
+invalidates old navigation, including a resolved action waiting for UIKit.
+Equivalent pending destinations share work.
 
 Root Tabs retains the selected destination when it exists in the new layout.
 Removing the selected Activity tab returns to Discovery. In the floating

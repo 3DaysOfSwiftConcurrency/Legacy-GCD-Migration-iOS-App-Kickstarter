@@ -861,6 +861,29 @@ final class RootViewModelTests: TestCase {
 final class RootTabsNavigationTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
+  func testSearchShortcutSupersedesQueuedFloatingActivityLink() async throws {
+    self.remoteConfigClient.features = [RemoteConfigFeature.floatingTabBar.rawValue: true]
+    let root = Storyboard.Main.instantiate(RootTabBarViewController.self)
+    let window = UIWindow()
+    window.rootViewController = root
+    let delegate = AppDelegate()
+    delegate.window = window
+
+    let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+    activity.webpageURL = try XCTUnwrap(URL(string: "https://www.kickstarter.com/activity"))
+    XCTAssertTrue(delegate.application(UIApplication.shared, continue: activity, restorationHandler: { _ in }))
+    delegate.application(UIApplication.shared, performActionFor: ShortcutItem.search.applicationShortcutItem) {
+      XCTAssertTrue($0)
+    }
+    await root.waitForPresentation()
+
+    let selected = try XCTUnwrap(root.selectedViewController as? UINavigationController)
+    XCTAssertTrue(selected.viewControllers.first is SearchViewController)
+    let discovery = try XCTUnwrap(root.viewControllers?.first as? UINavigationController)
+    XCTAssertEqual(discovery.viewControllers.count, 1)
+    XCTAssertTrue(discovery.topViewController is DiscoveryViewController)
+  }
+
   func testFloatingLayoutOpensActivityFromDiscoveryAndCanReturn() async throws {
     self.remoteConfigClient.features = [RemoteConfigFeature.floatingTabBar.rawValue: true]
     let root = Storyboard.Main.instantiate(RootTabBarViewController.self)

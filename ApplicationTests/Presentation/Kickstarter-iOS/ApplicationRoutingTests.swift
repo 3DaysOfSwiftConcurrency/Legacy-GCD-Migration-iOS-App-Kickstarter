@@ -218,8 +218,8 @@ final class ApplicationRoutingTests: TestCase {
     self.accountRefresh.onUpdateCurrentUser = { [weak self] in self?.updateCurrentUserInEnvironment.record($0) }
   }
 
-  private var navigationActionHandler: @MainActor (DeepLinkRouter.Action) -> Void {
-    { [weak self] action in self?.recordNavigationAction(action) }
+  private var navigationActionHandler: DeepLinkRouter.ActionHandler {
+    { [weak self] delivery in self?.recordNavigationAction(delivery.action) }
   }
 
   private func recordNavigationAction(_ action: DeepLinkRouter.Action) {

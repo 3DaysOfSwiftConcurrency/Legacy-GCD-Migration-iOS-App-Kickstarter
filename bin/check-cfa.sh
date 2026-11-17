@@ -42,6 +42,8 @@ reject_matches 'RootViewModel must receive its dependencies from the controller.
   'AppModel[.]shared|AppEnvironment[.]current|featureFloatingTabBarEnabled|profileFeature[.]sessionFeature' "$root_view_model"
 reject_matches 'Root Tabs owns and orders deferred UIKit presentation.' \
   'DispatchQueue[.]main' "$root_tabs"
+reject_matches 'AppDelegate hands tab links to Root Tabs with their route delivery.' \
+  'rootTabBarController[?][.]switchTo(Activities|Discovery|MessageThread|Search)' "$app_view/AppDelegate.swift"
 reject_matches 'The app delegate uses its composed owners directly.' \
   'AppDelegateViewModel' "$app_view" "$app_model"
 reject_matches 'Account refresh receives its dependencies from composition.' \

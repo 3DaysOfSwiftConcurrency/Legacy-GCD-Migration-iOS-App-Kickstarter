@@ -335,35 +335,47 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
   // MARK: - Functions
 
-  private var navigationActionHandler: @MainActor (DeepLinkRouter.Action) -> Void {
-    { [weak self] action in self?.performNavigationAction(action) }
+  private var navigationActionHandler: DeepLinkRouter.ActionHandler {
+    { [weak self] delivery in self?.performNavigationAction(delivery) }
   }
 
-  private func performNavigationAction(_ action: DeepLinkRouter.Action) {
-    switch action {
+  private func performNavigationAction(_ delivery: DeepLinkRouter.Delivery) {
+    guard delivery.isCurrent else { return }
+    switch delivery.action {
     case .selectActivity:
-      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToActivities() }
+      self.enqueueNavigation(delivery) { $0.switchToActivities() }
     case .selectSearch:
-      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToSearch() }
+      self.enqueueNavigation(delivery) { $0.switchToSearch() }
     case .selectProfile:
       break
     case let .showLogin(intent):
-      self.presentLogin(with: intent)
+      self.enqueueNavigation(delivery) { [weak self] root in
+        self?.presentLogin(with: intent, from: root)
+      }
     case let .showDiscovery(params):
-      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToDiscovery(params: params) }
+      self.enqueueNavigation(delivery) { $0.switchToDiscovery(params: params) }
     case let .showMessageThread(thread):
-      self.rootTabBarController?.switchToMessageThread(thread)
+      self.enqueueNavigation(delivery) { $0.switchToMessageThread(thread) }
     case let .showViewController(controller):
-      DispatchQueue.main.async { [weak self] in
-        self?.rootTabBarController?.dismiss(animated: true, completion: nil)
-        self?.rootTabBarController?.present(controller, animated: true, completion: nil)
+      self.enqueueNavigation(delivery) { root in
+        root.dismiss(animated: true, completion: nil)
+        root.present(controller, animated: true, completion: nil)
       }
     case let .openBrowser(url):
-      DispatchQueue.main.async { UIApplication.shared.open(url) }
+      UIApplication.shared.open(url)
     case .notificationSettingsUpdated:
       self.notificationSettingsUpdated()
     case let .emailVerificationCompleted(message, success):
       self.emailVerificationCompleted(message: message, success: success)
+    }
+  }
+
+  private func enqueueNavigation(
+    _ delivery: DeepLinkRouter.Delivery, perform: @escaping @MainActor (RootTabBarViewController) -> Void
+  ) {
+    self.rootTabBarController?.enqueueNavigation(delivery) { [weak self] root in
+      guard self?.rootTabBarController === root else { return }
+      perform(root)
     }
   }
 
@@ -407,17 +419,21 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
   private func presentLogin(with intent: LoginIntent) {
     DispatchQueue.main.async { [weak self] in
-      guard let root = self?.rootTabBarController else { return }
-      if let onboarding = root.presentedViewController as? UIHostingController<OnboardingView> {
-        onboarding.dismiss(animated: true)
-        AppModel.shared.onboardingFeature.recordCompletion()
-      }
-
-      let controller = LoginToutViewController.configuredWith(loginIntent: intent)
-      let navigation = UINavigationController(rootViewController: controller)
-      navigation.modalPresentationStyle = .formSheet
-      root.present(navigation, animated: true, completion: nil)
+      guard let self, let root = self.rootTabBarController else { return }
+      self.presentLogin(with: intent, from: root)
     }
+  }
+
+  private func presentLogin(with intent: LoginIntent, from root: RootTabBarViewController) {
+    if let onboarding = root.presentedViewController as? UIHostingController<OnboardingView> {
+      onboarding.dismiss(animated: true)
+      AppModel.shared.onboardingFeature.recordCompletion()
+    }
+
+    let controller = LoginToutViewController.configuredWith(loginIntent: intent)
+    let navigation = UINavigationController(rootViewController: controller)
+    navigation.modalPresentationStyle = .formSheet
+    root.present(navigation, animated: true, completion: nil)
   }
 
   private func appTrackingAuthorizationChanged(status: AppTrackingAuthorization) {
