@@ -279,6 +279,10 @@ reject_matches 'Project Page analytics belong to ProjectDetailsFeature compositi
   'AppEnvironment[.]current|ksrAnalytics|appTrackingTransparency|mainBundle[.]platformVersion' \
   "$app_view/Views/ProjectPage/Controller/ProjectPageViewController.swift" \
   "$app_view/Views/ProjectPage/Controller/ProjectPageViewModel.swift"
+reject_matches 'Project Page pledge CTA receives session and analytics through ProjectDetailsFeature.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Shared Views/PledgeCTAContainerView.swift" \
+  "$app_view/Shared Views/PledgeCTAContainerViewViewModel.swift"
 reject_matches 'Project Page receives one composed feature graph.' \
   'AppModel[.]shared[.](projectDetailsFeature|projectMediaFeature|rewardsFeature|projectReportingFeature)' \
   "$app_view/Views/ProjectPage/Controller/ProjectPageViewController.swift"

@@ -584,6 +584,11 @@ public final class AppModel {
               locationContext: .creatorDetailsMenu, typeContext: .confirm,
               targetUserId: $1
             )
+          },
+          pledgeCTATapped: {
+            AppEnvironment.current.ksrAnalytics.trackPledgeCTAButtonClicked(
+              stateType: $0, project: $1
+            )
           }
         ),
         projectViewContext: {

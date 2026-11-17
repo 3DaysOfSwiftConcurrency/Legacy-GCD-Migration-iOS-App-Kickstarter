@@ -2222,3 +2222,13 @@ safe for arbitrary concurrent environment mutation.
 - Focused Rewards, shipping-location and Rewards Collection coverage passes 48 tests.
   The bounded Rewards, Manage Pledge and checkout selection passes 283 tests. Visual
   rendering and the whole Library suite remain outside this checkpoint.
+
+## Project Page pledge-CTA ownership — 17 November 2026
+
+- ProjectDetailsFeature now supplies the current session user and owns the semantic
+  pledge-CTA analytics command used by Project Page.
+- PledgeCTAContainerView and its view model receive those capabilities from the owning
+  feature graph instead of resolving AppModel or AppEnvironment globals.
+- Focused ProjectDetailsFeature, pledge-CTA and Project Page coverage passes 118 tests.
+  The bounded AppModel and Project Page selection passes 126 tests. Visual rendering
+  and the whole Library suite remain outside this checkpoint.

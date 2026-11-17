@@ -95,13 +95,15 @@ final class PledgeCTAContainerView: UIView {
 
   weak var delegate: PledgeCTAContainerViewDelegate?
 
-  private let viewModel: PledgeCTAContainerViewViewModelType = PledgeCTAContainerViewViewModel(
-    currentUser: { AppModel.shared.sessionFeature.currentUser }
-  )
+  private let viewModel: PledgeCTAContainerViewViewModelType
 
   // MARK: - Lifecycle
 
-  override init(frame: CGRect) {
+  init(frame: CGRect, projectDetailsFeature: ProjectDetailsFeature) {
+    self.viewModel = PledgeCTAContainerViewViewModel(
+      currentUser: { projectDetailsFeature.currentUser },
+      trackPledgeCTATapped: { projectDetailsFeature.trackPledgeCTATapped(state: $0, project: $1) }
+    )
     super.init(frame: frame)
 
     self.configureSubviews()

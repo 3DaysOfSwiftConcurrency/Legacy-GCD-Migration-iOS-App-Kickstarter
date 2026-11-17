@@ -34,8 +34,9 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
 
   private var navigation: ProjectPageNavigation = ProjectPageNavigation()
 
-  private let pledgeCTAContainerView: PledgeCTAContainerView = {
-    PledgeCTAContainerView(frame: .zero) |> \.translatesAutoresizingMaskIntoConstraints .~ false
+  private lazy var pledgeCTAContainerView: PledgeCTAContainerView = {
+    PledgeCTAContainerView(frame: .zero, projectDetailsFeature: self.projectDetailsFeature)
+      |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
   private let projectNavigationSelectorView: ProjectNavigationSelectorView = {

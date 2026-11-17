@@ -5497,3 +5497,22 @@ Visual rendering and the whole Library suite remain unverified. The CFA gate rej
 restored AppModel or AppEnvironment access in PledgeShippingLocationViewController. This
 is not full CFA compliance. Swift packages, target identifiers and existing history are
 unchanged. No push.
+
+### Project Page pledge-CTA ownership — 17 November 2026
+
+Author: Matthew Thomas.
+
+ProjectDetailsFeature now exposes its current session user and a semantic pledge-CTA
+analytics command. Project Page passes that existing feature instance into
+PledgeCTAContainerView, whose view model no longer resolves AppModel or AppEnvironment.
+
+Focused ProjectDetailsFeature, pledge-CTA and Project Page validation passed all 118
+tests. The bounded AppModel and Project Page selection passed all 126 tests. Both runs
+had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-project-cta-feature-focused-2.xcresult` and
+`/private/tmp/kickstarter-project-cta-feature-bounded.xcresult`.
+
+Visual rendering and the whole Library suite remain unverified. The CFA gate rejects
+restored ambient application access in the pledge-CTA view and view model. This is not
+full CFA compliance. Swift packages, target identifiers and existing history are
+unchanged. No push.

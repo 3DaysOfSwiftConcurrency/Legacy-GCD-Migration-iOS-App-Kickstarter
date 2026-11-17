@@ -63,15 +63,18 @@ public final class ProjectDetailsFeature {
     let projectViewed: @MainActor (Project, RefTag?) -> Void
     let blockInitiated: @MainActor (Project, String) -> Void
     let blockConfirmed: @MainActor (Project, String) -> Void
+    let pledgeCTATapped: @MainActor (PledgeStateCTAType, Project) -> Void
 
     public init(
       projectViewed: @escaping @MainActor (Project, RefTag?) -> Void = { _, _ in },
       blockInitiated: @escaping @MainActor (Project, String) -> Void = { _, _ in },
-      blockConfirmed: @escaping @MainActor (Project, String) -> Void = { _, _ in }
+      blockConfirmed: @escaping @MainActor (Project, String) -> Void = { _, _ in },
+      pledgeCTATapped: @escaping @MainActor (PledgeStateCTAType, Project) -> Void = { _, _ in }
     ) {
       self.projectViewed = projectViewed
       self.blockInitiated = blockInitiated
       self.blockConfirmed = blockConfirmed
+      self.pledgeCTATapped = pledgeCTATapped
     }
   }
 
@@ -371,6 +374,12 @@ public final class ProjectDetailsFeature {
 
   public func trackBlockConfirmed(project: Project, targetUserID: String) {
     self.analytics.blockConfirmed(project, targetUserID)
+  }
+
+  public var currentUser: User? { self.sessionFeature.currentUser }
+
+  public func trackPledgeCTATapped(state: PledgeStateCTAType, project: Project) {
+    self.analytics.pledgeCTATapped(state, project)
   }
 
   public func snapshot(for route: UUID) -> Snapshot {

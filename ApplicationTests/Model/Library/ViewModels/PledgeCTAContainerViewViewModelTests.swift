@@ -9,8 +9,12 @@ import XCTest
 @MainActor
 internal final class PledgeCTAContainerViewViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  let vm = PledgeCTAContainerViewViewModel(
+  lazy var vm = PledgeCTAContainerViewViewModel(
     currentUser: { AppEnvironment.current.currentUser },
+    trackPledgeCTATapped: {
+      self.trackedPledgeCTAState.record($0)
+      self.trackedPledgeCTAProjectID.record($1.id)
+    },
     sleep: { try Task.checkCancellation() }
   )
 
@@ -25,6 +29,8 @@ internal final class PledgeCTAContainerViewViewModelTests: TestCase {
   let stackViewIsHidden = PledgeCTARecorder<Bool>()
   let subtitleText = PledgeCTARecorder<String>()
   let titleText = PledgeCTARecorder<String>()
+  let trackedPledgeCTAProjectID = PledgeCTARecorder<Int>()
+  let trackedPledgeCTAState = PledgeCTARecorder<PledgeStateCTAType>()
   let watchesLabelHidden = PledgeCTARecorder<Bool>()
   let watchesCountText = PledgeCTARecorder<String>()
 
@@ -375,7 +381,8 @@ internal final class PledgeCTAContainerViewViewModelTests: TestCase {
   }
 
   func testTrackingEvents_Pledge() {
-    let value = PledgeCTAContainerViewData.project(Project.template)
+    let project = Project.template
+    let value = PledgeCTAContainerViewData.project(project)
     self.vm.inputs.configureWith(value: value)
 
     self.notifyDelegateCTATapped.assertDidNotEmitValue()
@@ -384,11 +391,8 @@ internal final class PledgeCTAContainerViewViewModelTests: TestCase {
 
     self.notifyDelegateCTATapped.assertValueCount(1)
 
-    XCTAssertEqual(["CTA Clicked"], self.segmentTrackingClient.events)
-
-    let segmentTrackingClientProperties = self.segmentTrackingClient.properties.last
-
-    XCTAssertEqual("pledge_initiate", segmentTrackingClientProperties?["context_cta"] as? String)
+    self.trackedPledgeCTAState.assertValues([.pledge])
+    self.trackedPledgeCTAProjectID.assertValues([project.id])
   }
 
   func testPledgeCTA_PrelaunchGoesFromUnsavedToSavedViaNotification_Success() async {

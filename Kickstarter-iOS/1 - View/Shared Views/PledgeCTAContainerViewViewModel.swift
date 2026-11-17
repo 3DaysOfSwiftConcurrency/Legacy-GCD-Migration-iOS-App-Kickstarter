@@ -57,6 +57,7 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
   public var onEvent: ((PledgeCTAEvent) -> Void)?
   private let sleep: @MainActor () async throws -> Void
   private let currentUser: () -> User?
+  private let trackPledgeCTATapped: (PledgeStateCTAType, Project) -> Void
   private var savedProjectTask: Task<Void, Never>?
   private var latestProject: Project?
   private var pledgeState: PledgeStateCTAType?
@@ -65,10 +66,12 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
 
   public init(
     currentUser: @escaping () -> User?,
+    trackPledgeCTATapped: @escaping (PledgeStateCTAType, Project) -> Void = { _, _ in },
     sleep: @escaping @MainActor () async throws -> Void = {
     try await Task.sleep(for: .milliseconds(100))
   }) {
     self.currentUser = currentUser
+    self.trackPledgeCTATapped = trackPledgeCTATapped
     self.sleep = sleep
   }
 
@@ -99,7 +102,7 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
     guard let state = self.pledgeState else { return }
     self.onEvent?(.tapped(state))
     if let project = self.latestProject {
-      AppEnvironment.current.ksrAnalytics.trackPledgeCTAButtonClicked(stateType: state, project: project)
+      self.trackPledgeCTATapped(state, project)
     }
   }
 
