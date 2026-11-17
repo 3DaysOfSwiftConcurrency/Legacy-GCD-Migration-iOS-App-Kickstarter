@@ -115,6 +115,9 @@ Swift packages are excluded.
 - HelpFeature now owns authenticated help-destination request construction. The Help
   web controller receives that AppModel-owned Feature and its view model retains only
   the selected destination needed by the screen.
+- Manage Pledge status presentation now receives its web-host policy from the
+  controller's composed PledgeFeature. The reusable view no longer reaches through
+  AppModel to an unrelated Project Details owner.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

@@ -5112,3 +5112,23 @@ Live help navigation, authenticated cookie behavior, visual rendering and the wh
 Library and Presentation suites remain unverified. The CFA gate rejects restored global
 service composition in Help Web presentation. This is not full CFA compliance. Swift
 packages, target identifiers and existing history are unchanged. No push.
+
+### Pledge status web-host composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+PledgeFeature now exposes the web host already provided by its platform. The Manage
+Pledge summary controller supplies that host to PledgeStatusLabelView, whose view model
+remains correctly owned by the view. The reusable view no longer reaches through
+AppModel.shared to ProjectDetailsFeature for unrelated application composition.
+
+Focused PledgeFeature, status-label and summary validation passed all 80 tests. The
+bounded AppModel and Manage Pledge selection passed all 143 tests. Both runs had zero
+failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-pledge-status-composition-focused.xcresult` and
+`/private/tmp/kickstarter-pledge-status-composition-bounded.xcresult`.
+
+Live backing-details navigation, visual rendering and the whole Library suite remain
+unverified. The CFA gate rejects restored AppModel/environment access in the reusable
+status view. This is not full CFA compliance. Swift packages, target identifiers and
+existing history are unchanged. No push.

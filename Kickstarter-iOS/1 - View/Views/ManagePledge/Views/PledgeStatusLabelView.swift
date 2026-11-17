@@ -12,13 +12,12 @@ final class PledgeStatusLabelView: UIView {
   private lazy var textView = { UITextView(frame: .zero) }()
   private lazy var badgeView = { BadgeView(frame: .zero) }()
 
-  private let viewModel = PledgeStatusLabelViewModel(webBaseURL: {
-    AppModel.shared.projectDetailsFeature.webBaseURL
-  })
+  private let viewModel: PledgeStatusLabelViewModel
 
   // MARK: - Lifecycle
 
-  override init(frame: CGRect) {
+  init(frame: CGRect, webBaseURL: @escaping @MainActor () -> URL) {
+    self.viewModel = PledgeStatusLabelViewModel(webBaseURL: webBaseURL)
     super.init(frame: frame)
 
     self.configureSubviews()

@@ -146,6 +146,7 @@ public final class PledgeFeature {
 
   public func preparedWebRequest(from request: URLRequest) -> URLRequest { self.platform.prepareWebRequest(request) }
   public func isPreparedWebRequest(_ request: URLRequest) -> Bool { self.platform.isPreparedWebRequest(request) }
+  public var webBaseURL: URL { self.platform.serverConfig().webBaseUrl }
   public func isKickstarterWebRequest(_ request: URLRequest) -> Bool {
     request.url?.host() == self.platform.serverConfig().webBaseUrl.host()
   }

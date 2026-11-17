@@ -240,6 +240,9 @@ reject_matches 'Help web requests belong to the composed HelpFeature.' \
   'AppEnvironment[.]current|apiService[.]preparedRequest|serverConfig[.]webBaseUrl' \
   "$app_view/Views/HelpWeb/Controller/HelpWebViewController.swift" \
   "$app_view/Views/HelpWeb/Controller/HelpWebViewModel.swift"
+reject_matches 'Pledge status presentation receives web policy from its owning composition.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/ManagePledge/Views/PledgeStatusLabelView.swift"
 reject_matches 'Activity receives platform dependencies from AppModel composition.' \
   'AppEnvironment[.]current' "$app_model/Features/Activity/ActivityFeature.swift"
 reject_matches 'OAuth authorization receives server policy from Authentication composition.' \

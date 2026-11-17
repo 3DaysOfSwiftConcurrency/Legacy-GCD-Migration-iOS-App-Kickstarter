@@ -2018,3 +2018,14 @@ safe for arbitrary concurrent environment mutation.
 - Cookie, Help Center, How It Works, Privacy and Terms paths are unchanged. Focused
   AppModel and Help presentation tests pass; live web loading and visual rendering
   remain outside this checkpoint.
+
+## Pledge status web-host composition — 17 November 2026
+
+- PledgeFeature exposes the web host already supplied through its platform. The Manage
+  Pledge summary controller passes that value into PledgeStatusLabelView's legitimate
+  screen-specific view model.
+- PledgeStatusLabelView no longer resolves AppModel.shared or borrows Project Details
+  composition. Existing pledge-state copy, badge visibility and backing-details links
+  are unchanged.
+- Focused status, summary and Pledge Feature tests and the bounded Manage Pledge/AppModel
+  selection pass. Live navigation and visual rendering remain outside this checkpoint.

@@ -12,6 +12,8 @@ private enum Layout {
 final class ManagePledgeSummaryViewController: UIViewController {
   // MARK: - Properties
 
+  private let pledgeFeature = AppModel.shared.pledgeFeature
+
   private lazy var backerInfoContainerStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var backerInfoStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var backerNameLabel: UILabel = { UILabel(frame: .zero) }()
@@ -23,7 +25,7 @@ final class ManagePledgeSummaryViewController: UIViewController {
   }()
 
   private lazy var pledgeStatusLabelView: PledgeStatusLabelView = {
-    PledgeStatusLabelView(frame: .zero)
+    PledgeStatusLabelView(frame: .zero, webBaseURL: { [pledgeFeature] in pledgeFeature.webBaseURL })
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
@@ -40,9 +42,7 @@ final class ManagePledgeSummaryViewController: UIViewController {
   private lazy var totalAmountStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var totalLabel: UILabel = { UILabel(frame: .zero) }()
 
-  private let viewModel = ManagePledgeSummaryViewModel(
-    pledgeFeature: AppModel.shared.pledgeFeature
-  )
+  private lazy var viewModel = ManagePledgeSummaryViewModel(pledgeFeature: self.pledgeFeature)
 
   // MARK: - Lifecycle
 
