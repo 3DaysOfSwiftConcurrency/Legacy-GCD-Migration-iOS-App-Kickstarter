@@ -10,8 +10,8 @@ public final class ProjectNotificationsViewModel {
   private let settingsFeature: SettingsFeature
   @ObservationIgnored private var loadingTask: Task<Void, Never>?
 
-  public init(settingsFeature: SettingsFeature? = nil) {
-    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
+  public init(settingsFeature: SettingsFeature) {
+    self.settingsFeature = settingsFeature
   }
 
   public func viewDidLoad() {

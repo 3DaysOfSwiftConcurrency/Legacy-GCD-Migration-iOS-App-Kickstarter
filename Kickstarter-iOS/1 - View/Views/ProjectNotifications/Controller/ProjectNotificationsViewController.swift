@@ -5,7 +5,9 @@ import Prelude
 import UIKit
 
 internal final class ProjectNotificationsViewController: UITableViewController {
-  fileprivate let viewModel = ProjectNotificationsViewModel()
+  fileprivate let viewModel = ProjectNotificationsViewModel(
+    settingsFeature: AppModel.shared.settingsFeature
+  )
   fileprivate let dataSource = ProjectNotificationsDataSource()
 
   internal static func instantiate() -> ProjectNotificationsViewController {

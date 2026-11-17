@@ -14,11 +14,11 @@ public final class ProjectNotificationCellViewModel {
   private var revision = UUID()
   private var lastSwitch: Bool?
 
-  public init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { delay in
+  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { delay in
     if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
     else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
   }) {
-    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature
     self.sleep = sleep
   }
 

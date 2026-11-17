@@ -71,6 +71,8 @@ reject_matches 'Recommendation view models must receive their dependencies expli
   'AppModel[.]shared' "$app_view/Views/CuratedProjects/*ViewModel.swift" "$app_view/Views/ThanksProjects/*ViewModel.swift"
 reject_matches 'Settings view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/Settings*/*ViewModel.swift"
+reject_matches 'Project notification view models must receive Settings explicitly.' \
+  'AppModel[.]shared' "$app_view/Views/ProjectNotifications/*ViewModel.swift"
 reject_matches 'Search view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/Search/*ViewModel.swift"
 reject_matches 'Messaging view models must receive their dependencies explicitly.' \
