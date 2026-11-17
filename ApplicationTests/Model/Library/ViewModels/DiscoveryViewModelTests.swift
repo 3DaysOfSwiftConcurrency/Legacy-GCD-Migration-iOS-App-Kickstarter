@@ -13,7 +13,7 @@ internal final class DiscoveryViewModelTests: TestCase {
 
   fileprivate lazy var vm = DiscoveryViewModel(
     discoveryFeature: DiscoveryFeature(
-      provider: AsyncDiscoveryProvider(),
+      provider: AsyncDiscoveryProvider(service: MockService()),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     ),
     deferInitial: { [weak self] action in self?.deferred.append(action) }

@@ -106,6 +106,9 @@ Swift packages are excluded.
 - PledgeFeature now also owns Manage Pledge page-view analytics. The controller no
   longer reads AppEnvironment; its iPad modal decision remains local UIKit
   presentation policy and uses the current device idiom directly.
+- DiscoveryFeature now receives its transport, local/cloud stores, category loader,
+  build/server metadata and response timing from AppModel composition. Its provider
+  and state owner no longer resolve dependencies through AppEnvironment.
 - Next: resume the wider in-scope global/session ownership scan now that the known
   composed Statsig closures are removed. Classify each remaining global helper by
   actual owner and behavior before changing it; keep SDK/bootstrap integration and

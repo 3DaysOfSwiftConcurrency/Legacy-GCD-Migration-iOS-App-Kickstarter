@@ -51,7 +51,14 @@ internal final class DiscoveryNavigationHeaderViewModelTests: TestCase {
     try await super.setUp()
     self.vm = DiscoveryNavigationHeaderViewModel(
       discoveryFeature: DiscoveryFeature(
-        provider: AsyncDiscoveryProvider(),
+        provider: EnvironmentDiscoveryProvider(),
+        localStore: { AppEnvironment.current.userDefaults },
+        cloudStore: { AppEnvironment.current.ubiquitousStore },
+        serverEnvironment: { AppEnvironment.current.apiService.serverConfig.environment },
+        isDebugBuild: {
+          let bundle = AppEnvironment.current.mainBundle
+          return bundle.isAlpha || bundle.isBeta || bundle.isDebug
+        },
         sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
       ),
       scheduleDismissal: { [weak self] action in

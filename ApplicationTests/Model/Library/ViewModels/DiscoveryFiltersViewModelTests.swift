@@ -54,7 +54,10 @@ internal final class DiscoveryFiltersViewModelTests: TestCase {
   private lazy var vm: DiscoveryFiltersViewModel = {
     let vm = DiscoveryFiltersViewModel(
       discoveryFeature: DiscoveryFeature(
-        provider: AsyncDiscoveryProvider(),
+        provider: EnvironmentDiscoveryProvider(),
+        loadCategories: { try await AppEnvironment.current.apiService.fetchSearchCategories() },
+        localStore: { AppEnvironment.current.userDefaults },
+        cloudStore: { AppEnvironment.current.ubiquitousStore },
         sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
       )
     )

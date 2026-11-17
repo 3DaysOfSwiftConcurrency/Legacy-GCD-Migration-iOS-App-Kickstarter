@@ -1981,3 +1981,16 @@ safe for arbitrary concurrent environment mutation.
 - Controlled Feature and view-model coverage proves the composed tracking path and
   preserves the existing page-view event. Live analytics delivery, visual rendering
   and the whole Library suite remain outside this checkpoint.
+
+## Discovery application dependency composition — 17 November 2026
+
+- AppModel supplies DiscoveryFeature's authenticated service, category loader,
+  local and ubiquitous preference stores, server/build metadata and response timing.
+  AsyncDiscoveryProvider retains the supplied service rather than resolving a global.
+- Favorite categories still read both stores and toggle each independently. Tip
+  claiming still marks both stores; personalization, onboarding-category and activity
+  sample preferences retain their existing local-store behavior.
+- Feed request identity, pagination, cancellation, session replacement and delayed
+  response rejection are unchanged. Controlled coverage verifies direct service,
+  store and metadata composition; live discovery data and visual behavior remain
+  outside this checkpoint.

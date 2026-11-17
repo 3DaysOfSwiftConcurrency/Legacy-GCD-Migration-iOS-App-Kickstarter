@@ -291,7 +291,17 @@ public final class AppModel {
       makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }
     )
     let discoveryFeature = DiscoveryFeature(
-      provider: AsyncDiscoveryProvider(), sessionFeature: sessionFeature
+      provider: AsyncDiscoveryProvider(service: AppEnvironment.current.apiService),
+      loadCategories: { try await AppEnvironment.current.apiService.fetchSearchCategories() },
+      localStore: { AppEnvironment.current.userDefaults },
+      cloudStore: { AppEnvironment.current.ubiquitousStore },
+      serverEnvironment: { AppEnvironment.current.apiService.serverConfig.environment },
+      isDebugBuild: {
+        let bundle = AppEnvironment.current.mainBundle
+        return bundle.isAlpha || bundle.isBeta || bundle.isDebug
+      },
+      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      sessionFeature: sessionFeature
     )
     let onboarding = OnboardingFeature.live()
     return AppModel(

@@ -12,30 +12,28 @@ public protocol DiscoveryProvider {
 /// Uses the existing authenticated service and its native async URLSession transport.
 @MainActor
 public struct AsyncDiscoveryProvider: DiscoveryProvider {
-  public init() {}
+  private let service: any ServiceType
+
+  public init(service: any ServiceType) { self.service = service }
 
   public func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
-    let service = AppEnvironment.current.apiService
-    if let cursor { return try await service.discoveryPage(paginationURL: cursor) }
-    return try await service.discoveryPage(params: parameters)
+    if let cursor { return try await self.service.discoveryPage(paginationURL: cursor) }
+    return try await self.service.discoveryPage(params: parameters)
   }
 
   public func activitySample() async throws -> ActivityEnvelope? {
-    try await AppEnvironment.current.apiService.discoveryActivitySample()
+    try await self.service.discoveryActivitySample()
   }
 }
+
+enum DiscoveryCompositionError: Error { case missingCategoryLoader }
 
 /// One Explore owner, with independent request identities for its four retained feeds.
 /// Main-actor updates notify the existing UIKit presentation of changes.
 @MainActor @Observable
 public final class DiscoveryFeature {
-  public var serverEnvironment: EnvironmentType {
-    AppEnvironment.current.apiService.serverConfig.environment
-  }
-  public var isDebugBuild: Bool {
-    guard let environment = AppEnvironment.current else { return false }
-    return environment.mainBundle.isAlpha || environment.mainBundle.isBeta || environment.mainBundle.isDebug
-  }
+  public var serverEnvironment: EnvironmentType { self.resolveServerEnvironment() }
+  public var isDebugBuild: Bool { self.resolveIsDebugBuild() }
   public struct PageSnapshot {
     public fileprivate(set) var projects: [Project] = []
     public fileprivate(set) var parameters: DiscoveryParams?
@@ -62,6 +60,11 @@ public final class DiscoveryFeature {
   private var recommendationGeneration = 0
   private let provider: any DiscoveryProvider
   private let loadCategories: @MainActor () async throws -> RootCategoriesEnvelope
+  private let resolveLocalStore: (@MainActor () -> any KeyValueStoreType)?
+  private let resolveCloudStore: (@MainActor () -> any KeyValueStoreType)?
+  private let resolveServerEnvironment: @MainActor () -> EnvironmentType
+  private let resolveIsDebugBuild: @MainActor () -> Bool
+  private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private let sessionFeature: SessionFeature
   internal enum Update {
@@ -81,15 +84,13 @@ public final class DiscoveryFeature {
   public private(set) var selectedParameters: DiscoveryParams?
 
   public func isFavoriteCategory(_ id: Int) -> Bool {
-    let environment = AppEnvironment.current
-    return environment?.ubiquitousStore.favoriteCategoryIds.contains(id) == true ||
-      environment?.userDefaults.favoriteCategoryIds.contains(id) == true
+    self.resolveCloudStore?().favoriteCategoryIds.contains(id) == true ||
+      self.resolveLocalStore?().favoriteCategoryIds.contains(id) == true
   }
 
   public func toggleFavoriteCategory(_ id: Int) {
-    guard let environment = AppEnvironment.current else { return }
     // Preserve the legacy toggle independently in each store, even if they differ.
-    for store in [environment.ubiquitousStore, environment.userDefaults] {
+    for store in [self.resolveCloudStore?(), self.resolveLocalStore?()].compactMap({ $0 }) {
       var ids = store.favoriteCategoryIds
       if let index = ids.firstIndex(of: id) {
         ids.remove(at: index)
@@ -101,25 +102,25 @@ public final class DiscoveryFeature {
   }
 
   public func claimFavoriteCategoryTip() -> Bool {
-    guard let environment = AppEnvironment.current,
-          !environment.ubiquitousStore.hasSeenFavoriteCategoryAlert ||
-          !environment.userDefaults.hasSeenFavoriteCategoryAlert else { return false }
-    environment.ubiquitousStore.hasSeenFavoriteCategoryAlert = true
-    environment.userDefaults.hasSeenFavoriteCategoryAlert = true
+    guard let cloudStore = self.resolveCloudStore?(), let localStore = self.resolveLocalStore?(),
+          !cloudStore.hasSeenFavoriteCategoryAlert ||
+          !localStore.hasSeenFavoriteCategoryAlert else { return false }
+    cloudStore.hasSeenFavoriteCategoryAlert = true
+    localStore.hasSeenFavoriteCategoryAlert = true
     return true
   }
 
   public func dismissPersonalizationCard() {
-    AppEnvironment.current.userDefaults.hasDismissedPersonalizationCard = true
+    self.resolveLocalStore?().hasDismissedPersonalizationCard = true
   }
 
   public func cachedOnboardingCategories() -> [KsApi.Category] {
-    guard let data = AppEnvironment.current.userDefaults.onboardingCategories else { return [] }
+    guard let data = self.resolveLocalStore?().onboardingCategories else { return [] }
     return (try? JSONDecoder().decode([KsApi.Category].self, from: data)) ?? []
   }
 
   public func consumeUnseenActivitySample(_ activities: [Activity]) -> [Activity] {
-    let store = AppEnvironment.current.userDefaults
+    guard let store = self.resolveLocalStore?() else { return activities }
     let lastSeenID = store.lastSeenActivitySampleId
     let unseenActivities = activities.filter { $0.id != lastSeenID }
     if let last = unseenActivities.last {
@@ -271,9 +272,12 @@ public final class DiscoveryFeature {
 
   public init(
     provider: any DiscoveryProvider,
-    loadCategories: @escaping @MainActor () async throws -> RootCategoriesEnvelope = {
-      try await AppEnvironment.current.apiService.fetchSearchCategories()
-    },
+    loadCategories: (@MainActor () async throws -> RootCategoriesEnvelope)? = nil,
+    localStore: (@MainActor () -> any KeyValueStoreType)? = nil,
+    cloudStore: (@MainActor () -> any KeyValueStoreType)? = nil,
+    serverEnvironment: @escaping @MainActor () -> EnvironmentType = { .production },
+    isDebugBuild: @escaping @MainActor () -> Bool = { false },
+    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -282,7 +286,12 @@ public final class DiscoveryFeature {
     sessionFeature: SessionFeature
   ) {
     self.provider = provider
-    self.loadCategories = loadCategories
+    self.loadCategories = loadCategories ?? { throw DiscoveryCompositionError.missingCategoryLoader }
+    self.resolveLocalStore = localStore
+    self.resolveCloudStore = cloudStore
+    self.resolveServerEnvironment = serverEnvironment
+    self.resolveIsDebugBuild = isDebugBuild
+    self.responseDelaySeconds = responseDelaySeconds
     self.sleep = sleep
     self.sessionFeature = sessionFeature
   }
@@ -350,7 +359,7 @@ public final class DiscoveryFeature {
     let id = UUID()
     let session = self.sessionFeature
     let requestedUserID = session.currentUser?.id
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     page.snapshot.isLoading = true
     page.snapshot.error = nil
     let task = Task { @MainActor [weak self, provider, sleep] in
@@ -396,7 +405,7 @@ public final class DiscoveryFeature {
     let id = UUID()
     let session = self.sessionFeature
     let requestedUserID = session.currentUser?.id
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = self.responseDelaySeconds()
     page.snapshot.activityError = nil
     let task = Task { @MainActor [weak self, provider, sleep] in
       defer { if page.activityRequest?.id == id { page.activityRequest = nil } }

@@ -5047,3 +5047,26 @@ Live analytics delivery, visual rendering and the whole Library suite remain unv
 The CFA gate rejects restored environment or analytics-constructor access in the Manage
 Pledge controller and view model. This is not full CFA compliance. Swift packages, target
 identifiers and existing history are unchanged. No push.
+
+### Discovery receives application dependencies from composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now supplies DiscoveryFeature's authenticated transport, category loader, local
+and ubiquitous stores, server/build metadata and response timing. AsyncDiscoveryProvider
+retains its supplied service, and DiscoveryFeature no longer reads AppEnvironment. Feed
+identity, pagination, cancellation, session replacement, preference behavior and delayed
+result rejection remain owned by the Feature.
+
+Focused DiscoveryFeature validation passed all 29 tests. The bounded AppModel, deep-link
+routing, Discovery Feature and Discovery view-model selection passed all 139 tests. Both
+successful runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-discovery-composition-focused-3.xcresult` and
+`/private/tmp/kickstarter-discovery-composition-bounded-2.xcresult`.
+
+The first bounded run exposed legacy scenario tests whose Features had inert dependencies;
+their test graph now explicitly composes an environment-backed test provider and store
+resolvers. Live discovery services, visual rendering and the whole Library suite remain
+unverified. The CFA gate rejects restored global access in DiscoveryFeature. This is not
+full CFA compliance. Swift packages, target identifiers and existing history are unchanged.
+No push.

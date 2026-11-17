@@ -172,8 +172,8 @@ reject_matches 'Project Page and update view models must receive their feature d
   'AppModel[.]shared' "$app_view/Views/ProjectPage/*ViewModel.swift" "$app_view/Views/Update/*ViewModel.swift"
 reject_matches 'Project Page view models receive analytics, formatting, and story policy from composition.' \
   'AppEnvironment[.]current|featureProjectStoryRichTextEnabled\(' "$app_view/Views/ProjectPage/*ViewModel.swift"
-reject_matches 'DiscoveryFeature must receive its session lookup explicitly.' \
-  'AppModel[.]shared|AppEnvironment[.]current[.]currentUser' "$discovery_feature"
+reject_matches 'DiscoveryFeature receives services, storage, metadata, timing, and session from composition.' \
+  'AppModel[.]shared|AppEnvironment' "$discovery_feature"
 reject_matches 'Discovery view models must receive feature dependencies from their controllers.' \
   'AppModel[.]shared' "$app_view/Views/Discovery/*ViewModel.swift" "$app_view/Views/DiscoveryFilters/*ViewModel.swift"
 reject_matches 'Sign-in view models must receive Authentication from their controllers.' \

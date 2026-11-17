@@ -120,7 +120,7 @@ final class ApplicationRoutingTests: TestCase {
     discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
   private lazy var discoveryFeature = DiscoveryFeature(
-    provider: AsyncDiscoveryProvider(), sleep: { _ in try Task.checkCancellation() },
+    provider: EnvironmentDiscoveryProvider(), sleep: { _ in try Task.checkCancellation() },
     sessionFeature: self.settingsFeature.sessionFeature
   )
   private let notificationCenter = NotificationCenter()

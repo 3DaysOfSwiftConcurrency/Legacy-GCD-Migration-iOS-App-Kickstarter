@@ -119,10 +119,10 @@ final class DiscoveryFeatureTests: TestCase {
     let localStore = MockKeyValueStore()
     let cloudStore = MockKeyValueStore()
     localStore.favoriteCategoryIds = [17]
-    AppEnvironment.pushEnvironment(ubiquitousStore: cloudStore, userDefaults: localStore)
-    defer { AppEnvironment.popEnvironment() }
     let feature = DiscoveryFeature(
       provider: ControlledDiscoveryProvider(),
+      localStore: { localStore },
+      cloudStore: { cloudStore },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
 
@@ -138,10 +138,10 @@ final class DiscoveryFeatureTests: TestCase {
     let localStore = MockKeyValueStore()
     let cloudStore = MockKeyValueStore()
     cloudStore.hasSeenFavoriteCategoryAlert = true
-    AppEnvironment.pushEnvironment(ubiquitousStore: cloudStore, userDefaults: localStore)
-    defer { AppEnvironment.popEnvironment() }
     let feature = DiscoveryFeature(
       provider: ControlledDiscoveryProvider(),
+      localStore: { localStore },
+      cloudStore: { cloudStore },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
 
@@ -498,11 +498,24 @@ final class DiscoveryFeatureTests: TestCase {
 
   func testMockUsesSameDemoDiscoveryFixturesThroughNativeAsyncRoute() async throws {
     let service = MockService.publicDemo()
-    let envelope = try await service.discoveryPage(params: .defaults)
+    let provider = AsyncDiscoveryProvider(service: service)
+    let envelope = try await provider.page(parameters: .defaults, cursor: nil)
     XCTAssertFalse(envelope.projects.isEmpty)
     XCTAssertTrue(envelope.projects.allSatisfy { $0.name.hasPrefix("[Demo]") })
-    let next = try await service.discoveryPage(paginationURL: envelope.urls.api.moreProjects)
+    let next = try await provider.page(parameters: .defaults, cursor: envelope.urls.api.moreProjects)
     XCTAssertFalse(next.projects.isEmpty)
+  }
+
+  func testBuildAndServerMetadataComeFromComposition() {
+    let feature = DiscoveryFeature(
+      provider: ControlledDiscoveryProvider(),
+      serverEnvironment: { .staging },
+      isDebugBuild: { true },
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
+
+    XCTAssertEqual(feature.serverEnvironment, .staging)
+    XCTAssertTrue(feature.isDebugBuild)
   }
 
   func testRecommendationDefaultsAndFilterSelectionBelongToFeatureWithoutFetching() {

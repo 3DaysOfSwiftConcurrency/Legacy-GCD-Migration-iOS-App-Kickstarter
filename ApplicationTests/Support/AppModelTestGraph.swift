@@ -4,6 +4,19 @@ import Foundation
 @testable import KsApi
 import UIKit
 
+@MainActor
+struct EnvironmentDiscoveryProvider: DiscoveryProvider {
+  func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
+    let service = AppEnvironment.current.apiService
+    if let cursor { return try await service.discoveryPage(paginationURL: cursor) }
+    return try await service.discoveryPage(params: parameters)
+  }
+
+  func activitySample() async throws -> ActivityEnvelope? {
+    try await AppEnvironment.current.apiService.discoveryActivitySample()
+  }
+}
+
 /// Isolated application composition; unrelated capabilities use inert mock services.
 @MainActor
 func makeTestAppModel(
@@ -27,7 +40,16 @@ func makeTestAppModel(
     makeProvider: { AsyncDiscussionProvider(service: MockService()) }
   )
   let discoveryFeature = discoveryFeature ?? DiscoveryFeature(
-    provider: AsyncDiscoveryProvider(), loadCategories: { .template }, sessionFeature: sessionFeature
+    provider: EnvironmentDiscoveryProvider(), loadCategories: { .template },
+    localStore: { AppEnvironment.current.userDefaults },
+    cloudStore: { AppEnvironment.current.ubiquitousStore },
+    serverEnvironment: { AppEnvironment.current.apiService.serverConfig.environment },
+    isDebugBuild: {
+      let bundle = AppEnvironment.current.mainBundle
+      return bundle.isAlpha || bundle.isBeta || bundle.isDebug
+    },
+    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+    sessionFeature: sessionFeature
   )
   let activityFeature = activityFeature ?? ActivityFeature(
     sessionFeature: sessionFeature, makeProvider: { AsyncActivityProvider(service: MockService()) }

@@ -34,7 +34,7 @@ final class DeepLinkRouterTests: XCTestCase {
       sessionFeature: session, settingsFeature: settings, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session, makeProvider: { provider }),
       discoveryFeature: DiscoveryFeature(
-        provider: AsyncDiscoveryProvider(), loadCategories: { try await provider.categories() },
+        provider: EnvironmentDiscoveryProvider(), loadCategories: { try await provider.categories() },
         sleep: { [weak self] seconds in
           try Task.checkCancellation()
           self?.discoverySleeps.append(seconds)
