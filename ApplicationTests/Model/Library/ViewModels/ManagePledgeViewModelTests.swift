@@ -92,6 +92,7 @@ internal final class ManagePledgeViewModelTests: TestCase {
         pledgeFeature: self.pledgeFeature,
         analytics: { AppEnvironment.current.ksrAnalytics },
         currencyContext: { .live() },
+        hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
         responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
         schedule: { [clock] delay, action in clock.schedule(delay, action: action) }
       )

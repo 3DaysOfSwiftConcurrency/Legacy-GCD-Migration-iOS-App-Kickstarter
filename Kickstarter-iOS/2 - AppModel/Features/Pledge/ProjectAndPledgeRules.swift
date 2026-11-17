@@ -680,6 +680,7 @@ func calculateAllRewardsTotal(
  - parameter shippingTotal: The shipping cost for the pledge.
  - parameter checkoutId: The unique ID associated with the checkout.
  - parameter isApplePay: A `Bool` indicating if the pledge was done with Apple pay.
+ - parameter hasEligibleApplePayCard: Whether the device has an eligible card for this project.
 
  - returns: A `CheckoutPropertiesData` object required for checkoutProperties.
  */
@@ -694,7 +695,8 @@ public func checkoutProperties(
   pledgeTotal: Double,
   shippingTotal: Double,
   checkoutId: String? = nil,
-  isApplePay: Bool?
+  isApplePay: Bool?,
+  hasEligibleApplePayCard: Bool
 ) -> KSRAnalytics.CheckoutPropertiesData {
   let staticUsdRate = Double(project.stats.staticUsdRate)
 
@@ -734,10 +736,6 @@ public func checkoutProperties(
   let shippingEnabled = baseReward.shipping.enabled
   let shippingAmountUsd = shippingAmount?.multiplyingCurrency(staticUsdRate)
 
-  let userHasEligibleStoredApplePayCard = AppEnvironment.current
-    .applePayCapabilities
-    .applePayCapable(for: project)
-
   return KSRAnalytics.CheckoutPropertiesData(
     addOnsCountTotal: addOnsCountTotal,
     addOnsCountUnique: addOnsCountUnique,
@@ -752,7 +750,7 @@ public func checkoutProperties(
     rewardTitle: rewardTitle,
     shippingEnabled: shippingEnabled,
     shippingAmountUsd: shippingAmountUsd,
-    userHasStoredApplePayCard: userHasEligibleStoredApplePayCard
+    userHasStoredApplePayCard: hasEligibleApplePayCard
   )
 }
 

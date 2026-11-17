@@ -115,11 +115,13 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   PledgeViewModelOutputs {
   private let analytics: () -> KSRAnalytics
   private let currencyContext: @MainActor () -> PledgeCurrencyContext
+  private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
 
   public init(
     feature: PledgeFeature,
     analytics: @escaping () -> KSRAnalytics,
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
+    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
     responseDelay: @escaping () -> TimeInterval,
     stripePublishableKey: @escaping () -> String,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
@@ -129,6 +131,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   ) {
     self.analytics = analytics
     self.currencyContext = currencyContext
+    self.hasEligibleApplePayCard = hasEligibleApplePayCard
     let formState = self.formState
     let ctaState = PledgeCTAState()
     let requestState = PledgeRequestState()
@@ -324,7 +327,9 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     }
     completionState.onSuccess = { [weak self] context in
       guard let self else { return }
-      if context.isCreating, let data = self.thanksState.pageData() { self.onGoToThanks?(data) }
+      if context.isCreating, let data = self.thanksState.pageData(hasEligibleApplePayCard: self.hasEligibleApplePayCard) {
+        self.onGoToThanks?(data)
+      }
       if context.isUpdating { self.onPledgeUpdateSucceeded?(Strings.Got_it_your_changes_have_been_saved()) }
     }
     completionState.onError = { [weak self] in self?.onShowError?($0) }
@@ -380,7 +385,8 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     let checkoutData = checkoutProperties(
       from: data.project, baseReward: reward, addOnRewards: data.rewards,
       selectedQuantities: data.selectedQuantities, additionalPledgeAmount: PledgeAmounts(data).bonus,
-      pledgeTotal: total, shippingTotal: 0, checkoutId: nil, isApplePay: false
+      pledgeTotal: total, shippingTotal: 0, checkoutId: nil, isApplePay: false,
+      hasEligibleApplePayCard: self.hasEligibleApplePayCard(data.project)
     )
     self.analytics().trackCheckoutPaymentPageViewed(
       project: data.project, reward: reward, pledgeViewContext: data.context,
@@ -442,7 +448,8 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     let checkoutData = checkoutProperties(
       from: data.project, baseReward: reward, addOnRewards: data.rewards,
       selectedQuantities: data.selectedQuantities, additionalPledgeAmount: PledgeAmounts(configuredData).bonus,
-      pledgeTotal: data.pledgeTotal, shippingTotal: 0, checkoutId: nil, isApplePay: isApplePay
+      pledgeTotal: data.pledgeTotal, shippingTotal: 0, checkoutId: nil, isApplePay: isApplePay,
+      hasEligibleApplePayCard: self.hasEligibleApplePayCard(data.project)
     )
     self.analytics().trackPledgeSubmitButtonClicked(
       project: data.project, reward: reward, typeContext: isApplePay ? .applePay : .creditCard,
@@ -634,14 +641,15 @@ private final class PledgeThanksState {
     hasCheckoutResult = false
   }
 
-  func pageData() -> ThanksPageData? {
+  func pageData(hasEligibleApplePayCard: @MainActor (Project) -> Bool) -> ThanksPageData? {
     guard hasCheckoutResult, let data, let pledge, let reward = pledge.rewards.first else { return nil }
     let amounts = PledgeAmounts(pledge)
     let checkout = checkoutProperties(
       from: data.project, baseReward: reward, addOnRewards: data.rewards,
       selectedQuantities: data.selectedQuantities, additionalPledgeAmount: amounts.bonus,
       pledgeTotal: data.pledgeTotal, shippingTotal: amounts.shipping,
-      checkoutId: checkoutID.map(String.init), isApplePay: isApplePay
+      checkoutId: checkoutID.map(String.init), isApplePay: isApplePay,
+      hasEligibleApplePayCard: hasEligibleApplePayCard(data.project)
     )
     return (data.project, reward, checkout, data.pledgeTotal)
   }

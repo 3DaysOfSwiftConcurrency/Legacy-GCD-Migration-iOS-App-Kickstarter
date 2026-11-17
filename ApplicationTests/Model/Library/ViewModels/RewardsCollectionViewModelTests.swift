@@ -46,7 +46,7 @@ final class RewardsCollectionViewModelTests: TestCase {
   private let vm = RewardsCollectionViewModel(rewardsFeature: RewardsFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncRewardsProvider(service: AppEnvironment.current.apiService) },
     sleep: { _ in try Task.checkCancellation() }
-  ))
+  ), hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) })
 
   override func setUp() async throws {
     try await super.setUp()

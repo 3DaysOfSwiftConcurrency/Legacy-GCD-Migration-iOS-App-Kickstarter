@@ -106,12 +106,14 @@ public final class ManagePledgeViewModel:
   }
   private let analytics: () -> KSRAnalytics
   private let currencyContext: @MainActor () -> PledgeCurrencyContext
+  private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
   private let responseDelay: () -> TimeInterval
 
   public init(
     pledgeFeature: PledgeFeature,
     analytics: @escaping () -> KSRAnalytics,
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
+    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
     responseDelay: @escaping () -> TimeInterval,
     schedule: @escaping @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void = { delay, action in
       Task { @MainActor in
@@ -125,6 +127,7 @@ public final class ManagePledgeViewModel:
     self.pledgeFeature = pledgeFeature
     self.analytics = analytics
     self.currencyContext = currencyContext
+    self.hasEligibleApplePayCard = hasEligibleApplePayCard
     self.responseDelay = responseDelay
     self.schedule = schedule
   }
@@ -167,7 +170,8 @@ public final class ManagePledgeViewModel:
         from: project, baseReward: reward, addOnRewards: rewards,
         selectedQuantities: selectedRewardQuantities(in: backing), additionalPledgeAmount: backing.bonusAmount,
         pledgeTotal: backing.amount, shippingTotal: Double(backing.shippingAmount ?? 0),
-        isApplePay: backing.paymentSource?.paymentType == .applePay
+        isApplePay: backing.paymentSource?.paymentType == .applePay,
+        hasEligibleApplePayCard: self.hasEligibleApplePayCard(project)
       )
       self.analytics().trackManagePledgePageViewed(
         project: project, reward: reward, checkoutData: checkout

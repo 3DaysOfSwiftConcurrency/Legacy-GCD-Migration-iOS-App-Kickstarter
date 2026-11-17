@@ -216,18 +216,21 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   let stripeIntentService: StripeIntentServiceType
   private let analytics: () -> KSRAnalytics
   private let currencyContext: @MainActor () -> PledgeCurrencyContext
+  private let hasEligibleApplePayCard: @MainActor (Project) -> Bool
 
   public init(
     stripeIntentService: StripeIntentServiceType,
     pledgeFeature: PledgeFeature,
     analytics: @escaping () -> KSRAnalytics,
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
+    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool,
     responseDelay: @escaping @MainActor () -> TimeInterval,
     stripePublishableKey: @escaping () -> String
   ) {
     self.stripeIntentService = stripeIntentService
     self.analytics = analytics
     self.currencyContext = currencyContext
+    self.hasEligibleApplePayCard = hasEligibleApplePayCard
     self.cardValidation = CheckoutValidationLane(responseDelay: responseDelay)
     self.applePayValidation = CheckoutValidationLane(responseDelay: responseDelay)
 
@@ -480,7 +483,8 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       pledgeTotal: pledgeTotal,
       shippingTotal: shippingTotal,
       checkoutId: checkoutId,
-      isApplePay: isApplePay
+      isApplePay: isApplePay,
+      hasEligibleApplePayCard: self.hasEligibleApplePayCard(data.project)
     )
   }
 

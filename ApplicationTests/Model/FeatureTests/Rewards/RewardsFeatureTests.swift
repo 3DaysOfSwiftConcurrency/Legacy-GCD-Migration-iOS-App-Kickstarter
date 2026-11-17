@@ -510,7 +510,7 @@ extension RewardsFeatureTests {
   func testAddOnCardsDoNotCombineOldRewardsWithNewProject() async throws {
     let fixture = AddOnsFixture()
     defer { fixture.provider.gate.releaseAll() }
-    let vm = RewardAddOnSelectionViewModel(rewardsFeature: fixture.feature)
+    let vm = RewardAddOnSelectionViewModel(rewardsFeature: fixture.feature, hasEligibleApplePayCard: { _ in false })
     var cards: [RewardAddOnCardViewData] = []
     vm.outputs.onLoadAndReloadRewards = {
       cards.append(contentsOf: $0.compactMap(\.rewardAddOnCardViewData))

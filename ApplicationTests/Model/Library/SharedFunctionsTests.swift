@@ -449,7 +449,8 @@ final class SharedFunctionsTests: TestCase {
       pledgeTotal: 100.0,
       shippingTotal: 10.0,
       checkoutId: nil,
-      isApplePay: false
+      isApplePay: false,
+      hasEligibleApplePayCard: true
     )
 
     XCTAssertEqual(0, checkoutPropertiesData.addOnsCountTotal)

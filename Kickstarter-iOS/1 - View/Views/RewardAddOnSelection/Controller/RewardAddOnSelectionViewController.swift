@@ -41,7 +41,8 @@ final class RewardAddOnSelectionViewController: UIViewController {
 
   private let viewModel: RewardAddOnSelectionViewModelType =
     RewardAddOnSelectionViewModel(
-    rewardsFeature: AppModel.shared.rewardsFeature
+    rewardsFeature: AppModel.shared.rewardsFeature,
+    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) }
   )
 
   // MARK: - Lifecycle

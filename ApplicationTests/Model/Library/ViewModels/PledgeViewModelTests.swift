@@ -54,6 +54,7 @@ final class PledgeViewModelTests: TestCase {
     feature: self.feature,
     analytics: { AppEnvironment.current.ksrAnalytics },
     currencyContext: { .live() },
+    hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
     responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
     sleep: { [delayGate] in await delayGate.sleep($0) }

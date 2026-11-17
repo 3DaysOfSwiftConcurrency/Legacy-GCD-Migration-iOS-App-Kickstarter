@@ -91,6 +91,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
       pledgeFeature: AppModel.shared.pledgeFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       currencyContext: { .live() },
+      hasEligibleApplePayCard: { AppEnvironment.current.applePayCapabilities.applePayCapable(for: $0) },
       responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
     )

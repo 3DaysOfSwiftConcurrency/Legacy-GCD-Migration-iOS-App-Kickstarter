@@ -115,6 +115,8 @@ reject_matches 'Video Feed sharing receives its dependencies from the presenter.
   'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Views/VideoFeed/Social Sharing"
 reject_matches 'View models must receive API and current-user dependencies from composition.' \
   'AppEnvironment[.]current[.](apiService|currentUser)([^[:alnum:]_]|$)' "$app_view/*ViewModel.swift"
+reject_matches 'View models receive Apple Pay eligibility from composition.' \
+  'AppEnvironment[.]current[.]applePayCapabilities' "$app_view/*ViewModel.swift"
 reject_matches 'View models must receive application dependencies from composition.' \
   'AppModel[.]shared' "$app_view/*ViewModel.swift"
 reject_matches 'Application lifecycle signals belong at the AppModel boundary.' \

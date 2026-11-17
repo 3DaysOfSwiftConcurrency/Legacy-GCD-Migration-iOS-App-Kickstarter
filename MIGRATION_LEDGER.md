@@ -3458,6 +3458,12 @@ cards. The existing quantity and conversion paths are preserved. All 219
 focused shipping and checkout tests and 111 card and shipping-selector
 regressions passed on the simulator.
 
+Checkout analytics now takes project-specific Apple Pay card eligibility
+as an explicit input. Pledge, post-campaign checkout, Manage Pledge,
+Rewards and Add-on Selection receive it from their controllers. The CFA
+check guards view models against direct eligibility lookups. All 175
+focused checkout tests and 96 Manage Pledge and Rewards regressions passed.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the
