@@ -113,13 +113,19 @@ public protocol PledgeViewModelType {
 @MainActor
 public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   PledgeViewModelOutputs {
+  private let analytics: () -> KSRAnalytics
+
   public init(
-    feature: PledgeFeature = AppModel.shared.pledgeFeature,
+    feature: PledgeFeature,
+    analytics: @escaping () -> KSRAnalytics,
+    responseDelay: @escaping () -> TimeInterval,
+    stripePublishableKey: @escaping () -> String,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
+    self.analytics = analytics
     let formState = self.formState
     let ctaState = PledgeCTAState()
     let requestState = PledgeRequestState()
@@ -186,7 +192,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       }
     }
     let scheduleResponse: @MainActor (PledgeResponse, Bool, Int?, Int, UUID) async throws -> Void = { response, isCreate, userID, generation, id in
-      try await sleep(AppEnvironment.current.apiDelayInterval.searchDelaySeconds)
+      try await sleep(responseDelay())
       try Task.checkCancellation()
       deliverResponse(response, isCreate, userID, generation, id)
     }
@@ -248,7 +254,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       guard !data.context.paymentMethodsViewHidden else { return }
       self?.onConfigureStripe?(
         Secrets.ApplePay.merchantIdentifier,
-        AppEnvironment.current.environmentType.stripePublishableKey
+        stripePublishableKey()
       )
     }
     requestState.onCreate = { [weak self] in self?.latestCreateBackingData = $0 }
@@ -373,7 +379,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       selectedQuantities: data.selectedQuantities, additionalPledgeAmount: PledgeAmounts(data).bonus,
       pledgeTotal: total, shippingTotal: 0, checkoutId: nil, isApplePay: false
     )
-    AppEnvironment.current.ksrAnalytics.trackCheckoutPaymentPageViewed(
+    self.analytics().trackCheckoutPaymentPageViewed(
       project: data.project, reward: reward, pledgeViewContext: data.context,
       checkoutData: checkoutData, refTag: data.refTag
     )
@@ -435,7 +441,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       selectedQuantities: data.selectedQuantities, additionalPledgeAmount: PledgeAmounts(configuredData).bonus,
       pledgeTotal: data.pledgeTotal, shippingTotal: 0, checkoutId: nil, isApplePay: isApplePay
     )
-    AppEnvironment.current.ksrAnalytics.trackPledgeSubmitButtonClicked(
+    self.analytics().trackPledgeSubmitButtonClicked(
       project: data.project, reward: reward, typeContext: isApplePay ? .applePay : .creditCard,
       checkoutData: checkoutData, refTag: data.refTag
     )

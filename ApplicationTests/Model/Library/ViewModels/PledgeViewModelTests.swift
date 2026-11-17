@@ -49,9 +49,13 @@ final class PledgeViewModelTests: TestCase {
     }
   )
   private let delayGate = PledgeTestDelayGate()
-  private lazy var vm: PledgeViewModelType = PledgeViewModel(feature: self.feature, sleep: { [delayGate] in
-    await delayGate.sleep($0)
-  })
+  private lazy var vm: PledgeViewModelType = PledgeViewModel(
+    feature: self.feature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
+    sleep: { [delayGate] in await delayGate.sleep($0) }
+  )
 
   private let beginSCAFlowWithClientSecret = ValueRecorder<String>()
 

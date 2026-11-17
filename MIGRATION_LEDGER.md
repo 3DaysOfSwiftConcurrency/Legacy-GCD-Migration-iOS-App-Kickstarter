@@ -3176,3 +3176,11 @@ reason and owner, rather than become an open-ended reactive-code rewrite.
   boundaries and prevent reintroducing `AppLifecycleFeature`. The check is scoped
   to these rules. App-wide conformance and the Pledge and Project Page
   composition review remain open.
+
+### Pledge checkout composition — Matthew Thomas
+
+The checkout controller supplies Pledge, analytics, response timing and Stripe
+configuration to `PledgeViewModel`. `make check-cfa` checks that this view model
+does not reach into the application singletons. The focused iOS Simulator run
+passed 115 tests across PledgeFeature and PledgeViewModel. Post-campaign checkout
+and other pledge screens have separate composition boundaries to review.

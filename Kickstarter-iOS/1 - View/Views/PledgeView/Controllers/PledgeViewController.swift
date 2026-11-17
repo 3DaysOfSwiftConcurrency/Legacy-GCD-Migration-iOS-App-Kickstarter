@@ -130,7 +130,12 @@ final class PledgeViewController: UIViewController,
   private var applePaySessionGeneration: Int?
 
   private var sessionStartedObserver: MainActorNotificationObservation?
-  private let viewModel: PledgeViewModelType = PledgeViewModel()
+  private let viewModel: PledgeViewModelType = PledgeViewModel(
+    feature: AppModel.shared.pledgeFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
+  )
 
   // MARK: - Lifecycle
 
