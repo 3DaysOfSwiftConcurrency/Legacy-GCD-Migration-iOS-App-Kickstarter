@@ -230,8 +230,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   private var lastScheduledActiveState: Bool?
   private var configurationTask: Task<Void, Never>?
   private var shortcutTask: Task<Void, Never>?
-  private var setupRequest: Task<GraphUserSetup, Error>?
-  private var setupObservation: Task<Void, Never>?
   private var lastSegmentEnabled: Bool?
   private var pushTasks: [UUID: Task<Void, Never>] = [:]
   private var hasDeniedPushAuthorization = false
@@ -269,8 +267,6 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     self.trackingDelayTasks.values.forEach { $0.cancel() }
     self.configurationTask?.cancel()
     self.shortcutTask?.cancel()
-    self.setupObservation?.cancel()
-    self.setupRequest?.cancel()
     let redirectObservation = self.redirectObservation
     let authenticationFeature = self.authenticationFeature
     let trackingObserver = self.trackingObserver
@@ -279,6 +275,7 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
     Task { @MainActor in
       devicePushRegistration.cancelScheduledDelivery()
       settingsFeature.cancelScheduledAccountRefresh()
+      settingsFeature.cancelAccountSetupRefresh()
       redirectObservation.cancel()
       if let (tracking, id) = trackingObserver { tracking.removeAuthorizationObserver(id) }
       authenticationFeature.releaseEmailRedirect(route: route)
@@ -439,16 +436,8 @@ public final class AppDelegateViewModel: AppDelegateViewModelType, AppDelegateVi
   func waitForShortcutUpdate() async { await self.shortcutTask?.value }
 
   private func refreshUserSetup() {
-    self.setupObservation?.cancel()
-    self.setupRequest?.cancel()
-    let request = self.settingsFeature.requestSetup()
-    self.setupRequest = request
-    self.setupObservation = Task {
-      do {
-        let user = try await request.value
-        try Task.checkCancellation()
-        if user.email != nil { NotificationCenter.default.post(.init(name: .ksr_userUpdated)) }
-      } catch { /* Setup failures remain silent. */ }
+    self.settingsFeature.refreshAccountSetup {
+      NotificationCenter.default.post(.init(name: .ksr_userUpdated))
     }
   }
 

@@ -208,7 +208,7 @@ public final class SettingsFeature {
   private var tail: Pending?
   private var writes: [UUID: Task<User, Error>] = [:]
   private var reads: [UUID: Task<User, Error>] = [:]
-  private var setupReads: [UUID: Task<GraphUserSetup, Error>] = [:]
+  private var setupRefresh: (id: UUID, task: Task<Void, Never>)?
   private var emailRead: (
     id: UUID,
     userID: Int?,
@@ -482,20 +482,30 @@ public final class SettingsFeature {
     return task
   }
 
-  @discardableResult
-  public func requestSetup() -> Task<GraphUserSetup, Error> {
+  func refreshAccountSetup(onEmailAvailable: @escaping @MainActor () -> Void) {
+    self.cancelAccountSetupRefresh()
     let userID = self.session.currentUser?.id
     let generation = self.session.generation
     let id = UUID()
-    let task = Task { [self] in
-      defer { self.setupReads[id] = nil }
-      while let previous = self.tail?.task { _ = await previous.result }
-      try Task.checkCancellation()
-      guard self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
-      return try await self.session.refreshSetup()
+    let task = Task { [weak self] in
+      guard let self else { return }
+      defer {
+        if self.setupRefresh?.id == id { self.setupRefresh = nil }
+      }
+      do {
+        while let previous = self.tail?.task { _ = await previous.result }
+        try Task.checkCancellation()
+        guard self.session.isCurrent(userID: userID, generation: generation) else { return }
+        let setup = try await self.session.refreshSetup()
+        try Task.checkCancellation()
+        if setup.email != nil { onEmailAvailable() }
+      } catch { /* Setup failures remain silent. */ }
     }
-    self.setupReads[id] = task
-    return task
+    self.setupRefresh = (id, task)
+  }
+
+  func cancelAccountSetupRefresh() {
+    self.setupRefresh?.task.cancel()
   }
 
   public func emailUser() async throws -> GraphUser {
@@ -701,10 +711,10 @@ public final class SettingsFeature {
 
   /// Waits for owned executions, not presentation scheduler delays.
   func waitForOperations() async {
-    while !self.reads.isEmpty || !self.setupReads.isEmpty || !self.writes.isEmpty || !self.verificationWrites.isEmpty || self
+    while !self.reads.isEmpty || self.setupRefresh != nil || !self.writes.isEmpty || !self.verificationWrites.isEmpty || self
       .emailRead != nil || !self.notificationWrites.isEmpty {
       for task in Array(self.notificationWrites.values) { _ = await task.result }
-      for setup in Array(self.setupReads.values) { _ = await setup.result }
+      await self.setupRefresh?.task.value
       let reads = Array(self.reads.values)
       let writes = Array(self.writes.values)
       let verifications = Array(self.verificationWrites.values)
