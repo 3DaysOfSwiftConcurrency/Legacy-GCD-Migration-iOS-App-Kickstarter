@@ -162,21 +162,7 @@ final class RewardsCollectionViewModel {
   func viewDidAppear() {
     self.onEvent?(.flashScrollIndicators)
     guard let config = self.configuration, self.didLoad else { return }
-    let project = config.project
-    AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
-    guard let externalId = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else { return }
-    let userId = self.rewardsFeature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
-    var extInfo = Array(repeating: "", count: 16)
-    extInfo[0] = "i2"
-    extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
-    self.rewardsFeature.recordThirdPartyEvent(
-      .init(
-        deviceId: externalId, eventName: ThirdPartyEventInputName.RewardSelectionViewed.rawValue,
-        projectId: "\(project.id)", pledgeAmount: nil, shipping: nil, transactionId: nil, userId: userId,
-        appData: .init(advertiserTrackingEnabled: true, applicationTrackingEnabled: true, extinfo: extInfo),
-        clientMutationId: ""
-      )
-    )
+    self.rewardsFeature.recordRewardSelectionViewed(project: config.project)
   }
   private func trackRewardsViewed(project: Project, refTag: RefTag?) {
     let reward = Reward.noReward
@@ -187,7 +173,7 @@ final class RewardsCollectionViewModel {
       shippingTotal: shippingTotal ?? 0, isApplePay: nil,
       hasEligibleApplePayCard: self.rewardsFeature.hasEligibleApplePayCard(for: project)
     )
-    AppEnvironment.current.ksrAnalytics.trackRewardsViewed(project: project, checkoutPropertiesData: properties, refTag: refTag)
+    self.rewardsFeature.trackRewardsViewed(project: project, checkout: properties, refTag: refTag)
   }
   private func trackRewardClicked(_ reward: Reward, project: Project, refTag: RefTag?) {
     let (backing, shippingTotal) = backingAndShippingTotal(for: project, and: reward)
@@ -197,7 +183,9 @@ final class RewardsCollectionViewModel {
       shippingTotal: shippingTotal ?? 0, isApplePay: nil,
       hasEligibleApplePayCard: self.rewardsFeature.hasEligibleApplePayCard(for: project)
     )
-    AppEnvironment.current.ksrAnalytics.trackRewardClicked(project: project, reward: reward, checkoutPropertiesData: properties, refTag: refTag)
+    self.rewardsFeature.trackRewardClicked(
+      project: project, reward: reward, checkout: properties, refTag: refTag
+    )
   }
 }
 

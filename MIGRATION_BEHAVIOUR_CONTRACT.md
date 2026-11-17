@@ -2090,3 +2090,15 @@ safe for arbitrary concurrent environment mutation.
 - Focused RewardsFeature and presentation-model coverage passes 53 tests. The bounded
   AppModel, PaymentsFeature and pledge-flow selection passes 178 tests. Live Apple Pay
   authorization, visual rendering and the whole Library suite remain outside this checkpoint.
+
+## Rewards analytics composition — 17 November 2026
+
+- AppModel supplies RewardsFeature with reward-selection analytics and the advertising
+  identifier/platform-version context used by its third-party event. Rewards Collection
+  and Reward Add-On Selection now send semantic commands to the owning Feature.
+- RewardsFeature constructs the reward-selection event from its composed context and
+  SessionFeature user. The screen models retain presentation and navigation state, but
+  no longer resolve analytics, tracking-transparency or bundle globals.
+- Focused RewardsFeature and presentation-model coverage passes 54 tests. The bounded
+  AppModel, PaymentsFeature and pledge-flow selection passes 178 tests. Live analytics
+  delivery, visual rendering and the whole Library suite remain outside this checkpoint.

@@ -1,5 +1,6 @@
 @testable import Kickstarter_iOS
 import Foundation
+import GraphAPI
 import Prelude
 import XCTest
 
@@ -32,6 +33,58 @@ final class RewardsFeatureTests: TestCase {
 
     XCTAssertTrue(feature.hasEligibleApplePayCard(for: Project.template |> Project.lens.id .~ 42))
     XCTAssertFalse(feature.hasEligibleApplePayCard(for: Project.template |> Project.lens.id .~ 7))
+  }
+
+  func testAnalyticsAndRewardSelectionEventUseComposedPolicy() throws {
+    var analyticsEvents: [String] = []
+    var thirdPartyEvents: [KsApi.TriggerThirdPartyEventInput] = []
+    let user = User.template |> User.lens.id .~ 99
+    let project = Project.template |> Project.lens.id .~ 42
+    let reward = Reward.template
+    let checkout = checkoutProperties(
+      from: project,
+      baseReward: reward,
+      addOnRewards: [],
+      selectedQuantities: [:],
+      additionalPledgeAmount: 0,
+      pledgeTotal: reward.minimum,
+      shippingTotal: 0,
+      isApplePay: nil,
+      hasEligibleApplePayCard: true
+    )
+    let feature = RewardsFeature(
+      platform: .init(
+        configuredCountry: { nil },
+        country: { "US" },
+        now: { 0 },
+        responseDelaySeconds: { 0 },
+        recordThirdPartyEvent: { thirdPartyEvents.append($0) }
+      ),
+      sessionFeature: SessionFeature(
+        makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { user }
+      ),
+      makeProvider: { ControlledRewardsProvider() },
+      analytics: .init(
+        rewardsViewed: { _, _, _ in analyticsEvents.append("viewed") },
+        rewardClicked: { _, _, _, _ in analyticsEvents.append("clicked") },
+        addOnsPageViewed: { _, _, _, _ in analyticsEvents.append("add-ons") },
+        addOnsContinue: { _, _, _, _ in analyticsEvents.append("continue") }
+      ),
+      rewardSelectionContext: { ("advertising-id", "platform-version") }
+    )
+
+    feature.trackRewardsViewed(project: project, checkout: checkout, refTag: nil)
+    feature.trackRewardClicked(project: project, reward: reward, checkout: checkout, refTag: nil)
+    feature.trackAddOnsPageViewed(project: project, reward: reward, checkout: checkout, refTag: nil)
+    feature.trackAddOnsContinue(project: project, reward: reward, checkout: checkout, refTag: nil)
+    feature.recordRewardSelectionViewed(project: project)
+
+    XCTAssertEqual(analyticsEvents, ["viewed", "clicked", "add-ons", "continue"])
+    let event = try XCTUnwrap(thirdPartyEvents.first)
+    XCTAssertEqual(event.deviceId, "advertising-id")
+    XCTAssertEqual(event.projectId, "42")
+    XCTAssertEqual(event.userId, "99")
+    XCTAssertEqual(try XCTUnwrap(event.appData).extinfo[4], "platform-version")
   }
 
   func testPreservesOrderAndShippingRulesAndFiltersFutureRewards() async {

@@ -437,6 +437,35 @@ public final class AppModel {
           AppEnvironment.current.applePayCapabilities.applePayCapable(
             for: $0, launchedCountries: AppEnvironment.current.launchedCountries
           )
+        },
+        analytics: .init(
+          rewardsViewed: {
+            AppEnvironment.current.ksrAnalytics.trackRewardsViewed(
+              project: $0, checkoutPropertiesData: $1, refTag: $2
+            )
+          },
+          rewardClicked: {
+            AppEnvironment.current.ksrAnalytics.trackRewardClicked(
+              project: $0, reward: $1, checkoutPropertiesData: $2, refTag: $3
+            )
+          },
+          addOnsPageViewed: {
+            AppEnvironment.current.ksrAnalytics.trackAddOnsPageViewed(
+              project: $0, reward: $1, checkoutData: $2, refTag: $3
+            )
+          },
+          addOnsContinue: {
+            AppEnvironment.current.ksrAnalytics.trackAddOnsContinueButtonClicked(
+              project: $0, reward: $1, checkoutData: $2, refTag: $3
+            )
+          }
+        ),
+        rewardSelectionContext: {
+          AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
+          guard let advertisingID = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else {
+            return nil
+          }
+          return (advertisingID, AppEnvironment.current.mainBundle.platformVersion)
         }
       ),
       discussionFeature: discussionFeature,

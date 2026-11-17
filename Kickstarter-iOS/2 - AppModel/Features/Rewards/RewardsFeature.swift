@@ -41,6 +41,25 @@ public struct AsyncRewardsProvider: RewardsProvider {
 /// independent route; a changed country supersedes that route's previous read.
 @MainActor
 public final class RewardsFeature {
+  public struct Analytics {
+    let rewardsViewed: @MainActor (Project, KSRAnalytics.CheckoutPropertiesData, RefTag?) -> Void
+    let rewardClicked: @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData, RefTag?) -> Void
+    let addOnsPageViewed: @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData, RefTag?) -> Void
+    let addOnsContinue: @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData, RefTag?) -> Void
+
+    public init(
+      rewardsViewed: @escaping @MainActor (Project, KSRAnalytics.CheckoutPropertiesData, RefTag?) -> Void = { _, _, _ in },
+      rewardClicked: @escaping @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData, RefTag?) -> Void = { _, _, _, _ in },
+      addOnsPageViewed: @escaping @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData, RefTag?) -> Void = { _, _, _, _ in },
+      addOnsContinue: @escaping @MainActor (Project, Reward, KSRAnalytics.CheckoutPropertiesData, RefTag?) -> Void = { _, _, _, _ in }
+    ) {
+      self.rewardsViewed = rewardsViewed
+      self.rewardClicked = rewardClicked
+      self.addOnsPageViewed = addOnsPageViewed
+      self.addOnsContinue = addOnsContinue
+    }
+  }
+
   public struct Platform {
     let configuredCountry: @MainActor () -> String?
     let country: @MainActor () -> String
@@ -231,6 +250,8 @@ public final class RewardsFeature {
   private let fastCheckout: @MainActor () -> Bool
   private let moveNoReward: @MainActor () -> Bool
   private let applePayEligibility: @MainActor (Project) -> Bool
+  private let analytics: Analytics
+  private let rewardSelectionContext: @MainActor () -> (advertisingID: String, platformVersion: String)?
   private let sleep: @MainActor (TimeInterval) async throws -> Void
 
   public init(
@@ -245,6 +266,8 @@ public final class RewardsFeature {
         == true
     },
     hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool = { _ in false },
+    analytics: Analytics = Analytics(),
+    rewardSelectionContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil },
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite {
         try await Task.sleep(nanoseconds: UInt64.max)
@@ -260,11 +283,59 @@ public final class RewardsFeature {
     self.fastCheckout = fastCheckout
     self.moveNoReward = moveNoReward
     self.applePayEligibility = hasEligibleApplePayCard
+    self.analytics = analytics
+    self.rewardSelectionContext = rewardSelectionContext
     self.sleep = sleep
   }
 
   public func hasEligibleApplePayCard(for project: Project) -> Bool {
     self.applePayEligibility(project)
+  }
+
+  public func trackRewardsViewed(
+    project: Project, checkout: KSRAnalytics.CheckoutPropertiesData, refTag: RefTag?
+  ) {
+    self.analytics.rewardsViewed(project, checkout, refTag)
+  }
+
+  public func trackRewardClicked(
+    project: Project, reward: Reward, checkout: KSRAnalytics.CheckoutPropertiesData, refTag: RefTag?
+  ) {
+    self.analytics.rewardClicked(project, reward, checkout, refTag)
+  }
+
+  public func trackAddOnsPageViewed(
+    project: Project, reward: Reward, checkout: KSRAnalytics.CheckoutPropertiesData, refTag: RefTag?
+  ) {
+    self.analytics.addOnsPageViewed(project, reward, checkout, refTag)
+  }
+
+  public func trackAddOnsContinue(
+    project: Project, reward: Reward, checkout: KSRAnalytics.CheckoutPropertiesData, refTag: RefTag?
+  ) {
+    self.analytics.addOnsContinue(project, reward, checkout, refTag)
+  }
+
+  public func recordRewardSelectionViewed(project: Project) {
+    guard let context = self.rewardSelectionContext() else { return }
+    var extInfo = Array(repeating: "", count: 16)
+    extInfo[0] = "i2"
+    extInfo[4] = context.platformVersion
+    self.recordThirdPartyEvent(.init(
+      deviceId: context.advertisingID,
+      eventName: ThirdPartyEventInputName.RewardSelectionViewed.rawValue,
+      projectId: String(project.id),
+      pledgeAmount: nil,
+      shipping: nil,
+      transactionId: nil,
+      userId: self.sessionFeature.currentUser.map { String($0.id) } ?? "",
+      appData: .init(
+        advertiserTrackingEnabled: true,
+        applicationTrackingEnabled: true,
+        extinfo: extInfo
+      ),
+      clientMutationId: ""
+    ))
   }
 
   public func snapshot(for route: UUID) -> Snapshot {

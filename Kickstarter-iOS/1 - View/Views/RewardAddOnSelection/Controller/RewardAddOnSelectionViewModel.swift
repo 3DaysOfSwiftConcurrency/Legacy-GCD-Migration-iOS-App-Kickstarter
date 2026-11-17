@@ -194,8 +194,8 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
       pledgeTotal: total, shippingTotal: 0, isApplePay: nil,
       hasEligibleApplePayCard: self.rewardsFeature.hasEligibleApplePayCard(for: project)
     )
-    AppEnvironment.current.ksrAnalytics.trackAddOnsPageViewed(
-      project: project, reward: reward, checkoutData: data, refTag: config.refTag
+    self.rewardsFeature.trackAddOnsPageViewed(
+      project: project, reward: reward, checkout: data, refTag: config.refTag
     )
   }
 
@@ -352,8 +352,8 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
       pledgeTotal: total, shippingTotal: 0, isApplePay: nil,
       hasEligibleApplePayCard: self.rewardsFeature.hasEligibleApplePayCard(for: config.project)
     )
-    AppEnvironment.current.ksrAnalytics.trackAddOnsContinueButtonClicked(
-      project: config.project, reward: reward, checkoutData: data, refTag: config.refTag
+    self.rewardsFeature.trackAddOnsContinue(
+      project: config.project, reward: reward, checkout: data, refTag: config.refTag
     )
   }
 

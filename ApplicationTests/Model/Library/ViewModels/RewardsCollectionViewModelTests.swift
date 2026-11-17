@@ -50,6 +50,25 @@ final class RewardsCollectionViewModelTests: TestCase {
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
     },
+    analytics: .init(
+      rewardsViewed: {
+        AppEnvironment.current.ksrAnalytics.trackRewardsViewed(
+          project: $0, checkoutPropertiesData: $1, refTag: $2
+        )
+      },
+      rewardClicked: {
+        AppEnvironment.current.ksrAnalytics.trackRewardClicked(
+          project: $0, reward: $1, checkoutPropertiesData: $2, refTag: $3
+        )
+      }
+    ),
+    rewardSelectionContext: {
+      AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
+      guard let advertisingID = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else {
+        return nil
+      }
+      return (advertisingID, AppEnvironment.current.mainBundle.platformVersion)
+    },
     sleep: { _ in try Task.checkCancellation() }
   ))
 

@@ -265,6 +265,10 @@ reject_matches 'Reward selection receives Apple Pay policy through RewardsFeatur
   "$app_view/Views/RewardsCollection/Controller/RewardsCollectionViewModel.swift" \
   "$app_view/Views/RewardAddOnSelection/Controller/RewardAddOnSelectionViewController.swift" \
   "$app_view/Views/RewardAddOnSelection/Controller/RewardAddOnSelectionViewModel.swift"
+reject_matches 'Rewards analytics belong to RewardsFeature composition.' \
+  'AppEnvironment[.]current|ksrAnalytics|appTrackingTransparency|mainBundle[.]platformVersion' \
+  "$app_view/Views/RewardsCollection/Controller/RewardsCollectionViewModel.swift" \
+  "$app_view/Views/RewardAddOnSelection/Controller/RewardAddOnSelectionViewModel.swift"
 reject_matches 'Payment presentation reads Stripe policy through PaymentsFeature.' \
   'environmentType[.]stripePublishableKey' \
   "$app_view/Views/PledgedProjectsOverview/PPOContainerViewModel.swift" \

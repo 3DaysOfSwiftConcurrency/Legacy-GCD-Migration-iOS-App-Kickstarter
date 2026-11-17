@@ -5245,3 +5245,25 @@ Live Apple Pay authorization, visual rendering and the whole Library suite remai
 unverified. The CFA gate rejects restored platform composition in the two reward-selection
 screens. This is not full CFA compliance. Swift packages, target identifiers and existing
 history are unchanged. No push.
+
+### Rewards analytics composition — 17 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now supplies RewardsFeature with reward-selection analytics and the advertising
+identifier/platform-version context for the third-party selection event. RewardsFeature
+accepts semantic commands from RewardsCollectionViewModel and
+RewardAddOnSelectionViewModel, and builds the event using its SessionFeature user. The two
+screen models no longer read AppEnvironment for analytics, tracking or bundle metadata.
+
+Focused RewardsFeature, Rewards Collection and Reward Add-On Selection validation passed
+all 54 tests. The bounded AppModel, PaymentsFeature, Manage Pledge, pledge checkout and
+post-campaign checkout selection passed all 178 tests. Both successful runs had zero
+failures and skips on iPhone 17 Pro, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-rewards-analytics-composition-focused-5.xcresult` and
+`/private/tmp/kickstarter-rewards-analytics-composition-bounded-2.xcresult`.
+
+Live analytics delivery, visual rendering and the whole Library suite remain unverified.
+The CFA gate rejects restored analytics and tracking globals in both reward-selection
+screen models. This is not full CFA compliance. Swift packages, target identifiers and
+existing history are unchanged. No push.

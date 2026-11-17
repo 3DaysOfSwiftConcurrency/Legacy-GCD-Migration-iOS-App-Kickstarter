@@ -19,7 +19,19 @@ final class RewardAddOnSelectionViewModelTests: TestCase {
       AppEnvironment.current.applePayCapabilities.applePayCapable(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
-    })
+    },
+    analytics: .init(
+      addOnsPageViewed: {
+        AppEnvironment.current.ksrAnalytics.trackAddOnsPageViewed(
+          project: $0, reward: $1, checkoutData: $2, refTag: $3
+        )
+      },
+      addOnsContinue: {
+        AppEnvironment.current.ksrAnalytics.trackAddOnsContinueButtonClicked(
+          project: $0, reward: $1, checkoutData: $2, refTag: $3
+        )
+      }
+    ))
   private lazy var vm: RewardAddOnSelectionViewModelType = RewardAddOnSelectionViewModel(
     rewardsFeature: self.feature
   )
