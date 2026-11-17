@@ -5,6 +5,18 @@ import Foundation
 import KsApi
 import Prelude
 
+extension PledgeCurrencyContext {
+  @MainActor
+  static func live() -> Self {
+    let environment: Environment = AppEnvironment.current
+    return Self(
+      launchedCountries: environment.launchedCountries,
+      viewerCountryCode: environment.countryCode,
+      locale: environment.locale
+    )
+  }
+}
+
 extension SessionFeature {
   static func live() -> SessionFeature {
     SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) })

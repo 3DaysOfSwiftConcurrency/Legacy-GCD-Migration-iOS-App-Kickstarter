@@ -30,7 +30,11 @@ public final class RewardAddOnCardViewModel {
     let image: Reward.Image?
   }
   public var onDisplay: ((Display) -> Void)?
-  public init() {}
+  private let currencyContext: @MainActor () -> PledgeCurrencyContext
+
+  public init(currencyContext: @escaping @MainActor () -> PledgeCurrencyContext) {
+    self.currencyContext = currencyContext
+  }
 
   public var onQuantity: ((Int) -> Void)?
   public var onQuantitySelected: ((Int, Int) -> Void)?
@@ -45,13 +49,15 @@ public final class RewardAddOnCardViewModel {
     let project = data.project
     let reward = data.reward
     let rule = data.shippingRule
+    let currencyContext = self.currencyContext()
     let conversion: String?
     if needsConversion(project: project) {
       let amount = reward.minimum.addingCurrency(rule?.cost ?? 0)
         .multiplyingCurrency(Double(project.stats.userCurrencyRate ?? project.stats.staticUsdRate))
       let currency = project.stats.userCurrency ?? Project.Country.us.currencyCode
-      let formatted = Format.currency(amount, currencyCode: currency,
-                                      omitCurrencyCode: project.stats.omitUSCurrencyCode, roundingMode: .up)
+      let formatted = currencyContext.format(
+        amount, currencyCode: currency, omitCurrencyCode: project.stats.omitUSCurrencyCode, roundingMode: .up
+      )
       conversion = Strings.About_reward_amount(reward_amount: formatted)
     } else {
       conversion = nil
@@ -61,7 +67,7 @@ public final class RewardAddOnCardViewModel {
     let shipping = rule.flatMap { estimatedShippingText(for: [reward], project: project, locationId: $0.location.id) }
     self.onDisplay?(Display(
       conversionHidden: !needsConversion(project: project), conversion: conversion,
-      amount: amountStringForReward(project: project, reward: reward, shippingRule: rule),
+      amount: amountStringForReward(project: project, reward: reward, shippingRule: rule, currency: currencyContext),
       description: reward.description, title: reward.title,
       includedItems: itemsLabelAttributedText(rewardItems), includedItemsHidden: rewardItems.isEmpty,
       shipping: shipping, shippingHidden: !reward.shipping.enabled || shipping == nil,
@@ -94,22 +100,23 @@ public final class RewardAddOnCardViewModel {
 private func amountStringForReward(
   project: Project,
   reward: Reward,
-  shippingRule: ShippingRule?
+  shippingRule: ShippingRule?,
+  currency: PledgeCurrencyContext
 ) -> NSAttributedString {
   let font: UIFont = UIFont.ksr_subhead().weighted(.medium)
   let foregroundColor: UIColor = LegacyColors.ksr_create_700.uiColor()
 
   let projectCurrency = project.statsCurrency
 
-  let min = minPledgeAmount(forProject: project, reward: reward)
-  let amountString = Format.currency(
+  let min = minPledgeAmount(forProject: project, reward: reward, launchedCountries: currency.launchedCountries)
+  let amountString = currency.format(
     min,
     currencyCode: projectCurrency,
     omitCurrencyCode: project.stats.omitUSCurrencyCode
   )
 
   if let shippingRule = shippingRule, shippingRule.cost > 0 {
-    let shippingAmount = Format.currency(
+    let shippingAmount = currency.format(
       shippingRule.cost,
       currencyCode: projectCurrency,
       omitCurrencyCode: project.stats.omitUSCurrencyCode

@@ -94,14 +94,17 @@ internal func reward(withId rewardId: Int, inProject project: Project) -> Reward
 
  - returns: A pair of the minimum and maximum amount that can be pledged to a reward.
  */
-@MainActor
-internal func minAndMaxPledgeAmount(forProject project: Project, reward: Reward?)
+internal func minAndMaxPledgeAmount(
+  forProject project: Project, reward: Reward?, launchedCountries: LaunchedCountries
+)
   -> (min: Double, max: Double) {
   // The country on the project cannot be trusted to have the min/max values, so first try looking
   // up the country in our launched countries array that we get back from the server config.
   // project currency is more accurate to find the country to base the min/max values off of.
-  let projectCurrencyCountry = projectCountry(forCurrency: project.stats.projectCurrency) ?? project.country
-  let country = AppEnvironment.current.launchedCountries.countries
+  let projectCurrencyCountry = projectCountry(
+    forCurrency: project.stats.projectCurrency, launchedCountries: launchedCountries
+  ) ?? project.country
+  let country = launchedCountries.countries
     .first { $0 == projectCurrencyCountry }
     .coalesceWith(projectCurrencyCountry)
 
@@ -135,9 +138,8 @@ internal func minAndMaxPledgeAmount(forProject project: Project, reward: Reward?
 
  - returns: The minimum amount needed to pledge to the reward.
  */
-@MainActor
-internal func minPledgeAmount(forProject project: Project, reward: Reward?) -> Double {
-  return minAndMaxPledgeAmount(forProject: project, reward: reward).min
+internal func minPledgeAmount(forProject project: Project, reward: Reward?, launchedCountries: LaunchedCountries) -> Double {
+  return minAndMaxPledgeAmount(forProject: project, reward: reward, launchedCountries: launchedCountries).min
 }
 
 /**
@@ -223,22 +225,50 @@ public func defaultShippingLocation(fromLocations locations: [Location], configu
   return locations.first
 }
 
-@MainActor
+public struct PledgeCurrencyContext {
+  let launchedCountries: LaunchedCountries
+  let viewerCountryCode: String
+  let locale: Locale
+
+  public init(launchedCountries: LaunchedCountries, viewerCountryCode: String, locale: Locale) {
+    self.launchedCountries = launchedCountries
+    self.viewerCountryCode = viewerCountryCode
+    self.locale = locale
+  }
+
+  func symbol(for code: String, omitCurrencyCode: Bool = true) -> String {
+    currencySymbol(
+      forCurrencyCode: code, omitCurrencyCode: omitCurrencyCode,
+      launchedCountries: self.launchedCountries, viewerCountryCode: self.viewerCountryCode
+    )
+  }
+
+  func format(
+    _ amount: Any, currencyCode: String, omitCurrencyCode: Bool, roundingMode: NumberFormatter.RoundingMode = .down
+  ) -> String {
+    Format.formattedCurrency(
+      amount, symbol: self.symbol(for: currencyCode, omitCurrencyCode: omitCurrencyCode),
+      locale: self.locale, roundingMode: roundingMode
+    )
+  }
+}
+
 public func formattedAmountForRewardOrBacking(
   project: Project,
-  rewardOrBacking: Either<Reward, Backing>
+  rewardOrBacking: Either<Reward, Backing>,
+  currency: PledgeCurrencyContext
 ) -> String {
   let projectCurrency = project.statsCurrency
   switch rewardOrBacking {
   case let .left(reward):
-    let min = minPledgeAmount(forProject: project, reward: reward)
-    return Format.currency(
+    let min = minPledgeAmount(forProject: project, reward: reward, launchedCountries: currency.launchedCountries)
+    return currency.format(
       min,
       currencyCode: projectCurrency,
       omitCurrencyCode: project.stats.omitUSCurrencyCode
     )
   case let .right(backing):
-    return Format.formattedCurrency(
+    return currency.format(
       backing.amount,
       currencyCode: projectCurrency,
       omitCurrencyCode: project.stats.omitUSCurrencyCode

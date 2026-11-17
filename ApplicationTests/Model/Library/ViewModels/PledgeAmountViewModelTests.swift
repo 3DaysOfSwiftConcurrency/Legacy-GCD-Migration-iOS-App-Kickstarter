@@ -9,7 +9,7 @@ import XCTest
 @MainActor
 internal final class PledgeAmountViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let vm = PledgeAmountViewModel()
+  private let vm = PledgeAmountViewModel(currencyContext: { .live() })
 
   private let amountIsValid = AmountRecording<Bool>()
   private let amountMax = AmountRecording<Double>()

@@ -1172,7 +1172,8 @@ final class SharedFunctionsTests: TestCase {
 
     var currencyText = formattedAmountForRewardOrBacking(
       project: mexicanCurrencyProjectTemplate,
-      rewardOrBacking: .right(backing)
+      rewardOrBacking: .right(backing),
+      currency: .live()
     )
 
     XCTAssertEqual(currencyText, "MX$ 10")
@@ -1182,7 +1183,8 @@ final class SharedFunctionsTests: TestCase {
 
     currencyText = formattedAmountForRewardOrBacking(
       project: mexicanCurrencyProjectTemplate,
-      rewardOrBacking: .left(reward)
+      rewardOrBacking: .left(reward),
+      currency: .live()
     )
 
     XCTAssertEqual(currencyText, "MX$ 12")
@@ -1193,7 +1195,9 @@ final class SharedFunctionsTests: TestCase {
     let mexicanCurrencyProjectTemplate = Project.template
       |> Project.lens.stats.projectCurrency .~ Project.Country.mx.currencyCode
 
-    let (min, max) = minAndMaxPledgeAmount(forProject: mexicanCurrencyProjectTemplate, reward: nil)
+    let (min, max) = minAndMaxPledgeAmount(
+      forProject: mexicanCurrencyProjectTemplate, reward: nil, launchedCountries: .init()
+    )
 
     XCTAssertEqual(min, 10)
     XCTAssertEqual(max, 200_000)
@@ -1207,7 +1211,9 @@ final class SharedFunctionsTests: TestCase {
     let reward = Reward.template
       |> Reward.lens.minimum .~ 12.00
 
-    let (min, max) = minAndMaxPledgeAmount(forProject: mexicanCurrencyProjectTemplate, reward: reward)
+    let (min, max) = minAndMaxPledgeAmount(
+      forProject: mexicanCurrencyProjectTemplate, reward: reward, launchedCountries: .init()
+    )
 
     XCTAssertEqual(min, 12)
     XCTAssertEqual(max, 200_000)
@@ -1225,7 +1231,9 @@ final class SharedFunctionsTests: TestCase {
       |> Reward.lens.latePledgeAmount .~ 10.00
       |> Reward.lens.pledgeAmount .~ 6.00
 
-    let (min, max) = minAndMaxPledgeAmount(forProject: mexicanCurrencyProjectTemplate, reward: reward)
+    let (min, max) = minAndMaxPledgeAmount(
+      forProject: mexicanCurrencyProjectTemplate, reward: reward, launchedCountries: .init()
+    )
 
     XCTAssertEqual(min, 12)
     XCTAssertEqual(max, 200_000)
@@ -1243,7 +1251,9 @@ final class SharedFunctionsTests: TestCase {
       |> Reward.lens.minimum .~ 12.00
       |> Reward.lens.latePledgeAmount .~ 6.00
 
-    let (min, max) = minAndMaxPledgeAmount(forProject: mexicanCurrencyProjectTemplate, reward: reward)
+    let (min, max) = minAndMaxPledgeAmount(
+      forProject: mexicanCurrencyProjectTemplate, reward: reward, launchedCountries: .init()
+    )
 
     XCTAssertEqual(min, 6)
     XCTAssertEqual(max, 200_000)
@@ -1262,7 +1272,9 @@ final class SharedFunctionsTests: TestCase {
       |> Reward.lens.latePledgeAmount .~ 6.00
       |> Reward.lens.pledgeAmount .~ 3.00
 
-    let (min, max) = minAndMaxPledgeAmount(forProject: mexicanCurrencyProjectTemplate, reward: reward)
+    let (min, max) = minAndMaxPledgeAmount(
+      forProject: mexicanCurrencyProjectTemplate, reward: reward, launchedCountries: .init()
+    )
 
     XCTAssertEqual(min, 3)
     XCTAssertEqual(max, 200_000)
@@ -1275,12 +1287,12 @@ final class SharedFunctionsTests: TestCase {
 
     let emptyLaunchedCountries = LaunchedCountries(countries: [])
 
-    withEnvironment(launchedCountries: emptyLaunchedCountries) {
-      let (min, max) = minAndMaxPledgeAmount(forProject: mexicanCurrencyProjectTemplate, reward: .noReward)
+    let (min, max) = minAndMaxPledgeAmount(
+      forProject: mexicanCurrencyProjectTemplate, reward: .noReward, launchedCountries: emptyLaunchedCountries
+    )
 
-      XCTAssertEqual(min, 1)
-      XCTAssertEqual(max, 10_000)
-    }
+    XCTAssertEqual(min, 1)
+    XCTAssertEqual(max, 10_000)
   }
 
   func testEstimatedShippingText() {

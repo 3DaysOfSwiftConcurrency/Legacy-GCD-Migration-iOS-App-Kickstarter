@@ -16,7 +16,7 @@ public final class RewardAddOnCardView: UIView {
   // MARK: - Properties
 
   weak var delegate: RewardAddOnCardViewDelegate?
-  private let viewModel = RewardAddOnCardViewModel()
+  private let viewModel = RewardAddOnCardViewModel(currencyContext: { .live() })
 
   private let rootStackView = UIStackView(frame: .zero)
   private let detailsStackView = UIStackView(frame: .zero)

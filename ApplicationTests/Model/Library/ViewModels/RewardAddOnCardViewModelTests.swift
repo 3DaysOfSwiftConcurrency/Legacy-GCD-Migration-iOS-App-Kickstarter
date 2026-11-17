@@ -9,7 +9,7 @@ import XCTest
 @MainActor
 final class RewardAddOnCardViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  fileprivate let vm = RewardAddOnCardViewModel()
+  fileprivate let vm = RewardAddOnCardViewModel(currencyContext: { .live() })
 
   private let addButtonHidden = Recorder<Bool>()
   private let amountConversionLabelHidden = Recorder<Bool>()

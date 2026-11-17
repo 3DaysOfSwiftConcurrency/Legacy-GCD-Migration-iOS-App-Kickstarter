@@ -3445,6 +3445,13 @@ completion to the Session generation. Two signed-in tests cover replacing
 the session with the same user ID while a refresh is pending. All 46
 focused tests and 115 add-on and checkout regression tests passed.
 
+Pledge limits now take the launched-country table explicitly. The pledge
+amount editor captures currency inputs when configured and uses them for
+both validation and the maximum-amount message. Reward and add-on cards
+receive the same currency inputs from their views for price formatting.
+Estimated-shipping formatting still uses the legacy helpers. All 230
+focused tests and 127 checkout and reward-selection regressions passed.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

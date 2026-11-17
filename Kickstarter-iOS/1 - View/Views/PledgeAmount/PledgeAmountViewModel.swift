@@ -24,7 +24,8 @@ final class PledgeAmountViewModel {
     case endEditing, text(String), title(String)
   }
   var onEvent: ((Event) -> Void)?
-  private var config: PledgeAmountViewConfigData?
+  private let currencyContext: @MainActor () -> PledgeCurrencyContext
+  private var config: (data: PledgeAmountViewConfigData, currency: PledgeCurrencyContext)?
   private var minimum: Double = 0
   private var baseMaximum: Double = 0
   private var unavailableAmount: Double = 0
@@ -35,14 +36,21 @@ final class PledgeAmountViewModel {
   private var lastStepperInput: Double?
   private var previousMaxErrorText: String?
 
+  init(currencyContext: @escaping @MainActor () -> PledgeCurrencyContext) {
+    self.currencyContext = currencyContext
+  }
+
   func configureWith(data: PledgeAmountViewConfigData) {
-    self.config = data
-    let (minValue, maxValue) = minAndMaxPledgeAmount(forProject: data.project, reward: data.reward)
+    let currency = self.currencyContext()
+    self.config = (data, currency)
+    let (minValue, maxValue) = minAndMaxPledgeAmount(
+      forProject: data.project, reward: data.reward, launchedCountries: currency.launchedCountries
+    )
     self.minimum = data.reward.isNoReward ? minValue : 0
     self.baseMaximum = maxValue
     if !self.hasUnavailableAmount { self.unavailableAmount = 0 }
     self.value = initialPledgeAmount(from: data.project, currentAmount: data.currentAmount, minValue: self.minimum)
-    self.onEvent?(.currency(currencySymbol(forCurrencyCode: data.project.stats.projectCurrency).trimmed()))
+    self.onEvent?(.currency(currency.symbol(for: data.project.stats.projectCurrency).trimmed()))
     self.onEvent?(.stepperMax(PledgeAmountStepperConstants.max))
     self.onEvent?(.noReward(data.reward.isNoReward))
     self.onEvent?(.title(data.reward.isNoReward ? Strings.Your_pledge_amount() : Strings.Bonus_support()))
@@ -98,7 +106,9 @@ final class PledgeAmountViewModel {
     if let lastStepperInput { self.publishFeedback(for: lastStepperInput, minValue: stepperMinimum) }
     self.onEvent?(.amount((rounded, self.minimum, maxValue, valid)))
     self.onEvent?(.maxErrorHidden(self.value <= maxValue))
-    let maxPledge = Format.currency(maxValue, currencyCode: config.project.statsCurrency, omitCurrencyCode: false)
+    let maxPledge = config.currency.format(
+      maxValue, currencyCode: config.data.project.statsCurrency, omitCurrencyCode: false
+    )
     let errorText = Strings.Enter_an_amount_less_than_max_pledge(max_pledge: maxPledge)
     if self.previousMaxErrorText != errorText {
       self.previousMaxErrorText = errorText

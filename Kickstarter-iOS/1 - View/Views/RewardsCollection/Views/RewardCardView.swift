@@ -13,7 +13,8 @@ public final class RewardCardView: UIView {
 
   weak var delegate: RewardCardViewDelegate?
   private let viewModel = RewardCardViewModel(
-    currentUser: { AppModel.shared.sessionFeature.currentUser }
+    currentUser: { AppModel.shared.sessionFeature.currentUser },
+    currencyContext: { .live() }
   )
 
   private let rootStackView: UIStackView = UIStackView(frame: .zero)

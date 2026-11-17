@@ -63,20 +63,26 @@ public final class RewardCardViewModel {
   var onDisplay: ((Display) -> Void)?
   var onRewardSelected: ((Int) -> Void)?
   private let currentUser: () -> User?
+  private let currencyContext: @MainActor () -> PledgeCurrencyContext
   private var currentReward: Reward?
 
-  init(currentUser: @escaping () -> User?) {
+  init(
+    currentUser: @escaping () -> User?,
+    currencyContext: @escaping @MainActor () -> PledgeCurrencyContext
+  ) {
     self.currentUser = currentUser
+    self.currencyContext = currencyContext
   }
 
   func configure(with data: RewardCardViewData) {
     let project = data.project
     let reward = data.reward
+    let currency = self.currencyContext()
     let isCreator = currentUserIsCreator(of: project, currentUser: self.currentUser())
     self.currentReward = reward
     let conversionText: String?
     if needsConversion(project: project) {
-      let amount = Format.currency(
+      let amount = currency.format(
         reward.convertedMinimum,
         currencyCode: project.stats.userCurrency ?? Project.Country.us.currencyCode,
         omitCurrencyCode: project.stats.omitUSCurrencyCode,
@@ -110,7 +116,9 @@ public final class RewardCardViewModel {
       pickupHidden: !isRewardLocalPickup(reward),
       items: items,
       pills: pillValues(project: project, reward: reward),
-      minimumText: formattedAmountForRewardOrBacking(project: project, rewardOrBacking: .left(reward)),
+      minimumText: formattedAmountForRewardOrBacking(
+        project: project, rewardOrBacking: .left(reward), currency: currency
+      ),
       titleHidden: reward.title == nil && !reward.isNoReward,
       title: rewardTitle(project: project, reward: reward, isCreator: isCreator),
       image: reward.image,

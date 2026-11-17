@@ -17,7 +17,7 @@ final class PledgeAmountViewController: UIViewController {
   // MARK: - Properties
 
   public weak var delegate: PledgeAmountViewControllerDelegate?
-  private let viewModel = PledgeAmountViewModel()
+  private let viewModel = PledgeAmountViewModel(currencyContext: { .live() })
 
   private lazy var adaptableStackView: UIStackView = { UIStackView(frame: .zero) }()
   private lazy var amountInputView: AmountInputView = { AmountInputView(frame: .zero) }()
