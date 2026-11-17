@@ -34,7 +34,7 @@ final class DiscoveryNavigationHeaderViewModel {
   private var lastCategoryID: Int?
 
   init(
-    discoveryFeature: DiscoveryFeature? = nil,
+    discoveryFeature: DiscoveryFeature,
     scheduleDismissal: @escaping @MainActor (@escaping @MainActor () -> Void) -> Task<Void, Never>? = { action in
       Task { @MainActor in
         do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
@@ -42,7 +42,7 @@ final class DiscoveryNavigationHeaderViewModel {
       }
     }
   ) {
-    self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
+    self.discoveryFeature = discoveryFeature
     self.scheduleDismissal = scheduleDismissal
   }
 

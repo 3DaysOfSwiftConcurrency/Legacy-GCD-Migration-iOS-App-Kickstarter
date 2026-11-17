@@ -3253,3 +3253,8 @@ AppDelegate supplies server configuration to its handler for matching links
 and push destinations. The source check rejects direct API and current-user
 access in tracked view-model files. The focused simulator runs passed 15
 Beta Tools and router tests, plus 125 AppDelegate and Help Web tests.
+
+Discovery, its page and navigation header, and Discovery Filters now receive
+the shared DiscoveryFeature from their controllers. The four focused view-model
+suites passed 86 simulator tests, and `make check-cfa` guards the Discovery and
+Discovery Filters view-model directories against direct AppModel singleton access.

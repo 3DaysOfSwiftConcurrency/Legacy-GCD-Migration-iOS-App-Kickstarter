@@ -30,10 +30,10 @@ final class DiscoveryViewModel {
   private var previousUserSort: DiscoveryParams.Sort = .magic
   private var lastPagerStyle: Int??
 
-  init(discoveryFeature: DiscoveryFeature? = nil, deferInitial: @escaping @MainActor (@escaping @MainActor () -> Void) -> Void = { action in
+  init(discoveryFeature: DiscoveryFeature, deferInitial: @escaping @MainActor (@escaping @MainActor () -> Void) -> Void = { action in
     Task { @MainActor in await Task.yield(); action() }
   }) {
-    self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
+    self.discoveryFeature = discoveryFeature
     self.deferInitial = deferInitial
   }
 

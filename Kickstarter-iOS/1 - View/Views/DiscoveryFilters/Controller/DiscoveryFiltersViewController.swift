@@ -16,7 +16,9 @@ internal final class DiscoveryFiltersViewController: UIViewController, UITableVi
   @IBOutlet private var filtersTableView: UITableView!
 
   private let dataSource = DiscoveryFiltersDataSource()
-  private let viewModel: DiscoveryFiltersViewModel = DiscoveryFiltersViewModel()
+  private let viewModel: DiscoveryFiltersViewModel = DiscoveryFiltersViewModel(
+    discoveryFeature: AppModel.shared.discoveryFeature
+  )
 
   internal weak var delegate: DiscoveryFiltersViewControllerDelegate?
 

@@ -52,7 +52,11 @@ private let categories =
 internal final class DiscoveryFiltersViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private lazy var vm: DiscoveryFiltersViewModel = {
-    let vm = DiscoveryFiltersViewModel()
+    let vm = DiscoveryFiltersViewModel(
+      discoveryFeature: DiscoveryFeature(
+        provider: AsyncDiscoveryProvider(), currentUser: { AppEnvironment.current.currentUser }
+      )
+    )
     vm.onAnimateIn = { [weak self] in self?.animateInView.values.append(()) }
     vm.onLoading = { [weak self] in self?.loadingIndicatorisVisible.values.append($0) }
     vm.onCategoryRows = { [weak self] rows, initial, selected in

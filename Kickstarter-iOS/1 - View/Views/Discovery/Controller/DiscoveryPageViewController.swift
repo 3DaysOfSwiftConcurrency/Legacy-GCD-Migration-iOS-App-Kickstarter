@@ -15,7 +15,9 @@ protocol DiscoveryPageViewControllerDelegate: AnyObject {
 internal final class DiscoveryPageViewController: UITableViewController,
   MessageBannerViewControllerPresenting,
   VideoFeedBannerPresenting {
-  fileprivate let viewModel: DiscoveryPageViewModelType = DiscoveryPageViewModel()
+  fileprivate let viewModel: DiscoveryPageViewModelType = DiscoveryPageViewModel(
+    discoveryFeature: AppModel.shared.discoveryFeature
+  )
   fileprivate let shareViewModel = ShareViewModel()
 
   // MARK: - Properties

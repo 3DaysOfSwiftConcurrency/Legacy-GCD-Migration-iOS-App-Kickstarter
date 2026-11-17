@@ -5,7 +5,9 @@ import Prelude
 import UIKit
 
 internal final class DiscoveryViewController: UIViewController {
-  fileprivate let viewModel = DiscoveryViewModel()
+  fileprivate let viewModel = DiscoveryViewModel(
+    discoveryFeature: AppModel.shared.discoveryFeature
+  )
   fileprivate var dataSource: DiscoveryPagesDataSource?
 
   private var recommendationsChangedObserver: MainActorNotificationObservation?

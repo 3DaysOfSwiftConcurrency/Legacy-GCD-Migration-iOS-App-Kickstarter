@@ -12,7 +12,9 @@ internal protocol DiscoveryNavigationHeaderViewDelegate: AnyObject {
 }
 
 internal final class DiscoveryNavigationHeaderViewController: UIViewController {
-  fileprivate let viewModel = DiscoveryNavigationHeaderViewModel()
+  fileprivate let viewModel = DiscoveryNavigationHeaderViewModel(
+    discoveryFeature: AppModel.shared.discoveryFeature
+  )
 
   @IBOutlet fileprivate var arrowImageView: UIImageView!
   @IBOutlet fileprivate var betaToolsButton: UIButton!

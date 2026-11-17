@@ -48,6 +48,8 @@ reject_matches 'ProjectPageViewModel must receive dependencies from the controll
   'AppModel[.]shared|AppEnvironment[.]current' "$project_page_view_model"
 reject_matches 'DiscoveryFeature must receive its session lookup explicitly.' \
   'AppModel[.]shared|AppEnvironment[.]current[.]currentUser' "$discovery_feature"
+reject_matches 'Discovery view models must receive feature dependencies from their controllers.' \
+  'AppModel[.]shared' "$app_view/Views/Discovery/*ViewModel.swift" "$app_view/Views/DiscoveryFilters/*ViewModel.swift"
 reject_matches 'Features must receive their application dependencies explicitly.' \
   'AppModel[.]shared' "$app_model/Features"
 reject_matches 'View models must receive API and current-user dependencies from composition.' \

@@ -49,10 +49,15 @@ internal final class DiscoveryNavigationHeaderViewModelTests: TestCase {
 
   internal override func setUp() async throws {
     try await super.setUp()
-    self.vm = DiscoveryNavigationHeaderViewModel(scheduleDismissal: { [weak self] action in
-      self?.pendingDismissals.append(action)
-      return nil
-    })
+    self.vm = DiscoveryNavigationHeaderViewModel(
+      discoveryFeature: DiscoveryFeature(
+        provider: AsyncDiscoveryProvider(), currentUser: { AppEnvironment.current.currentUser }
+      ),
+      scheduleDismissal: { [weak self] action in
+        self?.pendingDismissals.append(action)
+        return nil
+      }
+    )
     self.vm.onEvent = { [weak self] event in
       guard let self else { return }
       switch event {

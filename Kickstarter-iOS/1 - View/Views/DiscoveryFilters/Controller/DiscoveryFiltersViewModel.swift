@@ -27,8 +27,8 @@ public final class DiscoveryFiltersViewModel {
 
   deinit { self.selectableCellAnimationTask?.cancel() }
 
-  public init(discoveryFeature: DiscoveryFeature? = nil) {
-    self.discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
+  public init(discoveryFeature: DiscoveryFeature) {
+    self.discoveryFeature = discoveryFeature
     self.categoriesUseCase.onCategories = { [weak self] in self?.receivedCategories($0) }
     self.categoriesUseCase.onLoading = { [weak self] in self?.onLoading?($0) }
   }

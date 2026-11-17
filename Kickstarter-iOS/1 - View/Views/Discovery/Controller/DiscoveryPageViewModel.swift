@@ -140,9 +140,8 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   internal private(set) var activityTask: Task<Void, Never>?
 
   public init(
-    discoveryFeature: DiscoveryFeature? = nil
+    discoveryFeature: DiscoveryFeature
   ) {
-    let discoveryFeature = discoveryFeature ?? AppModel.shared.discoveryFeature
     self.discoveryFeature = discoveryFeature
     self.discoveryObservation = discoveryFeature.observe { [weak self] update in
       guard let self else { return }
