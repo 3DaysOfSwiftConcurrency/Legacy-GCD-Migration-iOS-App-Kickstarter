@@ -3162,3 +3162,17 @@ explicitly unverified checkpoint; this does not change its test/build status.
 Consolidate the remaining Search close-out. Removing all presentation signals is
 not a prerequisite: retained UIKit/SwiftUI compatibility must have an explicit
 reason and owner, rather than become an open-ended reactive-code rewrite.
+
+## CFA boundary checkpoints — Matthew Thomas
+
+- Authentication owns email redirect lookup. Navigation owns deep-link destination
+  loading and delivery. Settings owns scheduled account refresh and setup reads.
+  The legacy delegate handler still has lifecycle and UI callbacks to split.
+- Root Tabs receives its feature, analytics, timing and accessibility dependencies
+  from its controller. The focused Root Tabs presentation suite passed 28 tests.
+- Account setup checkpoint `d0818be61` passed 44 Settings and Session tests and
+  124 AppDelegate presentation tests in focused simulator runs.
+- Run `make check-cfa` to guard the migrated Root Tabs and delegate composition
+  boundaries and prevent reintroducing `AppLifecycleFeature`. The check is scoped
+  to these rules. App-wide conformance and the Pledge and Project Page
+  composition review remain open.

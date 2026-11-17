@@ -169,3 +169,7 @@ secrets:
 	fi
 
 .PHONY: test-all test clean dependencies submodules deploy secrets strings
+
+.PHONY: check-cfa
+check-cfa:
+	@sh bin/check-cfa.sh
