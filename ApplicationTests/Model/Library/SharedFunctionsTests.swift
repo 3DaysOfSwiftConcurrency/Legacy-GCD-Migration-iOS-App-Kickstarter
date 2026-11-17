@@ -754,7 +754,8 @@ final class SharedFunctionsTests: TestCase {
     let estimatedShipping = estimatedShippingText(
       for: [reward, addOn],
       project: project,
-      locationId: ShippingRule.template.location.id
+      locationId: ShippingRule.template.location.id,
+      currency: .init(launchedCountries: .init(), viewerCountryCode: "US", locale: Locale(identifier: "en_US"))
     )
 
     XCTAssertEqual(estimatedShipping, "$3-$12")
@@ -788,6 +789,7 @@ final class SharedFunctionsTests: TestCase {
       for: [reward, addOn],
       project: project,
       locationId: ShippingRule.template.location.id,
+      currency: .live(),
       selectedQuantities: selectedQuantities
     )
 
@@ -1313,6 +1315,7 @@ final class SharedFunctionsTests: TestCase {
       for: [reward],
       project: mexicanCurrencyProjectTemplate,
       locationId: shippingRule.location.id,
+      currency: .live(),
       selectedQuantities: selectedRewardQuantities(in: backing) /// 2
     )
 
@@ -1336,6 +1339,7 @@ final class SharedFunctionsTests: TestCase {
       for: [reward],
       project: mexicanCurrencyProjectTemplate,
       locationId: shippingRule.location.id,
+      currency: .live(),
       selectedQuantities: selectedRewardQuantities(in: backing) /// 2
     )
 

@@ -102,7 +102,7 @@ public final class RewardCardViewModel {
       items = []
     }
     let shippingText = data.currentShippingLocation.map {
-      estimatedShippingText(for: [reward], project: project, locationId: $0.id)
+      estimatedShippingText(for: [reward], project: project, locationId: $0.id, currency: currency)
     } ?? nil
     self.onDisplay?(Display(
       interactionEnabled: rewardsCarouselCanNavigateToReward(reward, in: project, selectedShippingLocation: data.currentShippingLocation, currentUserIsCreator: isCreator),

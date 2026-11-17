@@ -91,6 +91,7 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm = ManagePledgeViewModel(
         pledgeFeature: self.pledgeFeature,
         analytics: { AppEnvironment.current.ksrAnalytics },
+        currencyContext: { .live() },
         responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
         schedule: { [clock] delay, action in clock.schedule(delay, action: action) }
       )

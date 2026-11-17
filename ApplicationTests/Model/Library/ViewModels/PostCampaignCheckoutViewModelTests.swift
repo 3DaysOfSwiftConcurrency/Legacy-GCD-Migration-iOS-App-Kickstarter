@@ -34,6 +34,7 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
     stripeIntentService: self.mockStripeIntentService,
     pledgeFeature: self.pledgeFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
+    currencyContext: { .live() },
     responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
   )

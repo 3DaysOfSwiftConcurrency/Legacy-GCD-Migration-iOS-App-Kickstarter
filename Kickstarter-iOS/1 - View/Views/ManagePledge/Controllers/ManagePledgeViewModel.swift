@@ -105,11 +105,13 @@ public final class ManagePledgeViewModel:
     }
   }
   private let analytics: () -> KSRAnalytics
+  private let currencyContext: @MainActor () -> PledgeCurrencyContext
   private let responseDelay: () -> TimeInterval
 
   public init(
     pledgeFeature: PledgeFeature,
     analytics: @escaping () -> KSRAnalytics,
+    currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
     responseDelay: @escaping () -> TimeInterval,
     schedule: @escaping @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void = { delay, action in
       Task { @MainActor in
@@ -122,6 +124,7 @@ public final class ManagePledgeViewModel:
   ) {
     self.pledgeFeature = pledgeFeature
     self.analytics = analytics
+    self.currencyContext = currencyContext
     self.responseDelay = responseDelay
     self.schedule = schedule
   }
@@ -145,6 +148,7 @@ public final class ManagePledgeViewModel:
     let latestDelivery = rewards.compactMap(\.estimatedDeliveryOn).reduce(0, max)
     let shipping = backing.locationId.flatMap { locationID in
       estimatedShippingText(for: rewards, project: project, locationId: locationID,
+                            currency: self.currencyContext(),
                             selectedQuantities: selectedRewardQuantities(in: backing))
     }.map { Strings.About_reward_amount(reward_amount: $0) }
     let received = ManageViewPledgeRewardReceivedViewData(

@@ -64,7 +64,9 @@ public final class RewardAddOnCardViewModel {
     }
     if reward.rewardsItems == nil { assertionFailure("Expected reward items to be fetched.") }
     let rewardItems = reward.rewardsItems ?? []
-    let shipping = rule.flatMap { estimatedShippingText(for: [reward], project: project, locationId: $0.location.id) }
+    let shipping = rule.flatMap {
+      estimatedShippingText(for: [reward], project: project, locationId: $0.location.id, currency: currencyContext)
+    }
     self.onDisplay?(Display(
       conversionHidden: !needsConversion(project: project), conversion: conversion,
       amount: amountStringForReward(project: project, reward: reward, shippingRule: rule, currency: currencyContext),

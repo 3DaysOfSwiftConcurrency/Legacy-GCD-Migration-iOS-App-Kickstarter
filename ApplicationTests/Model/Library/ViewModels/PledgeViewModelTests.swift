@@ -53,6 +53,7 @@ final class PledgeViewModelTests: TestCase {
   private lazy var vm: PledgeViewModelType = PledgeViewModel(
     feature: self.feature,
     analytics: { AppEnvironment.current.ksrAnalytics },
+    currencyContext: { .live() },
     responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
     sleep: { [delayGate] in await delayGate.sleep($0) }

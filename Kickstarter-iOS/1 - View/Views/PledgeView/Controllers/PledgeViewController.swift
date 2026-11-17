@@ -133,6 +133,7 @@ final class PledgeViewController: UIViewController,
   private let viewModel: PledgeViewModelType = PledgeViewModel(
     feature: AppModel.shared.pledgeFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
+    currencyContext: { .live() },
     responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
   )

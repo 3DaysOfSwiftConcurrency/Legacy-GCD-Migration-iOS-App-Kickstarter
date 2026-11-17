@@ -215,16 +215,19 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   PostCampaignCheckoutViewModelOutputs {
   let stripeIntentService: StripeIntentServiceType
   private let analytics: () -> KSRAnalytics
+  private let currencyContext: @MainActor () -> PledgeCurrencyContext
 
   public init(
     stripeIntentService: StripeIntentServiceType,
     pledgeFeature: PledgeFeature,
     analytics: @escaping () -> KSRAnalytics,
+    currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
     responseDelay: @escaping @MainActor () -> TimeInterval,
     stripePublishableKey: @escaping () -> String
   ) {
     self.stripeIntentService = stripeIntentService
     self.analytics = analytics
+    self.currencyContext = currencyContext
     self.cardValidation = CheckoutValidationLane(responseDelay: responseDelay)
     self.applePayValidation = CheckoutValidationLane(responseDelay: responseDelay)
 
@@ -407,11 +410,11 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       self?.onPledgeRewardsSummary?(rewardsData, bonus, pledgeData)
       let shipping: String?
       let conversion: String?
-      if let rule = data.selectedShippingRule {
+      if let rule = data.selectedShippingRule, let currency = self?.currencyContext() {
         shipping = estimatedShippingText(for: data.rewards, project: data.project,
-          locationId: rule.location.id, selectedQuantities: data.selectedQuantities)
+          locationId: rule.location.id, currency: currency, selectedQuantities: data.selectedQuantities)
         conversion = estimatedShippingConversionText(for: data.rewards, project: data.project,
-          locationId: rule.location.id, selectedQuantities: data.selectedQuantities)
+          locationId: rule.location.id, currency: currency, selectedQuantities: data.selectedQuantities)
       } else {
         shipping = nil
         conversion = nil

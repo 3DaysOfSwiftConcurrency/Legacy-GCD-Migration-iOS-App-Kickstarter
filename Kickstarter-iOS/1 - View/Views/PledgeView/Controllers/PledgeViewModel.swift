@@ -114,10 +114,12 @@ public protocol PledgeViewModelType {
 public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   PledgeViewModelOutputs {
   private let analytics: () -> KSRAnalytics
+  private let currencyContext: @MainActor () -> PledgeCurrencyContext
 
   public init(
     feature: PledgeFeature,
     analytics: @escaping () -> KSRAnalytics,
+    currencyContext: @escaping @MainActor () -> PledgeCurrencyContext,
     responseDelay: @escaping () -> TimeInterval,
     stripePublishableKey: @escaping () -> String,
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
@@ -126,6 +128,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     }
   ) {
     self.analytics = analytics
+    self.currencyContext = currencyContext
     let formState = self.formState
     let ctaState = PledgeCTAState()
     let requestState = PledgeRequestState()
@@ -236,11 +239,11 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       }
       let shipping: String?
       let conversion: String?
-      if let rule = data.selectedShippingRule {
+      if let rule = data.selectedShippingRule, let currency = self?.currencyContext() {
         shipping = estimatedShippingText(for: data.rewards, project: data.project,
-          locationId: rule.location.id, selectedQuantities: data.selectedQuantities)
+          locationId: rule.location.id, currency: currency, selectedQuantities: data.selectedQuantities)
         conversion = estimatedShippingConversionText(for: data.rewards, project: data.project,
-          locationId: rule.location.id, selectedQuantities: data.selectedQuantities)
+          locationId: rule.location.id, currency: currency, selectedQuantities: data.selectedQuantities)
       } else {
         shipping = nil
         conversion = nil

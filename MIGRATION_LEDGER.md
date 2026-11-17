@@ -3452,6 +3452,12 @@ receive the same currency inputs from their views for price formatting.
 Estimated-shipping formatting still uses the legacy helpers. All 230
 focused tests and 127 checkout and reward-selection regressions passed.
 
+Estimated-shipping amount formatting now uses the explicit currency
+context in checkout, post-campaign checkout, Manage Pledge and reward
+cards. The existing quantity and conversion paths are preserved. All 219
+focused shipping and checkout tests and 111 card and shipping-selector
+regressions passed on the simulator.
+
 AppDelegate sends the background lifecycle event directly to AppModel after
 cancelling the permission alert. AppModel publishes the same notification
 used by Project Page and video playback, with the delegate retaining the

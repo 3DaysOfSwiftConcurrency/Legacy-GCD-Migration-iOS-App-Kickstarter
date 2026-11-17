@@ -90,6 +90,7 @@ final class PostCampaignCheckoutViewController: UIViewController,
       stripeIntentService: StripeIntentService(paymentsFeature: AppModel.shared.paymentsFeature),
       pledgeFeature: AppModel.shared.pledgeFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
+      currencyContext: { .live() },
       responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
     )

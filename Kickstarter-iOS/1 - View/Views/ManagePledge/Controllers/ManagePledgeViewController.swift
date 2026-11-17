@@ -18,6 +18,7 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
   private let viewModel: ManagePledgeViewModelType = ManagePledgeViewModel(
     pledgeFeature: AppModel.shared.pledgeFeature,
     analytics: { AppEnvironment.current.ksrAnalytics },
+    currencyContext: { .live() },
     responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
   )
 

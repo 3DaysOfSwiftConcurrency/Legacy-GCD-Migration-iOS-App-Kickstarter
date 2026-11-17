@@ -798,10 +798,11 @@ public func estimatedShippingText(
   for rewards: [Reward],
   project: Project,
   locationId: Int,
+  currency: PledgeCurrencyContext,
   selectedQuantities: SelectedRewardQuantities? = nil
 ) -> String? {
   guard project.stats.needsConversion == false else {
-    return estimatedShippingConversionText(for: rewards, project: project, locationId: locationId)
+    return estimatedShippingConversionText(for: rewards, project: project, locationId: locationId, currency: currency)
   }
 
   let (estimatedMin, estimatedMax) = estimatedMinMax(
@@ -814,14 +815,14 @@ public func estimatedShippingText(
 
   let projectCurrency = project.stats.projectCurrency
 
-  let formattedMin = Format.currency(
+  let formattedMin = currency.format(
     estimatedMin,
     currencyCode: projectCurrency,
     omitCurrencyCode: project.stats.omitUSCurrencyCode,
     roundingMode: .halfUp
   )
 
-  let formattedMax = Format.currency(
+  let formattedMax = currency.format(
     estimatedMax,
     currencyCode: projectCurrency,
     omitCurrencyCode: project.stats.omitUSCurrencyCode,
@@ -840,6 +841,7 @@ public func estimatedShippingConversionText(
   for rewards: [Reward],
   project: Project,
   locationId: Int,
+  currency: PledgeCurrencyContext,
   selectedQuantities: SelectedRewardQuantities? = nil
 ) -> String? {
   guard project.stats.needsConversion else { return nil }
@@ -856,14 +858,14 @@ public func estimatedShippingConversionText(
   let convertedMax = estimatedMax * Double(project.stats.userCurrencyRate ?? project.stats.staticUsdRate)
   let currencyCode = project.stats.userCurrency ?? Project.Country.us.currencyCode
 
-  let formattedMin = Format.currency(
+  let formattedMin = currency.format(
     convertedMin,
     currencyCode: currencyCode,
     omitCurrencyCode: project.stats.omitUSCurrencyCode,
     roundingMode: .halfUp
   )
 
-  let formattedMax = Format.currency(
+  let formattedMax = currency.format(
     convertedMax,
     currencyCode: currencyCode,
     omitCurrencyCode: project.stats.omitUSCurrencyCode,
