@@ -57,7 +57,7 @@ final class AppDelegateAnalyticsTests: XCTestCase {
 }
 
 @MainActor
-final class AppDelegateViewModelTests: TestCase {
+final class ApplicationRoutingTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let settingsFeature = SettingsFeature(
     sessionFeature: SessionFeature(makeProvider: {
@@ -122,7 +122,12 @@ final class AppDelegateViewModelTests: TestCase {
       session.currentUser
     }
   )
-  var vm: AppDelegateViewModelType!
+  private var accountRefresh: AccountRefreshCoordinator!
+  private let navigationRoute = UUID()
+  private var continueUserActivityReturnValue = false
+  private var applicationDidFinishLaunchingReturnValue = true
+  private let messageThreads = ValueRecorder<MessageThread>()
+  private var discoveryDelivered: (() -> Void)?
 
   private let applicationIconBadgeNumber = ValueRecorder<Int>()
   private let emailVerificationCompletedMessage = ValueRecorder<String>()
@@ -172,77 +177,123 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testMessageDeepLinkLoadsThroughSharedFeature() async throws {
-    var threads: [MessageThread] = []
-    self.vm.outputs.onGoToMessageThread = { threads.append($0) }
-    defer { self.vm.outputs.onGoToMessageThread = nil }
-    self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: [:])
-    let accepted = self.vm.inputs.applicationOpenUrl(
+    self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: [:])
+    let accepted = self.openLink(
       application: UIApplication.shared,
       url: try XCTUnwrap(URL(string: "https://www.kickstarter.com/messages/42")), options: [:]
     )
     XCTAssertTrue(accepted)
     await self.deepLinkRouter.waitForOperations()
     await self.messagingFeature.waitForOperations()
-    XCTAssertEqual(threads.count, 1)
-    XCTAssertEqual(threads.first?.id, MessageThread.template.id)
+    self.messageThreads.assertValueCount(1)
+    XCTAssertEqual(self.messageThreads.lastValue?.id, MessageThread.template.id)
     await self.settingsFeature.waitForOperations()
   }
 
-  private func makeDelegateHandler() -> AppDelegateViewModel {
+  private func makeAccountRefresh() -> AccountRefreshCoordinator {
     let session = self.settingsFeature.sessionFeature
-    return AppDelegateViewModel(
-      deepLinkRouter: self.deepLinkRouter,
+    return AccountRefreshCoordinator(
       applicationShortcuts: ApplicationShortcutService(
         session: session,
         hasRecommendations: { [discoveryFeature = self.discoveryFeature] in
           try await discoveryFeature.hasRecommendations(for: $0)
         }
       ),
-      sessionFeature: session,
       settingsFeature: self.settingsFeature
     )
   }
 
   private func bindOutputs() {
-    self.vm = self.makeDelegateHandler()
-    self.vm.outputs.onNotificationSettingsUpdated = { [weak self] in self?.notificationSettingsUpdated.record(()) }
+    self.accountRefresh = self.makeAccountRefresh()
 
     self.pushAuthorization.onBadgeReset = { [weak self] in self?.applicationIconBadgeNumber.record(0) }
-    self.vm.outputs.onEmailVerificationCompleted = { [weak self] message, success in
-      self?.emailVerificationCompletedMessage.record(message)
-      self?.emailVerificationCompletedSuccess.record(success)
-    }
-    self.vm.outputs.onForceLogout = { [weak self] in self?.forceLogout.record(()) }
-    self.vm.outputs.onGoToActivity = { [weak self] in self?.goToActivity.record(()) }
-    self.vm.outputs.onGoToDiscovery = { [weak self] in self?.goToDiscovery.record($0) }
-    self.vm.outputs.onGoToLoginWithIntent = { [weak self] in self?.goToLoginWithIntent.record($0) }
-    self.vm.outputs.onGoToProfile = { [weak self] in self?.goToProfile.record(()) }
-    self.vm.outputs.onGoToMobileSafari = { [weak self] in self?.goToMobileSafari.record($0) }
-    self.vm.outputs.onGoToSearch = { [weak self] in self?.goToSearch.record(()) }
-    self.vm.outputs.onPostNotification = { [weak self] in self?.postNotificationName.record($0.name) }
-    self.vm.outputs.onPresentViewController = { [weak self] controller in
-      guard let navigation = controller as? UINavigationController else { return }
-      self?.presentViewController.record(navigation.viewControllers.count)
-    }
+    self.accountRefresh.onForceLogout = { [weak self] in self?.forceLogout.record(()) }
+    self.accountRefresh.onPostNotification = { [weak self] in self?.postNotificationName.record($0.name) }
     self.pushAuthorization.onRegistrationAttempted = { [weak self] in self?.pushRegistrationStarted.record(()) }
-    self.vm.outputs.onSetApplicationShortcutItems = { [weak self] in self?.setApplicationShortcutItems.record($0) }
+    self.accountRefresh.onSetApplicationShortcutItems = { [weak self] in self?.setApplicationShortcutItems.record($0) }
     self.trackingConsent.onAuthorizationStatus = { [weak self] in
       self?.trackingAuthorizationStatus.record($0)
     }
     self.pushAuthorization.onOfferOnboarding = { [weak self] in self?.triggerOnboardingFlow.record(()) }
-    self.vm.outputs.onUpdateCurrentUser = { [weak self] in self?.updateCurrentUserInEnvironment.record($0) }
+    self.accountRefresh.onUpdateCurrentUser = { [weak self] in self?.updateCurrentUserInEnvironment.record($0) }
+  }
+
+  private var navigationActionHandler: @MainActor (DeepLinkRouter.Action) -> Void {
+    { [weak self] action in self?.recordNavigationAction(action) }
+  }
+
+  private func recordNavigationAction(_ action: DeepLinkRouter.Action) {
+    switch action {
+    case .selectActivity: self.goToActivity.record(())
+    case .selectSearch: self.goToSearch.record(())
+    case .selectProfile: self.goToProfile.record(())
+    case let .showLogin(intent): self.goToLoginWithIntent.record(intent)
+    case let .showDiscovery(params):
+      self.goToDiscovery.record(params)
+      self.discoveryDelivered?()
+    case let .showMessageThread(thread): self.messageThreads.record(thread)
+    case let .showViewController(controller): self.presentViewController.record(controller.viewControllers.count)
+    case let .openBrowser(url): self.goToMobileSafari.record(url)
+    case .notificationSettingsUpdated: self.notificationSettingsUpdated.record(())
+    case let .emailVerificationCompleted(message, success):
+      self.emailVerificationCompletedMessage.record(message)
+      self.emailVerificationCompletedSuccess.record(success)
+    }
+  }
+
+  private func launchAccountAndNavigation(
+    application _: UIApplication?, launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) {
+    self.applicationDidFinishLaunchingReturnValue = self.deepLinkRouter.routeLaunchShortcut(
+      launchOptions?[.shortcutItem], route: self.navigationRoute, perform: self.navigationActionHandler
+    )
+    self.accountRefresh.refreshAccountAndSetup()
+  }
+
+  private func openLink(
+    application _: UIApplication?, url: URL, options _: [UIApplication.OpenURLOptionsKey: Any]
+  ) -> Bool {
+    self.deepLinkRouter.route(url: url, route: self.navigationRoute, perform: self.navigationActionHandler)
+    return true
+  }
+
+  private func openBrazeLink(_ url: URL) {
+    self.deepLinkRouter.route(url: url, route: self.navigationRoute, source: .braze, perform: self.navigationActionHandler)
+  }
+
+  private func receivePush(remoteNotification: [AnyHashable: Any]) {
+    guard let envelope = PushEnvelope.decodeJSONDictionary(remoteNotification) else { return }
+    self.deepLinkRouter.route(push: envelope, route: self.navigationRoute, perform: self.navigationActionHandler)
+  }
+
+  private func performShortcut(_ shortcut: UIApplicationShortcutItem) {
+    self.deepLinkRouter.route(shortcut: shortcut, route: self.navigationRoute, perform: self.navigationActionHandler)
+  }
+
+  private func continueUserActivity(_ activity: NSUserActivity) -> Bool {
+    if let handled = self.deepLinkRouter.route(
+      userActivity: activity, route: self.navigationRoute, perform: self.navigationActionHandler
+    ) {
+      self.continueUserActivityReturnValue = handled
+    }
+    return self.continueUserActivityReturnValue
+  }
+
+  private func startSession() {
+    self.deepLinkRouter.release(route: self.navigationRoute)
+    self.accountRefresh.refreshAccountAndSetup()
   }
 
   private func launchApplication(
     application: UIApplication?, launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) {
-    self.vm.inputs.applicationDidFinishLaunching(application: application, launchOptions: launchOptions)
+    self.launchAccountAndNavigation(application: application, launchOptions: launchOptions)
     self.pushAuthorization.applicationDidFinishLaunching()
   }
 
   private func enterForeground() {
     self.pushAuthorization.applicationWillEnterForeground()
-    self.vm.inputs.applicationWillEnterForeground()
+    self.accountRefresh.refreshAccountAndSetup()
   }
 
   func testResetApplicationIconBadgeNumber_registeredForPushNotifications_WillEnterForeground() async {
@@ -294,11 +345,11 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testCurrentUserUpdating_NothingHappensWhenLoggedOut() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
-    self.vm.inputs.applicationWillEnterForeground()
+    self.accountRefresh.refreshAccountAndSetup()
     self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
   }
 
@@ -306,29 +357,29 @@ final class AppDelegateViewModelTests: TestCase {
     let env = AccessTokenEnvelope(accessToken: "deadbeef", user: User.template)
     AppEnvironment.login(env)
 
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
-    await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+    await self.accountRefresh.waitForUserRefresh()
     await self.settingsFeature.waitForOperations()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user])
     self.postNotificationName.assertDidNotEmitValue()
 
-    self.vm.inputs.currentUserUpdatedInEnvironment()
+    self.accountRefresh.currentUserUpdatedInEnvironment()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user])
     self.postNotificationName.assertValues([.ksr_userUpdated])
 
-    self.vm.inputs.applicationWillEnterForeground()
-    await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+    self.accountRefresh.refreshAccountAndSetup()
+    await self.accountRefresh.waitForUserRefresh()
     await self.settingsFeature.waitForOperations()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user, env.user])
     self.postNotificationName.assertValues([.ksr_userUpdated])
 
-    self.vm.inputs.currentUserUpdatedInEnvironment()
+    self.accountRefresh.currentUserUpdatedInEnvironment()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user, env.user])
     self.postNotificationName.assertValues(
@@ -340,17 +391,17 @@ final class AppDelegateViewModelTests: TestCase {
     // No current user in the environment, but the api has an oauth token. This can happen when an oauth
     // token is resurrected from the legacy user defaults.
     await withEnvironment(apiService: MockService(oauthToken: OauthToken(token: "deadbeef"))) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([.template])
       self.postNotificationName.assertDidNotEmitValue()
 
-      self.vm.inputs.currentUserUpdatedInEnvironment()
+      self.accountRefresh.currentUserUpdatedInEnvironment()
 
       self.updateCurrentUserInEnvironment.assertValues([.template])
       self.postNotificationName.assertValues([.ksr_userUpdated])
@@ -368,11 +419,11 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: MockService(fetchUserSelfError: error), currentUser: .template) {
       self.forceLogout.assertValueCount(0)
 
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
@@ -388,7 +439,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: apiService) {
       let rootUrl = "https://www.kickstarter.com/"
 
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -396,7 +447,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([])
 
       let projectUrl = rootUrl + "projects/tequila/help-me-transform-this-pile-of-wood"
-      var result = self.vm.inputs.applicationOpenUrl(
+      var result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: projectUrl)!,
         options: [:]
@@ -407,7 +458,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([1])
 
       let commentsUrl = projectUrl + "/comments"
-      result = self.vm.inputs.applicationOpenUrl(
+      result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: commentsUrl)!,
         options: [:]
@@ -418,7 +469,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([1, 2])
 
       let updatesUrl = projectUrl + "/posts"
-      result = self.vm.inputs.applicationOpenUrl(
+      result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: updatesUrl)!,
         options: [:]
@@ -429,7 +480,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([1, 2, 2])
 
       let updateUrl = projectUrl + "/posts/1399396"
-      result = self.vm.inputs.applicationOpenUrl(
+      result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: updateUrl)!,
         options: [:]
@@ -440,7 +491,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([1, 2, 2, 2])
 
       let updateCommentsUrl = updateUrl + "/comments"
-      result = self.vm.inputs.applicationOpenUrl(
+      result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: updateCommentsUrl)!,
         options: [:]
@@ -451,7 +502,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([1, 2, 2, 2, 3])
 
       let faqUrl = projectUrl + "/faqs"
-      result = self.vm.inputs.applicationOpenUrl(
+      result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: faqUrl)!,
         options: [:]
@@ -471,7 +522,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: apiService) {
       let rootUrl = "https://www.kickstarter.com/"
 
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -479,7 +530,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([])
 
       let projectUrl = rootUrl + "projects/tequila/help-me-transform-this-pile-of-wood"
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: projectUrl)!,
         options: [:]
@@ -500,7 +551,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: apiService) {
       let rootUrl = "https://www.kickstarter.com/"
 
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -508,7 +559,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([])
 
       let projectUrl = rootUrl + "projects/tequila/help-me-transform-this-pile-of-wood"
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: projectUrl)!,
         options: [:]
@@ -529,7 +580,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: apiService) {
       let rootUrl = "https://www.kickstarter.com/"
 
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -537,7 +588,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.presentViewController.assertValues([])
 
       let projectUrl = rootUrl + "projects/tequila/help-me-transform-this-pile-of-wood"
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: projectUrl)!,
         options: [:]
@@ -551,7 +602,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testPresentViewController_ProjectCommentThread_Success() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
@@ -563,7 +614,7 @@ final class AppDelegateViewModelTests: TestCase {
       let url =
         "https://\(AppEnvironment.current.apiService.serverConfig.webBaseUrl.host ?? "")/projects/fjorden/fjorden-iphone-photography-reinvented/comments?comment=Q29tbWVudC0zMzY0OTg0MQ%3D%3D"
 
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: url)!,
         options: [:]
@@ -576,7 +627,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testPresentViewController_ProjectCommentThread_Reply_Success() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
@@ -588,7 +639,7 @@ final class AppDelegateViewModelTests: TestCase {
       let url =
         "https://\(AppEnvironment.current.apiService.serverConfig.webBaseUrl.host ?? "")/projects/fjorden/fjorden-iphone-photography-reinvented/comments?comment=Q29tbWVudC0zMzY0OTg0MQ%3D%3D&reply=deadbeef"
 
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: url)!,
         options: [:]
@@ -601,7 +652,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testPresentViewController_UpdateCommentThread_Success() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
@@ -613,7 +664,7 @@ final class AppDelegateViewModelTests: TestCase {
       let url =
         "https://\(AppEnvironment.current.apiService.serverConfig.webBaseUrl.host ?? "")/projects/fjorden/fjorden-iphone-photography-reinvented/posts/3254626/comments?comment=Q29tbWVudC0zMzY0OTg0MQ%3D%3D"
 
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: url)!,
         options: [:]
@@ -626,7 +677,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testPresentViewController_UpdateCommentThread_Reply_Success() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
@@ -638,7 +689,7 @@ final class AppDelegateViewModelTests: TestCase {
       let url =
         "https://\(AppEnvironment.current.apiService.serverConfig.webBaseUrl.host ?? "")/projects/fjorden/fjorden-iphone-photography-reinvented/posts/3254626/comments?comment=Q29tbWVudC0zMzY0OTg0MQ%3D%3D&reply=deadbeef"
 
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: url)!,
         options: [:]
@@ -651,14 +702,14 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testGoToActivity() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToActivity.assertValueCount(0)
 
-    let result = self.vm.inputs.applicationOpenUrl(
+    let result = self.openLink(
       application: UIApplication.shared,
       url: URL(string: "https://www.kickstarter.com/activity")!,
       options: [:]
@@ -669,14 +720,14 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testGoToDiscovery() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToDiscovery.assertValues([])
 
-    let result = self.vm.inputs.applicationOpenUrl(
+    let result = self.openLink(
       application: UIApplication.shared,
       url: URL(string: "https://www.kickstarter.com/discover?sort=newest")!,
       options: [:]
@@ -690,14 +741,14 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testGoToDiscovery_NoParams() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToDiscovery.assertValues([])
 
-    let result = self.vm.inputs.applicationOpenUrl(
+    let result = self.openLink(
       application: UIApplication.shared,
       url: URL(string: "https://www.kickstarter.com/discover")!,
       options: [:]
@@ -712,7 +763,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(fetchGraphCategoriesResult: .success(defaultRootCategoriesTemplate))
 
     await withEnvironment(apiService: mockService) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -720,7 +771,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.goToDiscovery.assertValues([])
 
       let url = URL(string: "https://www.kickstarter.com/discover/categories/art")!
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -738,7 +789,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(fetchGraphCategoriesResult: .success(defaultRootCategoriesTemplate))
 
     await withEnvironment(apiService: mockService) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -746,7 +797,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.goToDiscovery.assertValues([])
 
       let url = URL(string: "https://www.kickstarter.com/discover/categories/random")!
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -773,7 +824,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(fetchGraphCategoriesResult: .success(gamesTemplate))
 
     await withEnvironment(apiService: mockService) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -781,7 +832,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.goToDiscovery.assertValues([])
 
       let url = URL(string: "https://www.kickstarter.com/discover/categories/games/tabletop%20games")!
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -808,7 +859,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(fetchGraphCategoriesResult: .success(gamesTemplate))
 
     await withEnvironment(apiService: mockService) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -816,7 +867,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.goToDiscovery.assertValues([])
 
       let url = URL(string: "https://www.kickstarter.com/discover/categories/games/tabletopgames")!
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -832,16 +883,12 @@ final class AppDelegateViewModelTests: TestCase {
 
   func testGoToDiscoveryWithCategoryId_ValidCategoryId_RoutesToCategory() async {
     let routed = expectation(description: "Category discovery route delivered")
-    let previousHandler = self.vm.outputs.onGoToDiscovery
-    self.vm.outputs.onGoToDiscovery = { params in
-      previousHandler?(params)
-      routed.fulfill()
-    }
-    defer { self.vm.outputs.onGoToDiscovery = previousHandler }
+    self.discoveryDelivered = { routed.fulfill() }
+    defer { self.discoveryDelivered = nil }
     let mockService = MockService(fetchGraphCategoriesResult: .success(defaultRootCategoriesTemplate))
 
     await withEnvironment(apiService: mockService) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -852,7 +899,7 @@ final class AppDelegateViewModelTests: TestCase {
         URL(
           string: "https://www.kickstarter.com/discover/advanced?category_id=1&sort=magic&seed=2714369&page=1"
         )!
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -874,7 +921,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(fetchGraphCategoriesResult: .success(defaultRootCategoriesTemplate))
 
     await withEnvironment(apiService: mockService) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -885,7 +932,7 @@ final class AppDelegateViewModelTests: TestCase {
         URL(
           string: "https://www.kickstarter.com/discover/advanced?category_id=9999&sort=magic&seed=2714369&page=1"
         )!
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -915,7 +962,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(fetchGraphCategoriesResult: .success(gamesTemplate))
 
     await withEnvironment(apiService: mockService) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -926,7 +973,7 @@ final class AppDelegateViewModelTests: TestCase {
         URL(
           string: "https://www.kickstarter.com/discover/advanced?category_id=34&sort=magic&seed=2714369&page=1"
         )!
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -944,14 +991,14 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testGoToLogin() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToLoginWithIntent.assertValueCount(0)
 
-    let result = self.vm.inputs.applicationOpenUrl(
+    let result = self.openLink(
       application: UIApplication.shared,
       url: URL(string: "https://www.kickstarter.com/authorize")!,
       options: [:]
@@ -962,14 +1009,14 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testGoToProfile() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToProfile.assertValueCount(0)
 
-    let result = self.vm.inputs.applicationOpenUrl(
+    let result = self.openLink(
       application: UIApplication.shared,
       url: URL(string: "https://www.kickstarter.com/profile/me")!,
       options: [:]
@@ -980,14 +1027,14 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testGoToSearch() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToSearch.assertValueCount(0)
 
-    let result = self.vm.inputs.applicationOpenUrl(
+    let result = self.openLink(
       application: UIApplication.shared,
       url: URL(string: "https://www.kickstarter.com/search")!,
       options: [:]
@@ -998,13 +1045,13 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testDeeplink_IsActivated_Success() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     await withEnvironment(currentUser: nil) {
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: "https://www.kickstarter.com/search")!,
         options: [:]
@@ -1040,13 +1087,13 @@ final class AppDelegateViewModelTests: TestCase {
       self.pushTokenSuccessfullyRegistered.assertValueCount(0)
 
       self.launchApplication(application: UIApplication.shared, launchOptions: [:])
-      self.vm.inputs.userSessionStarted()
+      self.startSession()
       self.pushAuthorization.requestAuthorization()
 
       self.pushRegistrationStarted.assertValueCount(1)
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.devicePushRegistration.waitForScheduledDelivery()
@@ -1073,12 +1120,12 @@ final class AppDelegateViewModelTests: TestCase {
       self.pushTokenSuccessfullyRegistered.assertValueCount(0)
 
       self.launchApplication(application: UIApplication.shared, launchOptions: [:])
-      self.vm.inputs.userSessionStarted()
+      self.startSession()
 
       self.pushRegistrationStarted.assertValueCount(1)
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.devicePushRegistration.waitForScheduledDelivery()
@@ -1104,12 +1151,12 @@ final class AppDelegateViewModelTests: TestCase {
       self.pushTokenSuccessfullyRegistered.assertValueCount(0)
 
       self.launchApplication(application: UIApplication.shared, launchOptions: [:])
-      self.vm.inputs.userSessionStarted()
+      self.startSession()
 
       self.pushRegistrationStarted.assertValueCount(1)
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.devicePushRegistration.waitForScheduledDelivery()
@@ -1134,7 +1181,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertEqual([], segmentClient.events)
 
       self.launchApplication(application: UIApplication.shared, launchOptions: [:])
-      self.vm.inputs.userSessionStarted()
+      self.startSession()
 
       self.pushAuthorization.requestAuthorization()
     }
@@ -1142,12 +1189,12 @@ final class AppDelegateViewModelTests: TestCase {
 
   func testRegisterDeviceToken() async {
     await withEnvironment(currentUser: .template) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
       self.receiveDeviceToken("deadbeef".data(using: .utf8)!)
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.devicePushRegistration.waitForScheduledDelivery()
@@ -1162,7 +1209,7 @@ final class AppDelegateViewModelTests: TestCase {
     self.registerPushTokenInBraze.assertDidNotEmitValue()
 
     await withEnvironment(currentUser: .template) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -1175,14 +1222,14 @@ final class AppDelegateViewModelTests: TestCase {
 
   func testOpenPushNotification_WhileInBackground() async {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
 
       self.presentViewController.assertValueCount(0)
 
-      self.vm.inputs.didReceive(remoteNotification: friendBackingPushData)
+      self.receivePush(remoteNotification: friendBackingPushData)
 
       await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
@@ -1193,12 +1240,12 @@ final class AppDelegateViewModelTests: TestCase {
     let decoded: PushEnvelope? = PushEnvelope.decodeJSONDictionary(friendBackingPushData)
     let envelope = try XCTUnwrap(decoded)
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
       self.presentViewController.assertValueCount(0)
-      self.vm.inputs.didReceive(pushEnvelope: envelope)
+      self.deepLinkRouter.route(push: envelope, route: self.navigationRoute, perform: self.navigationActionHandler)
       await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
     }
@@ -1210,11 +1257,11 @@ final class AppDelegateViewModelTests: TestCase {
     badActivityData?["project_id"] = nil
     badPushData["activity"] = badActivityData
 
-    self.vm.inputs.didReceive(remoteNotification: badPushData)
+    self.receivePush(remoteNotification: badPushData)
   }
 
   func testOpenNotification_Order() async {
-    self.vm.inputs.didReceive(remoteNotification: orderPushData)
+    self.receivePush(remoteNotification: orderPushData)
 
     await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValueCount(1)
@@ -1224,14 +1271,14 @@ final class AppDelegateViewModelTests: TestCase {
     var badPushData = orderPushData
     badPushData["order"]?["id"] = nil
 
-    self.vm.inputs.didReceive(remoteNotification: badPushData)
+    self.receivePush(remoteNotification: badPushData)
 
     self.presentViewController.assertValueCount(0)
   }
 
   func testOpenNotification_ProjectUpdate() async {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      self.vm.inputs.didReceive(remoteNotification: updatePushData)
+      self.receivePush(remoteNotification: updatePushData)
 
       await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
@@ -1242,13 +1289,13 @@ final class AppDelegateViewModelTests: TestCase {
     var badPushData = updatePushData
     badPushData["activity"]?["update_id"] = nil
 
-    self.vm.inputs.didReceive(remoteNotification: badPushData)
+    self.receivePush(remoteNotification: badPushData)
 
     self.presentViewController.assertValueCount(0)
   }
 
   func testOpenNotification_SurveyResponse() async {
-    self.vm.inputs.didReceive(remoteNotification: surveyResponsePushData)
+    self.receivePush(remoteNotification: surveyResponsePushData)
 
     await self.deepLinkRouter.waitForOperations()
     self.presentViewController.assertValueCount(1)
@@ -1258,14 +1305,14 @@ final class AppDelegateViewModelTests: TestCase {
     var badPushData = surveyResponsePushData
     badPushData["survey"]?["id"] = nil
 
-    self.vm.inputs.didReceive(remoteNotification: badPushData)
+    self.receivePush(remoteNotification: badPushData)
 
     self.presentViewController.assertValueCount(0)
   }
 
   func testOpenNotification_UpdateComment() async {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      self.vm.inputs.didReceive(remoteNotification: updateCommentPushData)
+      self.receivePush(remoteNotification: updateCommentPushData)
 
       await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
@@ -1276,14 +1323,14 @@ final class AppDelegateViewModelTests: TestCase {
     var badPushData = updatePushData
     badPushData["activity"]?["update_id"] = nil
 
-    self.vm.inputs.didReceive(remoteNotification: badPushData)
+    self.receivePush(remoteNotification: badPushData)
 
     self.presentViewController.assertValueCount(0)
   }
 
   func testOpenNotification_ProjectComment() async {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      self.vm.inputs.didReceive(remoteNotification: projectCommentPushData)
+      self.receivePush(remoteNotification: projectCommentPushData)
 
       await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
@@ -1295,7 +1342,7 @@ final class AppDelegateViewModelTests: TestCase {
       var badPushData = updatePushData
       badPushData["activity"]?["project_id"] = nil
 
-      self.vm.inputs.didReceive(remoteNotification: badPushData)
+      self.receivePush(remoteNotification: badPushData)
 
       self.presentViewController.assertValueCount(0)
     }
@@ -1303,7 +1350,7 @@ final class AppDelegateViewModelTests: TestCase {
 
   func testOpenNotification_GenericProject() async {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      self.vm.inputs.didReceive(remoteNotification: genericProjectPushData)
+      self.receivePush(remoteNotification: genericProjectPushData)
 
       await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValueCount(1)
@@ -1314,7 +1361,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
       let states: [Activity.Category] = [.failure, .launch, .success, .cancellation, .suspension]
 
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -1323,7 +1370,7 @@ final class AppDelegateViewModelTests: TestCase {
         var pushData = genericActivityPushData
         pushData["activity"]?["category"] = state.rawValue
 
-        self.vm.inputs.didReceive(remoteNotification: pushData)
+        self.receivePush(remoteNotification: pushData)
 
         await self.deepLinkRouter.waitForOperations()
         self.presentViewController.assertValueCount(
@@ -1345,7 +1392,7 @@ final class AppDelegateViewModelTests: TestCase {
         ]
       ]
 
-      self.vm.inputs.didReceive(remoteNotification: pushData)
+      self.receivePush(remoteNotification: pushData)
 
       await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([2])
@@ -1355,7 +1402,7 @@ final class AppDelegateViewModelTests: TestCase {
   func testOpenNotification_UnrecognizedActivityType() async {
     let categories: [Activity.Category] = [.follow, .funding, .unknown, .watch]
 
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
@@ -1364,7 +1411,7 @@ final class AppDelegateViewModelTests: TestCase {
       var pushData = genericActivityPushData
       pushData["activity"]?["category"] = state.rawValue
 
-      self.vm.inputs.didReceive(remoteNotification: pushData)
+      self.receivePush(remoteNotification: pushData)
 
       self.goToDiscovery.assertValueCount(0)
       self.presentViewController.assertValueCount(0)
@@ -1375,26 +1422,26 @@ final class AppDelegateViewModelTests: TestCase {
     let userActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
     userActivity.webpageURL = URL(string: "https://www.kickstarter.com/activity")
 
-    self.vm.inputs.applicationDidFinishLaunching(application: .shared, launchOptions: [:])
+    self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
 
     self.goToActivity.assertValueCount(0)
-    XCTAssertFalse(self.vm.outputs.continueUserActivityReturnValue)
+    XCTAssertFalse(self.continueUserActivityReturnValue)
 
-    let result = self.vm.inputs.applicationContinueUserActivity(userActivity)
+    let result = self.continueUserActivity(userActivity)
     XCTAssertTrue(result)
 
     self.goToActivity.assertValueCount(1)
-    XCTAssertTrue(self.vm.outputs.continueUserActivityReturnValue)
+    XCTAssertTrue(self.continueUserActivityReturnValue)
   }
 
   func testContinueUserActivity_InvalidActivity() async {
     let userActivity = NSUserActivity(activityType: "Other")
 
-    self.vm.inputs.applicationDidFinishLaunching(application: .shared, launchOptions: [:])
-    let result = self.vm.inputs.applicationContinueUserActivity(userActivity)
+    self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
+    let result = self.continueUserActivity(userActivity)
     XCTAssertFalse(result)
 
-    XCTAssertFalse(self.vm.outputs.continueUserActivityReturnValue)
+    XCTAssertFalse(self.continueUserActivityReturnValue)
   }
 
   func testContinueUserActivity_Success() async {
@@ -1402,15 +1449,15 @@ final class AppDelegateViewModelTests: TestCase {
     userActivity.webpageURL = URL(string: "https://www.kickstarter.com/activity")
 
     await withEnvironment(currentUser: nil) {
-      self.vm.inputs.applicationDidFinishLaunching(application: .shared, launchOptions: [:])
+      self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
 
       self.goToActivity.assertValueCount(0)
-      XCTAssertFalse(self.vm.outputs.continueUserActivityReturnValue)
+      XCTAssertFalse(self.continueUserActivityReturnValue)
 
-      let result = self.vm.inputs.applicationContinueUserActivity(userActivity)
+      let result = self.continueUserActivity(userActivity)
       XCTAssertTrue(result)
 
-      XCTAssertTrue(self.vm.outputs.continueUserActivityReturnValue)
+      XCTAssertTrue(self.continueUserActivityReturnValue)
       self.goToActivity.assertValueCount(1)
     }
   }
@@ -1418,22 +1465,22 @@ final class AppDelegateViewModelTests: TestCase {
   func testSetApplicationShortcutItems() async {
     self.setApplicationShortcutItems.assertValues([])
 
-    self.vm.inputs.applicationDidFinishLaunching(application: .shared, launchOptions: [:])
+    self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
 
     self.setApplicationShortcutItems.assertValues([])
-    await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+    await self.accountRefresh.waitForUserRefresh()
     await self.settingsFeature.waitForOperations()
 
     await self.deepLinkRouter.waitForOperations()
-    await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
+    await self.accountRefresh.waitForShortcutUpdate()
     self.setApplicationShortcutItems.assertValues([[.projectsWeLove, .search]])
 
-    self.vm.inputs.applicationWillEnterForeground()
-    await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+    self.accountRefresh.refreshAccountAndSetup()
+    await self.accountRefresh.waitForUserRefresh()
     await self.settingsFeature.waitForOperations()
 
     await self.deepLinkRouter.waitForOperations()
-    await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
+    await self.accountRefresh.waitForShortcutUpdate()
     self.setApplicationShortcutItems.assertValues(
       [
         [.projectsWeLove, .search],
@@ -1452,14 +1499,14 @@ final class AppDelegateViewModelTests: TestCase {
     ) {
       self.setApplicationShortcutItems.assertValues([])
 
-      self.vm.inputs.applicationDidFinishLaunching(application: .shared, launchOptions: [:])
+      self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
 
       self.setApplicationShortcutItems.assertValues([])
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.deepLinkRouter.waitForOperations()
-      await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
+      await self.accountRefresh.waitForShortcutUpdate()
       self.setApplicationShortcutItems.assertValues([
         [.recommendedForYou, .projectsWeLove, .search]
       ])
@@ -1476,14 +1523,14 @@ final class AppDelegateViewModelTests: TestCase {
     ) {
       self.setApplicationShortcutItems.assertValues([])
 
-      self.vm.inputs.applicationDidFinishLaunching(application: .shared, launchOptions: [:])
+      self.launchAccountAndNavigation(application: .shared, launchOptions: [:])
 
       self.setApplicationShortcutItems.assertValues([])
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       await self.deepLinkRouter.waitForOperations()
-      await (self.vm as? AppDelegateViewModel)?.waitForShortcutUpdate()
+      await self.accountRefresh.waitForShortcutUpdate()
       self.setApplicationShortcutItems.assertValues([
         [.recommendedForYou, .projectsWeLove, .search]
       ])
@@ -1491,14 +1538,14 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testPerformShortcutItem_ProjectsWeLove() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToDiscovery.assertValueCount(0)
 
-    self.vm.inputs.applicationPerformActionForShortcutItem(
+    self.performShortcut(
       ShortcutItem.projectsWeLove.applicationShortcutItem
     )
 
@@ -1510,7 +1557,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testLaunchShortcutItem_ProjectsWeLove() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [
         UIApplication.LaunchOptionsKey.shortcutItem: ShortcutItem.projectsWeLove.applicationShortcutItem
@@ -1522,18 +1569,18 @@ final class AppDelegateViewModelTests: TestCase {
       |> DiscoveryParams.lens.sort .~ .magic
     await self.deepLinkRouter.waitForOperations()
     self.goToDiscovery.assertValues([params])
-    XCTAssertFalse(self.vm.outputs.applicationDidFinishLaunchingReturnValue)
+    XCTAssertFalse(self.applicationDidFinishLaunchingReturnValue)
   }
 
   func testPerformShortcutItem_RecommendedForYou() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToDiscovery.assertValueCount(0)
 
-    self.vm.inputs.applicationPerformActionForShortcutItem(
+    self.performShortcut(
       ShortcutItem.recommendedForYou.applicationShortcutItem
     )
 
@@ -1545,7 +1592,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testLaunchShortcutItem_RecommendedForYou() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [
         UIApplication.LaunchOptionsKey.shortcutItem: ShortcutItem.recommendedForYou.applicationShortcutItem
@@ -1557,36 +1604,36 @@ final class AppDelegateViewModelTests: TestCase {
       |> DiscoveryParams.lens.sort .~ .magic
     await self.deepLinkRouter.waitForOperations()
     self.goToDiscovery.assertValues([params])
-    XCTAssertFalse(self.vm.outputs.applicationDidFinishLaunchingReturnValue)
+    XCTAssertFalse(self.applicationDidFinishLaunchingReturnValue)
   }
 
   func testPerformShortcutItem_Search() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     self.goToSearch.assertValueCount(0)
 
-    self.vm.inputs.applicationPerformActionForShortcutItem(ShortcutItem.search.applicationShortcutItem)
+    self.performShortcut(ShortcutItem.search.applicationShortcutItem)
 
     self.goToSearch.assertValueCount(1)
   }
 
   func testPerformShortcutItem_Success() async {
     await withEnvironment(currentUser: nil) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      self.vm.inputs.applicationPerformActionForShortcutItem(ShortcutItem.search.applicationShortcutItem)
+      self.performShortcut(ShortcutItem.search.applicationShortcutItem)
 
       self.goToSearch.assertValueCount(1)
     }
   }
 
   func testLaunchShortcutItem_Search() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [
         UIApplication.LaunchOptionsKey.shortcutItem: ShortcutItem.search.applicationShortcutItem
@@ -1594,12 +1641,12 @@ final class AppDelegateViewModelTests: TestCase {
     )
 
     self.goToSearch.assertValueCount(1)
-    XCTAssertFalse(self.vm.outputs.applicationDidFinishLaunchingReturnValue)
+    XCTAssertFalse(self.applicationDidFinishLaunchingReturnValue)
   }
 
   func testLaunchShortcutItem_Failure() async {
     await withEnvironment(currentUser: nil) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [
           UIApplication.LaunchOptionsKey.shortcutItem: ShortcutItem.search.applicationShortcutItem
@@ -1607,7 +1654,7 @@ final class AppDelegateViewModelTests: TestCase {
       )
 
       self.goToSearch.assertValueCount(1)
-      XCTAssertFalse(self.vm.outputs.applicationDidFinishLaunchingReturnValue)
+      XCTAssertFalse(self.applicationDidFinishLaunchingReturnValue)
     }
   }
 
@@ -1623,7 +1670,7 @@ final class AppDelegateViewModelTests: TestCase {
     )
 
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      XCTAssertTrue(self.vm.inputs.applicationOpenUrl(application: .shared, url: emailURL, options: [:]))
+      XCTAssertTrue(self.openLink(application: .shared, url: emailURL, options: [:]))
       self.presentViewController.assertDidNotEmitValue()
       await self.deepLinkRouter.waitForOperations()
       self.findRedirectUrl.assertValues([emailURL])
@@ -1641,7 +1688,7 @@ final class AppDelegateViewModelTests: TestCase {
     activity.webpageURL = emailURL
 
     await withEnvironment(apiService: MockService(fetchProjectResult: .success(.template))) {
-      XCTAssertTrue(self.vm.inputs.applicationContinueUserActivity(activity))
+      XCTAssertTrue(self.continueUserActivity(activity))
       await self.deepLinkRouter.waitForOperations()
       self.findRedirectUrl.assertValues([emailURL])
       self.presentViewController.assertValueCount(1)
@@ -1654,7 +1701,7 @@ final class AppDelegateViewModelTests: TestCase {
     let unrecognizedURL = try XCTUnwrap(URL(string: "https://www.kickstarter.com/unreconizable"))
     self.emailRedirectDestination = unrecognizedURL
 
-    XCTAssertTrue(self.vm.inputs.applicationOpenUrl(application: .shared, url: emailURL, options: [:]))
+    XCTAssertTrue(self.openLink(application: .shared, url: emailURL, options: [:]))
     await self.deepLinkRouter.waitForOperations()
     self.findRedirectUrl.assertValues([emailURL])
     self.presentViewController.assertDidNotEmitValue()
@@ -1666,7 +1713,7 @@ final class AppDelegateViewModelTests: TestCase {
     let previewURL = try XCTUnwrap(URL(string: "https://www.kickstarter.com/projects/creator/project?token=4"))
     self.emailRedirectDestination = previewURL
 
-    XCTAssertTrue(self.vm.inputs.applicationOpenUrl(application: .shared, url: emailURL, options: [:]))
+    XCTAssertTrue(self.openLink(application: .shared, url: emailURL, options: [:]))
     await self.deepLinkRouter.waitForOperations()
     self.findRedirectUrl.assertValues([emailURL])
     self.presentViewController.assertDidNotEmitValue()
@@ -1674,7 +1721,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testProjectSurveyDeepLink() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
@@ -1683,7 +1730,7 @@ final class AppDelegateViewModelTests: TestCase {
 
     let projectUrl = "https://www.kickstarter.com"
       + "/projects/tequila/help-me-transform-this-pile-of-wood/surveys/123"
-    let result = self.vm.inputs.applicationOpenUrl(
+    let result = self.openLink(
       application: UIApplication.shared,
       url: URL(string: projectUrl)!,
       options: [:]
@@ -1700,7 +1747,7 @@ final class AppDelegateViewModelTests: TestCase {
     let service = MockService(fetchProjectResult: .success(project))
 
     await withEnvironment(apiService: service, currentUser: .template) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -1712,7 +1759,7 @@ final class AppDelegateViewModelTests: TestCase {
         + "/projects/sshults/greensens-the-easy-way-to-take-care-of-your-houseplants-0"
         + "/pledge?at=4f7d35e7c9d2bb57&ref=ksr_email_backer_failed_transaction"
 
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: projectUrl)!,
         options: [:]
@@ -1730,7 +1777,7 @@ final class AppDelegateViewModelTests: TestCase {
       apiService: MockService(fetchProjectResult: .success(.template)),
       currentUser: nil
     ) {
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
@@ -1742,7 +1789,7 @@ final class AppDelegateViewModelTests: TestCase {
         + "/projects/sshults/greensens-the-easy-way-to-take-care-of-your-houseplants-0"
         + "/pledge?at=4f7d35e7c9d2bb57&ref=ksr_email_backer_failed_transaction"
 
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: projectUrl)!,
         options: [:]
@@ -1772,7 +1819,7 @@ final class AppDelegateViewModelTests: TestCase {
         ]
       ]
 
-      self.vm.inputs.didReceive(remoteNotification: pushData)
+      self.receivePush(remoteNotification: pushData)
 
       self.goToLoginWithIntent.assertDidNotEmitValue()
       await self.deepLinkRouter.waitForOperations()
@@ -1797,7 +1844,7 @@ final class AppDelegateViewModelTests: TestCase {
         ]
       ]
 
-      self.vm.inputs.didReceive(remoteNotification: pushData)
+      self.receivePush(remoteNotification: pushData)
 
       self.goToLoginWithIntent.assertValues([.erroredPledge])
       self.presentViewController.assertDidNotEmitValue()
@@ -1805,7 +1852,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testUserSurveyDeepLink() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
@@ -1813,7 +1860,7 @@ final class AppDelegateViewModelTests: TestCase {
     self.presentViewController.assertValues([])
 
     let projectUrl = "https://www.kickstarter.com/users/tequila/surveys/123"
-    let result = self.vm.inputs.applicationOpenUrl(
+    let result = self.openLink(
       application: UIApplication.shared,
       url: URL(string: projectUrl)!,
       options: [:]
@@ -1840,7 +1887,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(verifyEmailResult: .success(env))
 
     await withEnvironment(apiService: mockService) {
-      _ = self.vm.inputs.applicationOpenUrl(
+      _ = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -1874,7 +1921,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(verifyEmailResult: .failure(errorEnvelope))
 
     await withEnvironment(apiService: mockService) {
-      _ = self.vm.inputs.applicationOpenUrl(
+      _ = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -1908,7 +1955,7 @@ final class AppDelegateViewModelTests: TestCase {
     let mockService = MockService(verifyEmailResult: .failure(errorEnvelope))
 
     await withEnvironment(apiService: mockService) {
-      _ = self.vm.inputs.applicationOpenUrl(
+      _ = self.openLink(
         application: UIApplication.shared,
         url: url,
         options: [:]
@@ -1929,7 +1976,7 @@ final class AppDelegateViewModelTests: TestCase {
     let url =
       try XCTUnwrap(URL(string: "https://www.kickstarter.com/settings/notify_mobile_of_messages/true"))
     await withEnvironment(apiService: MockService(updateUserSelfError: .couldNotParseJSON)) {
-      XCTAssertTrue(self.vm.inputs.applicationOpenUrl(
+      XCTAssertTrue(self.openLink(
         application: UIApplication.shared, url: url, options: [:]
       ))
       await self.settingsLinks.waitForOperations()
@@ -1949,7 +1996,7 @@ final class AppDelegateViewModelTests: TestCase {
     AppEnvironment.login(AccessTokenEnvelope(accessToken: "fixture-token", user: .template))
     let url =
       try XCTUnwrap(URL(string: "https://www.kickstarter.com/settings/notify_mobile_of_messages/true"))
-    XCTAssertTrue(self.vm.inputs.applicationOpenUrl(
+    XCTAssertTrue(self.openLink(
       application: UIApplication.shared, url: url, options: [:]
     ))
     await self.settingsFeature.waitForOperations()
@@ -1969,7 +2016,6 @@ final class AppDelegateViewModelTests: TestCase {
   func testDeepLinkNotificationDoesNotReportSuccessAfterSessionReplacement() async throws {
     let delayStarted = self.expectation(description: "Settings write reached the presentation delay")
     let (delayGate, release) = AsyncStream<Void>.makeStream()
-    let handler = try XCTUnwrap(self.vm as? AppDelegateViewModel)
     self.settingsLinkDelay = { _ in
       delayStarted.fulfill()
       for await _ in delayGate { break }
@@ -1979,7 +2025,7 @@ final class AppDelegateViewModelTests: TestCase {
     let url = try XCTUnwrap(
       URL(string: "https://www.kickstarter.com/settings/notify_mobile_of_messages/true")
     )
-    XCTAssertTrue(handler.applicationOpenUrl(application: UIApplication.shared, url: url, options: [:]))
+    XCTAssertTrue(self.openLink(application: UIApplication.shared, url: url, options: [:]))
     await self.fulfillment(of: [delayStarted], timeout: 2)
     self.settingsFeature.sessionFeature.sessionChanged()
     release.yield(())
@@ -1999,11 +2045,11 @@ final class AppDelegateViewModelTests: TestCase {
       let env = AccessTokenEnvelope(accessToken: "deadbeef", user: user)
       AppEnvironment.login(env)
 
-      self.vm.inputs.applicationDidFinishLaunching(
+      self.launchAccountAndNavigation(
         application: UIApplication.shared,
         launchOptions: [:]
       )
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([user])
@@ -2014,7 +2060,7 @@ final class AppDelegateViewModelTests: TestCase {
       let url =
         "https://\(AppEnvironment.current.apiService.serverConfig.webBaseUrl.host ?? "")/settings/notify_mobile_of_messages/true"
 
-      let result = self.vm.inputs.applicationOpenUrl(
+      let result = self.openLink(
         application: UIApplication.shared,
         url: URL(string: url)!,
         options: [:]
@@ -2049,7 +2095,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2074,7 +2120,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2099,7 +2145,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2126,7 +2172,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2161,7 +2207,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
@@ -2192,7 +2238,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
@@ -2219,7 +2265,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
@@ -2245,7 +2291,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
@@ -2278,7 +2324,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
@@ -2313,7 +2359,7 @@ final class AppDelegateViewModelTests: TestCase {
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
-      await (self.vm as? AppDelegateViewModel)?.waitForUserRefresh()
+      await self.accountRefresh.waitForUserRefresh()
       await self.settingsFeature.waitForOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
@@ -2340,7 +2386,7 @@ final class AppDelegateViewModelTests: TestCase {
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
 
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2357,7 +2403,7 @@ final class AppDelegateViewModelTests: TestCase {
       appTrackingTransparency: appTrackingTransparency
     ) {
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
 
       appTrackingTransparency.authorizationStatusValue = .notDetermined
@@ -2374,7 +2420,7 @@ final class AppDelegateViewModelTests: TestCase {
     let tracking = MockAppTrackingTransparency()
     await withEnvironment(appTrackingTransparency: tracking) {
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
       self.trackingConsent.applicationActive(state: true)
       await self.trackingConsent.waitForRequests()
@@ -2389,7 +2435,7 @@ final class AppDelegateViewModelTests: TestCase {
       appTrackingTransparency: appTrackingTransparency
     ) {
       self.trackingConsent.applicationActive(state: false)
-      self.vm.inputs.applicationDidFinishLaunching(application: UIApplication.shared, launchOptions: nil)
+      self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.trackingConsent.applicationDidFinishLaunching()
 
       appTrackingTransparency.authorizationStatusValue = .notDetermined
@@ -2403,7 +2449,7 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testPresentViewController_BrazeInAppNotificationDeeplink_ProjectCommentThread_Success() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
@@ -2417,7 +2463,7 @@ final class AppDelegateViewModelTests: TestCase {
 
       self.presentViewController.assertValues([])
 
-      self.vm.inputs.urlFromBrazeNotification(URL(string: url)!)
+      self.openBrazeLink(URL(string: url)!)
 
       await self.deepLinkRouter.waitForOperations()
       self.presentViewController.assertValues([1])
@@ -2425,62 +2471,62 @@ final class AppDelegateViewModelTests: TestCase {
   }
 
   func testGoToMobileSafari_BrazeInAppNotificaton() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     let url = URL(string: "https://fake-url.com")!
-    self.vm.inputs.urlFromBrazeNotification(url)
+    self.openBrazeLink(url)
 
     self.goToMobileSafari.assertValues([url])
     self.presentViewController.assertValues([])
   }
 
   func testGoToMobileSafari_unrecognizedDeeplink() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     let url = URL(string: "https://fake-url.com")!
-    _ = self.vm.inputs.applicationOpenUrl(application: nil, url: url, options: [:])
+    _ = self.openLink(application: nil, url: url, options: [:])
 
     self.goToMobileSafari.assertLastValue(url)
   }
 
   func testGoToMobileSafari_deeplinkFound() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     let url = URL(string: "https://kickstarter.com/activity")!
-    _ = self.vm.inputs.applicationOpenUrl(application: nil, url: url, options: [:])
+    _ = self.openLink(application: nil, url: url, options: [:])
 
     self.goToMobileSafari.assertDidNotEmitValue()
   }
 
   func testGoToMobileSafari_ksrUnrecognizedDeeplink() async throws {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     let url = URL(string: "ksr://fake-url.com")!
-    _ = self.vm.inputs.applicationOpenUrl(application: nil, url: url, options: [:])
+    _ = self.openLink(application: nil, url: url, options: [:])
 
     self.goToMobileSafari.assertDidNotEmitValue()
   }
 
   func testGoToMobileSafari_ksrDeeplinkFound() async {
-    self.vm.inputs.applicationDidFinishLaunching(
+    self.launchAccountAndNavigation(
       application: UIApplication.shared,
       launchOptions: [:]
     )
 
     let url = URL(string: "https://kickstarter.com/activity")!
-    _ = self.vm.inputs.applicationOpenUrl(application: nil, url: url, options: [:])
+    _ = self.openLink(application: nil, url: url, options: [:])
 
     self.goToMobileSafari.assertDidNotEmitValue()
   }
@@ -2505,7 +2551,7 @@ final class AppDelegateViewModelTests: TestCase {
     await withEnvironment(apiService: mockService) {
       XCTAssertNil(AppEnvironment.current.currentUserEmail)
 
-      self.vm.inputs.userSessionStarted()
+      self.startSession()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertEqual(AppEnvironment.current.currentUserEmail, "user@example.com")

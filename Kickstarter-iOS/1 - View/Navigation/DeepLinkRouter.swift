@@ -21,7 +21,9 @@ public final class DeepLinkRouter {
     case notificationSettingsUpdated
     case emailVerificationCompleted(String, Bool)
     case openBrowser(URL)
-    case resolveDestination(Navigation)
+    case showDiscovery(DiscoveryParams?)
+    case showMessageThread(MessageThread)
+    case showViewController(UINavigationController)
   }
 
   private struct URLMatch {
@@ -70,7 +72,7 @@ public final class DeepLinkRouter {
           self.resolveEmailRedirect(url, route: route, perform: perform)
         }
       } else {
-        self.route(navigation, perform: perform)
+        self.route(navigation, route: route, perform: perform)
         if source == .application, navigation == .profile(.verifyEmail),
            let token = accessTokenFromUrl(url) {
           self.settingsLinks.verifyEmail(token: token) { message, success in
@@ -83,17 +85,39 @@ public final class DeepLinkRouter {
     return match.navigation != nil
   }
 
-  func route(push envelope: PushEnvelope, perform: @escaping @MainActor (Action) -> Void) {
+  func route(
+    userActivity: NSUserActivity, route: UUID, perform: @escaping @MainActor (Action) -> Void
+  ) -> Bool? {
+    guard userActivity.activityType == NSUserActivityTypeBrowsingWeb else { return nil }
+    guard let url = userActivity.webpageURL else { return false }
+    return self.route(url: url, route: route, perform: perform)
+  }
+
+  func routeLaunchShortcut(
+    _ item: Any?, route: UUID, perform: @escaping @MainActor (Action) -> Void
+  ) -> Bool {
+    if let shortcut = item as? UIApplicationShortcutItem {
+      self.route(shortcut: shortcut, route: route, perform: perform)
+    }
+    return item == nil
+  }
+
+  func route(push envelope: PushEnvelope, route: UUID, perform: @escaping @MainActor (Action) -> Void) {
     if let navigation = navigation(fromPushEnvelope: envelope, webBaseURL: self.serverConfig().webBaseUrl) {
-      self.route(navigation, perform: perform)
+      self.route(navigation, route: route, perform: perform)
     }
   }
 
-  func route(shortcut: ShortcutItem, perform: @escaping @MainActor (Action) -> Void) {
-    self.route(navigation(fromShortcutItem: shortcut), perform: perform)
+  func route(
+    shortcut item: UIApplicationShortcutItem, route: UUID, perform: @escaping @MainActor (Action) -> Void
+  ) {
+    guard let shortcut = ShortcutItem(typeString: item.type) else { return }
+    self.route(navigation(fromShortcutItem: shortcut), route: route, perform: perform)
   }
 
-  private func route(_ navigation: Navigation, perform: @escaping @MainActor (Action) -> Void) {
+  private func route(
+    _ navigation: Navigation, route: UUID, perform: @escaping @MainActor (Action) -> Void
+  ) {
     switch navigation {
     case let .settings(.notifications(name, enabled)):
       self.settingsLinks.updateNotification(name: name, enabled: enabled) {
@@ -107,7 +131,17 @@ public final class DeepLinkRouter {
       perform(.showLogin(.erroredPledge))
     default: break
     }
-    perform(.resolveDestination(navigation))
+    self.presentDestination(navigation, route: route) { [weak self] destination in
+      guard let self else { return }
+      switch destination {
+      case let .discovery(params): perform(.showDiscovery(params))
+      case let .message(thread): perform(.showMessageThread(thread))
+      case .survey, .project:
+        if let controller = destination.makeViewController(isLoggedIn: self.sessionFeature.currentUser != nil) {
+          perform(.showViewController(controller))
+        }
+      }
+    }
   }
 
   public let sessionFeature: SessionFeature
@@ -308,7 +342,7 @@ public final class DeepLinkRouter {
     }
   }
 
-  func presentDestination(
+  private func presentDestination(
     _ navigation: Navigation, route: UUID,
     onDestination: @escaping @MainActor (Destination) -> Void
   ) {
@@ -330,13 +364,10 @@ public final class DeepLinkRouter {
     self.presentations[route] = (id, task)
   }
 
-  func cancelPresentation(route: UUID) {
+  private func cancelPresentation(route: UUID) {
     self.presentations.removeValue(forKey: route)?.task.cancel()
   }
 
-  func waitForPresentation(route: UUID) async {
-    await self.presentations[route]?.task.value
-  }
   public func reset() {
     for route in Set(self.destinations.keys).union(self.presentations.keys).union(self.redirects.keys) {
       self.release(route: route)

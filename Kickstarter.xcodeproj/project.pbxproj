@@ -4211,6 +4211,7 @@
 			"name" = "Composition";
 			"sourceTree" = "<group>";
 			"children" = (
+				"EB63C6D98F53E0A20D85B9FD",
 				"20C37173166CEEB66CA7BCF2",
 				"CFA031200000000000000006",
 				"B6A06FB25E9940333B72DDB6",
@@ -9327,8 +9328,8 @@
 			"fileRef" = "AAF5481B2F2445C0001DB5AC";
 		};
 		"EB63C6D98F53E0A20D85B9FD" = {
-			"name" = "AppDelegateViewModel.swift";
-			"path" = "Kickstarter-iOS/1 - View/AppDelegateViewModel.swift";
+			"name" = "AccountRefreshCoordinator.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Composition/AccountRefreshCoordinator.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -9542,7 +9543,6 @@
 				"D7FF5F67A342B5AAC0ED1924",
 				"A756CEFA35E29F2A3896447A",
 				"86CBEC5E3EF7C94D8B921DAC",
-				"EB63C6D98F53E0A20D85B9FD",
 				"E8970EF62386342DEBDABD8F",
 				"46E31139393BA93DE1B32D6C",
 			);
@@ -17109,7 +17109,7 @@
 			"lastKnownFileType" = "sourcecode.swift";
 		};
 		"72B2A1A4890BD02AFD501DA2" = {
-			"path" = "ApplicationTests/Presentation/Kickstarter-iOS/AppDelegateViewModelTests.swift";
+			"path" = "ApplicationTests/Presentation/Kickstarter-iOS/ApplicationRoutingTests.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";

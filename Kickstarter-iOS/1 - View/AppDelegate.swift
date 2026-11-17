@@ -21,9 +21,9 @@ import UserNotifications
 @UIApplicationMain
 internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
-  fileprivate let viewModel: AppDelegateViewModelType = {
+  private let deepLinkRouter: DeepLinkRouter = {
     let model = AppModel.shared
-    let router = DeepLinkRouter(
+    return DeepLinkRouter(
       sessionFeature: model.sessionFeature,
       messagingFeature: model.messagingFeature,
       discussionFeature: model.discussionFeature,
@@ -37,13 +37,17 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
     )
-    return AppDelegateViewModel(
-      deepLinkRouter: router,
-      applicationShortcuts: model.applicationShortcuts,
-      sessionFeature: model.sessionFeature,
-      settingsFeature: model.settingsFeature
-    )
   }()
+  private let navigationRoute = UUID()
+  private var continueUserActivityReturnValue = false
+  private var accountRefresh: AccountRefreshCoordinator { AppModel.shared.accountRefresh }
+
+  deinit {
+    let router = self.deepLinkRouter
+    let route = self.navigationRoute
+    Task { @MainActor in router.release(route: route) }
+  }
+
   // Custom Braze cancellable type. As long as we keep a reference to this active, Braze will
   // use this to tell us about any Braze push notifications the app handles.
   fileprivate var brazeSubscription: BrazeKit.Braze.Cancellable?
@@ -128,7 +132,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       }
     #endif
 
-    self.viewModel.outputs.onUpdateCurrentUser = { [weak self] _ in
+    self.accountRefresh.onUpdateCurrentUser = { [weak self] _ in
       DispatchQueue.main.async { [weak self] in
         // The Feature committed already; never replay a delayed whole-user snapshot.
         guard let user = AppModel.shared.sessionFeature.currentUser else { return }
@@ -138,26 +142,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         // Update user in Segment and Statsig.
         AppEnvironment.current.identify(user: user)
 
-        self?.viewModel.inputs.currentUserUpdatedInEnvironment()
+        self?.accountRefresh.currentUserUpdatedInEnvironment()
       }
     }
 
-    self.viewModel.outputs.onNotificationSettingsUpdated = { [weak self] in
-      let session = AppModel.shared.sessionFeature
-      let userID = session.currentUser?.id
-      let generation = session.generation
-      DispatchQueue.main.async { [weak self] in
-        // The Feature committed the edit. Read the latest session rather than
-        // restoring an older command snapshot after presentation scheduling.
-        guard session.isCurrent(userID: userID, generation: generation),
-              let user = session.currentUser else { return }
-        self?.braze?.changeUser(userId: String(user.id))
-        AppEnvironment.current.identify(user: user)
-        self?.viewModel.inputs.currentUserUpdatedInEnvironment()
-      }
-    }
-
-    self.viewModel.outputs.onForceLogout = {
+    self.accountRefresh.onForceLogout = {
       let session = AppModel.shared.sessionFeature
       let userID = session.currentUser?.id
       let generation = session.generation
@@ -168,39 +157,8 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       }
     }
 
-    self.viewModel.outputs.onPostNotification = { notification in
+    self.accountRefresh.onPostNotification = { notification in
       DispatchQueue.main.async { NotificationCenter.default.post(notification) }
-    }
-
-    self.viewModel.outputs.onPresentViewController = { [weak self] controller in
-      DispatchQueue.main.async { [weak self] in
-        self?.rootTabBarController?.dismiss(animated: true, completion: nil)
-        self?.rootTabBarController?.present(controller, animated: true, completion: nil)
-      }
-    }
-
-    self.viewModel.outputs.onGoToDiscovery = { [weak self] params in
-      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToDiscovery(params: params) }
-    }
-
-    self.viewModel.outputs.onGoToActivity = { [weak self] in
-      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToActivities() }
-    }
-
-    self.viewModel.outputs.onGoToLoginWithIntent = { [weak self] intent in
-      self?.presentLogin(with: intent)
-    }
-
-    self.viewModel.outputs.onGoToMessageThread = { [weak self] thread in
-      DispatchQueue.main.async { [weak self] in self?.goToMessageThread(thread) }
-    }
-
-    self.viewModel.outputs.onGoToSearch = { [weak self] in
-      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToSearch() }
-    }
-
-    self.viewModel.outputs.onGoToMobileSafari = { url in
-      DispatchQueue.main.async { UIApplication.shared.open(url) }
     }
 
     AppModel.shared.pushAuthorization.onBadgeReset = {
@@ -233,7 +191,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       DispatchQueue.main.async { [weak self] in self?.appTrackingAuthorizationChanged(status: status) }
     }
 
-    self.viewModel.outputs.onSetApplicationShortcutItems = { shortcutItems in
+    self.accountRefresh.onSetApplicationShortcutItems = { shortcutItems in
       let session = AppModel.shared.sessionFeature
       let userID = session.currentUser?.id
       let generation = session.generation
@@ -243,22 +201,12 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       }
     }
 
-    self.viewModel.outputs.onEmailVerificationCompleted = { [weak self] message, success in
-      let session = AppModel.shared.sessionFeature
-      let userID = session.currentUser?.id
-      let generation = session.generation
-      DispatchQueue.main.async { [weak self] in
-        guard session.isCurrent(userID: userID, generation: generation) else { return }
-        self?.rootTabBarController?.dismiss(animated: false, completion: nil)
-        self?.rootTabBarController?
-          .messageBannerViewController?.showBanner(with: success ? .success : .error, message: message)
-      }
-    }
-
     self.appNotificationObservers = [
       MainActorNotificationObservation(name: .ksr_sessionStarted) { [weak self] _ in
         AppModel.shared.sessionChanged()
-        self?.viewModel.inputs.userSessionStarted()
+        guard let self else { return }
+        self.deepLinkRouter.release(route: self.navigationRoute)
+        self.accountRefresh.refreshAccountAndSetup()
       },
       MainActorNotificationObservation(name: .ksr_showNotificationsDialog) { [weak self] notification in
         guard let context = PushNotificationDialog.eligibleContext(for: notification) else { return }
@@ -268,7 +216,9 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       },
       MainActorNotificationObservation(name: .ksr_sessionEnded) { [weak self] _ in
         AppModel.shared.sessionChanged()
-        self?.viewModel.inputs.userSessionEnded()
+        guard let self else { return }
+        self.deepLinkRouter.release(route: self.navigationRoute)
+        self.accountRefresh.refreshAfterSignOut()
         DispatchQueue.main.async { UIApplication.shared.unregisterForRemoteNotifications() }
       }
     ]
@@ -283,10 +233,10 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       await AppModel.shared.applicationDidFinishLaunching()
     }
 
-    self.viewModel.inputs.applicationDidFinishLaunching(
-      application: application,
-      launchOptions: launchOptions
+    let shouldContinueLaunch = self.deepLinkRouter.routeLaunchShortcut(
+      launchOptions?[.shortcutItem], route: self.navigationRoute, perform: self.navigationActionHandler
     )
+    self.accountRefresh.refreshAccountAndSetup()
 
     AppModel.shared.pushAuthorization.applicationDidFinishLaunching()
     AppModel.shared.trackingConsent.applicationDidFinishLaunching()
@@ -295,7 +245,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     UNUserNotificationCenter.current().delegate = self
 
-    return self.viewModel.outputs.applicationDidFinishLaunchingReturnValue
+    return shouldContinueLaunch
   }
 
   func applicationDidBecomeActive(_: UIApplication) {
@@ -308,7 +258,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func applicationWillEnterForeground(_: UIApplication) {
     AppModel.shared.pushAuthorization.applicationWillEnterForeground()
-    self.viewModel.inputs.applicationWillEnterForeground()
+    self.accountRefresh.refreshAccountAndSetup()
     AppModel.shared.applicationWillEnterForeground()
   }
 
@@ -322,7 +272,12 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     continue userActivity: NSUserActivity,
     restorationHandler _: @escaping ([UIUserActivityRestoring]?) -> Void
   ) -> Bool {
-    return self.viewModel.inputs.applicationContinueUserActivity(userActivity)
+    if let result = self.deepLinkRouter.route(
+      userActivity: userActivity, route: self.navigationRoute, perform: self.navigationActionHandler
+    ) {
+      self.continueUserActivityReturnValue = result
+    }
+    return self.continueUserActivityReturnValue
   }
 
   func application(
@@ -339,11 +294,8 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       return true
     }
 
-    return self.viewModel.inputs.applicationOpenUrl(
-      application: app,
-      url: url,
-      options: options
-    )
+    self.deepLinkRouter.route(url: url, route: self.navigationRoute, perform: self.navigationActionHandler)
+    return true
   }
 
   // MARK: - Remote notifications
@@ -375,11 +327,72 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     performActionFor shortcutItem: UIApplicationShortcutItem,
     completionHandler: @escaping (Bool) -> Void
   ) {
-    self.viewModel.inputs.applicationPerformActionForShortcutItem(shortcutItem)
+    self.deepLinkRouter.route(
+      shortcut: shortcutItem, route: self.navigationRoute, perform: self.navigationActionHandler
+    )
     completionHandler(true)
   }
 
   // MARK: - Functions
+
+  private var navigationActionHandler: @MainActor (DeepLinkRouter.Action) -> Void {
+    { [weak self] action in self?.performNavigationAction(action) }
+  }
+
+  private func performNavigationAction(_ action: DeepLinkRouter.Action) {
+    switch action {
+    case .selectActivity:
+      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToActivities() }
+    case .selectSearch:
+      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToSearch() }
+    case .selectProfile:
+      break
+    case let .showLogin(intent):
+      self.presentLogin(with: intent)
+    case let .showDiscovery(params):
+      DispatchQueue.main.async { [weak self] in self?.rootTabBarController?.switchToDiscovery(params: params) }
+    case let .showMessageThread(thread):
+      DispatchQueue.main.async { [weak self] in self?.goToMessageThread(thread) }
+    case let .showViewController(controller):
+      DispatchQueue.main.async { [weak self] in
+        self?.rootTabBarController?.dismiss(animated: true, completion: nil)
+        self?.rootTabBarController?.present(controller, animated: true, completion: nil)
+      }
+    case let .openBrowser(url):
+      DispatchQueue.main.async { UIApplication.shared.open(url) }
+    case .notificationSettingsUpdated:
+      self.notificationSettingsUpdated()
+    case let .emailVerificationCompleted(message, success):
+      self.emailVerificationCompleted(message: message, success: success)
+    }
+  }
+
+  private func notificationSettingsUpdated() {
+    let session = AppModel.shared.sessionFeature
+    let userID = session.currentUser?.id
+    let generation = session.generation
+    DispatchQueue.main.async { [weak self] in
+      // The Feature committed the edit. Read the latest session rather than
+      // restoring an older command snapshot after presentation scheduling.
+      guard session.isCurrent(userID: userID, generation: generation),
+            let user = session.currentUser else { return }
+      self?.braze?.changeUser(userId: String(user.id))
+      AppEnvironment.current.identify(user: user)
+      self?.accountRefresh.currentUserUpdatedInEnvironment()
+    }
+  }
+
+  private func emailVerificationCompleted(message: String, success: Bool) {
+    let session = AppModel.shared.sessionFeature
+    let userID = session.currentUser?.id
+    let generation = session.generation
+    DispatchQueue.main.async { [weak self] in
+      guard session.isCurrent(userID: userID, generation: generation) else { return }
+      self?.rootTabBarController?.dismiss(animated: false, completion: nil)
+      self?.rootTabBarController?
+        .messageBannerViewController?.showBanner(with: success ? .success : .error, message: message)
+    }
+  }
 
   private func presentContextualPermissionAlert(
     _ notification: Notification, context: PushNotificationDialog.Context
@@ -595,7 +608,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     await MainActor.run {
       guard let rootTabBarController = self.rootTabBarController else { return }
       if let envelope {
-        self.viewModel.inputs.didReceive(pushEnvelope: envelope)
+        self.deepLinkRouter.route(
+          push: envelope, route: self.navigationRoute, perform: self.navigationActionHandler
+        )
       }
       rootTabBarController.didReceiveBadgeValue(badge)
     }
@@ -643,7 +658,9 @@ extension AppDelegate: BrazeDelegate {
   // AWS notifications will not trigger this delegate method.
   func braze(_: BrazeKit.Braze, shouldOpenURL context: BrazeKit.Braze.URLContext) -> Bool {
     // Custom handle all urls instead of letting braze try to open them.
-    self.viewModel.inputs.urlFromBrazeNotification(context.url)
+    self.deepLinkRouter.route(
+      url: context.url, route: self.navigationRoute, source: .braze, perform: self.navigationActionHandler
+    )
     return false
   }
 }

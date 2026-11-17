@@ -3690,3 +3690,17 @@ The simulator passed 16 focused device registration, composition, and
 dialog policy tests and 138 bounded delegate, alert presenter, and Root
 Tabs tests. Live APNs and Braze delivery were outside the simulator
 coverage.
+
+### App delegate routing and account refresh — Matthew Thomas
+
+AppDelegate receives application URLs, browsing activities, notification
+responses, Braze URLs, and shortcuts directly. DeepLinkRouter resolves
+destinations and emits the final presentation actions. AppModel composes
+AccountRefreshCoordinator from Settings and the shortcut service.
+The former AppDelegateViewModel and its protocols are removed from the
+target. The source check guards against reintroducing that intermediary.
+
+The simulator passed 61 focused Navigation, AppModel, and Settings tests
+and 141 bounded application routing, analytics, alert presenter, and Root
+Tabs tests. The routing suite exercises the concrete router and account
+coordinator with controlled inputs. Live SDK delivery remains unverified.

@@ -88,14 +88,14 @@ final class DeepLinkRouterTests: XCTestCase {
     var actions: [DeepLinkRouter.Action] = []
 
     XCTAssertTrue(self.feature.route(url: url, route: self.route) { actions.append($0) })
-    XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail))])
+    XCTAssertTrue(actions.isEmpty)
     await self.settingsLinks.waitForOperations()
-    XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail)), .emailVerificationCompleted("Verified", true)])
+    XCTAssertEqual(actions, [.emailVerificationCompleted("Verified", true)])
 
     actions.removeAll()
     XCTAssertTrue(self.feature.route(url: url, route: self.route, source: .braze) { actions.append($0) })
     await self.settingsLinks.waitForOperations()
-    XCTAssertEqual(actions, [.resolveDestination(.profile(.verifyEmail))])
+    XCTAssertTrue(actions.isEmpty)
   }
 
   func testDuplicateEmailClicksShareRedirectAndOnlyDeliverTheResolvedRouteOnce() async throws {
@@ -111,7 +111,7 @@ final class DeepLinkRouterTests: XCTestCase {
     try self.redirects.finish(0, .success(destination))
     await self.feature.waitForOperations()
     XCTAssertEqual(self.redirects.count, 1)
-    XCTAssertEqual(actions, [.selectActivity, .resolveDestination(.tab(.activity))])
+    XCTAssertEqual(actions, [.selectActivity])
   }
 
   func testNewDestinationDiscardsLateEmailRedirect() async throws {

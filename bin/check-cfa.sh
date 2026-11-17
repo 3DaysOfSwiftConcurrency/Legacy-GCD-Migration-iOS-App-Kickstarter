@@ -20,7 +20,7 @@ reject_matches() {
 app_view='Kickstarter-iOS/1 - View'
 app_model='Kickstarter-iOS/2 - AppModel'
 root_view_model="$app_view/Views/RootTabBar/RootViewModel.swift"
-delegate_handler="$app_view/AppDelegateViewModel.swift"
+account_refresh="$app_model/Composition/AccountRefreshCoordinator.swift"
 pledge_view_model="$app_view/Views/PledgeView/Controllers/PledgeViewModel.swift"
 post_campaign_view_model="$app_view/Views/PledgeView/Controllers/PostCampaignCheckoutViewModel.swift"
 manage_pledge_view_model="$app_view/Views/ManagePledge/Controllers/ManagePledgeViewModel.swift"
@@ -29,7 +29,7 @@ project_page_view_model="$app_view/Views/ProjectPage/Controller/ProjectPageViewM
 discovery_feature="$app_model/Features/Discovery/DiscoveryFeature.swift"
 
 test -f "$root_view_model"
-test -f "$delegate_handler"
+test -f "$account_refresh"
 test -f "$pledge_view_model"
 test -f "$post_campaign_view_model"
 test -f "$manage_pledge_view_model"
@@ -38,38 +38,20 @@ test -f "$project_page_view_model"
 test -f "$discovery_feature"
 reject_matches 'RootViewModel must receive its dependencies from the controller.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$root_view_model"
-reject_matches 'The delegate handler must receive application dependencies explicitly.' \
-  'AppModel[.]shared|AppEnvironment[.]current' "$delegate_handler"
-reject_matches 'AppModel and ApplicationConfigurationService own application configuration refresh and delivery.' \
-  'ApplicationConfigurationService|requestApplicationConfiguration|onUpdateConfig|didUpdateConfig\(' \
-  "$delegate_handler"
-reject_matches 'Device push registration and contextual notification eligibility bypass the legacy handler.' \
-  'DevicePushRegistrationService|didRegisterForRemoteNotifications|showNotificationDialog|onRegisterPushTokenInBraze|onUnregisterForRemoteNotifications' \
-  "$delegate_handler"
-reject_matches 'The app delegate owns startup analytics wiring and preference synchronization.' \
-  'onConfigure(Firebase|SegmentWithBraze|Statsig)|onSegmentEnabled|onSynchronizeUbiquitousStore|statsigSDKKey' \
-  "$delegate_handler"
+reject_matches 'The app delegate uses its composed owners directly.' \
+  'AppDelegateViewModel' "$app_view" "$app_model"
+reject_matches 'Account refresh receives its dependencies from composition.' \
+  'AppModel[.]shared|AppEnvironment[.]current' "$account_refresh"
 reject_matches 'RemoteConfigurationService owns activation and publishes its outcome.' \
   'remoteConfig(Task|Version)|didUpdateRemoteConfigClient|remoteConfigClientConfigurationFailed|ksr_remoteConfigClientConfigured' \
-  "$app_view/AppDelegate.swift" "$delegate_handler"
-reject_matches 'Settings link completion tasks belong to Navigation presentation.' \
-  'requestNotification\(|requestVerification\(|settingsPresentationDelay|notificationTasks|verificationTask' \
-  "$delegate_handler"
+  "$app_view/AppDelegate.swift"
 reject_matches 'Settings link presentation receives its dependencies from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Navigation/SettingsLinkPresentation.swift"
-reject_matches 'AppTrackingConsent owns tracking requests and observation.' \
-  'AppTrackingTransparencyType|onTrackingAuthorizationStatus|onRequestTrackingAuthorization|trackingDelay|applicationActive\(' \
-  "$delegate_handler"
-reject_matches 'Push authorization owns launch and foreground permission checks.' \
-  'PushRegistrationType|onApplicationIconBadgeNumber|onTriggerOnboardingFlow|didAcceptReceivingRemoteNotifications' \
-  "$delegate_handler"
 reject_matches 'DeepLinkRouter receives platform dependencies from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Navigation/DeepLinkRouter.swift"
-reject_matches 'Navigation owns incoming URL, push envelope, and shortcut routing decisions.' \
-  'serverConfig|fromPushEnvelope|fromShortcutItem|accessTokenFromUrl|shouldOpenInBrowser' "$delegate_handler"
 reject_matches 'Navigation owns email redirect delivery and release.' \
   'onFindRedirectUrl|foundRedirectUrl|resolveEmailRedirect|RedirectObservation|releaseEmailRedirect' \
-  "$app_view/AppDelegate.swift" "$delegate_handler"
+  "$app_view/AppDelegate.swift"
 reject_matches 'Checkout view models must receive dependencies from their controllers.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$pledge_view_model" "$post_campaign_view_model"
 reject_matches 'Pledge CTA and shipping view models must receive their dependencies explicitly.' \

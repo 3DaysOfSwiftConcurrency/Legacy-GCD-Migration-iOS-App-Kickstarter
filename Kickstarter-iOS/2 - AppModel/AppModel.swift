@@ -391,6 +391,7 @@ public final class AppModel {
   public let searchFeature: SearchFeature
   public let discoveryFeature: DiscoveryFeature
   let applicationShortcuts: ApplicationShortcutService
+  let accountRefresh: AccountRefreshCoordinator
   public let projectDetailsFeature: ProjectDetailsFeature
   public let rewardsFeature: RewardsFeature
   public let discussionFeature: DiscussionFeature
@@ -448,10 +449,12 @@ public final class AppModel {
     self.profileFeature = profileFeature
     self.searchFeature = searchFeature
     self.discoveryFeature = discoveryFeature
-    self.applicationShortcuts = ApplicationShortcutService(
+    let shortcuts = ApplicationShortcutService(
       session: sessionFeature,
       hasRecommendations: { try await discoveryFeature.hasRecommendations(for: $0) }
     )
+    self.applicationShortcuts = shortcuts
+    self.accountRefresh = AccountRefreshCoordinator(applicationShortcuts: shortcuts, settingsFeature: settingsFeature)
     self.projectDetailsFeature = projectDetailsFeature
     self.rewardsFeature = rewardsFeature
     self.discussionFeature = discussionFeature

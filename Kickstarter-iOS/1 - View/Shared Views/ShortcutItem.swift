@@ -1,3 +1,5 @@
+import UIKit
+
 public enum ShortcutItem {
   case projectsWeLove
   case recommendedForYou
@@ -37,5 +39,36 @@ public func == (lhs: ShortcutItem, rhs: ShortcutItem) -> Bool {
     return true
   default:
     return false
+  }
+}
+
+extension ShortcutItem {
+  public var applicationShortcutItem: UIApplicationShortcutItem {
+    switch self {
+    case .projectsWeLove:
+      return .init(
+        type: self.typeString,
+        localizedTitle: Strings.Projects_We_Love(),
+        localizedSubtitle: nil,
+        icon: UIApplicationShortcutIcon(templateImageName: "shortcut-icon-k"),
+        userInfo: nil
+      )
+    case .recommendedForYou:
+      return .init(
+        type: self.typeString,
+        localizedTitle: Strings.Recommended(),
+        localizedSubtitle: nil,
+        icon: UIApplicationShortcutIcon(templateImageName: "shortcut-icon-star"),
+        userInfo: nil
+      )
+    case .search:
+      return .init(
+        type: self.typeString,
+        localizedTitle: Strings.tabbar_search(),
+        localizedSubtitle: nil,
+        icon: UIApplicationShortcutIcon(templateImageName: "shortcut-icon-search"),
+        userInfo: nil
+      )
+    }
   }
 }
