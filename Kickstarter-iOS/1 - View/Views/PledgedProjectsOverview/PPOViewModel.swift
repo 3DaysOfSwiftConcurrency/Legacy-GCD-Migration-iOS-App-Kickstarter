@@ -87,8 +87,7 @@ enum PPOPreparedEvent: Equatable {
 
 @MainActor
 final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutputs {
-  init(pledgedProjectsFeature injectedPledgedProjectsFeature: PledgedProjectsFeature? = nil) {
-    let pledgedProjectsFeature = injectedPledgedProjectsFeature ?? AppModel.shared.pledgedProjectsFeature
+  init(pledgedProjectsFeature: PledgedProjectsFeature) {
     self.pledgedProjectsFeature = pledgedProjectsFeature
     pledgedProjectsFeature.snapshots(route: self.route)
       .map(Self.present)

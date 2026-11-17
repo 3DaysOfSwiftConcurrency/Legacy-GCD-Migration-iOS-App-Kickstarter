@@ -31,8 +31,7 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
     (self.pledgeFeature.sessionFeature.currentUser?.unseenActivityCount ?? 0) > 0
   }
 
-  init(pledgeFeature injectedPledgeFeature: PledgeFeature? = nil) {
-    let pledgeFeature = injectedPledgeFeature ?? AppModel.shared.pledgeFeature
+  init(pledgeFeature: PledgeFeature) {
     self.pledgeFeature = pledgeFeature
     let sessionStarted = NotificationCenter.default
       .publisher(for: .ksr_sessionStarted)

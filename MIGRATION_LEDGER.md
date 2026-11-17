@@ -3334,3 +3334,8 @@ Pledge shipping location now receives Rewards from its controller. The two
 pledge CTA view models receive a current-user lookup and Pledge respectively
 from their owning views. All 41 focused simulator tests passed, and the CFA
 source check guards all three view models.
+
+The Pledged Projects hosting controller now supplies Pledge and Pledged
+Projects to the container and screen view models. SwiftUI retains the screen
+model with StateObject. The focused simulator runs passed seven feature and
+19 presentation tests. The CFA source check covers both view models.

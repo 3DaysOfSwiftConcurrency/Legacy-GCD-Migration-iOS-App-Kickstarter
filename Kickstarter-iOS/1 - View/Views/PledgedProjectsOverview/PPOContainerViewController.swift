@@ -10,7 +10,7 @@ import SwiftUI
 public class PPOContainerViewController: PagedContainerViewController<PPOContainerViewController.Page>,
   MessageBannerViewControllerPresenting {
   private let confirmation = StripeConfirmationOperation()
-  private let viewModel = PPOContainerViewModel()
+  private let viewModel = PPOContainerViewModel(pledgeFeature: AppModel.shared.pledgeFeature)
 
   public override func viewWillDisappear(_ animated: Bool) {
     super.viewWillDisappear(animated)
@@ -26,6 +26,7 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
     self.title = Strings.tabbar_activity()
 
     let ppoView = PPOView(
+      viewModel: PPOViewModel(pledgedProjectsFeature: AppModel.shared.pledgedProjectsFeature),
       shouldRefresh: self.viewModel.shouldRefresh,
       onCountChange: { [weak self] count in
         self?.viewModel.projectAlertsCountChanged(count)
