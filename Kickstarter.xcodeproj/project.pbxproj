@@ -946,7 +946,7 @@
 		};
 		"49C465B569439414A95229C4" = {
 			"name" = "OnboardingUseCase.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/AppLifecycle/OnboardingUseCase.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/Onboarding/OnboardingUseCase.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -2588,7 +2588,7 @@
 			"sourceTree" = "<group>";
 			"children" = (
 				"E2FFA45F75B3C35B6A664C44",
-				"B58EC2A46BDDCA0ABC9AEBA0",
+				"CFA031200000000000000005",
 				"7C8533C26BD5CA42C61C32C7",
 				"3AEB182E5CABAFCE69F8E2EE",
 				"15E5468E52345A276F4F6332",
@@ -4211,6 +4211,8 @@
 			"name" = "Composition";
 			"sourceTree" = "<group>";
 			"children" = (
+				"20C37173166CEEB66CA7BCF2",
+				"CFA031200000000000000006",
 				"B6A06FB25E9940333B72DDB6",
 				"1923D3D5A768EABA46D88E89",
 				"5647FF2EC42A3ECB3D86C80C",
@@ -4529,7 +4531,7 @@
 		};
 		"20C37173166CEEB66CA7BCF2" = {
 			"name" = "Notifications.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/AppLifecycle/Notifications.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Composition/Notifications.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -6672,7 +6674,7 @@
 		};
 		"7B63019BE67482B5E44D9BB4" = {
 			"name" = "PushRegistration.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/AppLifecycle/PushRegistration.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Composition/Push Notifications/PushRegistration.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -9531,6 +9533,7 @@
 			"name" = "1 - View";
 			"sourceTree" = "<group>";
 			"children" = (
+				"B58EC2A46BDDCA0ABC9AEBA0",
 				"338EDA095466913D5DD7B933",
 				"FE1425AC32710B679C026E9B",
 				"CB21813FF2A60FC467ED8ECB",
@@ -12199,7 +12202,7 @@
 		};
 		"F6885AAEA1F5EEBFB4316CA2" = {
 			"name" = "PushRegistrationType.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/AppLifecycle/PushRegistrationType.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Composition/Push Notifications/PushRegistrationType.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -12367,7 +12370,6 @@
 			"isa" = "PBXGroup";
 			"children" = (
 				"CFA031300000000000000003",
-				"CFA031200000000000000003",
 				"CFA031100000000000000003",
 				"CFA031000000000000000003",
 				"CFA030900000000000000003",
@@ -15070,7 +15072,7 @@
 		};
 		"1DCFBD6E26AE82E24606E9C3" = {
 			"name" = "PushNotificationDialogType.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/AppLifecycle/PushNotificationDialogType.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Composition/Push Notifications/PushNotificationDialogType.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -15480,7 +15482,7 @@
 		};
 		"984AAE5C2E31702B7EF6DF51" = {
 			"name" = "DeepLinkRouter+Categories.swift";
-			"path" = "Kickstarter-iOS/1 - View/DeepLinkRouter+Categories.swift";
+			"path" = "Kickstarter-iOS/1 - View/Navigation/DeepLinkRouter+Categories.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -15830,7 +15832,7 @@
 		};
 		"14D6057F11C20069FE32F650" = {
 			"name" = "PushNotificationDialog.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/AppLifecycle/PushNotificationDialog.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Composition/Push Notifications/PushNotificationDialog.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -18249,7 +18251,7 @@
 			"sourceTree" = "<group>";
 		};
 		"CFA031200000000000000003" = {
-			"path" = "AppLifecycle";
+			"path" = "Navigation";
 			"isa" = "PBXGroup";
 			"children" = (
 				"CFA031200000000000000002",
@@ -19794,13 +19796,26 @@
 		};
 		"B58EC2A46BDDCA0ABC9AEBA0" = {
 			"isa" = "PBXGroup";
-			"name" = "AppLifecycle";
+			"name" = "Navigation";
 			"sourceTree" = "<group>";
 			"children" = (
 				"984AAE5C2E31702B7EF6DF51",
 				"C79F9AA290B4147C1C26B922",
-				"20C37173166CEEB66CA7BCF2",
+			);
+		};
+		"CFA031200000000000000005" = {
+			"isa" = "PBXGroup";
+			"name" = "Onboarding";
+			"sourceTree" = "<group>";
+			"children" = (
 				"49C465B569439414A95229C4",
+			);
+		};
+		"CFA031200000000000000006" = {
+			"isa" = "PBXGroup";
+			"name" = "Push Notifications";
+			"sourceTree" = "<group>";
+			"children" = (
 				"14D6057F11C20069FE32F650",
 				"1DCFBD6E26AE82E24606E9C3",
 				"7B63019BE67482B5E44D9BB4",
@@ -21755,6 +21770,7 @@
 			"children" = (
 				"AAF548D12F2445C0001DB5AC",
 				"CFA026100000000000000004",
+				"CFA031200000000000000003",
 				"CFA026100000000000000007",
 				"CFA027900000000000000003",
 				"AAF548D52F2445C0001DB5AC",
@@ -24244,7 +24260,7 @@
 		};
 		"C79F9AA290B4147C1C26B922" = {
 			"name" = "DeepLinkRouter.swift";
-			"path" = "Kickstarter-iOS/1 - View/DeepLinkRouter.swift";
+			"path" = "Kickstarter-iOS/1 - View/Navigation/DeepLinkRouter.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";

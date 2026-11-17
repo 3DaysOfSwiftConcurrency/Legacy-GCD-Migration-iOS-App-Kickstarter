@@ -3382,3 +3382,10 @@ used by Project Page and video playback, with the delegate retaining the
 existing main-queue scheduling. The background notification test moved to
 AppModel. All 77 focused model tests and 128 bounded AppDelegate and Project
 Video presentation tests passed on the simulator.
+
+Removed the legacy AppLifecycle source and test groups. The router and its
+tests now sit under Navigation, the onboarding use case under Onboarding,
+and notification declarations and push infrastructure under Composition.
+All nine moves preserved the Swift file contents. Xcode project validation,
+the CFA check, 31 focused model tests and 124 AppDelegate presentation
+tests passed.
