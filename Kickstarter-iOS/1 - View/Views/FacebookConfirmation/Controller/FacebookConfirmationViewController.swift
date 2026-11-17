@@ -18,7 +18,9 @@ internal final class FacebookConfirmationViewController: UIViewController,
   @IBOutlet private var rootStackView: UIStackView!
 
   private let helpViewModel = HelpViewModel()
-  fileprivate let viewModel = FacebookConfirmationViewModel()
+  fileprivate let viewModel = FacebookConfirmationViewModel(
+    authenticationFeature: AppModel.shared.authenticationFeature
+  )
 
   internal static func configuredWith(facebookUserEmail email: String, facebookAccessToken token: String)
     -> FacebookConfirmationViewController {

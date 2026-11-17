@@ -13,8 +13,8 @@ public final class FacebookResetPasswordViewModel {
   private var resetTask: Task<Void, Never>?
   private var revision = 0
 
-  public init(authenticationFeature: AuthenticationFeature? = nil) {
-    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
+  public init(authenticationFeature: AuthenticationFeature) {
+    self.authenticationFeature = authenticationFeature
   }
   public func emailTextFieldFieldDidChange(_ text: String) {
     self.email = text

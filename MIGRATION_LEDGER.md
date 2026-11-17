@@ -3258,3 +3258,8 @@ Discovery, its page and navigation header, and Discovery Filters now receive
 the shared DiscoveryFeature from their controllers. The four focused view-model
 suites passed 86 simulator tests, and `make check-cfa` guards the Discovery and
 Discovery Filters view-model directories against direct AppModel singleton access.
+
+Login, Login Tout, Facebook Confirmation and Facebook Reset Password now receive
+Authentication from their controllers. The four view-model suites and
+AuthenticationFeature passed 59 focused simulator tests. `make check-cfa` guards
+these sign-in view models against direct AppModel singleton access.

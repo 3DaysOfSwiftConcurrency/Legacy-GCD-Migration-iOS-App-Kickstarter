@@ -20,11 +20,11 @@ public final class FacebookConfirmationViewModel {
   private var revision = 0
   public var webBaseURL: URL { self.authenticationFeature.webBaseURL }
 
-  public init(authenticationFeature: AuthenticationFeature? = nil,
+  public init(authenticationFeature: AuthenticationFeature,
               sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
                 if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
               }) {
-    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
+    self.authenticationFeature = authenticationFeature
     self.sleep = sleep
   }
 

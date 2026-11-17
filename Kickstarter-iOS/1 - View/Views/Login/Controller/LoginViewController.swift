@@ -14,7 +14,9 @@ internal final class LoginViewController: UIViewController {
   @IBOutlet fileprivate var rootStackView: UIStackView!
   @IBOutlet fileprivate var showHidePasswordButton: UIButton!
 
-  internal let viewModel: LoginViewModel = LoginViewModel()
+  internal let viewModel: LoginViewModel = LoginViewModel(
+    authenticationFeature: AppModel.shared.authenticationFeature
+  )
 
   internal static func instantiate() -> LoginViewController {
     return Storyboard.Login.instantiate(LoginViewController.self)

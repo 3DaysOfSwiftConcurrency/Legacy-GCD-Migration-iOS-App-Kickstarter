@@ -53,7 +53,9 @@ public final class LoginToutViewController: UIViewController, @MainActor MFMailC
   private var sessionStartedObserver: MainActorNotificationObservation?
   private let oauth = OAuth(authenticationFeature: AppModel.shared.authenticationFeature)
 
-  private let viewModel: LoginToutViewModel = LoginToutViewModel()
+  private let viewModel: LoginToutViewModel = LoginToutViewModel(
+    authenticationFeature: AppModel.shared.authenticationFeature
+  )
 
   // MARK: - Configuration
 

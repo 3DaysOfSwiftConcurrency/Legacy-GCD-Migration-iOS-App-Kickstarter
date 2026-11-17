@@ -38,7 +38,9 @@ public final class FacebookResetPasswordViewController: UIViewController {
       |> \.cancelsTouchesInView .~ false
   }()
 
-  private let viewModel = FacebookResetPasswordViewModel()
+  private let viewModel = FacebookResetPasswordViewModel(
+    authenticationFeature: AppModel.shared.authenticationFeature
+  )
 
   // MARK: - Lifecycle
 

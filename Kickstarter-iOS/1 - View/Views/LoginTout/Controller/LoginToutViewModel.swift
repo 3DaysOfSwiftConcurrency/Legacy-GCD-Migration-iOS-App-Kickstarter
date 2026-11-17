@@ -31,8 +31,7 @@ public final class LoginToutViewModel {
   var onAppleError: ((String) -> Void)?
   var onAppleLog: ((NSError) -> Void)?
 
-  public init(authenticationFeature: AuthenticationFeature? = nil) {
-    let authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
+  public init(authenticationFeature: AuthenticationFeature) {
     self.authenticationFeature = authenticationFeature
 
   }

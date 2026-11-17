@@ -23,8 +23,8 @@ public final class LoginViewModel {
   private var loginTask: Task<Void, Never>?
   private var loginVersion = UUID()
 
-  public init(authenticationFeature: AuthenticationFeature? = nil) {
-    self.authenticationFeature = authenticationFeature ?? AppModel.shared.authenticationFeature
+  public init(authenticationFeature: AuthenticationFeature) {
+    self.authenticationFeature = authenticationFeature
   }
   deinit { self.loginTask?.cancel() }
 
