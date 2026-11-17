@@ -26,9 +26,25 @@ struct ReportProjectFormView: View {
   let placeholder: String?
 
   @SwiftUI.Environment(\.dismiss) private var dismiss
-  @StateObject private var viewModel = ReportProjectFormViewModel()
+  @StateObject private var viewModel: ReportProjectFormViewModel
 
   @FocusState private var focusField: ReportFormFocusField?
+
+  init(
+    popToRoot: Binding<Bool>,
+    projectID: String,
+    projectURL: String,
+    projectFlaggingKind: GraphAPI.NonDeprecatedFlaggingKind,
+    placeholder: String?,
+    viewModel: @autoclosure @escaping () -> ReportProjectFormViewModel
+  ) {
+    self._popToRoot = popToRoot
+    self.projectID = projectID
+    self.projectURL = projectURL
+    self.projectFlaggingKind = projectFlaggingKind
+    self.placeholder = placeholder
+    self._viewModel = StateObject(wrappedValue: viewModel())
+  }
 
   var body: some View {
     GeometryReader { proxy in

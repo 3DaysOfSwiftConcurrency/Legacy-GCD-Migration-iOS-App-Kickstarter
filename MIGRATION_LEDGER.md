@@ -3314,3 +3314,8 @@ features at controller or cell construction. The focused simulator runs passed
 The project notifications screen and its cells now receive Settings from
 their UI owners. The focused project notification suites passed 14 simulator
 tests. The CFA check guards both view models.
+
+Project Page now supplies the Report Project information and form view models
+from one reporting feature. The SwiftUI screens retain their own view models
+and defer form creation until navigation needs it. All 19 focused reporting
+simulator tests and `make check-cfa` passed.

@@ -37,8 +37,8 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
   private var emailID: UUID?
   private var submissionID: UUID?
 
-  public init(projectReportingFeature: ProjectReportingFeature? = nil) {
-    self.projectReportingFeature = projectReportingFeature ?? AppModel.shared.projectReportingFeature
+  public init(projectReportingFeature: ProjectReportingFeature) {
+    self.projectReportingFeature = projectReportingFeature
   }
 
   deinit {
