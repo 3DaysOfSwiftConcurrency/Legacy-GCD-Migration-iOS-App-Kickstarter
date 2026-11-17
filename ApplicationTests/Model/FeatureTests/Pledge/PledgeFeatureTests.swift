@@ -273,6 +273,50 @@ final class PledgeFeatureTests: TestCase {
     } catch {}
   }
 
+  func testManagedPledgeMenuPreservesEligibilityAndActionOrder() {
+    let liveProject = Project.template
+      |> Project.lens.state .~ .live
+      |> Project.lens.isPledgeOverTimeAllowed .~ false
+    let endedProject = liveProject |> Project.lens.state .~ .successful
+    let installmentProject = liveProject |> Project.lens.isPledgeOverTimeAllowed .~ true
+    let backing = Backing.template |> Backing.lens.status .~ .collected
+    let preauthorized = backing |> Backing.lens.status .~ .preauth
+    let pledge = ManagedPledge(backing: backing)
+
+    XCTAssertEqual(pledge.availableActions(for: liveProject, viewerIsCreator: true), [.viewRewards])
+    XCTAssertEqual(pledge.availableActions(for: endedProject, viewerIsCreator: false), [.viewRewards, .contactCreator])
+    XCTAssertEqual(
+      ManagedPledge(backing: preauthorized).availableActions(for: liveProject, viewerIsCreator: false),
+      [.contactCreator]
+    )
+    XCTAssertEqual(pledge.availableActions(for: liveProject, viewerIsCreator: false),
+                   [.changePaymentMethod, .chooseAnotherReward, .contactCreator, .cancelPledge])
+    XCTAssertEqual(pledge.availableActions(for: installmentProject, viewerIsCreator: false),
+                   [.changePaymentMethod, .editPledgeOverTimePledge, .contactCreator, .cancelPledge])
+    XCTAssertEqual(
+      ManagedPledge(backing: .templateManagePledgeWithPlot).availableActions(for: liveProject, viewerIsCreator: false),
+      [.changePaymentMethod, .editPledgeOverTimePledge, .contactCreator, .cancelPledge]
+    )
+  }
+
+  func testManagedPledgeOffersStandaloneRepairForFailedNonInstallmentPayment() {
+    let failed = Backing.template
+      |> Backing.lens.status .~ .errored
+      |> Backing.lens.paymentSource .~ nil
+    let failedInstallment = Backing.templateManagePledgeWithPlot
+      |> Backing.lens.status .~ .errored
+      |> Backing.lens.paymentSource .~ nil
+    let pledge = ManagedPledge(backing: failed)
+    let installment = ManagedPledge(backing: failedInstallment)
+
+    XCTAssertTrue(pledge.needsStandalonePaymentRepair)
+    XCTAssertTrue(pledge.showsPaymentMethod(viewerIsCreator: false))
+    XCTAssertFalse(pledge.showsPaymentMethod(viewerIsCreator: true))
+    XCTAssertTrue(installment.hasPaymentSchedule)
+    XCTAssertFalse(installment.needsStandalonePaymentRepair)
+    XCTAssertFalse(installment.showsPaymentMethod(viewerIsCreator: false))
+  }
+
   func testFixPaymentMethodUsesSavedCardIDForRetryLabel() throws {
     let paymentSource = Backing.PaymentSource.template
     let existingCardID = try XCTUnwrap(paymentSource.id)

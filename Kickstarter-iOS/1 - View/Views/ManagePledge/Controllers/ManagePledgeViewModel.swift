@@ -7,14 +7,7 @@ public typealias ManagePledgeViewParamConfigData = (
   backingParam: Param?
 )
 
-public enum ManagePledgeAlertAction: CaseIterable {
-  case editPledgeOverTimePledge
-  case changePaymentMethod
-  case chooseAnotherReward
-  case contactCreator
-  case cancelPledge
-  case viewRewards
-}
+public typealias ManagePledgeAlertAction = ManagePledgeAction
 
 @MainActor
 public protocol ManagePledgeViewModelInputs {
@@ -135,7 +128,7 @@ public final class ManagePledgeViewModel:
   private func presentCombined() {
     guard let loadedProject, let backing = self.loadedBacking else { return }
     let project = loadedProject |> Project.lens.personalization.backing .~ backing
-    let rewards = distinctRewards([backing.reward ?? .noReward] + (backing.addOns ?? []))
+    let rewards = ManagedPledge(backing: backing).rewards
     let isCreator = self.pledgeFeature.viewerIsCreator(of: project)
     self.currentProject = project
     self.currentRewards = rewards
@@ -186,7 +179,7 @@ public final class ManagePledgeViewModel:
     self.onPaymentMethod?(managePledgePaymentMethodViewData(with: backing))
     self.visibilityBacking = backing
     self.updatePaymentMethodVisibility()
-    let enabled = isPledgeOverTime(with: backing)
+    let enabled = ManagedPledge(backing: backing).hasPaymentSchedule
     self.onPlotScheduleHidden?(!enabled)
     if enabled { self.onPlotSchedule?(backing.paymentIncrements) }
   }
@@ -347,7 +340,7 @@ public final class ManagePledgeViewModel:
 
   private func updatePaymentMethodVisibility() {
     guard let backing = self.visibilityBacking, let isCreator = self.visibilityIsCreator else { return }
-    let hidden = isCreator || (!shouldShowFixPaymentMethodButton(for: backing) && backing.paymentSource == nil)
+    let hidden = !ManagedPledge(backing: backing).showsPaymentMethod(viewerIsCreator: isCreator)
     guard self.paymentMethodHidden != hidden else { return }
     self.paymentMethodHidden = hidden
     self.onPaymentMethodHidden?(hidden)
@@ -378,7 +371,7 @@ public final class ManagePledgeViewModel:
     guard self.presentsCurrentSession else { return }
     guard let project = self.currentProject, let backing = self.visibilityBacking,
           let isCreator = self.visibilityIsCreator else { return }
-    self.onShowMenu?(actionSheetMenuOptionsFor(project: project, backing: backing, userIsCreatorOfProject: isCreator))
+    self.onShowMenu?(ManagedPledge(backing: backing).availableActions(for: project, viewerIsCreator: isCreator))
   }
 
   public func menuOptionSelected(with action: ManagePledgeAlertAction) {
@@ -466,35 +459,6 @@ private func pledgeViewData(
   )
 }
 
-private func actionSheetMenuOptionsFor(
-  project: Project,
-  backing: Backing,
-  userIsCreatorOfProject: Bool
-) -> [ManagePledgeAlertAction] {
-  if userIsCreatorOfProject {
-    return [.viewRewards]
-  }
-
-  guard project.state == .live else {
-    return [.viewRewards, .contactCreator]
-  }
-
-  if backing.status == .preauth {
-    return [.contactCreator]
-  }
-
-  var actions = ManagePledgeAlertAction.allCases
-    .filter { $0 != .viewRewards && $0 != .editPledgeOverTimePledge }
-
-  /// Enable the 'Edit pledge' option for all PLOT-enabled projects.
-  if isPledgeOverTime(with: backing) || project.isPledgeOverTimeAllowed == true {
-    actions = actions.filter { $0 != .chooseAnotherReward }
-    actions.insert(.editPledgeOverTimePledge, at: 1)
-  }
-
-  return actions
-}
-
 private func navigationBarTitle(
   with project: Project,
   userIsCreatorOfProject: Bool
@@ -504,18 +468,6 @@ private func navigationBarTitle(
   }
 
   return project.state == .live ? Strings.Manage_your_pledge() : Strings.Your_pledge()
-}
-
-private func managePledgeMenuCTAType(for managePledgeAlertAction: ManagePledgeAlertAction)
-  -> KSRAnalytics.ManagePledgeMenuCTAType {
-  switch managePledgeAlertAction {
-  case .editPledgeOverTimePledge: return .editPledgeOverTimePledge
-  case .cancelPledge: return .cancelPledge
-  case .changePaymentMethod: return .changePaymentMethod
-  case .chooseAnotherReward: return .chooseAnotherReward
-  case .contactCreator: return .contactCreator
-  case .viewRewards: return .viewRewards
-  }
 }
 
 private func cancelPledgeViewData(
@@ -531,27 +483,16 @@ private func cancelPledgeViewData(
   )
 }
 
-private func shouldShowFixPaymentMethodButton(for backing: Backing) -> Bool {
-  // For PLOT pledges, the fix button is always hidden because the fix action
-  // is handled by the `PledgeStatusLabelView`.
-  if isPledgeOverTime(with: backing) { return false }
-  return backing.status == .errored
-}
-
 private func managePledgePaymentMethodViewData(
   with backing: Backing
 ) -> ManagePledgePaymentMethodViewData {
   ManagePledgePaymentMethodViewData(
-    showFixPaymentButton: shouldShowFixPaymentMethodButton(for: backing),
+    showFixPaymentButton: ManagedPledge(backing: backing).needsStandalonePaymentRepair,
     expirationDate: backing.paymentSource?.expirationDate,
     lastFour: backing.paymentSource?.lastFour,
     creditCardType: backing.paymentSource?.type,
     paymentType: backing.paymentSource?.paymentType
   )
-}
-
-private func isPledgeOverTime(with backing: Backing) -> Bool {
-  return !backing.paymentIncrements.isEmpty
 }
 
 @MainActor
@@ -585,7 +526,7 @@ private func managePledgeSummaryViewData(
     currencyCode: project.statsCurrency,
     projectDeadline: deadline,
     projectState: project.state,
-    rewardMinimum: backing.rewardsAmount ?? allRewardsTotal(for: backing),
+    rewardMinimum: ManagedPledge(backing: backing).rewardMinimum,
     rewardReceivedViewControllerViewIsHidden: rewardReceivedViewControllerViewIsHidden,
     rewardReceivedWithData: rewardReceivedWithData,
     shippingAmount: backing.shippingAmount.flatMap(Double.init),
@@ -594,20 +535,4 @@ private func managePledgeSummaryViewData(
     paymentIncrements: backing.paymentIncrements,
     project: project
   )
-}
-
-private func allRewardsTotal(for backing: Backing) -> Double {
-  let baseRewardAmount = backing.reward?.minimum ?? 0
-
-  guard let addOns = backing.addOns else { return baseRewardAmount }
-
-  return baseRewardAmount + addOns.reduce(0.0) { total, addOn in total.addingCurrency(addOn.minimum) }
-}
-
-private func distinctRewards(_ rewards: [Reward]) -> [Reward] {
-  var rewardIds: Set<Int> = []
-  return rewards.filter { reward in
-    defer { rewardIds.insert(reward.id) }
-    return !rewardIds.contains(reward.id)
-  }
 }

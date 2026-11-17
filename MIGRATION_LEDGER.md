@@ -3836,3 +3836,20 @@ Rebuilding the Library-iOS test host after the presentation run
 resolved a bundle-load failure in the reused build. The rebuilt run
 passed 113 checkout, Activity, and Cancel Pledge regressions.
 Manage Pledge still owns menu eligibility rules in the View layer.
+
+### Manage Pledge eligibility and reward details — Matthew Thomas
+
+The Managed Pledge model supplies the ordered set of actions from the
+project state, backing status, installment schedule, and creator role.
+It also decides when the payment method and standalone repair are
+available, and supplies reward grouping and minimum amounts. The View
+layer maps actions to UIKit labels and navigation, including the
+existing cancellation feedback. The source check covers the migrated
+rules in Manage Pledge.
+
+The iPhone 17 Pro Max simulator on iOS 26.2 passed 101 focused Manage
+Pledge and Feature tests and 133 bounded pledge status, installment,
+reward receipt, cancellation, and checkout regressions. New model tests
+verify menu order and repair eligibility. Visual parity and live
+payment behavior remain unverified. The Manage Pledge ViewModel still
+stores overlapping copies of loaded and displayed pledge data.
