@@ -28,7 +28,17 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   // MARK: Properties
 
   private let dataSource = ProjectPageViewControllerDataSource()
-  private let viewModel: ProjectPageViewModelType = ProjectPageViewModel()
+  private let viewModel: ProjectPageViewModelType = ProjectPageViewModel(
+    projectDetailsFeature: AppModel.shared.projectDetailsFeature,
+    projectMediaFeature: AppModel.shared.projectMediaFeature,
+    analytics: { AppEnvironment.current.ksrAnalytics },
+    advertisingIdentifier: {
+      let tracking = AppEnvironment.current.appTrackingTransparency
+      tracking.updateAdvertisingIdentifier()
+      return tracking.advertisingIdentifier
+    },
+    platformVersion: { AppEnvironment.current.mainBundle.platformVersion }
+  )
   private let projectDetailsFeature = AppModel.shared.projectDetailsFeature
 
   private var navigation: ProjectPageNavigation = ProjectPageNavigation()

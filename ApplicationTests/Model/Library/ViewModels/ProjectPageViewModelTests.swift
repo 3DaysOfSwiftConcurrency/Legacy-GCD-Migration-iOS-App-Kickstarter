@@ -91,7 +91,7 @@ final class ProjectPageViewModelTests: TestCase {
   internal override func setUp() async throws {
     try await super.setUp()
     MainActor.assumeIsolated {
-      self.vm = ProjectPageViewModel(projectDetailsFeature: ProjectPageViewModelTests.isolatedFeature())
+      self.vm = Self.isolatedViewModel()
 
       self.vm.outputs.onConfigureDataSource = { [weak self] data in
         self?.configureDataSourceNavigationSection.record(data.0)
@@ -2076,7 +2076,31 @@ final class ProjectPageViewModelTests: TestCase {
   // request. Async tests yield the run loop; the old synchronous tests did not.
   // Model that pending dependency explicitly instead of accidentally delivering
   // an "Unimplemented mock" error while checking the project-page notification.
-  static func isolatedFeature() -> ProjectDetailsFeature {
+  static func isolatedViewModel() -> ProjectPageViewModel {
+    let details = self.isolatedFeature()
+    return self.makeViewModel(
+      details: details,
+      media: ProjectMediaFeature(sessionFeature: details.sessionFeature, makeProvider: {
+        AsyncProjectMediaProvider(service: AppEnvironment.current.apiService)
+      })
+    )
+  }
+
+  static func makeViewModel(details: ProjectDetailsFeature, media: ProjectMediaFeature) -> ProjectPageViewModel {
+    ProjectPageViewModel(
+      projectDetailsFeature: details,
+      projectMediaFeature: media,
+      analytics: { AppEnvironment.current.ksrAnalytics },
+      advertisingIdentifier: {
+        let tracking = AppEnvironment.current.appTrackingTransparency
+        tracking.updateAdvertisingIdentifier()
+        return tracking.advertisingIdentifier
+      },
+      platformVersion: { AppEnvironment.current.mainBundle.platformVersion }
+    )
+  }
+
+  private static func isolatedFeature() -> ProjectDetailsFeature {
     ProjectDetailsFeature(
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       discussionFeature: DiscussionFeature(sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { AsyncDiscussionProvider(service: AppEnvironment.current.apiService) }),

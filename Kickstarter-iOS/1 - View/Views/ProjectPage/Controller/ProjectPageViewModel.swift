@@ -315,9 +315,21 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   private var lastRelatedProjectID: String?
   internal private(set) var loadingTask: Task<Void, Never>?
 
-  public init(projectDetailsFeature: ProjectDetailsFeature? = nil, projectMediaFeature: ProjectMediaFeature? = nil) {
-    self.projectMediaFeature = projectMediaFeature ?? AppModel.shared.projectMediaFeature
-    let projectDetailsFeature = projectDetailsFeature ?? AppModel.shared.projectDetailsFeature
+  private let analytics: () -> KSRAnalytics
+  private let advertisingIdentifier: () -> String?
+  private let platformVersion: () -> String
+
+  public init(
+    projectDetailsFeature: ProjectDetailsFeature,
+    projectMediaFeature: ProjectMediaFeature,
+    analytics: @escaping () -> KSRAnalytics,
+    advertisingIdentifier: @escaping () -> String?,
+    platformVersion: @escaping () -> String
+  ) {
+    self.projectMediaFeature = projectMediaFeature
+    self.analytics = analytics
+    self.advertisingIdentifier = advertisingIdentifier
+    self.platformVersion = platformVersion
     self.projectDetailsFeature = projectDetailsFeature
     self.similarProjectsUseCase = SimilarProjectsUseCase(projectDetailsFeature: projectDetailsFeature)
 
@@ -331,7 +343,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
 
     let blockAnalytics = self.blockAnalytics
     blockAnalytics.onInitiate = { project, blockedUserId in
-        AppEnvironment.current.ksrAnalytics
+        analytics()
           .trackBlockedUser(
             project,
             page: .project,
@@ -436,18 +448,17 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     while self.pendingAppearances > 0, !self.pendingViewedProjects.isEmpty {
       self.pendingAppearances -= 1
       let (project, refTag) = self.pendingViewedProjects.removeFirst()
-      AppEnvironment.current.ksrAnalytics.trackProjectViewed(project, refTag: refTag, sectionContext: .overview)
+      self.analytics().trackProjectViewed(project, refTag: refTag, sectionContext: .overview)
       self.recordThirdPartyProjectView(project)
     }
   }
 
   private func recordThirdPartyProjectView(_ project: Project) {
-    AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
-    guard let externalID = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else { return }
+    guard let externalID = self.advertisingIdentifier() else { return }
     let userID = self.projectDetailsFeature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
     var extInfo = Array(repeating: "", count: 16)
     extInfo[0] = "i2"
-    extInfo[4] = AppEnvironment.current.mainBundle.platformVersion
+    extInfo[4] = self.platformVersion()
     self.projectDetailsFeature.recordThirdPartyEvent(
       .init(
         deviceId: externalID,
@@ -509,7 +520,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
         NotificationCenter.default.post(.init(name: .ksr_blockedUser))
         self.onDidBlockUser?()
         if let (project, blockedUserId) = self.blockAnalytics.latest {
-          AppEnvironment.current.ksrAnalytics.trackBlockedUser(
+          self.analytics().trackBlockedUser(
             project,
             page: .project,
             sectionContext: .overview,

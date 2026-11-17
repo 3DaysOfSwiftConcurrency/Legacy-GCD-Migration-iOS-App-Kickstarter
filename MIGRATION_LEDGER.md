@@ -3184,3 +3184,11 @@ configuration to `PledgeViewModel`. `make check-cfa` checks that this view model
 does not reach into the application singletons. The focused iOS Simulator run
 passed 115 tests across PledgeFeature and PledgeViewModel. Post-campaign checkout
 and other pledge screens have separate composition boundaries to review.
+
+### Project Page composition — Matthew Thomas
+
+The Project Page controller supplies project details, media and analytics
+dependencies to its view model. Tracking reads use injected advertising
+identifier and platform version functions. The focused Project Page, tracking
+and media suites passed 105 simulator tests. `make check-cfa` now checks the
+Project Page view model for direct singleton access.

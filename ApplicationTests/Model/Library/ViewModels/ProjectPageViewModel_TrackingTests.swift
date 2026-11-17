@@ -25,7 +25,7 @@ final class ProjectPageViewModel_TrackingTests: TestCase {
   internal override func setUp() async throws {
     try await super.setUp()
     MainActor.assumeIsolated {
-      self.vm = ProjectPageViewModel(projectDetailsFeature: ProjectPageViewModelTests.isolatedFeature())
+      self.vm = ProjectPageViewModelTests.isolatedViewModel()
     }
   }
 
@@ -66,10 +66,7 @@ final class ProjectPageViewModel_TrackingTests: TestCase {
       )
 
       // Start up another view model with the same project
-      let newVm: ProjectPageViewModel = ProjectPageViewModel(
-        projectDetailsFeature: ProjectPageViewModelTests
-          .isolatedFeature()
-      )
+      let newVm: ProjectPageViewModel = ProjectPageViewModelTests.isolatedViewModel()
       newVm.inputs.configureWith(projectOrParam: .left(project), refInfo: RefInfo(.recommended))
       newVm.inputs.viewDidLoad()
       newVm.inputs.viewDidAppear(animated: true)
@@ -132,10 +129,7 @@ final class ProjectPageViewModel_TrackingTests: TestCase {
       )
 
       // Start up another view model with the same project
-      let newVm: ProjectPageViewModel = ProjectPageViewModel(
-        projectDetailsFeature: ProjectPageViewModelTests
-          .isolatedFeature()
-      )
+      let newVm: ProjectPageViewModel = ProjectPageViewModelTests.isolatedViewModel()
       newVm.inputs.configureWith(projectOrParam: .left(project), refInfo: RefInfo(.recommended))
       newVm.inputs.viewDidLoad()
       newVm.inputs.viewDidAppear(animated: true)
@@ -224,7 +218,7 @@ final class ProjectPageViewModel_TrackingTests: TestCase {
     await ProjectPageViewModelTests.mockNetworkRequests(project: project) {
       await withEnvironment() {
         let newVm: ProjectPageViewModel =
-          ProjectPageViewModel(projectDetailsFeature: ProjectPageViewModelTests.isolatedFeature())
+          ProjectPageViewModelTests.isolatedViewModel()
         newVm.inputs.configureWith(projectOrParam: .left(project), refInfo: RefInfo(.category))
         newVm.inputs.viewDidLoad()
         newVm.inputs.viewDidAppear(animated: true)
@@ -238,7 +232,7 @@ final class ProjectPageViewModel_TrackingTests: TestCase {
         dateType: LaterMockDate.self
       ) {
         let newVm: ProjectPageViewModel =
-          ProjectPageViewModel(projectDetailsFeature: ProjectPageViewModelTests.isolatedFeature())
+          ProjectPageViewModelTests.isolatedViewModel()
         newVm.inputs.configureWith(projectOrParam: .left(project), refInfo: RefInfo(.recommended))
         newVm.inputs.viewDidLoad()
         newVm.inputs.viewDidAppear(animated: true)
@@ -256,7 +250,7 @@ final class ProjectPageViewModel_TrackingTests: TestCase {
     await ProjectPageViewModelTests.mockNetworkRequests {
       await withEnvironment() {
         let newVm: ProjectPageViewModel =
-          ProjectPageViewModel(projectDetailsFeature: ProjectPageViewModelTests.isolatedFeature())
+          ProjectPageViewModelTests.isolatedViewModel()
         newVm.inputs.configureWith(projectOrParam: .left(project), refInfo: RefInfo(.category))
         newVm.inputs.viewDidLoad()
         newVm.inputs.viewDidAppear(animated: true)
@@ -268,7 +262,7 @@ final class ProjectPageViewModel_TrackingTests: TestCase {
 
       await withEnvironment() {
         let newVm: ProjectPageViewModel =
-          ProjectPageViewModel(projectDetailsFeature: ProjectPageViewModelTests.isolatedFeature())
+          ProjectPageViewModelTests.isolatedViewModel()
         newVm.inputs.configureWith(projectOrParam: .left(project), refInfo: RefInfo(.recommended))
         newVm.inputs.viewDidLoad()
         newVm.inputs.viewDidAppear(animated: true)
@@ -326,10 +320,7 @@ final class ProjectPageViewModel_TrackingTests: TestCase {
       )
 
       // Start up another view model with the same project
-      let newVm: ProjectPageViewModel = ProjectPageViewModel(
-        projectDetailsFeature: ProjectPageViewModelTests
-          .isolatedFeature()
-      )
+      let newVm: ProjectPageViewModel = ProjectPageViewModelTests.isolatedViewModel()
       newVm.inputs.configureWith(projectOrParam: .left(project), refInfo: RefInfo(.recommended))
       newVm.inputs.viewDidLoad()
       newVm.inputs.viewDidAppear(animated: true)

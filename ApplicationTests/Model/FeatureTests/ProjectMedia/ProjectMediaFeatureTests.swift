@@ -26,7 +26,7 @@ final class ProjectMediaFeatureTests: TestCase {
       useFastLoading: { false },
       includeRichText: { true }
     )
-    return ProjectPageViewModel(projectDetailsFeature: details, projectMediaFeature: media)
+    return ProjectPageViewModelTests.makeViewModel(details: details, media: media)
   }
 
   func testCampaignImageSharesPendingReadAndFailureAllowsRetry() async throws {
