@@ -57,6 +57,11 @@ reopen or replace the completed CFA migration ledger.
   under the session sandbox, so the signing-disabled generic `Library-iOS`
   build did not reach compilation. CoreSimulator refused connections after
   routine recovery, so focused runtime tests did not run.
+- AppModel final pass: named the once-only launch work guard and the synchronous
+  notification and tracking permission preparation. Checked AppDelegate and AppModel
+  test callers. Swift parsing and git diff --check passed. The signing-disabled generic
+  Library-iOS simulator build was blocked during Swift package resolution.
+  AppModelTests could not run because CoreSimulator refused connections.
 
 ## Current slice
 

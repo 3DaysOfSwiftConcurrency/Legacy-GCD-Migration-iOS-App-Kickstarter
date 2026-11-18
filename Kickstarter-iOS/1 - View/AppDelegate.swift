@@ -195,7 +195,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     )
     AppModel.shared.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
 
-    AppModel.shared.preparePermissions()
+    AppModel.shared.prepareNotificationAndTrackingPermissions()
     self.synchronizeUbiquitousPreferences()
     self.configureAnalytics()
 

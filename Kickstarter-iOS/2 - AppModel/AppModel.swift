@@ -410,7 +410,7 @@ public struct PledgedProjectsComposition {
 public final class AppModel {
   public static let shared = AppModel.live()
 
-  private var hasLaunched: Bool
+  private var hasStartedLaunchWork: Bool
 
   public let developerExamplesFeature: DeveloperExamplesFeature
   public let onboardingFeature: OnboardingFeature
@@ -640,7 +640,7 @@ public final class AppModel {
     self.rewardsFeature = rewardsFeature
     self.discussionFeature = discussionFeature
     self.projectMediaFeature = projectMediaFeature
-    self.hasLaunched = false
+    self.hasStartedLaunchWork = false
   }
 
   deinit {
@@ -656,13 +656,13 @@ public final class AppModel {
   /// Starts shared launch work once without making UI construction wait for it.
   @discardableResult
   public func applicationDidFinishLaunching() -> Task<Config, Error>? {
-    guard !self.hasLaunched else { return nil }
-    self.hasLaunched = true
+    guard !self.hasStartedLaunchWork else { return nil }
+    self.hasStartedLaunchWork = true
     return self.settingsFeature.requestApplicationSettingsRefresh()
   }
 
   /// Synchronous permission preparation preserves the delegate's SDK setup order.
-  func preparePermissions() {
+  func prepareNotificationAndTrackingPermissions() {
     self.onboardingFeature.prepareNotificationAuthorization()
     self.onboardingFeature.prepareTrackingConsent()
   }

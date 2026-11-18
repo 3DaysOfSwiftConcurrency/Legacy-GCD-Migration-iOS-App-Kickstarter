@@ -50,7 +50,7 @@ final class AppModelTests: XCTestCase {
     model.setApplicationActive(true)
     await onboarding.waitForTrackingChecks()
     XCTAssertEqual(tracking.requestCount, 0)
-    model.preparePermissions()
+    model.prepareNotificationAndTrackingPermissions()
     model.refreshNotificationAuthorization()
     await onboarding.waitForTrackingChecks()
 
