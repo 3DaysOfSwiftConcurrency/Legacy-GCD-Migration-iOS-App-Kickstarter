@@ -6091,8 +6091,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "blocked",
-  "nextAction": "After approval, restart the shared test service, rerun the full Library-iOS suite, and record its actual result before reconsidering completion.",
+  "phase": "verify",
+  "nextAction": "Classify the 41 full-suite failures by source and target: preferred-simulator guards, signal traps, and the ColorsView snapshot; fix only failures attributable to current CFA work, then rerun their focused suites.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6352,6 +6352,13 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "test",
       "outcome": "limited",
       "summary": "A full Library-iOS suite was retried on the separately booted iPhone 17 Pro Max with a fresh result bundle. After ten minutes, xcodebuild had only SWBBuildService and DTServiceHub children, launched no test worker, and the bundle still lacked Info.plist. The exact stalled process was terminated. This reproduces a local Xcode build/test-service limitation across two simulators, not an application test result."
+    },
+    {
+      "id": "full-library-suite-after-service-restart",
+      "revision": "9aa3f2aac",
+      "kind": "test",
+      "outcome": "failed",
+      "summary": "After automatic CoreSimulator restart, the full Library-iOS suite produced a valid result on iPhone 17 Pro (iOS 26.2): 2,459 passed, 41 failed, 0 skipped. The dominant failures are existing TestCase.preferredSimulatorCheck traps and signal traps; one KDS ColorsView snapshot differs by rendered dimensions. These require failure-by-failure classification before they can be attributed to CFA migration work."
     }
   ],
   "attempts": [
@@ -6470,17 +6477,24 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Recorded a migration blocker.",
       "result": "Two independent ten-minute full Library-iOS runs on separate booted iPhone simulators remained in Xcode build services without launching a test worker or writing a usable result bundle."
+    },
+    {
+      "action": "Restarted the approved shared CoreSimulator/Xcode test service.",
+      "result": "All simulators were shut down and the designated iPhone 17 Pro completed a fresh boot. Resume the required full-suite verification."
+    },
+    {
+      "action": "Obtained the first completed full Library-iOS test result after automatic service recovery.",
+      "result": "2,459 tests passed and 41 failed. The failures now require source-level classification; no conclusion about CFA compliance follows from their aggregate count."
     }
   ],
-  "blocker": {
-    "reason": "Two independent ten-minute full Library-iOS runs on separate booted iPhone simulators remained in Xcode build services without launching a test worker or writing a usable result bundle.",
-    "unblockCondition": "User approves restarting the shared CoreSimulator/Xcode test service, which may interrupt other active simulator work."
-  },
+  "blocker": null,
   "completionGate": null,
   "continuation": {
     "host": "codex",
     "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47",
-    "pending": null
+    "pending": {
+      "token": "cd87f67b-49c0-4237-a466-99789e9e707e"
+    }
   }
 }
 ```
