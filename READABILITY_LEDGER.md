@@ -62,7 +62,14 @@ reopen or replace the completed CFA migration ledger.
   test callers. Swift parsing and git diff --check passed. The signing-disabled generic
   Library-iOS simulator build was blocked during Swift package resolution.
   AppModelTests could not run because CoreSimulator refused connections.
+- CreatorDrafts: loadDraft, saveDraft, uploadDraftImage and removeDraftImage
+  distinguish the edit outcomes. Named the queue tail, session guard and preview
+  availability. Updated the Update Draft ViewModel and CreatorDrafts tests. Swift
+  parsing and git diff --check passed. The signing-disabled generic Library-iOS
+  simulator build was blocked during Swift package resolution.
+  CreatorDraftsFeatureTests and UpdateDraftViewModelTests could not run because
+  CoreSimulator refused connections.
 
 ## Current slice
 
-- CreatorDrafts Feature, including the Update Draft screen and focused tests.
+- DeveloperExamples Feature and its pagination and rich-text examples.

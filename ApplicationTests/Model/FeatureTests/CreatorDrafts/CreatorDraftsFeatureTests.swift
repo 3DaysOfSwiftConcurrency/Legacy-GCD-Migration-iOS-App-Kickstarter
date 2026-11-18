@@ -18,7 +18,7 @@ final class CreatorDraftsFeatureTests: XCTestCase {
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
       makeProvider: { provider }, sleep: { _ in }
     )
-    await self.feature.load(project: .template, route: self.route)
+    await self.feature.loadDraft(project: .template, route: self.route)
   }
   override func tearDown() async throws {
     self.feature.reset()
@@ -30,7 +30,7 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     try await super.tearDown()
   }
   private func save(_ title: String) -> Task<UpdateDraft, Error> {
-    Task { try await self.feature.save(route: self.route, title: title, body: "Body", isPublic: false) }
+    Task { try await self.feature.saveDraft(route: self.route, title: title, body: "Body", isPublic: false) }
   }
 
   func testReadsAndWritesUseComposedResponseDelay() async throws {
@@ -48,9 +48,9 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     )
     let route = UUID()
 
-    await feature.load(project: .template, route: route)
+    await feature.loadDraft(project: .template, route: route)
     let save = Task {
-      try await feature.save(route: route, title: "Delayed", body: "Body", isPublic: false)
+      try await feature.saveDraft(route: route, title: "Delayed", body: "Body", isPublic: false)
     }
     await provider.saves.waitFor(1)
     try provider.saves.finish(0, .success(.template))
@@ -76,7 +76,7 @@ final class CreatorDraftsFeatureTests: XCTestCase {
   }
 
   func testUploadSettlesBeforeSaveAndSaveUsesCurrentImages() async throws {
-    let upload = Task { try await self.feature.add(file: URL(fileURLWithPath: "/tmp/test.png"), route: self.route) }
+    let upload = Task { try await self.feature.uploadDraftImage(file: URL(fileURLWithPath: "/tmp/test.png"), route: self.route) }
     await self.provider.adds.waitFor(1)
     let save = self.save("After upload")
     XCTAssertEqual(self.provider.saves.count, 0)
@@ -129,9 +129,9 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     self.feature.observe(route: self.route) { event in
       if case let .load(.success(draft)) = event { loaded.append(draft.update.title) }
     }
-    let first = self.feature.requestLoad(project: .template, route: self.route)
+    let first = self.feature.requestDraftLoad(project: .template, route: self.route)
     await self.provider.loads.waitFor(1)
-    let second = self.feature.requestLoad(project: .template |> Project.lens.id .~ 2, route: self.route)
+    let second = self.feature.requestDraftLoad(project: .template |> Project.lens.id .~ 2, route: self.route)
     await self.provider.loads.waitFor(2)
     try self.provider.loads.finish(1, .success(.template |> UpdateDraft.lens.update.title .~ "Current"))
     await second.value
@@ -146,13 +146,13 @@ final class CreatorDraftsFeatureTests: XCTestCase {
       if case .load(.success) = event { loadCount += 1 }
     }
     self.feature.reset()
-    await self.feature.load(project: .template, route: self.route)
+    await self.feature.loadDraft(project: .template, route: self.route)
     XCTAssertEqual(loadCount, 1)
   }
 
   func testUnchangedDraftDoesNotSendWrite() async throws {
     let draft = UpdateDraft.template
-    let saved = try await self.feature.save(route: self.route, title: draft.update.title,
+    let saved = try await self.feature.saveDraft(route: self.route, title: draft.update.title,
       body: draft.update.body ?? "", isPublic: draft.update.isPublic)
     XCTAssertEqual(saved.update.title, draft.update.title)
     XCTAssertEqual(self.provider.saves.count, 0)
@@ -175,15 +175,15 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     self.feature.observe(route: self.route) { event in
       if case let .attachments(attachments) = event { lists.append(attachments.map(\.id)) }
     }
-    let first = Task { try await self.feature.add(file: URL(fileURLWithPath: "/tmp/one.png"), route: self.route) }
+    let first = Task { try await self.feature.uploadDraftImage(file: URL(fileURLWithPath: "/tmp/one.png"), route: self.route) }
     await self.provider.adds.waitFor(1)
     try self.provider.adds.finish(0, .success(.template))
     _ = try await first.value
-    let removal = Task { try await self.feature.remove(imageID: UpdateDraft.Image.template.id, route: self.route) }
+    let removal = Task { try await self.feature.removeDraftImage(imageID: UpdateDraft.Image.template.id, route: self.route) }
     await self.provider.removes.waitFor(1)
     try self.provider.removes.finish(0, .success(.template))
     _ = try await removal.value
-    let second = Task { try await self.feature.add(file: URL(fileURLWithPath: "/tmp/two.png"), route: self.route) }
+    let second = Task { try await self.feature.uploadDraftImage(file: URL(fileURLWithPath: "/tmp/two.png"), route: self.route) }
     await self.provider.adds.waitFor(2)
     try self.provider.adds.finish(1, .success(.template |> UpdateDraft.Image.lens.id .~ 2))
     _ = try await second.value

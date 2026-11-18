@@ -26,7 +26,7 @@ public struct AsyncCreatorDraftsProvider: CreatorDraftsProvider {
   }
 }
 
-/// The server remains the durable draft store. This Feature coordinates reads
+/// The server remains the durable draft store. This Feature coordinates draftLoadTasks
 /// and ordered edits; abandoning observation cannot undo an admitted edit.
 @MainActor
 public final class CreatorDraftsFeature {
@@ -61,10 +61,10 @@ public final class CreatorDraftsFeature {
   private let sleep: (TimeInterval) async throws -> Void
   private var routes: [UUID: Route] = [:]
   private var drafts: [Key: UpdateDraft] = [:]
-  private var revisions: [Key: Int] = [:]
-  private var tails: [Key: Pending] = [:]
-  private var writes: [UUID: Task<Outcome, Error>] = [:]
-  private var reads: [UUID: Task<Void, Never>] = [:]
+  private var editVersionsByDraft: [Key: Int] = [:]
+  private var latestQueuedEditsByDraft: [Key: Pending] = [:]
+  private var draftEditTasks: [UUID: Task<Outcome, Error>] = [:]
+  private var draftLoadTasks: [UUID: Task<Void, Never>] = [:]
   public enum Event {
     case load(Result<UpdateDraft, ErrorEnvelope>)
     case attachments([UpdateDraft.Attachment])
@@ -90,7 +90,7 @@ public final class CreatorDraftsFeature {
   private func isCurrent(_ key: Key) -> Bool {
     self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation)
   }
-  private func requireCurrent(_ key: Key) throws {
+  private func ensureDraftSessionIsCurrent(_ key: Key) throws {
     try Task.checkCancellation()
     guard self.isCurrent(key) else { throw CancellationError() }
   }
@@ -102,14 +102,14 @@ public final class CreatorDraftsFeature {
     for state in self.routes.values { state.read?.task.cancel() }
     self.routes.removeAll()
     self.drafts.removeAll()
-    self.revisions.removeAll()
+    self.editVersionsByDraft.removeAll()
   }
-  public func load(project: Project, route: UUID) async { await self.requestLoad(project: project, route: route).value }
+  public func loadDraft(project: Project, route: UUID) async { await self.requestDraftLoad(project: project, route: route).value }
 
   @discardableResult
-  public func requestLoad(project: Project, route: UUID) -> Task<Void, Never> {
+  public func requestDraftLoad(project: Project, route: UUID) -> Task<Void, Never> {
     let key = Key(projectID: project.id, userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
-    let revision = self.revisions[key, default: 0]
+    let revision = self.editVersionsByDraft[key, default: 0]
     if let state = self.routes[route], state.key == key, let read = state.read, read.revision == revision {
       return read.task
     }
@@ -118,42 +118,42 @@ public final class CreatorDraftsFeature {
     self.routes[route] = state
     let id = UUID()
     let provider = self.makeProvider()
-    let predecessor = self.tails[key]?.task
+    let predecessor = self.latestQueuedEditsByDraft[key]?.task
     let delay = self.responseDelaySeconds()
     let task = Task { [self] in
-      defer { self.reads[id] = nil; if state.read?.id == id { state.read = nil } }
+      defer { self.draftLoadTasks[id] = nil; if state.read?.id == id { state.read = nil } }
       do {
         if let predecessor { _ = await predecessor.result }
-        try self.requireCurrent(key)
+        try self.ensureDraftSessionIsCurrent(key)
         let draft = try await provider.load(project: project)
         try await self.sleep(delay)
-        try self.requireCurrent(key)
-        guard self.routes[route] === state, self.revisions[key, default: 0] == revision else { return }
+        try self.ensureDraftSessionIsCurrent(key)
+        guard self.routes[route] === state, self.editVersionsByDraft[key, default: 0] == revision else { return }
         self.drafts[key] = draft
         self.listeners[route]?(.load(.success(draft)))
         self.publishAttachments(key: key)
       } catch {
         guard !Task.isCancelled, !(error is CancellationError), self.isCurrent(key),
-              self.routes[route] === state, self.revisions[key, default: 0] == revision else { return }
+              self.routes[route] === state, self.editVersionsByDraft[key, default: 0] == revision else { return }
         self.listeners[route]?(.load(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON)))
       }
     }
     state.read = (id, revision, task)
-    self.reads[id] = task
+    self.draftLoadTasks[id] = task
     return task
   }
 
-  public func save(route: UUID, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft {
+  public func saveDraft(route: UUID, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft {
     let value = try await self.execute(.save(title: title, body: body, isPublic: isPublic), route: route)
     guard case .saved(let draft) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return draft
   }
-  public func add(file: URL, route: UUID) async throws -> UpdateDraft.Image {
+  public func uploadDraftImage(file: URL, route: UUID) async throws -> UpdateDraft.Image {
     let value = try await self.execute(.add(file), route: route)
     guard case .image(let image) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return image
   }
-  public func remove(imageID: Int, route: UUID) async throws -> UpdateDraft.Image {
+  public func removeDraftImage(imageID: Int, route: UUID) async throws -> UpdateDraft.Image {
     let value = try await self.execute(.remove(imageID), route: route)
     guard case .image(let image) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return image
@@ -163,11 +163,11 @@ public final class CreatorDraftsFeature {
     guard let state = self.routes[route] else { throw CancellationError() }
     do {
       let value = try await self.request(command, state: state).value
-      try self.requireCurrent(state.key)
+      try self.ensureDraftSessionIsCurrent(state.key)
       guard self.routes[route] === state else { throw CancellationError() }
       return value
     } catch {
-      try self.requireCurrent(state.key)
+      try self.ensureDraftSessionIsCurrent(state.key)
       guard self.routes[route] === state else { throw CancellationError() }
       throw error
     }
@@ -175,18 +175,18 @@ public final class CreatorDraftsFeature {
 
   private func request(_ command: Command, state: Route) throws -> Task<Outcome, Error> {
     let key = state.key
-    try self.requireCurrent(key)
+    try self.ensureDraftSessionIsCurrent(key)
     guard let admittedDraft = self.drafts[key] else { throw ErrorEnvelope.couldNotParseJSON }
-    let previous = self.tails[key]
+    let previous = self.latestQueuedEditsByDraft[key]
     if let previous, previous.command == command, previous.draftID == admittedDraft.update.id { return previous.task }
     let id = UUID()
     let provider = self.makeProvider()
     let delay = self.responseDelaySeconds()
-    self.revisions[key, default: 0] += 1
+    self.editVersionsByDraft[key, default: 0] += 1
     let task = Task { [self] in
-      defer { self.writes[id] = nil; if self.tails[key]?.id == id { self.tails[key] = nil } }
+      defer { self.draftEditTasks[id] = nil; if self.latestQueuedEditsByDraft[key]?.id == id { self.latestQueuedEditsByDraft[key] = nil } }
       if let previous { _ = await previous.task.result }
-      try self.requireCurrent(key)
+      try self.ensureDraftSessionIsCurrent(key)
       guard var draft = self.drafts[key], draft.update.id == admittedDraft.update.id else { throw CancellationError() }
       let outcome: Outcome
       do {
@@ -206,19 +206,19 @@ public final class CreatorDraftsFeature {
           draft = draft |> UpdateDraft.lens.images .~ draft.images.filter { $0.id != removed.id }
           outcome = .image(removed)
         }
-        try self.requireCurrent(key)
+        try self.ensureDraftSessionIsCurrent(key)
         self.drafts[key] = draft
         try await self.sleep(delay)
-        try self.requireCurrent(key)
+        try self.ensureDraftSessionIsCurrent(key)
         self.publishAttachments(key: key)
         return outcome
       } catch {
-        try self.requireCurrent(key)
+        try self.ensureDraftSessionIsCurrent(key)
         throw error
       }
     }
-    self.tails[key] = Pending(id: id, command: command, draftID: admittedDraft.update.id, task: task)
-    self.writes[id] = task
+    self.latestQueuedEditsByDraft[key] = Pending(id: id, command: command, draftID: admittedDraft.update.id, task: task)
+    self.draftEditTasks[id] = task
     return task
   }
 
@@ -231,9 +231,9 @@ public final class CreatorDraftsFeature {
   }
 
   public func waitForOperations() async {
-    while !self.reads.isEmpty || !self.writes.isEmpty {
-      for task in Array(self.reads.values) { await task.value }
-      for task in Array(self.writes.values) { _ = await task.result }
+    while !self.draftLoadTasks.isEmpty || !self.draftEditTasks.isEmpty {
+      for task in Array(self.draftLoadTasks.values) { await task.value }
+      for task in Array(self.draftEditTasks.values) { _ = await task.result }
     }
   }
 }

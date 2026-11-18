@@ -28,8 +28,8 @@ final class UpdateDraftViewModel {
   private var lastPreviewEnabled: Bool?
   private var lastPlaceholderHidden: Bool?
   private var saveTask: Task<Void, Never>?
-  private var saveRevision = UUID()
-  private var imageTasks: [UUID: Task<Void, Never>] = [:]
+  private var saveRequestID = UUID()
+  private var imageEditsByRequestID: [UUID: Task<Void, Never>] = [:]
 
   init(creatorDraftsFeature: CreatorDraftsFeature) {
     self.creatorDraftsFeature = creatorDraftsFeature
@@ -37,21 +37,21 @@ final class UpdateDraftViewModel {
   }
   deinit {
     self.saveTask?.cancel()
-    for task in self.imageTasks.values { task.cancel() }
+    for task in self.imageEditsByRequestID.values { task.cancel() }
     let creatorDraftsFeature = self.creatorDraftsFeature
     let route = self.route
     Task { @MainActor in creatorDraftsFeature.release(route: route) }
   }
   func configureWith(project: Project) {
     self.project = project
-    if self.didLoad { self.creatorDraftsFeature.requestLoad(project: project, route: self.route) }
+    if self.didLoad { self.creatorDraftsFeature.requestDraftLoad(project: project, route: self.route) }
   }
   func viewDidLoad() {
     self.didLoad = true
     self.onEvent?(.isLoading(true))
     self.publishAttachmentHidden(true)
     self.publishPreviewEnabled(false)
-    if let project = self.project { self.creatorDraftsFeature.requestLoad(project: project, route: self.route) }
+    if let project = self.project { self.creatorDraftsFeature.requestDraftLoad(project: project, route: self.route) }
   }
   private func receive(_ event: CreatorDraftsFeature.Event) {
     switch event {
@@ -73,17 +73,17 @@ final class UpdateDraftViewModel {
       self.publishPlaceholder()
       if draft.update.title.isEmpty { self.onEvent?(.titleTextFieldBecomeFirstResponder) }
       else if (draft.update.body ?? "").isEmpty { self.onEvent?(.bodyTextViewBecomeFirstResponder) }
-      self.publishValidation()
+      self.publishPreviewAvailability()
     case let .attachments(attachments):
       self.currentAttachments = attachments
       self.publishAttachmentHidden(attachments.isEmpty)
-      self.publishValidation()
+      self.publishPreviewAvailability()
     }
   }
-  func titleTextChanged(to title: String) { self.currentTitle = title; self.publishValidation() }
-  func bodyTextChanged(to body: String) { self.currentBody = body; self.publishPlaceholder(); self.publishValidation() }
+  func titleTextChanged(to title: String) { self.currentTitle = title; self.publishPreviewAvailability() }
+  func bodyTextChanged(to body: String) { self.currentBody = body; self.publishPlaceholder(); self.publishPreviewAvailability() }
   func isBackersOnlyOn(_ value: Bool) { self.backersOnly = value; self.onEvent?(.isBackersOnly(value)) }
-  private func publishValidation() {
+  private func publishPreviewAvailability() {
     guard let title = self.currentTitle, let body = self.currentBody, let attachments = self.currentAttachments else { return }
     self.publishPreviewEnabled(!title.trimmed().isEmpty && (!body.trimmed().isEmpty || !attachments.isEmpty))
   }
@@ -114,10 +114,10 @@ final class UpdateDraftViewModel {
     let id = UUID()
     let creatorDraftsFeature = self.creatorDraftsFeature
     let route = self.route
-    self.imageTasks[id] = Task { [weak self] in
-      defer { self?.imageTasks[id] = nil }
+    self.imageEditsByRequestID[id] = Task { [weak self] in
+      defer { self?.imageEditsByRequestID[id] = nil }
       do {
-        let image = try await creatorDraftsFeature.add(file: url, route: route)
+        let image = try await creatorDraftsFeature.uploadDraftImage(file: url, route: route)
         guard !Task.isCancelled else { return }
         self?.onEvent?(.attachmentAdded(.image(image)))
       } catch {
@@ -132,10 +132,10 @@ final class UpdateDraftViewModel {
     let id = UUID()
     let creatorDraftsFeature = self.creatorDraftsFeature
     let route = self.route
-    self.imageTasks[id] = Task { [weak self] in
-      defer { self?.imageTasks[id] = nil }
+    self.imageEditsByRequestID[id] = Task { [weak self] in
+      defer { self?.imageEditsByRequestID[id] = nil }
       do {
-        let removed = try await creatorDraftsFeature.remove(imageID: image.id, route: route)
+        let removed = try await creatorDraftsFeature.removeDraftImage(imageID: image.id, route: route)
         guard !Task.isCancelled else { return }
         self?.onEvent?(.attachmentRemoved(.image(removed)))
       } catch {
@@ -153,19 +153,19 @@ final class UpdateDraftViewModel {
     guard let title = self.currentTitle, let body = self.currentBody, let backersOnly = self.backersOnly else { return }
     self.saveTask?.cancel()
     let revision = UUID()
-    self.saveRevision = revision
+    self.saveRequestID = revision
     let creatorDraftsFeature = self.creatorDraftsFeature
     let route = self.route
     self.saveTask = Task { [weak self] in
       do {
-        let saved = try await creatorDraftsFeature.save(
+        let saved = try await creatorDraftsFeature.saveDraft(
           route: route, title: title, body: body, isPublic: !backersOnly
         )
-        guard !Task.isCancelled, let self, self.saveRevision == revision else { return }
+        guard !Task.isCancelled, let self, self.saveRequestID == revision else { return }
         if preview { self.onEvent?(.goToPreview(saved)) }
         else { self.onEvent?(.notifyPresenterViewControllerWantsDismissal) }
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), let self, self.saveRevision == revision else { return }
+        guard !Task.isCancelled, !(error is CancellationError), let self, self.saveRequestID == revision else { return }
         self.onEvent?(.showSaveFailure)
       }
     }
@@ -173,7 +173,7 @@ final class UpdateDraftViewModel {
   func waitForPending() async {
     await self.creatorDraftsFeature.waitForOperations()
     await self.saveTask?.value
-    for task in Array(self.imageTasks.values) { await task.value }
+    for task in Array(self.imageEditsByRequestID.values) { await task.value }
   }
 }
 
