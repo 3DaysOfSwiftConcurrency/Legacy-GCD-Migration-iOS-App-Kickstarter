@@ -28,6 +28,12 @@ internal final class DiscoveryViewController: UIViewController {
     return controller
   }
 
+  override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+    super.prepare(for: segue, sender: sender)
+    guard let header = segue.destination as? DiscoveryNavigationHeaderViewController else { return }
+    header.configure(discoveryFeature: self.composition.discoveryFeature)
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
 

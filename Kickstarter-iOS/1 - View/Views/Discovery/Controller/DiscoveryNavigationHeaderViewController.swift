@@ -12,9 +12,7 @@ internal protocol DiscoveryNavigationHeaderViewDelegate: AnyObject {
 }
 
 internal final class DiscoveryNavigationHeaderViewController: UIViewController {
-  fileprivate let viewModel = DiscoveryNavigationHeaderViewModel(
-    discoveryFeature: AppModel.shared.discoveryFeature
-  )
+  fileprivate var viewModel: DiscoveryNavigationHeaderViewModel!
 
   @IBOutlet fileprivate var arrowImageView: UIImageView!
   @IBOutlet fileprivate var betaToolsButton: UIButton!
@@ -40,8 +38,17 @@ internal final class DiscoveryNavigationHeaderViewController: UIViewController {
 
   internal weak var delegate: DiscoveryNavigationHeaderViewDelegate?
 
-  internal static func instantiate() -> DiscoveryNavigationHeaderViewController {
-    return Storyboard.Discovery.instantiate(DiscoveryNavigationHeaderViewController.self)
+  internal static func instantiate(
+    discoveryFeature: DiscoveryFeature
+  ) -> DiscoveryNavigationHeaderViewController {
+    let controller = Storyboard.Discovery.instantiate(DiscoveryNavigationHeaderViewController.self)
+    controller.configure(discoveryFeature: discoveryFeature)
+    return controller
+  }
+
+  internal func configure(discoveryFeature: DiscoveryFeature) {
+    precondition(!self.isViewLoaded, "Discovery dependencies must be supplied before loading the header view.")
+    self.viewModel = DiscoveryNavigationHeaderViewModel(discoveryFeature: discoveryFeature)
   }
 
   internal func configureWith(params: DiscoveryParams) {
@@ -49,6 +56,7 @@ internal final class DiscoveryNavigationHeaderViewController: UIViewController {
   }
 
   override func viewDidLoad() {
+    precondition(self.viewModel != nil, "DiscoveryNavigationHeaderViewController requires DiscoveryFeature composition.")
     super.viewDidLoad()
 
     self.betaToolsButton.addTarget(

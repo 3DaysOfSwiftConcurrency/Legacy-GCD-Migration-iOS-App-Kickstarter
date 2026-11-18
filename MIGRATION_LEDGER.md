@@ -4604,6 +4604,29 @@ unverified. The CFA gate rejects restored AppModel or AppEnvironment access in t
 migrated Discovery view models. This is not full CFA compliance. Swift packages, target
 identifiers and existing history are unchanged. No push.
 
+### Discovery header composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+DiscoveryNavigationHeaderViewController no longer selects DiscoveryFeature from
+AppModel.shared. DiscoveryViewController supplies its parent-owned feature through the
+storyboard embed segue before the header view loads, and standalone header construction
+requires the feature explicitly. The header continues to create and own its own view
+model; only the application dependency now arrives through the established Discovery
+composition graph.
+
+Focused DiscoveryNavigationHeaderViewModelTests passed all 14 tests. A non-visual
+Presentation composition test loaded the parent storyboard and its embedded header and
+passed 1 test. Both successful runs had zero failures and skips on iPhone 17 Pro Max,
+iOS 26.2. Evidence: `/private/tmp/kickstarter-discovery-header-library.xcresult` and
+`/private/tmp/kickstarter-discovery-header-composition.xcresult`.
+
+Header snapshots were compiled but not rerun on their required iPad mini reference
+simulator. Project save-cell dependencies, live navigation and whole target suites remain
+unverified. The CFA gate rejects restored global selection or parameterless header
+construction. This is not full CFA compliance. Swift packages, target identifiers and
+existing history are unchanged. No push.
+
 ### Root Tabs reads floating policy through Settings — 17 November 2026
 
 Author: Matthew Thomas.

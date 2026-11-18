@@ -2371,3 +2371,14 @@ safe for arbitrary concurrent environment mutation.
 - Focused Discovery view-model coverage passes 57 tests and direct Feature API coverage
   passes 1 test. Header construction, save-cell dependencies, snapshots, live navigation
   and whole target suites remain unverified.
+
+## Discovery header composition — 18 November 2026
+
+- The embedded Discovery header receives the parent DiscoveryComposition's exact
+  DiscoveryFeature before its view loads; standalone construction also requires that
+  dependency explicitly.
+- The header still owns its view model and preserves its storyboard containment, filter,
+  favorite-category and debug-visibility behavior.
+- Focused header view-model coverage passes 14 tests and the parent-to-embedded-header
+  composition smoke test passes 1 test. Reference snapshots and live navigation remain
+  unverified.
