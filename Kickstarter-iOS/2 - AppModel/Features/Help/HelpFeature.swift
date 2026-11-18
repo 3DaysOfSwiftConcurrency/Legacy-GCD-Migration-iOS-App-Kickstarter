@@ -15,7 +15,7 @@ public final class HelpFeature {
     self.prepareRequest = prepareRequest
   }
 
-  public func request(for helpType: HelpType) -> URLRequest? {
+  public func makeWebRequest(for helpType: HelpType) -> URLRequest? {
     guard let url = helpType.url(withBaseUrl: self.webBaseURL()) else { return nil }
     return self.prepareRequest(url)
   }

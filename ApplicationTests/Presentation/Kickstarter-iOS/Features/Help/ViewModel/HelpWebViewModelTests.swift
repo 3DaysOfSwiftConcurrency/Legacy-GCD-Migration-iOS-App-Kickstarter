@@ -13,14 +13,14 @@ internal final class HelpWebViewModelTests: TestCase {
         prepareRequest: { URLRequest(url: $0) }
       )
     )
-    XCTAssertNil(vm.requestForViewDidLoad())
+    XCTAssertNil(vm.requestForConfiguredHelpPage())
     let cases: [(HelpType, String)] = [
       (.cookie, "/cookies"), (.helpCenter, "/help"), (.howItWorks, "/about"),
       (.privacy, "/privacy"), (.terms, "/terms-of-use")
     ]
     for (type, path) in cases {
       vm.configureWith(helpType: type)
-      XCTAssertEqual(vm.requestForViewDidLoad()?.url?.relativePath, path)
+      XCTAssertEqual(vm.requestForConfiguredHelpPage()?.url?.relativePath, path)
     }
   }
 }

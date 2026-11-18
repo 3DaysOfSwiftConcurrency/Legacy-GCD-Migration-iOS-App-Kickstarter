@@ -14,7 +14,7 @@ internal final class HelpWebViewModel {
     self.helpType = helpType
   }
 
-  func requestForViewDidLoad() -> URLRequest? {
-    self.helpType.flatMap(self.helpFeature.request(for:))
+  func requestForConfiguredHelpPage() -> URLRequest? {
+    self.helpType.flatMap(self.helpFeature.makeWebRequest(for:))
   }
 }

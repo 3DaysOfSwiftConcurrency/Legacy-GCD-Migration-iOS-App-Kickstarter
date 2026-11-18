@@ -30,7 +30,7 @@ internal final class HelpWebViewController: WebViewController {
       )
     }
 
-    if let request = self.viewModel.requestForViewDidLoad() {
+    if let request = self.viewModel.requestForConfiguredHelpPage() {
       self.webView.load(request)
     }
   }

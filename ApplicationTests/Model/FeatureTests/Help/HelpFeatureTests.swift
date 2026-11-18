@@ -16,7 +16,7 @@ final class HelpFeatureTests: XCTestCase {
       }
     )
 
-    let request = feature.request(for: .helpCenter)
+    let request = feature.makeWebRequest(for: .helpCenter)
 
     XCTAssertEqual(preparedURL, URL(string: "https://www.example.com/help"))
     XCTAssertEqual(request?.url, preparedURL)
@@ -33,7 +33,7 @@ final class HelpFeatureTests: XCTestCase {
       }
     )
 
-    XCTAssertNil(feature.request(for: .contact))
+    XCTAssertNil(feature.makeWebRequest(for: .contact))
     XCTAssertEqual(preparedRequestCount, 0)
   }
 }

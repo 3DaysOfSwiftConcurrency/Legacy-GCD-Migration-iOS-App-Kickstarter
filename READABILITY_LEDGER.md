@@ -94,7 +94,13 @@ reopen or replace the completed CFA migration ledger.
   signing-disabled generic Library-iOS simulator build was blocked during Swift package
   resolution. FriendsFeatureTests and follow cell ViewModel tests could not run because
   CoreSimulator refused connections.
+- Help: makeWebRequest identifies the URL request constructed for a help destination.
+  The Help Web ViewModel names its configured page request. Updated the controller and
+  both focused test suites. Swift parsing and git diff --check passed. The signing-
+  disabled generic Library-iOS simulator build was blocked during Swift package
+  resolution. HelpFeatureTests and HelpWebViewModelTests could not run because
+  CoreSimulator refused connections.
 
 ## Current slice
 
-- Help Feature and the Help Web screen.
+- Messaging Feature and the mailbox and thread screens.
