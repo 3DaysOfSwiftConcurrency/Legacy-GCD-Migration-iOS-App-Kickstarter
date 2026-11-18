@@ -5,18 +5,18 @@ struct AttributionTracking {
     case projectPageViewed = "Project Page Viewed"
   }
 
-  static func eventParametersString(refInfo: RefInfo?) -> String? {
+  static func eventParametersJSON(refInfo: RefInfo?) -> String? {
     let sessionRefTag = refInfo?.refTag?.stringTag
-    let contextPageUrl = refInfo?.deeplinkUrl
-    var props = [String: String]()
+    let contextPageURL = refInfo?.deeplinkUrl
+    var parameters = [String: String]()
     if let sessionRefTag {
-      props["session_ref_tag"] = sessionRefTag
+      parameters["session_ref_tag"] = sessionRefTag
     }
-    props["context_page_url"] = contextPageUrl ?? ""
+    parameters["context_page_url"] = contextPageURL ?? ""
 
-    guard let propsData = try? JSONSerialization.data(withJSONObject: props) else {
+    guard let jsonData = try? JSONSerialization.data(withJSONObject: parameters) else {
       return nil
     }
-    return String(data: propsData, encoding: .utf8)
+    return String(data: jsonData, encoding: .utf8)
   }
 }

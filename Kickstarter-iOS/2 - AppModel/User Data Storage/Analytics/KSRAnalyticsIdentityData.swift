@@ -33,14 +33,14 @@ public struct KSRAnalyticsIdentityData: Equatable {
   }
 
   func uniqueTraits(comparedTo otherData: KSRAnalyticsIdentityData?) -> [String: Any] {
-    var newTraits: [String: Any] = [:]
-    let otherTraits = otherData?.traits ?? [:]
+    var changedTraits: [String: Any] = [:]
+    let previousTraits = otherData?.traits ?? [:]
 
-    for key in self.traits.keys where self.traits[key] != otherTraits[key] {
-      newTraits[key] = self.traits[key]?.value
+    for key in self.traits.keys where self.traits[key] != previousTraits[key] {
+      changedTraits[key] = self.traits[key]?.value
     }
 
-    return newTraits
+    return changedTraits
   }
 
   var allTraits: [String: Any] {
@@ -71,17 +71,17 @@ extension KSRAnalyticsIdentityData: Codable {
     try container.encode(self.userId, forKey: .userId)
     try container.encode(self.name, forKey: .name)
 
-    let data = try JSONSerialization.data(withJSONObject: self.notifications.encode(), options: [])
-    try container.encode(data, forKey: .notifications)
+    let notificationsJSON = try JSONSerialization.data(withJSONObject: self.notifications.encode(), options: [])
+    try container.encode(notificationsJSON, forKey: .notifications)
   }
 
   public init(from decoder: Decoder) throws {
-    let values = try decoder.container(keyedBy: CodingKeys.self)
+    let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    self.userId = try values.decode(Int.self, forKey: .userId)
-    self.name = try values.decode(String.self, forKey: .name)
+    self.userId = try container.decode(Int.self, forKey: .userId)
+    self.name = try container.decode(String.self, forKey: .name)
 
-    let data = try values.decode(Data.self, forKey: .notifications)
-    self.notifications = try JSONDecoder().decode(User.Notifications.self, from: data)
+    let notificationsJSON = try container.decode(Data.self, forKey: .notifications)
+    self.notifications = try JSONDecoder().decode(User.Notifications.self, from: notificationsJSON)
   }
 }

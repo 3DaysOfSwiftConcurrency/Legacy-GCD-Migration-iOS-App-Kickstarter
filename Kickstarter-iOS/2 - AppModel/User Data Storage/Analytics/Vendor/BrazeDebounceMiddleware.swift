@@ -1,7 +1,7 @@
 import Foundation
 import Segment
 
-private let __brazeIntegrationName = "Appboy"
+private let brazeIntegrationKey = "Appboy"
 
 /// Ref: https://github.com/segmentio/segment-braze-mobile-middleware for the middleware
 /// In the new integration, all middlewares must be rewritten as plugins.
@@ -22,7 +22,7 @@ public class BrazeDebounceMiddlewarePlugin: EventPlugin {
     var mutableEvent = event
 
     if !self.shouldSendToBraze(event) {
-      let integrations = try? event.integrations?.add(value: false, forKey: __brazeIntegrationName)
+      let integrations = try? event.integrations?.add(value: false, forKey: brazeIntegrationKey)
       mutableEvent.integrations = integrations
     }
 

@@ -415,7 +415,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     self.didRecordAttribution = true
     self.projectDetailsFeature.recordAttribution(
       route: self.projectRoute, projectID: project.graphID,
-      properties: AttributionTracking.eventParametersString(refInfo: refInfo)
+      properties: AttributionTracking.eventParametersJSON(refInfo: refInfo)
     )
   }
 

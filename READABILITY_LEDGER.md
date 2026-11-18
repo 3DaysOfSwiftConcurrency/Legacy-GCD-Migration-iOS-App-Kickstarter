@@ -229,3 +229,8 @@ callers or tests affected by a rename.
   monitoring from its consumer state. Updated Authentication, Profile and focused
   redirect and avatar tests. Swift parsing, Swift token comparison and git diff
   --check passed.
+
+- Analytics storage and adapters. Named the attribution JSON payload, notification
+  bytes in identity Codable methods, checkout tracking properties, and the Braze
+  integration key. Checked attribution callers and checkout and identity tracking
+  tests. Swift parsing, Swift token comparison and git diff --check passed.

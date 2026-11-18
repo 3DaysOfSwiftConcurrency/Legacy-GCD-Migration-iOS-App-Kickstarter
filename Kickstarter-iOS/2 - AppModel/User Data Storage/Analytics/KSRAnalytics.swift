@@ -1163,7 +1163,7 @@ public final class KSRAnalytics {
       ))
 
     if let checkoutProps = checkoutData {
-      props = props.withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutProps, and: reward))
+      props = props.withAllValuesFrom(checkoutTrackingProperties(from: checkoutProps, and: reward))
     }
 
     if let discoveryParams = params {
@@ -1209,7 +1209,7 @@ public final class KSRAnalytics {
   ) {
     let props = projectProperties(from: project, loggedInUser: self.loggedInUser)
       .withAllValuesFrom(contextProperties(ctaContext: .addOnsContinue, page: .addOnsSelection))
-      .withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutData, and: reward))
+      .withAllValuesFrom(checkoutTrackingProperties(from: checkoutData, and: reward))
     self.track(
       event: SegmentEvent.ctaClicked.rawValue,
       properties: props,
@@ -1224,7 +1224,7 @@ public final class KSRAnalytics {
     refTag: RefTag?
   ) {
     let props = projectProperties(from: project, loggedInUser: self.loggedInUser)
-      .withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutData, and: reward))
+      .withAllValuesFrom(checkoutTrackingProperties(from: checkoutData, and: reward))
       .withAllValuesFrom(contextProperties(page: .addOnsSelection))
 
     self.track(
@@ -1263,7 +1263,7 @@ public final class KSRAnalytics {
     checkoutData: CheckoutPropertiesData
   ) {
     let props = projectProperties(from: project, loggedInUser: self.loggedInUser)
-      .withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutData, and: reward))
+      .withAllValuesFrom(checkoutTrackingProperties(from: checkoutData, and: reward))
       .withAllValuesFrom(contextProperties(page: .managePledgeScreen))
 
     self.track(
@@ -1289,7 +1289,7 @@ public final class KSRAnalytics {
   ) {
     let props = projectProperties(from: project, loggedInUser: self.loggedInUser)
       .withAllValuesFrom(contextProperties(ctaContext: .rewardContinue, page: .rewards))
-      .withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutPropertiesData, and: reward))
+      .withAllValuesFrom(checkoutTrackingProperties(from: checkoutPropertiesData, and: reward))
 
     self.track(
       event: SegmentEvent.ctaClicked.rawValue,
@@ -1312,7 +1312,7 @@ public final class KSRAnalytics {
     refTag: RefTag?
   ) {
     let props = projectProperties(from: project, loggedInUser: self.loggedInUser)
-      .withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutPropertiesData))
+      .withAllValuesFrom(checkoutTrackingProperties(from: checkoutPropertiesData))
       .withAllValuesFrom(contextProperties(page: .rewards))
 
     self.track(
@@ -1341,7 +1341,7 @@ public final class KSRAnalytics {
     refTag: RefTag?
   ) {
     var props = projectProperties(from: project, loggedInUser: self.loggedInUser)
-      .withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutData, and: reward))
+      .withAllValuesFrom(checkoutTrackingProperties(from: checkoutData, and: reward))
 
     switch pledgeViewContext {
     case .pledge, .latePledge:
@@ -1380,7 +1380,7 @@ public final class KSRAnalytics {
     refTag: RefTag?
   ) {
     let props = projectProperties(from: project, loggedInUser: self.loggedInUser)
-      .withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutData, and: reward))
+      .withAllValuesFrom(checkoutTrackingProperties(from: checkoutData, and: reward))
       // the context is always "newPledge" for this event
       .withAllValuesFrom(contextProperties(
         ctaContext: .pledgeSubmit,
@@ -1414,7 +1414,7 @@ public final class KSRAnalytics {
       .withAllValuesFrom(contextProperties(page: .thanks, typeContext: TypeContext.pledge(.newPledge)))
 
     if let checkoutData = checkoutData {
-      props = props.withAllValuesFrom(kSRAnalyticsCheckoutProperties(from: checkoutData, and: reward))
+      props = props.withAllValuesFrom(checkoutTrackingProperties(from: checkoutData, and: reward))
     }
 
     self.track(
@@ -1999,7 +1999,7 @@ private func pledgeProperties(from reward: Reward, prefix: String = "pledge_back
 
 // MARK: - Checkout Properties
 
-private func kSRAnalyticsCheckoutProperties(
+private func checkoutTrackingProperties(
   from data: KSRAnalytics.CheckoutPropertiesData,
   and reward: Reward? = nil,
   prefix: String = "checkout_"

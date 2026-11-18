@@ -9,7 +9,7 @@ final class AttributionTrackingTests: TestCase {
     let url = "test-url"
     let refInfo = RefInfo(RefTag(code: ref), deeplinkUrl: url)
 
-    let string = AttributionTracking.eventParametersString(refInfo: refInfo)
+    let string = AttributionTracking.eventParametersJSON(refInfo: refInfo)
     let json = self.jsonDict(string!)
 
     XCTAssertEqual(json["session_ref_tag"], ref)
@@ -19,7 +19,7 @@ final class AttributionTrackingTests: TestCase {
   func testParametersString_emptyRefInfo() {
     let refInfo = RefInfo(nil)
 
-    let string = AttributionTracking.eventParametersString(refInfo: refInfo)
+    let string = AttributionTracking.eventParametersJSON(refInfo: refInfo)
     let json = self.jsonDict(string!)
 
     XCTAssertEqual(json["context_page_url"], "")
