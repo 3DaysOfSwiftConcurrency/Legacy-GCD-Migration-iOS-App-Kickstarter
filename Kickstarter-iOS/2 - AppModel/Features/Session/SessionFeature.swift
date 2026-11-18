@@ -49,20 +49,20 @@ public final class SessionFeature {
   private let deviceRegistrationDebounce: @MainActor () async throws -> Void
   private var deviceRegistrationDebounceTask: (id: UUID, task: Task<Void, Never>)?
   private var deviceRegistrationDelivery: (id: UUID, task: Task<Void, Never>)?
-  private var deviceRegistrationTail: (
+  private var latestQueuedDeviceRegistration: (
     token: String, userID: Int?, generation: Int, id: UUID, task: Task<String, Error>
   )?
   private let storage: Storage
-  private var setupRequests: [Identity: Task<GraphUserSetup, Error>] = [:]
-  private var revision = 0
-  private var readRevision = 0
-  private var setupReadRevision = 0
-  private var requests: [Identity: Task<User, Error>] = [:]
+  private var pendingSetupReads: [Identity: Task<GraphUserSetup, Error>] = [:]
+  private var sessionGeneration = 0
+  private var userReadInvalidationVersion = 0
+  private var setupReadInvalidationVersion = 0
+  private var pendingUserOperations: [Identity: Task<User, Error>] = [:]
   public var currentUser: User? { self.storage.currentUser() }
   public var currentUserEmail: String? { self.storage.currentUserEmail() }
   public var currentUserPPOSettings: PPOUserSettings? { self.storage.currentUserPPOSettings() }
-  public var generation: Int { self.revision }
-  public var readGeneration: Int { self.readRevision }
+  public var generation: Int { self.sessionGeneration }
+  public var readGeneration: Int { self.userReadInvalidationVersion }
 
   init(
     makeProvider: @escaping () -> any SessionProvider,
@@ -77,11 +77,11 @@ public final class SessionFeature {
   /// Login/logout is an explicit boundary, including returning to the same ID.
   /// Admitted badge and device-registration writes continue but cannot publish into a newer session.
   public func sessionChanged() {
-    self.revision += 1
+    self.sessionGeneration += 1
     self.deviceRegistrationDebounceTask?.task.cancel()
     self.deviceRegistrationDelivery?.task.cancel()
-    for task in self.setupRequests.values { task.cancel() }
-    for (identity, task) in self.requests where identity.operation != .clearActivity { task.cancel() }
+    for task in self.pendingSetupReads.values { task.cancel() }
+    for (identity, task) in self.pendingUserOperations where identity.operation != .clearActivity { task.cancel() }
   }
 
   /// Register the device against this session after the existing token debounce.
@@ -132,13 +132,13 @@ public final class SessionFeature {
   func requestDeviceRegistration(token: String) -> Task<String, Error> {
     let generation = self.generation
     let userID = self.currentUser?.id
-    if let tail = self.deviceRegistrationTail, tail.token == token,
+    if let tail = self.latestQueuedDeviceRegistration, tail.token == token,
        self.isCurrentDeviceRegistration(userID: tail.userID, generation: tail.generation) { return tail.task }
-    let previous = self.deviceRegistrationTail?.task
+    let previous = self.latestQueuedDeviceRegistration?.task
     let id = UUID()
     let provider = self.makeProvider()
     let task = Task { [self] in
-      defer { if self.deviceRegistrationTail?.id == id { self.deviceRegistrationTail = nil } }
+      defer { if self.latestQueuedDeviceRegistration?.id == id { self.latestQueuedDeviceRegistration = nil } }
       if let previous { _ = await previous.result }
       try Task.checkCancellation()
       guard self.isCurrentDeviceRegistration(userID: userID, generation: generation) else { throw CancellationError() }
@@ -151,10 +151,10 @@ public final class SessionFeature {
       }
       try Task.checkCancellation()
       guard self.isCurrentDeviceRegistration(userID: userID, generation: generation),
-            self.deviceRegistrationTail?.id == id else { throw CancellationError() }
+            self.latestQueuedDeviceRegistration?.id == id else { throw CancellationError() }
       return token
     }
-    self.deviceRegistrationTail = (token, userID, generation, id, task)
+    self.latestQueuedDeviceRegistration = (token, userID, generation, id, task)
     return task
   }
 
@@ -167,19 +167,19 @@ public final class SessionFeature {
   /// A completed account-affecting command requires fresh reads, without
   /// pretending that the user logged out or interrupting admitted badge writes.
   public func invalidateReads() {
-    self.setupReadRevision += 1
-    for task in self.setupRequests.values { task.cancel() }
+    self.setupReadInvalidationVersion += 1
+    for task in self.pendingSetupReads.values { task.cancel() }
     self.invalidateUserReads()
   }
 
   /// Badge changes invalidate whole-user snapshots, not unrelated email/setup metadata.
   private func invalidateUserReads() {
-    self.readRevision += 1
-    for (identity, task) in self.requests where identity.operation != .clearActivity { task.cancel() }
+    self.userReadInvalidationVersion += 1
+    for (identity, task) in self.pendingUserOperations where identity.operation != .clearActivity { task.cancel() }
   }
 
   public func isCurrent(userID: Int?, generation: Int) -> Bool {
-    self.currentUser?.id == userID && self.revision == generation
+    self.currentUser?.id == userID && self.sessionGeneration == generation
   }
 
   /// Captures the authenticated session at admission so a completion cannot
@@ -188,7 +188,7 @@ public final class SessionFeature {
     -> @MainActor () async throws -> Value
   {
     let userID = self.currentUser?.id
-    let generation = self.revision
+    let generation = self.sessionGeneration
     return { [self] in
       try Task.checkCancellation()
       guard self.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
@@ -233,43 +233,43 @@ public final class SessionFeature {
     let identity = Identity(
       operation: .user,
       userID: self.currentUser?.id,
-      revision: self.revision,
-      readRevision: self.setupReadRevision
+      revision: self.sessionGeneration,
+      readRevision: self.setupReadInvalidationVersion
     )
     let task: Task<GraphUserSetup, Error>
-    if let existing = self.setupRequests[identity] {
+    if let existing = self.pendingSetupReads[identity] {
       task = existing
     } else {
       let provider = self.makeProvider()
       task = Task { [self] in
-        defer { self.setupRequests[identity] = nil }
+        defer { self.pendingSetupReads[identity] = nil }
         do {
           try Task.checkCancellation()
           let setup = try await provider.setup()
           try Task.checkCancellation()
           guard self.isCurrent(userID: identity.userID, generation: identity.revision),
-                self.setupReadRevision == identity.readRevision else { throw CancellationError() }
+                self.setupReadInvalidationVersion == identity.readRevision else { throw CancellationError() }
           self.storage.updateSetup(setup)
           return setup
         } catch {
           guard !Task.isCancelled,
                 self.isCurrent(userID: identity.userID, generation: identity.revision),
-                self.setupReadRevision == identity.readRevision else { throw CancellationError() }
+                self.setupReadInvalidationVersion == identity.readRevision else { throw CancellationError() }
           throw error
         }
       }
-      self.setupRequests[identity] = task
+      self.pendingSetupReads[identity] = task
     }
     do {
       let setup = try await task.value
       try Task.checkCancellation()
       guard self.isCurrent(userID: identity.userID, generation: identity.revision),
-            self.setupReadRevision == identity.readRevision else { throw CancellationError() }
+            self.setupReadInvalidationVersion == identity.readRevision else { throw CancellationError() }
       return setup
     } catch {
       guard !Task.isCancelled,
             self.isCurrent(userID: identity.userID, generation: identity.revision),
-            self.setupReadRevision == identity.readRevision else { throw CancellationError() }
+            self.setupReadInvalidationVersion == identity.readRevision else { throw CancellationError() }
       throw error
     }
   }
@@ -277,18 +277,18 @@ public final class SessionFeature {
   public func refresh(_ operation: Operation = .user) async throws -> User {
     try Task.checkCancellation()
     let userID = self.currentUser?.id
-    let generation = self.revision
-    let readGeneration = self.readRevision
+    let generation = self.sessionGeneration
+    let readGeneration = self.userReadInvalidationVersion
     do {
       let user = try await self.request(operation).value
       try Task.checkCancellation()
       guard self.isCurrent(userID: userID, generation: generation),
-            operation == .clearActivity || self.readRevision == readGeneration
+            operation == .clearActivity || self.userReadInvalidationVersion == readGeneration
       else { throw CancellationError() }
       return user
     } catch {
       guard !Task.isCancelled, self.isCurrent(userID: userID, generation: generation),
-            operation == .clearActivity || self.readRevision == readGeneration
+            operation == .clearActivity || self.userReadInvalidationVersion == readGeneration
       else { throw CancellationError() }
       throw error
     }
@@ -297,13 +297,13 @@ public final class SessionFeature {
   @discardableResult
   public func request(_ operation: Operation = .user) -> Task<User, Error> {
     let identity = Identity(
-      operation: operation, userID: self.currentUser?.id, revision: self.revision,
-      readRevision: operation == .clearActivity ? 0 : self.readRevision
+      operation: operation, userID: self.currentUser?.id, revision: self.sessionGeneration,
+      readRevision: operation == .clearActivity ? 0 : self.userReadInvalidationVersion
     )
-    if let task = self.requests[identity] { return task }
+    if let task = self.pendingUserOperations[identity] { return task }
     let provider = self.makeProvider()
     let task = Task { [self] in
-      defer { self.requests[identity] = nil }
+      defer { self.pendingUserOperations[identity] = nil }
       try Task.checkCancellation()
       guard self.isCurrent(userID: identity.userID, generation: identity.revision)
       else { throw CancellationError() }
@@ -321,7 +321,7 @@ public final class SessionFeature {
         }
         try Task.checkCancellation()
         guard self.isCurrent(userID: identity.userID, generation: identity.revision),
-              operation == .clearActivity || self.readRevision == identity.readRevision
+              operation == .clearActivity || self.userReadInvalidationVersion == identity.readRevision
         else { throw CancellationError() }
         if operation == .clearActivity {
           // Both root-tab and Activity callers share this execution and one commit.
@@ -332,12 +332,12 @@ public final class SessionFeature {
       } catch {
         // An old unauthorized response must not log out a replacement session.
         guard !Task.isCancelled, self.isCurrent(userID: identity.userID, generation: identity.revision),
-              operation == .clearActivity || self.readRevision == identity.readRevision
+              operation == .clearActivity || self.userReadInvalidationVersion == identity.readRevision
         else { throw CancellationError() }
         throw error
       }
     }
-    self.requests[identity] = task
+    self.pendingUserOperations[identity] = task
     return task
   }
 }
