@@ -56,8 +56,8 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
     let task = Task { [weak self] in
       defer { if self?.emailID == id { self?.emailTask = nil } }
       do {
-        let email = try await projectReportingFeature.email(context: context)
-        try projectReportingFeature.requireCurrent(context)
+        let email = try await projectReportingFeature.fetchReportingEmail(context: context)
+        try projectReportingFeature.ensureReportingSessionIsCurrent(context)
         guard self?.emailID == id else { return }
         self?.retrievedEmail = email
       } catch {
@@ -103,7 +103,7 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
       }
       do {
         try await command.value
-        try projectReportingFeature.requireCurrent(context)
+        try projectReportingFeature.ensureReportingSessionIsCurrent(context)
         guard self?.submissionID == id, self?.projectID == projectID,
               self?.projectFlaggingKind == kind else { return }
         self?.submitSuccess = true

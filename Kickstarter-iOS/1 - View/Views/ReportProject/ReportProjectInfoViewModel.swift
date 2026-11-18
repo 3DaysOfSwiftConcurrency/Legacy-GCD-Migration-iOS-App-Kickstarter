@@ -32,8 +32,8 @@ public final class ReportProjectInfoViewModel: ObservableObject {
         }
       }
       do {
-        let items = try await projectReportingFeature.options(context: context)
-        try projectReportingFeature.requireCurrent(context)
+        let items = try await projectReportingFeature.fetchReportOptions(context: context)
+        try projectReportingFeature.ensureReportingSessionIsCurrent(context)
         guard self?.loadID == id else { return }
         self?.listItems = items
       } catch {

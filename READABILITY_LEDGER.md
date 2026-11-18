@@ -149,7 +149,13 @@ reopen or replace the completed CFA migration ledger.
   The signing-disabled generic Library-iOS simulator build was blocked during Swift
   package resolution. ProjectMediaFeatureTests and video feed ViewModel tests could not
   run because CoreSimulator refused connections.
+- ProjectReporting: named the fetched report options and contact email, the reporting-
+  session guard, and the queued submission. Updated the info and form ViewModels and
+  the focused stale-session tests. Swift parsing and git diff --check passed. The
+  signing-disabled generic Library-iOS simulator build was blocked during Swift package
+  resolution. ProjectReportingFeatureTests and reporting ViewModel tests could not run
+  because CoreSimulator refused connections.
 
 ## Current slice
 
-- ProjectReporting Feature, report form, and report information screen.
+- Recommendations Feature and curated and post-backing recommendations.

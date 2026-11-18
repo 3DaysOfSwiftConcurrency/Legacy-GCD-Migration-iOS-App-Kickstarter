@@ -49,8 +49,8 @@ public final class ProjectReportingFeature {
   }
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any ProjectReportingProvider
-  private var tails: [Context: Pending] = [:]
-  private var commands: [UUID: Task<Void, Error>] = [:]
+  private var latestQueuedReportBySession: [Context: Pending] = [:]
+  private var reportSubmissionTasks: [UUID: Task<Void, Error>] = [:]
 
   public init(sessionFeature: SessionFeature, makeProvider: @escaping () -> any ProjectReportingProvider) {
     self.sessionFeature = sessionFeature
@@ -60,29 +60,29 @@ public final class ProjectReportingFeature {
   public var context: Context {
     Context(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
-  public func requireCurrent(_ context: Context) throws {
+  public func ensureReportingSessionIsCurrent(_ context: Context) throws {
     try Task.checkCancellation()
     guard self.context == context else { throw CancellationError() }
   }
-  public func options(context: Context) async throws -> [ReportProjectInfoListItem] {
-    try self.requireCurrent(context)
+  public func fetchReportOptions(context: Context) async throws -> [ReportProjectInfoListItem] {
+    try self.ensureReportingSessionIsCurrent(context)
     do {
       let result = try await self.makeProvider().options()
-      try self.requireCurrent(context)
+      try self.ensureReportingSessionIsCurrent(context)
       return result
     } catch {
-      try self.requireCurrent(context)
+      try self.ensureReportingSessionIsCurrent(context)
       throw error
     }
   }
-  public func email(context: Context) async throws -> String? {
-    try self.requireCurrent(context)
+  public func fetchReportingEmail(context: Context) async throws -> String? {
+    try self.ensureReportingSessionIsCurrent(context)
     do {
       let result = try await self.makeProvider().email()
-      try self.requireCurrent(context)
+      try self.ensureReportingSessionIsCurrent(context)
       return result
     } catch {
-      try self.requireCurrent(context)
+      try self.ensureReportingSessionIsCurrent(context)
       throw error
     }
   }
@@ -90,35 +90,35 @@ public final class ProjectReportingFeature {
   /// Equivalent pending submissions share; changed reports execute in account
   /// order. Failures are surfaced for an explicit retry, never retried silently.
   public func submit(_ draft: Draft, context: Context) throws -> Task<Void, Error> {
-    try self.requireCurrent(context)
+    try self.ensureReportingSessionIsCurrent(context)
     guard !draft.projectID.isEmpty, !draft.details.isEmpty else { throw ErrorEnvelope.couldNotParseJSON }
-    let previous = self.tails[context]
+    let previous = self.latestQueuedReportBySession[context]
     if let previous, previous.draft == draft { return previous.task }
     let id = UUID()
     let provider = self.makeProvider()
     let task = Task { [self] in
       defer {
-        self.commands[id] = nil
-        if self.tails[context]?.id == id { self.tails[context] = nil }
+        self.reportSubmissionTasks[id] = nil
+        if self.latestQueuedReportBySession[context]?.id == id { self.latestQueuedReportBySession[context] = nil }
       }
       if let previous { _ = await previous.task.result }
-      try self.requireCurrent(context)
+      try self.ensureReportingSessionIsCurrent(context)
       do {
         try await provider.submit(draft)
-        try self.requireCurrent(context)
+        try self.ensureReportingSessionIsCurrent(context)
       } catch {
-        try self.requireCurrent(context)
+        try self.ensureReportingSessionIsCurrent(context)
         throw error
       }
     }
-    self.tails[context] = Pending(id: id, draft: draft, task: task)
-    self.commands[id] = task
+    self.latestQueuedReportBySession[context] = Pending(id: id, draft: draft, task: task)
+    self.reportSubmissionTasks[id] = task
     return task
   }
 
   public func waitForOperations() async {
-    while !self.commands.isEmpty {
-      for task in Array(self.commands.values) { _ = await task.result }
+    while !self.reportSubmissionTasks.isEmpty {
+      for task in Array(self.reportSubmissionTasks.values) { _ = await task.result }
     }
   }
 }

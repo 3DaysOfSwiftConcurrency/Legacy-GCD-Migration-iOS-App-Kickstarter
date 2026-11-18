@@ -107,8 +107,8 @@ final class ProjectReportingFeatureTests: XCTestCase {
 
   func testOldSessionReadFailuresBecomeCancellation() async throws {
     let context = self.feature.context
-    let options = Task { try await self.feature.options(context: context) }
-    let email = Task { try await self.feature.email(context: context) }
+    let options = Task { try await self.feature.fetchReportOptions(context: context) }
+    let email = Task { try await self.feature.fetchReportingEmail(context: context) }
     await self.provider.optionsGate.waitFor(1)
     await self.provider.emailGate.waitFor(1)
     self.session.sessionChanged()
