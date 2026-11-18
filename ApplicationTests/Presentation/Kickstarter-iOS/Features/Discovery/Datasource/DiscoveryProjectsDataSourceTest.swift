@@ -9,7 +9,8 @@ import XCTest
 @MainActor
 final class DiscoveryProjectsDataSourceTests: XCTestCase {
   let dataSource = DiscoveryProjectsDataSource(
-    projectMediaFeature: AppModel.shared.projectMediaFeature
+    projectMediaFeature: AppModel.shared.projectMediaFeature,
+    cardPresentation: AppModel.shared.discoveryComposition.cardPresentation
   )
   let tableView = UITableView()
 
@@ -109,7 +110,10 @@ final class DiscoveryProjectsDataSourceTests: XCTestCase {
     XCTAssertTrue(self.dataSource.tableView(self.tableView, cellForRowAt: indexPath) is DiscoveryPostcardCell)
 
     let card = DiscoveryProjectCardCell(style: .default, reuseIdentifier: nil)
-    card.configure(projectMediaFeature: AppModel.shared.projectMediaFeature)
+    card.configure(
+      projectMediaFeature: AppModel.shared.projectMediaFeature,
+      cardPresentation: environmentDiscoveryCardPresentation()
+    )
     card.configureWith(value: value)
   }
 }

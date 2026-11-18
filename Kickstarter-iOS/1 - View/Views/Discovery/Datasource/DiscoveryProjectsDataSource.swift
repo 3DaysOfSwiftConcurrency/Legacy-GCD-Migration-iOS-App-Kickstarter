@@ -4,9 +4,14 @@ import UIKit
 
 internal final class DiscoveryProjectsDataSource: ValueCellDataSource {
   private let projectMediaFeature: ProjectMediaFeature
+  private let cardPresentation: DiscoveryCardPresentation
 
-  init(projectMediaFeature: ProjectMediaFeature) {
+  init(
+    projectMediaFeature: ProjectMediaFeature,
+    cardPresentation: DiscoveryCardPresentation
+  ) {
     self.projectMediaFeature = projectMediaFeature
+    self.cardPresentation = cardPresentation
     super.init()
   }
 
@@ -101,10 +106,16 @@ internal final class DiscoveryProjectsDataSource: ValueCellDataSource {
     case let (cell as ActivitySampleProjectCell, value as Activity):
       cell.configureWith(value: value)
     case let (cell as DiscoveryPostcardCell, value as DiscoveryProjectCellRowValue):
-      cell.configure(projectMediaFeature: self.projectMediaFeature)
+      cell.configure(
+        projectMediaFeature: self.projectMediaFeature,
+        cardPresentation: self.cardPresentation
+      )
       cell.configureWith(value: value)
     case let (cell as DiscoveryProjectCardCell, value as DiscoveryProjectCellRowValue):
-      cell.configure(projectMediaFeature: self.projectMediaFeature)
+      cell.configure(
+        projectMediaFeature: self.projectMediaFeature,
+        cardPresentation: self.cardPresentation
+      )
       cell.configureWith(value: value)
     case let (cell as DiscoveryOnboardingCell, value as Void):
       cell.configureWith(value: value)

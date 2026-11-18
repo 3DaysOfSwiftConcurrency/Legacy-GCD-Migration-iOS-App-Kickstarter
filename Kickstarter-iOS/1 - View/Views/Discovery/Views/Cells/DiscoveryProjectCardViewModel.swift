@@ -33,6 +33,8 @@ public typealias FacepileViewData = (avatars: [URL], description: String)
 
 @MainActor
 public final class DiscoveryProjectCardViewModel {
+  private let presentation: DiscoveryCardPresentation
+
   struct Display {
     let backerCount: BoldedAttributedLabelData
     let facepile: FacepileViewData?
@@ -49,7 +51,9 @@ public final class DiscoveryProjectCardViewModel {
     let backerHidden: Bool
   }
 
-  public init() {}
+  public init(presentation: DiscoveryCardPresentation) {
+    self.presentation = presentation
+  }
 
   func configure(with value: DiscoveryProjectCellRowValue) -> Display {
     let project = value.project
@@ -70,8 +74,7 @@ public final class DiscoveryProjectCardViewModel {
     case .live:
       icon = "icon--clock"
       if let deadline = project.dates.deadline {
-        let (duration, unit) = Format.duration(secondsInUTC: deadline, abbreviate: false, useToGo: true,
-                                               env: AppEnvironment.current)
+        let (duration, unit) = self.presentation.liveProjectDuration(deadline)
         status = (duration, "\(duration) \(unit)")
       } else { status = ("", "") }
     case .started, .submitted, .suspended, .purged:

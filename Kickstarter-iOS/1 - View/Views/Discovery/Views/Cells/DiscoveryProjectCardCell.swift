@@ -45,7 +45,7 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
   private lazy var youreABackerLabel = { UILabel(frame: .zero) }()
   private lazy var youreABackerView = { UIView(frame: .zero) }()
 
-  private let viewModel = DiscoveryProjectCardViewModel()
+  private var viewModel: DiscoveryProjectCardViewModel?
   private var watchProjectViewModel: WatchProjectViewModel?
 
   // MARK: - Notification Observers
@@ -76,10 +76,11 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
   }
 
   func configureWith(value: DiscoveryProjectCellRowValue) {
-    guard let watchProjectViewModel = self.watchProjectViewModel else {
-      preconditionFailure("DiscoveryProjectCardCell requires ProjectMediaFeature composition.")
+    guard let viewModel = self.viewModel,
+          let watchProjectViewModel = self.watchProjectViewModel else {
+      preconditionFailure("DiscoveryProjectCardCell requires card composition.")
     }
-    self.render(self.viewModel.configure(with: value))
+    self.render(viewModel.configure(with: value))
 
     watchProjectViewModel.configure(with: (
       value.project,
@@ -191,13 +192,17 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
       |> youreABackerLabelStyle
   }
 
-  func configure(projectMediaFeature: ProjectMediaFeature) {
-    guard self.watchProjectViewModel == nil else { return }
-    let viewModel = WatchProjectViewModel(projectMediaFeature: projectMediaFeature)
-    self.watchProjectViewModel = viewModel
-    self.bindWatchProjectViewModel(viewModel)
-    self.configureWatchProjectObservers(viewModel)
-    viewModel.awakeFromNib()
+  func configure(
+    projectMediaFeature: ProjectMediaFeature,
+    cardPresentation: DiscoveryCardPresentation
+  ) {
+    guard self.watchProjectViewModel == nil, self.viewModel == nil else { return }
+    let watchViewModel = WatchProjectViewModel(projectMediaFeature: projectMediaFeature)
+    self.viewModel = DiscoveryProjectCardViewModel(presentation: cardPresentation)
+    self.watchProjectViewModel = watchViewModel
+    self.bindWatchProjectViewModel(watchViewModel)
+    self.configureWatchProjectObservers(watchViewModel)
+    watchViewModel.awakeFromNib()
   }
 
   private func bindWatchProjectViewModel(_ viewModel: WatchProjectViewModel) {

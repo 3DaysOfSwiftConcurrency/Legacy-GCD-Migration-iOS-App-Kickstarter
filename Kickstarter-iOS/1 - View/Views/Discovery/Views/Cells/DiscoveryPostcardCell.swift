@@ -15,7 +15,7 @@ internal protocol DiscoveryPostcardCellDelegate: AnyObject {
 }
 
 internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
-  fileprivate let viewModel = DiscoveryPostcardViewModel()
+  fileprivate var viewModel: DiscoveryPostcardViewModel?
   private var watchProjectViewModel: WatchProjectViewModel?
   internal weak var delegate: DiscoveryPostcardCellDelegate?
 
@@ -213,7 +213,10 @@ internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
     super.bindViewModel()
 
     self.projectIsStaffPickView.configureWith(name: Strings.Projects_We_Love(), imageNameString: "icon--small-k")
-    self.viewModel.onEvent = { [weak self] event in
+  }
+
+  private func bindDisplayViewModel(_ viewModel: DiscoveryPostcardViewModel) {
+    viewModel.onEvent = { [weak self] event in
       guard let self else { return }
       switch event {
       case let .backersTitleLabelText(value): self.backersTitleLabel.text = value
@@ -261,20 +264,27 @@ internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
     }
   }
 
-  internal func configure(projectMediaFeature: ProjectMediaFeature) {
-    guard self.watchProjectViewModel == nil else { return }
-    let viewModel = WatchProjectViewModel(projectMediaFeature: projectMediaFeature)
-    self.watchProjectViewModel = viewModel
-    self.bindWatchProjectViewModel(viewModel)
-    self.configureWatchProjectObservers(viewModel)
-    viewModel.awakeFromNib()
+  internal func configure(
+    projectMediaFeature: ProjectMediaFeature,
+    cardPresentation: DiscoveryCardPresentation
+  ) {
+    guard self.watchProjectViewModel == nil, self.viewModel == nil else { return }
+    let displayViewModel = DiscoveryPostcardViewModel(presentation: cardPresentation)
+    let watchViewModel = WatchProjectViewModel(projectMediaFeature: projectMediaFeature)
+    self.viewModel = displayViewModel
+    self.watchProjectViewModel = watchViewModel
+    self.bindDisplayViewModel(displayViewModel)
+    self.bindWatchProjectViewModel(watchViewModel)
+    self.configureWatchProjectObservers(watchViewModel)
+    watchViewModel.awakeFromNib()
   }
 
   internal func configureWith(value: DiscoveryProjectCellRowValue) {
-    guard let watchProjectViewModel = self.watchProjectViewModel else {
-      preconditionFailure("DiscoveryPostcardCell requires ProjectMediaFeature composition.")
+    guard let viewModel = self.viewModel,
+          let watchProjectViewModel = self.watchProjectViewModel else {
+      preconditionFailure("DiscoveryPostcardCell requires card composition.")
     }
-    self.viewModel.configure(with: value)
+    viewModel.configure(with: value)
 
     watchProjectViewModel.configure(with: (
       value.project,

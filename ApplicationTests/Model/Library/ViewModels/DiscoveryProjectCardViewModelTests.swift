@@ -27,7 +27,9 @@ final class DiscoveryProjectCardViewModelTests: TestCase {
   private let tagsCollectionViewHidden = CardRecorder<Bool>()
   private let youreABackerViewHidden = CardRecorder<Bool>()
 
-  private let vm = DiscoveryProjectCardViewModel()
+  private let vm = DiscoveryProjectCardViewModel(
+    presentation: environmentDiscoveryCardPresentation()
+  )
 
   private func configure(with value: DiscoveryProjectCellRowValue) {
     let display = self.vm.configure(with: value)

@@ -420,6 +420,22 @@ func environmentDiscoveryAnalytics() -> DiscoveryFeature.Analytics {
   )
 }
 
+@MainActor
+func environmentDiscoveryCardPresentation() -> DiscoveryCardPresentation {
+  DiscoveryCardPresentation(
+    today: { AppEnvironment.current.dateType.init().date },
+    liveProjectDuration: { seconds in
+      let formatted = Format.duration(
+        secondsInUTC: seconds,
+        abbreviate: false,
+        useToGo: true,
+        env: AppEnvironment.current
+      )
+      return (duration: formatted.time, unit: formatted.unit)
+    }
+  )
+}
+
 extension SearchFeature {
   convenience init(
     platform: Platform,

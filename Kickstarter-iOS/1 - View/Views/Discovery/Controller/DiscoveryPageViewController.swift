@@ -42,7 +42,8 @@ internal final class DiscoveryPageViewController: UITableViewController,
     let vc = Storyboard.DiscoveryPage.instantiate(DiscoveryPageViewController.self)
     vc.composition = composition
     vc.dataSource = DiscoveryProjectsDataSource(
-      projectMediaFeature: composition.videoFeed.projectMediaFeature
+      projectMediaFeature: composition.videoFeed.projectMediaFeature,
+      cardPresentation: composition.cardPresentation
     )
     vc.viewModel = DiscoveryPageViewModel(
       discoveryFeature: composition.discoveryFeature,

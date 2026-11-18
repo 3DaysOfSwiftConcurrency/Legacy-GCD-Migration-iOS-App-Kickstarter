@@ -45,7 +45,8 @@ final class CuratedProjectsViewController: UIViewController {
   ) -> CuratedProjectsViewController {
     let controller = CuratedProjectsViewController(nibName: nil, bundle: nil)
     controller.dataSource = DiscoveryProjectsDataSource(
-      projectMediaFeature: composition.projectMediaFeature
+      projectMediaFeature: composition.projectMediaFeature,
+      cardPresentation: composition.cardPresentation
     )
     controller.viewModel = CuratedProjectsViewModel(
       recommendationsFeature: composition.recommendationsFeature

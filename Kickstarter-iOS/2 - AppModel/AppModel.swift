@@ -229,31 +229,50 @@ public struct DiscoveryComposition {
   public let discoveryFeature: DiscoveryFeature
   public let videoFeed: VideoFeedComposition
   public let curatedProjects: CuratedProjectsComposition
+  public let cardPresentation: DiscoveryCardPresentation
   public let isPad: () -> Bool
 
   public init(
     discoveryFeature: DiscoveryFeature,
     videoFeed: VideoFeedComposition,
     curatedProjects: CuratedProjectsComposition,
+    cardPresentation: DiscoveryCardPresentation,
     isPad: @escaping () -> Bool
   ) {
     self.discoveryFeature = discoveryFeature
     self.videoFeed = videoFeed
     self.curatedProjects = curatedProjects
+    self.cardPresentation = cardPresentation
     self.isPad = isPad
+  }
+}
+
+public struct DiscoveryCardPresentation {
+  public let today: @MainActor () -> Date
+  public let liveProjectDuration: @MainActor (TimeInterval) -> (duration: String, unit: String)
+
+  public init(
+    today: @escaping @MainActor () -> Date,
+    liveProjectDuration: @escaping @MainActor (TimeInterval) -> (duration: String, unit: String)
+  ) {
+    self.today = today
+    self.liveProjectDuration = liveProjectDuration
   }
 }
 
 public struct CuratedProjectsComposition {
   public let recommendationsFeature: RecommendationsFeature
   public let projectMediaFeature: ProjectMediaFeature
+  public let cardPresentation: DiscoveryCardPresentation
 
   public init(
     recommendationsFeature: RecommendationsFeature,
-    projectMediaFeature: ProjectMediaFeature
+    projectMediaFeature: ProjectMediaFeature,
+    cardPresentation: DiscoveryCardPresentation
   ) {
     self.recommendationsFeature = recommendationsFeature
     self.projectMediaFeature = projectMediaFeature
+    self.cardPresentation = cardPresentation
   }
 }
 
@@ -404,10 +423,16 @@ public final class AppModel {
   }
 
   public var discoveryComposition: DiscoveryComposition {
-    DiscoveryComposition(
+    let cardPresentation = self.discoveryCardPresentation
+    return DiscoveryComposition(
       discoveryFeature: self.discoveryFeature,
       videoFeed: self.videoFeedComposition,
-      curatedProjects: self.curatedProjectsComposition,
+      curatedProjects: CuratedProjectsComposition(
+        recommendationsFeature: self.recommendationsFeature,
+        projectMediaFeature: self.projectMediaFeature,
+        cardPresentation: cardPresentation
+      ),
+      cardPresentation: cardPresentation,
       isPad: { AppEnvironment.current.device.userInterfaceIdiom == .pad }
     )
   }
@@ -415,7 +440,23 @@ public final class AppModel {
   public var curatedProjectsComposition: CuratedProjectsComposition {
     CuratedProjectsComposition(
       recommendationsFeature: self.recommendationsFeature,
-      projectMediaFeature: self.projectMediaFeature
+      projectMediaFeature: self.projectMediaFeature,
+      cardPresentation: self.discoveryCardPresentation
+    )
+  }
+
+  private var discoveryCardPresentation: DiscoveryCardPresentation {
+    DiscoveryCardPresentation(
+      today: { AppEnvironment.current.dateType.init().date },
+      liveProjectDuration: { seconds in
+        let formatted = Format.duration(
+          secondsInUTC: seconds,
+          abbreviate: false,
+          useToGo: true,
+          env: AppEnvironment.current
+        )
+        return (duration: formatted.time, unit: formatted.unit)
+      }
     )
   }
 

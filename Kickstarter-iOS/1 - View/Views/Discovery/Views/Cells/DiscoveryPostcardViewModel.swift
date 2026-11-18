@@ -42,6 +42,8 @@ private enum PostcardMetadataType {
 
 @MainActor
 final class DiscoveryPostcardViewModel {
+  private let presentation: DiscoveryCardPresentation
+
   enum Event {
     case backersTitleLabelText(String)
     case backersSubtitleLabelText(String)
@@ -81,6 +83,10 @@ final class DiscoveryPostcardViewModel {
   private var lastStateColor: UIColor?
   private var lastSocialHidden: Bool?
 
+  init(presentation: DiscoveryCardPresentation) {
+    self.presentation = presentation
+  }
+
   func configure(with value: DiscoveryProjectCellRowValue) {
     let project = value.project
     let backers = Strings.Backers_count_separator_backers(backers_count: project.stats.backersCount)
@@ -93,7 +99,10 @@ final class DiscoveryPostcardViewModel {
     } else { deadline = ("", "") }
     self.onEvent?(.deadlineTitleLabelText(deadline.0))
     self.onEvent?(.deadlineSubtitleLabelText(deadline.1))
-    let metadata = postcardMetadata(forProject: project)
+    let metadata = postcardMetadata(
+      forProject: project,
+      today: self.presentation.today()
+    )
     self.onEvent?(.metadataViewHidden(metadata == nil))
     if let metadata {
       self.onEvent?(.metadataIcon(metadata.iconImage))
@@ -182,9 +191,7 @@ private func fundingStatusText(forProject project: Project) -> String {
 
 // Returns the disparate metadata data for a project based on metadata precedence.
 @MainActor
-private func postcardMetadata(forProject project: Project) -> PostcardMetadataData? {
-  let today = AppEnvironment.current.dateType.init().date
-
+private func postcardMetadata(forProject project: Project, today: Date) -> PostcardMetadataData? {
   let userHasBacked = userIsBackingProject(project)
   let projectIsFeaturedToday = project.isFeaturedToday(today: today)
 

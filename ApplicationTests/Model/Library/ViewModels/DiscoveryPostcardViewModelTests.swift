@@ -11,7 +11,9 @@ import XCTest
 internal final class DiscoveryPostcardViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
-  internal let vm = DiscoveryPostcardViewModel()
+  internal let vm = DiscoveryPostcardViewModel(
+    presentation: environmentDiscoveryCardPresentation()
+  )
   internal let backersTitleLabelText = PostcardRecorder<String>()
   internal let cellAccessibilityLabel = PostcardRecorder<String>()
   internal let cellAccessibilityValue = PostcardRecorder<String>()

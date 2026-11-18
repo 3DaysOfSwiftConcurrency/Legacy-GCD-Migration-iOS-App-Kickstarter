@@ -2393,3 +2393,14 @@ safe for arbitrary concurrent environment mutation.
   card-dequeue and Curated Projects composition coverage passes 2 tests. Date formatting
   globals in the two card display models, reference snapshots and live save interaction
   remain unverified follow-up work.
+
+## Discovery card presentation composition — 18 November 2026
+
+- AppModel composes the semantic current-date and live-project duration operations used by
+  Discovery cards, and shares them between the main Discovery and nested Curated Projects
+  graphs.
+- Both card forms construct their display models from that supplied presentation value;
+  the display models no longer read the process-global environment.
+- Focused display-model and AppModel coverage passes 41 tests, while focused card-dequeue
+  and Curated Projects composition coverage passes 2 tests. Reference snapshots, live card
+  interaction and whole target suites remain unverified.

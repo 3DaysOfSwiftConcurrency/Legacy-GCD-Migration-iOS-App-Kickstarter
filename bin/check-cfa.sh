@@ -28,6 +28,8 @@ manage_pledge_view_model="$app_view/Views/ManagePledge/Controllers/ManagePledgeV
 cancel_pledge_view_model="$app_view/Views/CancelPledge/Controller/CancelPledgeViewModel.swift"
 project_page_view_model="$app_view/Views/ProjectPage/Controller/ProjectPageViewModel.swift"
 discovery_feature="$app_model/Features/Discovery/DiscoveryFeature.swift"
+discovery_postcard_view_model="$app_view/Views/Discovery/Views/Cells/DiscoveryPostcardViewModel.swift"
+discovery_project_card_view_model="$app_view/Views/Discovery/Views/Cells/DiscoveryProjectCardViewModel.swift"
 configuration_flags="$app_view/Views/FeatureFlagTools/Controller"
 remote_configuration_flags="$app_view/Views/RemoteConfigFeatureFlagTools/Controller"
 application_settings="$app_model/Features/Settings/SettingsFeature+ApplicationSettings.swift"
@@ -214,6 +216,9 @@ reject_matches 'Discovery project cells receive ProjectMediaFeature from their d
   'AppModel[.]shared|AppEnvironment[.]current' \
   "$app_view/Views/Discovery/Views/Cells/DiscoveryPostcardCell.swift" \
   "$app_view/Views/Discovery/Views/Cells/DiscoveryProjectCardCell.swift"
+reject_matches 'Discovery card presentation dependencies come from AppModel composition.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$discovery_postcard_view_model" "$discovery_project_card_view_model"
 reject_matches 'Discovery project data sources require ProjectMediaFeature composition.' \
   'DiscoveryProjectsDataSource[(][[:space:]]*[)]' \
   "$app_view/Views/Discovery/**/*.swift" "$app_view/Views/CuratedProjects/**/*.swift"

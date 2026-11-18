@@ -5878,3 +5878,24 @@ restored global feature selection in Messaging controllers, legacy default pledg
 destinations from Messages, and global MessagingFeature selection in Project Creator.
 This is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
+
+### Discovery card presentation composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now composes DiscoveryCardPresentation with the semantic clock and live-project
+duration formatter used by Discovery cards. DiscoveryComposition and its nested
+CuratedProjectsComposition share that value, and their data sources pass it into both card
+forms. DiscoveryPostcardViewModel and DiscoveryProjectCardViewModel no longer read the
+process-global environment; cells construct those display models from their supplied graph.
+
+The two focused display-model suites and AppModel graph-isolation test passed all 41 tests.
+The focused Discovery card-dequeue and Curated Projects composition tests passed all 2
+tests. Both successful runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2.
+Evidence: `/private/tmp/kickstarter-discovery-card-presentation-final.xcresult`
+and `/private/tmp/kickstarter-discovery-card-presentation-boundary-final.xcresult`.
+
+Reference snapshots, live card interaction and the whole Library and Presentation suites
+remain unverified. The CFA gate rejects restored global environment access in either card
+display model. This is not full CFA compliance. Swift packages, target identifiers and
+existing history are unchanged. No push.
