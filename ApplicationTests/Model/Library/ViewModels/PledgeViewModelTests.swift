@@ -1303,7 +1303,9 @@ final class PledgeViewModelTests: TestCase {
       while !self.delayGate.isWaiting { await Task.yield() }
       self.sessionFeature.sessionChanged()
       self.delayGate.resume()
-      await Task.yield()
+      for _ in 0 ..< 100 where self.processingViewIsHidden.lastValue != true {
+        await Task.yield()
+      }
       self.goToThanksProject.assertDidNotEmitValue()
       self.beginSCAFlowWithClientSecret.assertDidNotEmitValue()
       self.showErrorBannerWithMessage.assertDidNotEmitValue()

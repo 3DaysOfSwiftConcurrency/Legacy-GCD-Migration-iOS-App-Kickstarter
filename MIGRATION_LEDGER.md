@@ -6091,8 +6091,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "verify",
-  "nextAction": "Classify the 41 full-suite failures by source and target: preferred-simulator guards, signal traps, and the ColorsView snapshot; fix only failures attributable to current CFA work, then rerun their focused suites.",
+  "phase": "completed",
+  "nextAction": "Migration completion evidence is recorded.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6359,6 +6359,27 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "test",
       "outcome": "failed",
       "summary": "After automatic CoreSimulator restart, the full Library-iOS suite produced a valid result on iPhone 17 Pro (iOS 26.2): 2,459 passed, 41 failed, 0 skipped. The dominant failures are existing TestCase.preferredSimulatorCheck traps and signal traps; one KDS ColorsView snapshot differs by rendered dimensions. These require failure-by-failure classification before they can be attributed to CFA migration work."
+    },
+    {
+      "id": "full-library-suite-reference-passed",
+      "revision": "61c2b64e7 with verified PledgeViewModelTests working tree",
+      "kind": "test",
+      "outcome": "passed",
+      "summary": "After Xcode automatically downloaded and imported iOS 18.6, the suite ran on the dedicated iPad mini (A17 Pro), iOS 18.6 reference simulator. Library-iOS passed 2,500/2,500 with 0 failures and 0 skips. The isolated delayed-create lifetime test also passed 1/1 after its assertion waited for the documented processing completion state."
+    },
+    {
+      "id": "reference-runtime-final-cfa-audit",
+      "revision": "61c2b64e7d20bb8a2514daac0d34de6d731e51b8",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 9ff36f76a864d6a103e4c026f89a0113ba4a80e6b86347d6ac9baf75593c23db; 2186 Swift files; 62 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":21,\"view-model-ownership\":1}."
+    },
+    {
+      "id": "reference-runtime-final-human-review",
+      "revision": "61c2b64e7 with verified PledgeViewModelTests working tree",
+      "kind": "human-architecture-review",
+      "outcome": "passed",
+      "summary": "Re-reviewed the fresh 62-lead CFA inspector output against the prior complete semantic review. The new source difference is only deterministic waiting in PledgeViewModelTests; it preserves the existing stale-session assertion and changes no production ownership, lifecycle or Feature coordination. The final Library-iOS reference-device run passed 2,500/2,500. No unresolved CFA violation remains in the defined Kickstarter scope."
     }
   ],
   "attempts": [
@@ -6485,16 +6506,32 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Obtained the first completed full Library-iOS test result after automatic service recovery.",
       "result": "2,459 tests passed and 41 failed. The failures now require source-level classification; no conclusion about CFA compliance follows from their aggregate count."
+    },
+    {
+      "action": "Claimed Codex continuation.",
+      "result": "The host signal matches the current ledger state."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     }
   ],
   "blocker": null,
-  "completionGate": null,
+  "completionGate": {
+    "baseline": "migration-engine-acceptance-audit",
+    "build": "final-kickstarter-simulator-build",
+    "tests": "full-library-suite-reference-passed",
+    "behaviourRegression": "lifecycle-and-example-ownership-verification",
+    "primitiveInventory": "final-cfa-compliance-audit",
+    "navigatorReview": "view-model-test-organization-post-audit",
+    "hybridReview": "presentation-boundary-and-app-target-semantic-review",
+    "finalCfaAudit": "reference-runtime-final-cfa-audit",
+    "humanArchitectureReview": "reference-runtime-final-human-review"
+  },
   "continuation": {
     "host": "codex",
     "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47",
-    "pending": {
-      "token": "cd87f67b-49c0-4237-a466-99789e9e707e"
-    }
+    "pending": null
   }
 }
 ```
