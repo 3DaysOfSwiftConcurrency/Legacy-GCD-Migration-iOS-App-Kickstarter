@@ -22,8 +22,7 @@ internal final class FindFriendsFacebookConnectCell: UITableViewCell, ValueCell 
 
   internal weak var delegate: FindFriendsFacebookConnectCellDelegate?
 
-  fileprivate let viewModel =
-    FindFriendsFacebookConnectCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
+  fileprivate var viewModel: FindFriendsFacebookConnectCellViewModel?
 
   internal lazy var fbLoginManager: LoginManager = {
     let manager = LoginManager()
@@ -32,23 +31,30 @@ internal final class FindFriendsFacebookConnectCell: UITableViewCell, ValueCell 
   }()
 
   internal func configureWith(value: FriendsSource) {
-    self.viewModel.configureWith(source: value)
+    guard let viewModel else {
+      preconditionFailure("FindFriendsFacebookConnectCell requires SettingsFeature composition.")
+    }
+    viewModel.configureWith(source: value)
   }
 
-  internal override func bindViewModel() {
+  internal func configure(settingsFeature: SettingsFeature) {
+    guard self.viewModel == nil else { return }
+    let viewModel = FindFriendsFacebookConnectCellViewModel(settingsFeature: settingsFeature)
+    self.viewModel = viewModel
     self.observeState()
-    self.viewModel.onAttemptLogin = { [weak self] in self?.attemptFacebookLogin() }
-    self.viewModel.onDismiss = { [weak self] in self?.delegate?.findFriendsFacebookConnectCellDidDismissHeader() }
-    self.viewModel.onConnected = { [weak self] in self?.delegate?.findFriendsFacebookConnectCellDidFacebookConnectUser() }
-    self.viewModel.onError = { [weak self] in self?.delegate?.findFriendsFacebookConnectCellShowErrorAlert($0) }
+    viewModel.onAttemptLogin = { [weak self] in self?.attemptFacebookLogin() }
+    viewModel.onDismiss = { [weak self] in self?.delegate?.findFriendsFacebookConnectCellDidDismissHeader() }
+    viewModel.onConnected = { [weak self] in self?.delegate?.findFriendsFacebookConnectCellDidFacebookConnectUser() }
+    viewModel.onError = { [weak self] in self?.delegate?.findFriendsFacebookConnectCellShowErrorAlert($0) }
   }
 
   private func observeState() {
+    guard let viewModel = self.viewModel else { return }
     withObservationTracking {
-      self.closeButton.isHidden = self.viewModel.hideCloseButton
-      self.titleLabel.text = self.viewModel.title
-      self.subtitleLabel.text = self.viewModel.subtitle
-      self.facebookConnectButton.setTitle(self.viewModel.buttonTitle, for: .normal)
+      self.closeButton.isHidden = viewModel.hideCloseButton
+      self.titleLabel.text = viewModel.title
+      self.subtitleLabel.text = viewModel.subtitle
+      self.facebookConnectButton.setTitle(viewModel.buttonTitle, for: .normal)
     } onChange: { [weak self] in
       Task { @MainActor [weak self] in self?.observeState() }
     }
@@ -100,18 +106,18 @@ internal final class FindFriendsFacebookConnectCell: UITableViewCell, ValueCell 
       permissions: ["public_profile", "email", "user_friends"], from: nil
     ) { result, error in
       if let error = error {
-        self.viewModel.facebookLoginFail(error: error)
+        self.viewModel?.facebookLoginFail(error: error)
       } else if let result = result, !result.isCancelled {
-        self.viewModel.facebookLoginSuccess(result: result)
+        self.viewModel?.facebookLoginSuccess(result: result)
       }
     }
   }
 
   @objc func closeButtonTapped() {
-    self.viewModel.closeButtonTapped()
+    self.viewModel?.closeButtonTapped()
   }
 
   @objc func facebookConnectButtonTapped() {
-    self.viewModel.facebookConnectButtonTapped()
+    self.viewModel?.facebookConnectButtonTapped()
   }
 }

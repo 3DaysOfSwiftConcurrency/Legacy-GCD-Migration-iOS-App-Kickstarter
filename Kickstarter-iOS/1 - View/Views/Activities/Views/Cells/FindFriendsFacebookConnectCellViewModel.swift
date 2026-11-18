@@ -15,15 +15,11 @@ public final class FindFriendsFacebookConnectCellViewModel {
   public var onConnected: (() -> Void)?
   public var onError: ((AlertError) -> Void)?
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var task: Task<Void, Never>?
   private var revision = 0
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(settingsFeature: SettingsFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
   }
   public func configureWith(source: FriendsSource) {
     self.hideCloseButton = source == .findFriends
@@ -44,15 +40,14 @@ public final class FindFriendsFacebookConnectCellViewModel {
     self.revision += 1
     let revision = self.revision
     let token = result.token?.tokenString ?? ""
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.isLoading = true
-    self.task = Task { [weak self, settingsFeature, sleep] in
+    self.task = Task { [weak self, settingsFeature] in
       do {
         _ = try await settingsFeature.updateAccount(.facebook(token))
         try Task.checkCancellation()
         guard self?.revision == revision else { return }
         self?.isLoading = false
-        try await sleep(delay)
+        try await settingsFeature.waitForResponseDelivery()
         try Task.checkCancellation()
         guard let self, self.revision == revision else { return }
         NotificationCenter.default.post(name: .ksr_userUpdated, object: nil)
@@ -60,7 +55,7 @@ public final class FindFriendsFacebookConnectCellViewModel {
       } catch {
         guard let self, !Task.isCancelled, !(error is CancellationError), self.revision == revision else { return }
         self.isLoading = false
-        do { try await sleep(delay); try Task.checkCancellation() } catch { return }
+        do { try await settingsFeature.waitForResponseDelivery(); try Task.checkCancellation() } catch { return }
         guard self.revision == revision else { return }
         let envelope = error as? ErrorEnvelope ?? .couldNotParseJSON
         switch envelope.ksrCode {

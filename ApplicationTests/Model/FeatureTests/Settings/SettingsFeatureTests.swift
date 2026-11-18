@@ -608,6 +608,21 @@ extension SettingsFeatureTests {
     catch is CancellationError {}
   }
 
+  func testResponseDeliveryUsesComposedDelay() async throws {
+    let fixture = AccountWritesFixture()
+    var delays: [TimeInterval] = []
+    let feature = SettingsFeature(
+      sessionFeature: fixture.session,
+      responseDelaySeconds: { 2.5 },
+      responseDeliverySleep: { delays.append($0) },
+      makeProvider: { fixture.provider }
+    )
+
+    try await feature.waitForResponseDelivery()
+
+    XCTAssertEqual(delays, [2.5])
+  }
+
   func testEmailVerificationSharesAndDistinctLinksQueueWithoutLoggingIn() async throws {
     let fixture = AccountWritesFixture()
     fixture.user = nil // A deep link carries its own token.

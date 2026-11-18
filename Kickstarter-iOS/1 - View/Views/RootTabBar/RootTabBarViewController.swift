@@ -33,9 +33,9 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   private var sessionFeature: SessionFeature { self.composition.sessionFeature }
   fileprivate lazy var viewModel: RootViewModelType = RootViewModel(
     sessionFeature: self.composition.sessionFeature,
-    profileFeature: self.composition.profileFeature,
+    profileFeature: self.composition.backerDashboard.profileFeature,
     activityFeature: self.composition.activities.activityFeature,
-    settingsFeature: self.composition.settingsFeature,
+    settingsFeature: self.composition.backerDashboard.settings.settingsFeature,
     analytics: self.composition.analytics,
     badgePresentationDelay: self.composition.badgePresentationDelay,
     isVoiceOverRunning: self.composition.isVoiceOverRunning
@@ -273,11 +273,11 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     let threadsVC = MessageThreadsViewController.configuredWith(
       project: nil,
       refTag: nil,
-      composition: self.composition.messaging
+      composition: self.composition.backerDashboard.messaging
     )
     let messageThreadVC = MessagesViewController.configuredWith(
       messageThread: messageThread,
-      composition: self.composition.messaging
+      composition: self.composition.backerDashboard.messaging
     )
 
     self.presentedViewController?.dismiss(animated: false, completion: nil)
@@ -375,7 +375,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     case let .profile(isLoggedIn):
       return isLoggedIn
         ? BackerDashboardViewController.instantiate(
-          messagingComposition: self.composition.messaging
+          composition: self.composition.backerDashboard
         )
         : LoginToutViewController.configuredWith(loginIntent: .loginTab)
     }

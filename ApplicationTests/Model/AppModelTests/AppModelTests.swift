@@ -450,7 +450,9 @@ final class AppModelTests: XCTestCase {
     )
     XCTAssertTrue(first.pledgeCheckoutComposition.paymentsFeature === first.paymentsFeature)
     XCTAssertTrue(first.rootTabComposition.sessionFeature === first.sessionFeature)
-    XCTAssertTrue(first.rootTabComposition.profileFeature === first.profileFeature)
+    XCTAssertTrue(
+      first.rootTabComposition.backerDashboard.profileFeature === first.profileFeature
+    )
     XCTAssertTrue(first.activityComposition.activityFeature === first.activityFeature)
     XCTAssertTrue(first.activityComposition.friendsFeature === first.friendsFeature)
     XCTAssertTrue(
@@ -463,7 +465,7 @@ final class AppModelTests: XCTestCase {
       first.rootTabComposition.activities.friendsFeature === first.friendsFeature
     )
     XCTAssertTrue(
-      first.rootTabComposition.messaging.messagingFeature === first.messagingFeature
+      first.rootTabComposition.backerDashboard.messaging.messagingFeature === first.messagingFeature
     )
     XCTAssertTrue(
       first.messagingComposition.discussionFeature === first.discussionFeature
@@ -471,7 +473,16 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(
       first.messagingComposition.projectPage.managePledge.pledgeFeature === first.pledgeFeature
     )
-    XCTAssertTrue(first.rootTabComposition.settingsFeature === first.settingsFeature)
+    XCTAssertTrue(
+      first.rootTabComposition.backerDashboard.settings.settingsFeature === first.settingsFeature
+    )
+    XCTAssertTrue(first.findFriendsComposition.friendsFeature === first.friendsFeature)
+    XCTAssertTrue(first.findFriendsComposition.settingsFeature === first.settingsFeature)
+    XCTAssertTrue(first.settingsComposition.findFriends.friendsFeature === first.friendsFeature)
+    XCTAssertTrue(first.discoveryComposition.findFriends.friendsFeature === first.friendsFeature)
+    XCTAssertTrue(
+      first.rootTabComposition.backerDashboard.settings.findFriends.friendsFeature === first.friendsFeature
+    )
     XCTAssertTrue(first.managePledgeComposition.pledgeFeature === first.pledgeFeature)
     XCTAssertTrue(first.managePledgeComposition.paymentsFeature === first.paymentsFeature)
     XCTAssertTrue(first.managePledgeComposition.rewardsFeature === first.rewardsFeature)

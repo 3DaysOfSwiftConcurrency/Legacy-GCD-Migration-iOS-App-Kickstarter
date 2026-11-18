@@ -10,9 +10,10 @@ final class FindFriendsFacebookConnectCellViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = SettingsFeature(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
+    responseDeliverySleep: { _ in },
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = FindFriendsFacebookConnectCellViewModel(settingsFeature: self.feature, sleep: { _ in })
+  private lazy var vm = FindFriendsFacebookConnectCellViewModel(settingsFeature: self.feature)
 
   override func setUp() async throws {
     try await super.setUp()

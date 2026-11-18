@@ -5948,3 +5948,34 @@ compile. Activity snapshots, live interaction and the whole Library and Presenta
 remain unverified. The CFA gate rejects restored global dependency selection across the
 migrated Activities models, data source and cells. This is not full CFA compliance. Swift
 packages, target identifiers and existing history are unchanged. No push.
+
+### Find Friends and Settings composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes FindFriendsComposition, SettingsComposition and
+BackerDashboardComposition from its existing FriendsFeature, SettingsFeature,
+ProfileFeature and MessagingComposition instances. Root Tabs passes the Backer Dashboard
+graph into the profile tab; Backer Dashboard forwards SettingsComposition; Settings and
+Discovery both forward the same FindFriendsComposition into Find Friends. Find Friends
+constructs its screen model and data source from that graph, and the data source composes
+the reusable follow and Facebook-connect cells before supplying their values.
+
+FriendsFeature and SettingsFeature now own the established post-response delivery timing
+used by their respective cell models. The migrated Backer Dashboard, Settings and Find
+Friends controllers, data source, cells and cell models no longer select AppModel.shared
+or AppEnvironment.current. No new feature owner or duplicate state was introduced.
+
+Focused Friends, Settings, Find Friends model and AppModel graph coverage passed all 37
+tests with zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Focused Find Friends
+data-source, Settings navigation-model and Root Tabs navigation coverage passed all 10
+tests. Evidence: `/private/tmp/kickstarter-find-friends-composition-library.xcresult`
+and `/private/tmp/kickstarter-find-friends-composition-presentation.xcresult`.
+
+The affected controller and snapshot sources compiled as part of those targets, but
+Find Friends and Settings reference snapshots were not executed because the installed
+simulator does not match the shared snapshot harness's required iPad mini (A17 Pro),
+iOS 18.6 runtime. Live Facebook login, follow interaction and navigation remain
+unverified, as do the whole Library and Presentation suites. The CFA gate rejects restored
+global selection or legacy factory calls across the migrated route. This is not full CFA
+compliance. Swift packages, target identifiers and existing history are unchanged. No push.

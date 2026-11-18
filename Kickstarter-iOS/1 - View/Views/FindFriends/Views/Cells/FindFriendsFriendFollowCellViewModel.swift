@@ -19,18 +19,12 @@ public final class FindFriendsFriendFollowCellViewModel {
   public private(set) var unfollowButtonAccessibilityLabel: String?
   @ObservationIgnored var onChange: (@MainActor () -> Void)?
   @ObservationIgnored private let friendsFeature: FriendsFeature
-  @ObservationIgnored private let delay: @MainActor () async throws -> Void
   @ObservationIgnored private var followObservation: Task<Void, Never>?
   @ObservationIgnored private var unfollowObservation: Task<Void, Never>?
   private var friend: User?
 
-  public init(friendsFeature: FriendsFeature, delay: (@MainActor () async throws -> Void)? = nil) {
+  public init(friendsFeature: FriendsFeature) {
     self.friendsFeature = friendsFeature
-    self.delay = delay ?? {
-      let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
   }
 
   public func configureWith(friend: User) {
@@ -75,7 +69,7 @@ public final class FindFriendsFriendFollowCellViewModel {
         guard let self, !Task.isCancelled else { return }
         if following { self.enableFollowButton = true } else { self.enableUnfollowButton = true }
         self.onChange?()
-        try await self.delay()
+        try await friendsFeature.waitForResponseDelivery()
         try Task.checkCancellation()
         guard self.friend?.id == updated.id, friendsFeature.sessionFeature.generation == generation,
               friendsFeature.sessionFeature.currentUser?.id == sessionUser else { return }

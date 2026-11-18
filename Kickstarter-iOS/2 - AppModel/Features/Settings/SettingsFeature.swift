@@ -129,6 +129,7 @@ public final class SettingsFeature {
   private let hasStoredCredentials: @MainActor () -> Bool
   private let applicationVersion: @MainActor () -> String
   private let responseDelay: @MainActor () -> TimeInterval
+  private let responseDeliverySleep: (TimeInterval) async throws -> Void
   private let refreshDebounce: @MainActor () async throws -> Void
   private var scheduledRefresh: Task<Void, Never>?
   private var lifecycleRefresh: Task<Void, Never>?
@@ -168,6 +169,9 @@ public final class SettingsFeature {
     refreshDebounce: @escaping @MainActor () async throws -> Void = {
       try await Task.sleep(for: .seconds(5))
     },
+    responseDeliverySleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
+    },
     makeProvider: @escaping () -> any AccountPreferencesProvider
   ) {
     self.session = sessionFeature
@@ -175,12 +179,17 @@ public final class SettingsFeature {
     self.hasStoredCredentials = hasStoredCredentials
     self.applicationVersion = applicationVersion
     self.responseDelay = responseDelaySeconds
+    self.responseDeliverySleep = responseDeliverySleep
     self.refreshDebounce = refreshDebounce
     self.makeProvider = makeProvider
   }
 
   public var responseDelaySeconds: TimeInterval { self.responseDelay() }
   public var appVersionString: String { self.applicationVersion() }
+
+  public func waitForResponseDelivery() async throws {
+    try await self.responseDeliverySleep(self.responseDelaySeconds)
+  }
 
   func scheduleAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
     self.scheduledRefresh?.cancel()

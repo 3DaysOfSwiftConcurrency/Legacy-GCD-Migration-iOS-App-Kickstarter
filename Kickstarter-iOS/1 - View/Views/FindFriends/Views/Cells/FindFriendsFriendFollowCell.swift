@@ -13,25 +13,28 @@ internal final class FindFriendsFriendFollowCell: UITableViewCell, ValueCell {
   @IBOutlet fileprivate var followButton: UIButton!
   @IBOutlet fileprivate var unfollowButton: UIButton!
 
-  fileprivate let viewModel = FindFriendsFriendFollowCellViewModel(
-    friendsFeature: AppModel.shared.friendsFeature
-  )
+  fileprivate var viewModel: FindFriendsFriendFollowCellViewModel?
 
   func configureWith(value: (friend: User, source: FriendsSource)) {
-    self.viewModel.configureWith(friend: value.friend)
+    guard let viewModel else {
+      preconditionFailure("FindFriendsFriendFollowCell requires FriendsFeature composition.")
+    }
+    viewModel.configureWith(friend: value.friend)
     self.renderState()
     self.avatarImageView.af.cancelImageRequest()
     self.avatarImageView.image = nil
-    if let url = self.viewModel.imageURL { self.avatarImageView.ksr_setImageWithURL(url) }
+    if let url = viewModel.imageURL { self.avatarImageView.ksr_setImageWithURL(url) }
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
-    self.viewModel.onChange = { [weak self] in self?.renderState() }
+  func configure(friendsFeature: FriendsFeature) {
+    guard self.viewModel == nil else { return }
+    let viewModel = FindFriendsFriendFollowCellViewModel(friendsFeature: friendsFeature)
+    self.viewModel = viewModel
+    viewModel.onChange = { [weak self] in self?.renderState() }
   }
 
   private func renderState() {
-    let model = self.viewModel
+    guard let model = self.viewModel else { return }
     self.accessibilityValue = model.cellAccessibilityValue
     if let value = model.enableFollowButton { self.followButton.isEnabled = value }
     if let value = model.enableUnfollowButton { self.unfollowButton.isEnabled = value }
@@ -92,10 +95,10 @@ internal final class FindFriendsFriendFollowCell: UITableViewCell, ValueCell {
   }
 
   @objc func followButtonTapped() {
-    self.viewModel.followButtonTapped()
+    self.viewModel?.followButtonTapped()
   }
 
   @objc func unfollowButtonTapped() {
-    self.viewModel.unfollowButtonTapped()
+    self.viewModel?.unfollowButtonTapped()
   }
 }

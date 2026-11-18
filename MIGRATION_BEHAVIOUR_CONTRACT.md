@@ -2426,3 +2426,18 @@ safe for arbitrary concurrent environment mutation.
   passes 3 tests. The controller and Presentation target compile, but the controller smoke
   cannot execute without the test harness's required iPad mini (A17 Pro), iOS 18.6 simulator.
   Snapshots, live interaction and whole target suites remain unverified.
+
+## Find Friends and Settings composition — 18 November 2026
+
+- Root Tabs, Backer Dashboard, Settings and Discovery now carry the same AppModel-owned
+  Profile, Messaging, Settings and Friends feature instances through explicit nested
+  compositions to Find Friends.
+- Find Friends builds its screen model and reusable cell models from that graph. Follow
+  writes and Facebook connection preserve their existing loading, response-delay,
+  cancellation, session-staleness and error behavior while their delay policy now belongs
+  to FriendsFeature or SettingsFeature.
+- Focused main-module coverage passes 37 tests and focused data-source, Settings navigation
+  and Root Tabs navigation coverage passes 10 tests. The affected snapshot sources compile,
+  but reference snapshots cannot run without the required iPad mini (A17 Pro), iOS 18.6
+  simulator. Live Facebook login, follow interaction and whole target suites remain
+  unverified.

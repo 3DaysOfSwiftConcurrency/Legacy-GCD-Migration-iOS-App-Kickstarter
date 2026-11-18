@@ -232,6 +232,7 @@ public struct DiscoveryComposition {
   public let discoveryFeature: DiscoveryFeature
   public let videoFeed: VideoFeedComposition
   public let curatedProjects: CuratedProjectsComposition
+  public let findFriends: FindFriendsComposition
   public let cardPresentation: DiscoveryCardPresentation
   public let isPad: () -> Bool
 
@@ -239,12 +240,14 @@ public struct DiscoveryComposition {
     discoveryFeature: DiscoveryFeature,
     videoFeed: VideoFeedComposition,
     curatedProjects: CuratedProjectsComposition,
+    findFriends: FindFriendsComposition,
     cardPresentation: DiscoveryCardPresentation,
     isPad: @escaping () -> Bool
   ) {
     self.discoveryFeature = discoveryFeature
     self.videoFeed = videoFeed
     self.curatedProjects = curatedProjects
+    self.findFriends = findFriends
     self.cardPresentation = cardPresentation
     self.isPad = isPad
   }
@@ -279,14 +282,48 @@ public struct CuratedProjectsComposition {
   }
 }
 
+public struct FindFriendsComposition {
+  public let friendsFeature: FriendsFeature
+  public let settingsFeature: SettingsFeature
+
+  public init(friendsFeature: FriendsFeature, settingsFeature: SettingsFeature) {
+    self.friendsFeature = friendsFeature
+    self.settingsFeature = settingsFeature
+  }
+}
+
+public struct SettingsComposition {
+  public let settingsFeature: SettingsFeature
+  public let findFriends: FindFriendsComposition
+
+  public init(settingsFeature: SettingsFeature, findFriends: FindFriendsComposition) {
+    self.settingsFeature = settingsFeature
+    self.findFriends = findFriends
+  }
+}
+
+public struct BackerDashboardComposition {
+  public let profileFeature: ProfileFeature
+  public let messaging: MessagingComposition
+  public let settings: SettingsComposition
+
+  public init(
+    profileFeature: ProfileFeature,
+    messaging: MessagingComposition,
+    settings: SettingsComposition
+  ) {
+    self.profileFeature = profileFeature
+    self.messaging = messaging
+    self.settings = settings
+  }
+}
+
 public struct RootTabComposition {
   public let sessionFeature: SessionFeature
-  public let profileFeature: ProfileFeature
+  public let backerDashboard: BackerDashboardComposition
   public let activities: ActivityComposition
-  public let messaging: MessagingComposition
   public let search: SearchComposition
   public let discovery: DiscoveryComposition
-  public let settingsFeature: SettingsFeature
   public let analytics: () -> KSRAnalytics
   public let badgePresentationDelay: () -> TimeInterval
   public let isVoiceOverRunning: () -> Bool
@@ -294,24 +331,20 @@ public struct RootTabComposition {
 
   public init(
     sessionFeature: SessionFeature,
-    profileFeature: ProfileFeature,
+    backerDashboard: BackerDashboardComposition,
     activities: ActivityComposition,
-    messaging: MessagingComposition,
     search: SearchComposition,
     discovery: DiscoveryComposition,
-    settingsFeature: SettingsFeature,
     analytics: @escaping () -> KSRAnalytics,
     badgePresentationDelay: @escaping () -> TimeInterval,
     isVoiceOverRunning: @escaping () -> Bool,
     pledgedProjects: PledgedProjectsComposition
   ) {
     self.sessionFeature = sessionFeature
-    self.profileFeature = profileFeature
+    self.backerDashboard = backerDashboard
     self.activities = activities
-    self.messaging = messaging
     self.search = search
     self.discovery = discovery
-    self.settingsFeature = settingsFeature
     self.analytics = analytics
     self.badgePresentationDelay = badgePresentationDelay
     self.isVoiceOverRunning = isVoiceOverRunning
@@ -436,8 +469,31 @@ public final class AppModel {
         projectMediaFeature: self.projectMediaFeature,
         cardPresentation: cardPresentation
       ),
+      findFriends: self.findFriendsComposition,
       cardPresentation: cardPresentation,
       isPad: { AppEnvironment.current.device.userInterfaceIdiom == .pad }
+    )
+  }
+
+  public var findFriendsComposition: FindFriendsComposition {
+    FindFriendsComposition(
+      friendsFeature: self.friendsFeature,
+      settingsFeature: self.settingsFeature
+    )
+  }
+
+  public var settingsComposition: SettingsComposition {
+    SettingsComposition(
+      settingsFeature: self.settingsFeature,
+      findFriends: self.findFriendsComposition
+    )
+  }
+
+  public var backerDashboardComposition: BackerDashboardComposition {
+    BackerDashboardComposition(
+      profileFeature: self.profileFeature,
+      messaging: self.messagingComposition,
+      settings: self.settingsComposition
     )
   }
 
@@ -483,12 +539,10 @@ public final class AppModel {
   public var rootTabComposition: RootTabComposition {
     RootTabComposition(
       sessionFeature: self.sessionFeature,
-      profileFeature: self.profileFeature,
+      backerDashboard: self.backerDashboardComposition,
       activities: self.activityComposition,
-      messaging: self.messagingComposition,
       search: self.searchComposition,
       discovery: self.discoveryComposition,
-      settingsFeature: self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() },

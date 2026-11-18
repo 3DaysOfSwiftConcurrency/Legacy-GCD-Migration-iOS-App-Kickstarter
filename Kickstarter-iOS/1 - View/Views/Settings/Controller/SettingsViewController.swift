@@ -6,15 +6,18 @@ import UIKit
 final class SettingsViewController: UIViewController {
   @IBOutlet fileprivate var tableView: UITableView!
 
+  private var composition: SettingsComposition!
   private let dataSource = SettingsDataSource()
   private var userUpdatedObserver: MainActorNotificationObservation?
-  private let viewModel = SettingsViewModel(
-    SettingsViewController.viewController(for:),
-    settingsFeature: AppModel.shared.settingsFeature
+  private lazy var viewModel = SettingsViewModel(
+    { [weak self] in self?.viewController(for: $0) },
+    settingsFeature: self.composition.settingsFeature
   )
 
-  internal static func instantiate() -> SettingsViewController {
-    return Storyboard.Settings.instantiate(SettingsViewController.self)
+  internal static func instantiate(composition: SettingsComposition) -> SettingsViewController {
+    let viewController = Storyboard.Settings.instantiate(SettingsViewController.self)
+    viewController.composition = composition
+    return viewController
   }
 
   override func viewDidLoad() {
@@ -193,14 +196,17 @@ extension SettingsViewController: UITableViewDelegate {
 }
 
 extension SettingsViewController {
-  static func viewController(for cellType: SettingsCellType) -> UIViewController? {
+  private func viewController(for cellType: SettingsCellType) -> UIViewController? {
     switch cellType {
     case .account:
       return SettingsAccountViewController.instantiate()
     case .help:
       return HelpViewController.instantiate()
     case .findFriends:
-      return FindFriendsViewController.configuredWith(source: .settings)
+      return FindFriendsViewController.configuredWith(
+        source: .settings,
+        composition: self.composition.findFriends
+      )
     case .newsletters:
       return SettingsNewslettersViewController.instantiate()
     case .notifications:

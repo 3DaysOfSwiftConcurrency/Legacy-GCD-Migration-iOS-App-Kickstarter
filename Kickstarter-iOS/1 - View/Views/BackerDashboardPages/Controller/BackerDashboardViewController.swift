@@ -5,7 +5,7 @@ import Prelude
 import UIKit
 
 internal final class BackerDashboardViewController: UIViewController {
-  private var messagingComposition: MessagingComposition?
+  private var composition: BackerDashboardComposition!
   @IBOutlet private var avatarImageView: CircleAvatarImageView!
   @IBOutlet private var backedMenuButton: UIButton!
   @IBOutlet private var backerNameLabel: UILabel!
@@ -29,8 +29,8 @@ internal final class BackerDashboardViewController: UIViewController {
 
   fileprivate weak var pageViewController: UIPageViewController?
 
-  fileprivate let viewModel: BackerDashboardViewModel = BackerDashboardViewModel(
-    profileFeature: AppModel.shared.profileFeature
+  fileprivate lazy var viewModel: BackerDashboardViewModel = BackerDashboardViewModel(
+    profileFeature: self.composition.profileFeature
   )
   fileprivate var pagesDataSource: BackerDashboardPagesDataSource!
 
@@ -38,10 +38,10 @@ internal final class BackerDashboardViewController: UIViewController {
   private var projectSavedObserver: MainActorNotificationObservation?
 
   internal static func instantiate(
-    messagingComposition: MessagingComposition
+    composition: BackerDashboardComposition
   ) -> BackerDashboardViewController {
     let viewController = Storyboard.BackerDashboard.instantiate(BackerDashboardViewController.self)
-    viewController.messagingComposition = messagingComposition
+    viewController.composition = composition
     return viewController
   }
 
@@ -131,11 +131,11 @@ internal final class BackerDashboardViewController: UIViewController {
       self.setAttributedTitles(for: self.savedMenuButton, with: text)
     }
     self.viewModel.onMessages = { [weak self] in
-      guard let self, let messagingComposition = self.messagingComposition else { return }
+      guard let self else { return }
       let vc = MessageThreadsViewController.configuredWith(
         project: nil,
         refTag: .profile,
-        composition: messagingComposition
+        composition: self.composition.messaging
       )
       self.navigationController?.pushViewController(vc, animated: true)
     }
@@ -258,7 +258,7 @@ internal final class BackerDashboardViewController: UIViewController {
   }
 
   private func goToSettings() {
-    let vc = SettingsViewController.instantiate()
+    let vc = SettingsViewController.instantiate(composition: self.composition.settings)
     let nav = UINavigationController(rootViewController: vc)
     nav.modalPresentationStyle = .formSheet
 

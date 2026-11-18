@@ -391,6 +391,24 @@ reject_matches 'Checkout reward total constructs its model from injected PledgeF
 reject_matches 'Root Tabs receives one composed feature graph.' \
   'AppModel[.]shared[.](sessionFeature|profileFeature|activityFeature|settingsFeature)|AppEnvironment[.]current' \
   "$app_view/Views/RootTabBar/RootTabBarViewController.swift"
+reject_matches 'Backer Dashboard and Settings receive their AppModel-owned feature graph.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/BackerDashboardPages/Controller/BackerDashboardViewController.swift" \
+  "$app_view/Views/Settings/Controller/SettingsViewController.swift"
+reject_matches 'Find Friends models, data source and cells receive their Features from composition.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/FindFriends/Controller/FindFriendsViewController.swift" \
+  "$app_view/Views/FindFriends/Datasource/FindFriendsDataSource.swift" \
+  "$app_view/Views/FindFriends/Views/Cells/FindFriendsFriendFollowCell.swift" \
+  "$app_view/Views/FindFriends/Views/Cells/FindFriendsFriendFollowCellViewModel.swift" \
+  "$app_view/Views/Activities/Views/Cells/FindFriendsFacebookConnectCell.swift" \
+  "$app_view/Views/Activities/Views/Cells/FindFriendsFacebookConnectCellViewModel.swift"
+reject_matches 'Find Friends entry points forward the composed feature graph.' \
+  'BackerDashboardViewController[.]instantiate[(][[:space:]]*messagingComposition:|SettingsViewController[.]instantiate[(][)]|FindFriendsViewController[.]configuredWith[(]source:[^,)]*[)]' \
+  "$app_view/Views/RootTabBar/RootTabBarViewController.swift" \
+  "$app_view/Views/BackerDashboardPages/Controller/BackerDashboardViewController.swift" \
+  "$app_view/Views/Settings/Controller/SettingsViewController.swift" \
+  "$app_view/Views/Discovery/Controller/DiscoveryPageViewController.swift"
 reject_matches 'Reward-received mutation policy belongs to PledgeFeature composition.' \
   'AppEnvironment[.]current|apiDelayInterval|trackRewardReceivedToggled' \
   "$app_view/Views/ManagePledge/Controllers/ManageViewPledgeRewardReceivedViewController.swift"

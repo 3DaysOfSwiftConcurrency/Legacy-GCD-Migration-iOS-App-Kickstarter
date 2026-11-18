@@ -9,6 +9,27 @@ import SnapshotTesting
 import XCTest
 
 internal final class SettingsViewControllerTests: TestCase {
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var findFriendsComposition = FindFriendsComposition(
+    friendsFeature: FriendsFeature(
+      sessionFeature: self.sessionFeature,
+      makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) },
+      sleep: { _ in }
+    ),
+    settingsFeature: self.settingsFeature
+  )
+  private lazy var settingsFeature = SettingsFeature(
+    sessionFeature: self.sessionFeature,
+    responseDeliverySleep: { _ in },
+    makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var composition = SettingsComposition(
+    settingsFeature: self.settingsFeature,
+    findFriends: self.findFriendsComposition
+  )
+
   override func setUp() async throws {
     try await super.setUp()
     UIView.setAnimationsEnabled(false)
@@ -29,7 +50,7 @@ internal final class SettingsViewControllerTests: TestCase {
           currentUser: currentUser,
           language: language
         ) {
-          let vc = SettingsViewController.instantiate()
+          let vc = SettingsViewController.instantiate(composition: self.composition)
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
 
 
@@ -48,7 +69,7 @@ internal final class SettingsViewControllerTests: TestCase {
         currentUser: currentUser,
         language: language
       ) {
-        let vc = SettingsViewController.instantiate()
+        let vc = SettingsViewController.instantiate(composition: self.composition)
 
         let (parent, _) = traitControllers(device: .phone4_7inch, orientation: .portrait, child: vc)
 
@@ -68,7 +89,7 @@ internal final class SettingsViewControllerTests: TestCase {
         currentUser: currentUser,
         language: language
       ) {
-        let vc = SettingsViewController.instantiate()
+        let vc = SettingsViewController.instantiate(composition: self.composition)
 
         let (parent, _) = traitControllers(
           device: .phone4_7inch,

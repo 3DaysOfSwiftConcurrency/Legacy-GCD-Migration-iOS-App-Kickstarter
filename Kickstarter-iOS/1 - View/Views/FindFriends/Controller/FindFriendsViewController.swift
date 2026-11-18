@@ -5,15 +5,23 @@ import Prelude
 import UIKit
 
 internal final class FindFriendsViewController: UITableViewController {
-  fileprivate let viewModel = FindFriendsViewModel(
-    friendsFeature: AppModel.shared.friendsFeature
+  private var composition: FindFriendsComposition!
+  fileprivate lazy var viewModel = FindFriendsViewModel(
+    friendsFeature: self.composition.friendsFeature
   )
-  fileprivate let dataSource = FindFriendsDataSource()
+  fileprivate lazy var dataSource = FindFriendsDataSource(
+    friendsFeature: self.composition.friendsFeature,
+    settingsFeature: self.composition.settingsFeature
+  )
   fileprivate let loadingIndicatorView = UIActivityIndicatorView()
   fileprivate let backgroundView = UIView()
 
-  internal static func configuredWith(source: FriendsSource) -> FindFriendsViewController {
+  internal static func configuredWith(
+    source: FriendsSource,
+    composition: FindFriendsComposition
+  ) -> FindFriendsViewController {
     let vc = Storyboard.Friends.instantiate(FindFriendsViewController.self)
+    vc.composition = composition
     vc.viewModel.configureWith(source: source)
     return vc
   }

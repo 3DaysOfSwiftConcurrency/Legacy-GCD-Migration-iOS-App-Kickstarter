@@ -8,6 +8,22 @@ import SnapshotTesting
 import UIKit
 
 internal final class FindFriendsViewControllerTests: TestCase {
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var composition = FindFriendsComposition(
+    friendsFeature: FriendsFeature(
+      sessionFeature: self.sessionFeature,
+      makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) },
+      sleep: { _ in }
+    ),
+    settingsFeature: SettingsFeature(
+      sessionFeature: self.sessionFeature,
+      responseDeliverySleep: { _ in },
+      makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+    )
+  )
+
   override func setUp() async throws {
     try await super.setUp()
     UIView.setAnimationsEnabled(false)
@@ -22,7 +38,10 @@ internal final class FindFriendsViewControllerTests: TestCase {
     orthogonalCombos(Language.allLanguages, [Device.phone4_7inch, Device.phone5_8inch])
       .forEach { language, device in
         withEnvironment(language: language) {
-          let controller = FindFriendsViewController.configuredWith(source: FriendsSource.settings)
+          let controller = FindFriendsViewController.configuredWith(
+            source: FriendsSource.settings,
+            composition: self.composition
+          )
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 
           assertSnapshot(matching: parent.view, as: .image, named: "lang_\(language)_device_\(device)")
@@ -38,7 +57,10 @@ internal final class FindFriendsViewControllerTests: TestCase {
     orthogonalCombos(Language.allLanguages, [Device.phone4_7inch, Device.phone5_8inch])
       .forEach { language, device in
         withEnvironment(currentUser: facebookReconnectUser, language: language) {
-          let controller = FindFriendsViewController.configuredWith(source: FriendsSource.settings)
+          let controller = FindFriendsViewController.configuredWith(
+            source: FriendsSource.settings,
+            composition: self.composition
+          )
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 
           assertSnapshot(matching: parent.view, as: .image, named: "lang_\(language)_device_\(device)")
@@ -81,7 +103,10 @@ internal final class FindFriendsViewControllerTests: TestCase {
           fetchFriendsResponse: friendsResponse,
           fetchFriendStatsResponse: friendStats
         ), currentUser: currentUser, language: language) {
-          let controller = FindFriendsViewController.configuredWith(source: FriendsSource.settings)
+          let controller = FindFriendsViewController.configuredWith(
+            source: FriendsSource.settings,
+            composition: self.composition
+          )
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 
 

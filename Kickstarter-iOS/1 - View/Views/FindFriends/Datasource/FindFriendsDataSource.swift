@@ -4,6 +4,15 @@ import Prelude
 import UIKit
 
 internal final class FindFriendsDataSource: ValueCellDataSource {
+  private let friendsFeature: FriendsFeature
+  private let settingsFeature: SettingsFeature
+
+  init(friendsFeature: FriendsFeature, settingsFeature: SettingsFeature) {
+    self.friendsFeature = friendsFeature
+    self.settingsFeature = settingsFeature
+    super.init()
+  }
+
   fileprivate enum Section: Int {
     case facebookConnect
     case stats
@@ -41,8 +50,10 @@ internal final class FindFriendsDataSource: ValueCellDataSource {
     case let (cell as FindFriendsStatsCell, value as (FriendStatsEnvelope, FriendsSource)):
       cell.configureWith(value: value)
     case let (cell as FindFriendsFriendFollowCell, value as (User, FriendsSource)):
+      cell.configure(friendsFeature: self.friendsFeature)
       cell.configureWith(value: value)
     case let (cell as FindFriendsFacebookConnectCell, value as FriendsSource):
+      cell.configure(settingsFeature: self.settingsFeature)
       cell.configureWith(value: value)
     default:
       assertionFailure("Unrecognized combo: \(cell), \(value)")

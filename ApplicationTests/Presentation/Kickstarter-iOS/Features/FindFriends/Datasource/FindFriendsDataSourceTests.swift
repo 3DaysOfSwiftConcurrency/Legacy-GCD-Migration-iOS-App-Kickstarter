@@ -8,7 +8,21 @@ import XCTest
 
 @MainActor
 final class FindFriendsDataSourceTests: XCTestCase {
-  let dataSource = FindFriendsDataSource()
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: MockService()) }
+  )
+  private lazy var dataSource = FindFriendsDataSource(
+    friendsFeature: FriendsFeature(
+      sessionFeature: self.sessionFeature,
+      makeProvider: { AsyncFriendsProvider(service: MockService()) },
+      sleep: { _ in }
+    ),
+    settingsFeature: SettingsFeature(
+      sessionFeature: self.sessionFeature,
+      responseDeliverySleep: { _ in },
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+  )
   let tableView = UITableView()
 
   func testDataSource() {
