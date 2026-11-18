@@ -53,7 +53,7 @@ public final class ActivityFeature {
   private let platform: Platform
   private let sleep: (TimeInterval) async throws -> Void
   private var accountID: Int?
-  private var generation: Int?
+  private var activitySessionGeneration: Int?
   private var nextPageCursor: String?
   private var accumulatedActivityPageItems: [Activity] = []
   private var activityPageRequest: (token: UUID, cursor: String?, task: Task<Void, Never>)?
@@ -103,13 +103,13 @@ public final class ActivityFeature {
     try await self.platform.loadSurvey(id).urls.web.survey
   }
 
-  private func synchronizeAccount() {
+  private func resetActivityIfSessionChanged() {
     let id = self.sessionFeature.currentUser?.id
     let revision = self.sessionFeature.generation
-    guard self.accountID != id || self.generation != revision else { return }
+    guard self.accountID != id || self.activitySessionGeneration != revision else { return }
     self.reset()
     self.accountID = id
-    self.generation = revision
+    self.activitySessionGeneration = revision
   }
 
   public func reset() {
@@ -133,7 +133,7 @@ public final class ActivityFeature {
 
   @discardableResult
   public func requestActivityPage(next: Bool = false) -> Task<Void, Never>? {
-    self.synchronizeAccount()
+    self.resetActivityIfSessionChanged()
     guard self.accountID != nil else { return nil }
     if let activityPageRequest = self.activityPageRequest,
        next || activityPageRequest.cursor == nil {
@@ -189,7 +189,7 @@ public final class ActivityFeature {
 
   @discardableResult
   public func requestUnansweredSurveys() -> Task<Void, Never>? {
-    self.synchronizeAccount()
+    self.resetActivityIfSessionChanged()
     guard let userID = self.accountID else { return nil }
     if let unansweredSurveyRequest = self.unansweredSurveyRequest {
       return unansweredSurveyRequest.task

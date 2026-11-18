@@ -200,10 +200,10 @@ public final class MessagingFeature {
     let body: String
     let task: Task<Message, Error>
   }
-  private var sends: [Destination: Send] = [:]
+  private var latestSendByDestination: [Destination: Send] = [:]
   private var sendTasks: [UUID: Task<Message, Error>] = [:]
   private struct ReadIdentity: Hashable { let threadID: Int; let session: Session }
-  private var readWrites: [ReadIdentity: Task<MessageThread, Error>] = [:]
+  private var markThreadReadTasks: [ReadIdentity: Task<MessageThread, Error>] = [:]
 
   /// Equivalent pending submissions share the tail command. Distinct bodies
   /// queue in order per destination; failure never retries or blocks the next.
@@ -216,14 +216,14 @@ public final class MessagingFeature {
     case let .project(id, _):
       destination = Destination(id: id, isThread: false, session: self.session)
     }
-    let previous = self.sends[destination]
+    let previous = self.latestSendByDestination[destination]
     if let previous, previous.body == body { return previous.task }
     let id = UUID()
     let provider = self.makeProvider()
     let task = Task { [self] in
       defer {
         self.sendTasks[id] = nil
-        if self.sends[destination]?.id == id { self.sends[destination] = nil }
+        if self.latestSendByDestination[destination]?.id == id { self.latestSendByDestination[destination] = nil }
       }
       if let previous { _ = await previous.task.result }
       try self.ensureMessagingSessionIsCurrent(destination.session)
@@ -236,7 +236,7 @@ public final class MessagingFeature {
         throw error
       }
     }
-    self.sends[destination] = Send(id: id, body: body, task: task)
+    self.latestSendByDestination[destination] = Send(id: id, body: body, task: task)
     self.sendTasks[id] = task
     return task
   }
@@ -251,10 +251,10 @@ public final class MessagingFeature {
   @discardableResult
   public func requestMarkRead(_ thread: MessageThread) -> Task<MessageThread, Error> {
     let key = ReadIdentity(threadID: thread.id, session: self.session)
-    if let task = self.readWrites[key] { return task }
+    if let task = self.markThreadReadTasks[key] { return task }
     let provider = self.makeProvider()
     let task = Task { [self] in
-      defer { self.readWrites[key] = nil }
+      defer { self.markThreadReadTasks[key] = nil }
       try self.ensureMessagingSessionIsCurrent(key.session)
       do {
         let value = try await provider.markRead(thread)
@@ -265,16 +265,16 @@ public final class MessagingFeature {
         throw error
       }
     }
-    self.readWrites[key] = task
+    self.markThreadReadTasks[key] = task
     return task
   }
 
   public func waitForOperations() async {
-    while !self.sendTasks.isEmpty || !self.readWrites.isEmpty
+    while !self.sendTasks.isEmpty || !self.markThreadReadTasks.isEmpty
       || self.mailboxStatesByRoute.values.contains(where: { $0.request != nil }) {
       for route in Array(self.mailboxStatesByRoute.values) { await route.request?.task.value }
       for task in Array(self.sendTasks.values) { _ = await task.result }
-      for task in Array(self.readWrites.values) { _ = await task.result }
+      for task in Array(self.markThreadReadTasks.values) { _ = await task.result }
       await Task.yield()
     }
   }

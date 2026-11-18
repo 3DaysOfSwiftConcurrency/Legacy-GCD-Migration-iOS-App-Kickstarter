@@ -359,7 +359,7 @@ public final class DiscussionFeature {
 
   private let sleep: (TimeInterval) async throws -> Void
   private let platform: Platform
-  private var pages: [UUID: PageRoute] = [:]
+  private var discussionPagesByRoute: [UUID: PageRoute] = [:]
   internal enum PageUpdate {
     case page(UUID, [Comment], Int)
     case loading(UUID, Bool)
@@ -394,7 +394,7 @@ public final class DiscussionFeature {
   }
 
   public func snapshot(for route: UUID) -> PageSnapshot {
-    guard let page = self.pages[route],
+    guard let page = self.discussionPagesByRoute[route],
           self.sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else {
       return PageSnapshot()
     }
@@ -412,13 +412,13 @@ public final class DiscussionFeature {
   public func requestFirstPage(route: UUID, source: Source, refresh: Bool = false) -> Task<Void, Never> {
     let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
-    let previous = self.pages[route]
+    let previous = self.discussionPagesByRoute[route]
     if !refresh, let previous, previous.source == source, previous.userID == userID,
        previous.generation == generation,
        let request = previous.request { return request.task }
     previous?.request?.task.cancel()
     let page = PageRoute(source: source, userID: userID, generation: generation)
-    self.pages[route] = page
+    self.discussionPagesByRoute[route] = page
     // paginate(clearOnNewRequest:) suppressed the first clear but emitted later clears.
     if let previous {
       if case .replies = source {
@@ -445,7 +445,7 @@ public final class DiscussionFeature {
 
   @discardableResult
   public func requestNextPage(route: UUID) -> Task<Void, Never>? {
-    guard let page = self.pages[route],
+    guard let page = self.discussionPagesByRoute[route],
           self.sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return nil }
     if let request = page.request { return request.task }
     guard let source = page.nextSource else { return nil }
@@ -464,7 +464,7 @@ public final class DiscussionFeature {
     page.snapshot.error = nil
     let task = Task { [weak self] in
       defer {
-        if let self, self.pages[route]?.request?.id == requestID {
+        if let self, self.discussionPagesByRoute[route]?.request?.id == requestID {
           page.request = nil
           page.snapshot.isLoading = false
           self.emitPage(.loading(route, false))
@@ -501,7 +501,7 @@ public final class DiscussionFeature {
         }
         try await sleep(delay)
         try Task.checkCancellation()
-        guard let self, self.pages[route]?.request?.id == requestID,
+        guard let self, self.discussionPagesByRoute[route]?.request?.id == requestID,
               sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return }
         page.snapshot.comments = comments
         page.hasReceivedPage = true
@@ -517,7 +517,7 @@ public final class DiscussionFeature {
         // loading without inventing either an empty page or a visible error.
       } catch {
         do { try await sleep(delay) } catch { return }
-        guard !Task.isCancelled, let self, self.pages[route]?.request?.id == requestID,
+        guard !Task.isCancelled, let self, self.discussionPagesByRoute[route]?.request?.id == requestID,
               sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return }
         let failure = (error as? ErrorEnvelope) ?? .couldNotParseJSON
         page.snapshot.error = failure
@@ -538,8 +538,8 @@ public final class DiscussionFeature {
     let generation: Int
   }
 
-  private var updates: [UUID: (identity: UpdateIdentity, id: UUID, task: Task<Update?, Never>)] = [:]
-  private var projects: [UUID: (param: Param, userID: Int?, generation: Int, id: UUID, task: Task<Project?, Never>)] = [:]
+  private var pendingUpdateRequestsByRoute: [UUID: (identity: UpdateIdentity, id: UUID, task: Task<Update?, Never>)] = [:]
+  private var pendingProjectRequestsByRoute: [UUID: (param: Param, userID: Int?, generation: Int, id: UUID, task: Task<Project?, Never>)] = [:]
 
   // Deep-link navigation owns the enclosing task and validates the session
   // across the full destination load. Keep transport in Discussion.
@@ -566,8 +566,8 @@ public final class DiscussionFeature {
       project: project, id: id, userID: self.sessionFeature.currentUser?.id,
       generation: self.sessionFeature.generation
     )
-    if let existing = self.updates[route], existing.identity == identity { return existing.task }
-    self.updates[route]?.task.cancel()
+    if let existing = self.pendingUpdateRequestsByRoute[route], existing.identity == identity { return existing.task }
+    self.pendingUpdateRequestsByRoute[route]?.task.cancel()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
     let token = UUID()
@@ -578,7 +578,7 @@ public final class DiscussionFeature {
         guard sessionFeature.isCurrent(userID: identity.userID, generation: identity.generation) else { return nil }
         let update = try await provider.update(id: id, project: project)
         try Task.checkCancellation()
-        guard let self, self.updates[route]?.id == token,
+        guard let self, self.pendingUpdateRequestsByRoute[route]?.id == token,
               sessionFeature.isCurrent(userID: identity.userID, generation: identity.generation) else { return nil }
         return update
       } catch {
@@ -586,7 +586,7 @@ public final class DiscussionFeature {
         return nil
       }
     }
-    self.updates[route] = (identity, token, task)
+    self.pendingUpdateRequestsByRoute[route] = (identity, token, task)
     return task
   }
 
@@ -599,11 +599,11 @@ public final class DiscussionFeature {
   public func requestProject(route: UUID, param: Param) -> Task<Project?, Never> {
     let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
-    if let existing = self.projects[route], existing.param == param, existing.userID == userID,
+    if let existing = self.pendingProjectRequestsByRoute[route], existing.param == param, existing.userID == userID,
        existing.generation == generation {
       return existing.task
     }
-    self.projects[route]?.task.cancel()
+    self.pendingProjectRequestsByRoute[route]?.task.cancel()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
     let token = UUID()
@@ -614,7 +614,7 @@ public final class DiscussionFeature {
         guard sessionFeature.isCurrent(userID: userID, generation: generation) else { return nil }
         let project = try await provider.project(param: param)
         try Task.checkCancellation()
-        guard let self, self.projects[route]?.id == token,
+        guard let self, self.pendingProjectRequestsByRoute[route]?.id == token,
               sessionFeature.isCurrent(userID: userID, generation: generation) else { return nil }
         return project
       } catch {
@@ -622,17 +622,17 @@ public final class DiscussionFeature {
         return nil
       }
     }
-    self.projects[route] = (param, userID, generation, token, task)
+    self.pendingProjectRequestsByRoute[route] = (param, userID, generation, token, task)
     return task
   }
 
   public func release(route: UUID) {
-    self.pages.removeValue(forKey: route)?.request?.task.cancel()
-    self.updates.removeValue(forKey: route)?.task.cancel()
-    self.projects.removeValue(forKey: route)?.task.cancel()
+    self.discussionPagesByRoute.removeValue(forKey: route)?.request?.task.cancel()
+    self.pendingUpdateRequestsByRoute.removeValue(forKey: route)?.task.cancel()
+    self.pendingProjectRequestsByRoute.removeValue(forKey: route)?.task.cancel()
   }
 
   public func cancelProject(route: UUID) {
-    self.projects.removeValue(forKey: route)?.task.cancel()
+    self.pendingProjectRequestsByRoute.removeValue(forKey: route)?.task.cancel()
   }
 }

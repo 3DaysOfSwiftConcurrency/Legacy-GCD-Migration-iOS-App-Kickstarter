@@ -67,8 +67,8 @@ public final class FriendsFeature {
   private var followingStatusByUserID: [Int: Bool] = [:]
   private var followingCacheSession: Session?
   private var latestFollowWriteBySession: [Session: Pending] = [:]
-  private var commands: [UUID: Task<Void, Error>] = [:]
-  private var reads: [UUID: Task<Void, Never>] = [:]
+  private var followWriteTasks: [UUID: Task<Void, Error>] = [:]
+  private var friendsAndStatisticsReadTasks: [UUID: Task<Void, Never>] = [:]
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any FriendsProvider,
     responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
@@ -144,7 +144,7 @@ public final class FriendsFeature {
     let predecessor = self.latestFollowWriteBySession[state.session]?.task
     let task = Task { [self] in
       defer {
-        self.reads[id] = nil
+        self.friendsAndStatisticsReadTasks[id] = nil
         if state.page?.id == id {
           state.page = nil
         }
@@ -166,7 +166,7 @@ public final class FriendsFeature {
       }
     }
     state.page = (id, cursor, task)
-    self.reads[id] = task
+    self.friendsAndStatisticsReadTasks[id] = task
     return task
   }
 
@@ -181,7 +181,7 @@ public final class FriendsFeature {
     state.snapshot.statisticsError = nil
     let task = Task { [self] in
       defer {
-        self.reads[id] = nil
+        self.friendsAndStatisticsReadTasks[id] = nil
         if state.statistics?.id == id { state.statistics = nil }
       }
       do {
@@ -198,7 +198,7 @@ public final class FriendsFeature {
       }
     }
     state.statistics = (id, task)
-    self.reads[id] = task
+    self.friendsAndStatisticsReadTasks[id] = task
     return task
   }
 
@@ -210,7 +210,7 @@ public final class FriendsFeature {
     let provider = self.makeProvider()
     let task = Task { [self] in
       defer {
-        self.commands[id] = nil
+        self.followWriteTasks[id] = nil
         if self.latestFollowWriteBySession[session]?.id == id { self.latestFollowWriteBySession[session] = nil }
       }
       if let previous { _ = await previous.task.result }
@@ -241,7 +241,7 @@ public final class FriendsFeature {
       }
     }
     self.latestFollowWriteBySession[session] = Pending(id: id, command: command, task: task)
-    self.commands[id] = task
+    self.followWriteTasks[id] = task
     return task
   }
 
@@ -285,9 +285,9 @@ public final class FriendsFeature {
   func startFollowAll() -> Task<Void, Error> { self.request(.all) }
 
   public func waitForOperations() async {
-    while !self.commands.isEmpty || !self.reads.isEmpty {
-      for task in Array(self.commands.values) { _ = await task.result }
-      for task in Array(self.reads.values) { await task.value }
+    while !self.followWriteTasks.isEmpty || !self.friendsAndStatisticsReadTasks.isEmpty {
+      for task in Array(self.followWriteTasks.values) { _ = await task.result }
+      for task in Array(self.friendsAndStatisticsReadTasks.values) { await task.value }
     }
   }
 }

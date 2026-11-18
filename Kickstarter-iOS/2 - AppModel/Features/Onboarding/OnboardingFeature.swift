@@ -52,7 +52,7 @@ public final class OnboardingFeature {
   private var hasPreparedTracking = false
   private var latestApplicationActiveState: Bool?
   private var lastActivationStateHandledForTracking: Bool?
-  private var trackingObservation: (tracking: any AppTrackingTransparencyType, id: UUID)?
+  private var trackingAuthorizationObservation: (tracking: any AppTrackingTransparencyType, id: UUID)?
 
   var onBadgeReset: (@MainActor () -> Void)?
   var onRegistrationAttempted: (@MainActor () -> Void)?
@@ -152,7 +152,7 @@ public final class OnboardingFeature {
   deinit {
     self.pushAuthorizationTasks.values.forEach { $0.cancel() }
     self.delayedTrackingCheckTasks.values.forEach { $0.cancel() }
-    if let observation = self.trackingObservation {
+    if let observation = self.trackingAuthorizationObservation {
       Task { @MainActor in observation.tracking.removeAuthorizationObserver(observation.id) }
     }
   }
@@ -224,13 +224,13 @@ public final class OnboardingFeature {
   func prepareTrackingConsent() {
     self.hasPreparedTracking = true
     self.scheduleTrackingRequestIfNeeded()
-    self.observeAuthorization()
+    self.observeTrackingAuthorization()
   }
 
   func setApplicationActive(_ state: Bool) {
     self.latestApplicationActiveState = state
     self.scheduleTrackingRequestIfNeeded()
-    self.observeAuthorization()
+    self.observeTrackingAuthorization()
   }
 
   private func scheduleTrackingRequestIfNeeded() {
@@ -255,18 +255,18 @@ public final class OnboardingFeature {
     }
   }
 
-  private func observeAuthorization() {
+  private func observeTrackingAuthorization() {
     let tracking = self.tracking()
-    if let previous = self.trackingObservation {
+    if let previous = self.trackingAuthorizationObservation {
       if let tracking, (previous.tracking as AnyObject) === (tracking as AnyObject) { return }
       previous.tracking.removeAuthorizationObserver(previous.id)
-      self.trackingObservation = nil
+      self.trackingAuthorizationObservation = nil
     }
     guard let tracking else { return }
     let id = tracking.observeAuthorizationStatus { [weak self] status in
       self?.onTrackingAuthorizationStatus?(status)
     }
-    self.trackingObservation = (tracking, id)
+    self.trackingAuthorizationObservation = (tracking, id)
   }
 
   func waitForTrackingChecks() async {

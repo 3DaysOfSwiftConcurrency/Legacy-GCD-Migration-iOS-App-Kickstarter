@@ -60,7 +60,7 @@ public final class CreatorDraftsFeature {
   private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
   private var routes: [UUID: Route] = [:]
-  private var drafts: [Key: UpdateDraft] = [:]
+  private var cachedDraftsByKey: [Key: UpdateDraft] = [:]
   private var editVersionsByDraft: [Key: Int] = [:]
   private var latestQueuedEditsByDraft: [Key: Pending] = [:]
   private var draftEditTasks: [UUID: Task<Outcome, Error>] = [:]
@@ -69,10 +69,10 @@ public final class CreatorDraftsFeature {
     case load(Result<UpdateDraft, ErrorEnvelope>)
     case attachments([UpdateDraft.Attachment])
   }
-  private var listeners: [UUID: @MainActor (Event) -> Void] = [:]
+  private var draftEventListenersByRoute: [UUID: @MainActor (Event) -> Void] = [:]
 
   public func observe(route: UUID, onEvent: @escaping @MainActor (Event) -> Void) {
-    self.listeners[route] = onEvent
+    self.draftEventListenersByRoute[route] = onEvent
   }
 
   public init(
@@ -96,12 +96,12 @@ public final class CreatorDraftsFeature {
   }
   public func release(route: UUID) {
     self.routes.removeValue(forKey: route)?.read?.task.cancel()
-    self.listeners[route] = nil
+    self.draftEventListenersByRoute[route] = nil
   }
   public func reset() {
     for state in self.routes.values { state.read?.task.cancel() }
     self.routes.removeAll()
-    self.drafts.removeAll()
+    self.cachedDraftsByKey.removeAll()
     self.editVersionsByDraft.removeAll()
   }
   public func loadDraft(project: Project, route: UUID) async { await self.requestDraftLoad(project: project, route: route).value }
@@ -129,13 +129,13 @@ public final class CreatorDraftsFeature {
         try await self.sleep(delay)
         try self.ensureDraftSessionIsCurrent(key)
         guard self.routes[route] === state, self.editVersionsByDraft[key, default: 0] == revision else { return }
-        self.drafts[key] = draft
-        self.listeners[route]?(.load(.success(draft)))
+        self.cachedDraftsByKey[key] = draft
+        self.draftEventListenersByRoute[route]?(.load(.success(draft)))
         self.publishAttachments(key: key)
       } catch {
         guard !Task.isCancelled, !(error is CancellationError), self.isCurrent(key),
               self.routes[route] === state, self.editVersionsByDraft[key, default: 0] == revision else { return }
-        self.listeners[route]?(.load(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON)))
+        self.draftEventListenersByRoute[route]?(.load(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON)))
       }
     }
     state.read = (id, revision, task)
@@ -176,7 +176,7 @@ public final class CreatorDraftsFeature {
   private func request(_ command: Command, state: Route) throws -> Task<Outcome, Error> {
     let key = state.key
     try self.ensureDraftSessionIsCurrent(key)
-    guard let admittedDraft = self.drafts[key] else { throw ErrorEnvelope.couldNotParseJSON }
+    guard let admittedDraft = self.cachedDraftsByKey[key] else { throw ErrorEnvelope.couldNotParseJSON }
     let previous = self.latestQueuedEditsByDraft[key]
     if let previous, previous.command == command, previous.draftID == admittedDraft.update.id { return previous.task }
     let id = UUID()
@@ -187,7 +187,7 @@ public final class CreatorDraftsFeature {
       defer { self.draftEditTasks[id] = nil; if self.latestQueuedEditsByDraft[key]?.id == id { self.latestQueuedEditsByDraft[key] = nil } }
       if let previous { _ = await previous.task.result }
       try self.ensureDraftSessionIsCurrent(key)
-      guard var draft = self.drafts[key], draft.update.id == admittedDraft.update.id else { throw CancellationError() }
+      guard var draft = self.cachedDraftsByKey[key], draft.update.id == admittedDraft.update.id else { throw CancellationError() }
       let outcome: Outcome
       do {
         switch command {
@@ -207,7 +207,7 @@ public final class CreatorDraftsFeature {
           outcome = .image(removed)
         }
         try self.ensureDraftSessionIsCurrent(key)
-        self.drafts[key] = draft
+        self.cachedDraftsByKey[key] = draft
         try await self.sleep(delay)
         try self.ensureDraftSessionIsCurrent(key)
         self.publishAttachments(key: key)
@@ -223,10 +223,10 @@ public final class CreatorDraftsFeature {
   }
 
   private func publishAttachments(key: Key) {
-    guard let draft = self.drafts[key], self.isCurrent(key) else { return }
+    guard let draft = self.cachedDraftsByKey[key], self.isCurrent(key) else { return }
     let attachments = draft.images.map(UpdateDraft.Attachment.image) + (draft.video.map { [.video($0)] } ?? [])
     for (route, state) in self.routes where state.key == key {
-      self.listeners[route]?(.attachments(attachments))
+      self.draftEventListenersByRoute[route]?(.attachments(attachments))
     }
   }
 

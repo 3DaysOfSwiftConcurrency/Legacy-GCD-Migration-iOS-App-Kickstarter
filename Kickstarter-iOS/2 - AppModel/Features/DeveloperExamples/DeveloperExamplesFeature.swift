@@ -90,9 +90,9 @@ public final class DeveloperExamplesFeature {
   private var richTextSnapshotsByRoute: [UUID: RichTextSnapshot] = [:]
   @ObservationIgnored private var pendingPageLoads: [UUID: PageWork] = [:]
   @ObservationIgnored private var pendingRichTextLoads: [UUID: ListWork] = [:]
-  @ObservationIgnored private var lookupWork: [UUID: LookupWork] = [:]
+  @ObservationIgnored private var pendingProjectLookupsByRoute: [UUID: LookupWork] = [:]
   @ObservationIgnored private var latestLookupIDsByRoute: [UUID: UUID] = [:]
-  @ObservationIgnored private var listSessions: [UUID: Session] = [:]
+  @ObservationIgnored private var richTextListSessionsByRoute: [UUID: Session] = [:]
 
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any DeveloperExamplesProvider
@@ -186,12 +186,12 @@ public final class DeveloperExamplesFeature {
       await work.task.value
       return
     }
-    if self.listSessions[route] == session, let state = self.richTextSnapshotsByRoute[route], !state.projects.isEmpty {
+    if self.richTextListSessionsByRoute[route] == session, let state = self.richTextSnapshotsByRoute[route], !state.projects.isEmpty {
       return
     }
     self.pendingRichTextLoads.removeValue(forKey: route)?.task.cancel()
     self.richTextSnapshotsByRoute[route] = RichTextSnapshot()
-    self.listSessions[route] = session
+    self.richTextListSessionsByRoute[route] = session
     let id = UUID()
     let provider = self.makeProvider()
     let task = Task { [self] in
@@ -222,13 +222,13 @@ public final class DeveloperExamplesFeature {
     }
     let session = self.session
     let work: LookupWork
-    if let pending = self.lookupWork[route], pending.slug == slug, pending.session == session {
+    if let pending = self.pendingProjectLookupsByRoute[route], pending.slug == slug, pending.session == session {
       work = pending
     } else {
       self.cancelLookup(route: route)
       let provider = self.makeProvider()
       work = LookupWork(session: session, slug: slug)
-      self.lookupWork[route] = work
+      self.pendingProjectLookupsByRoute[route] = work
       self.latestLookupIDsByRoute[route] = work.id
       work.task = Task { [self] in
         defer { work.task = nil }
@@ -244,7 +244,7 @@ public final class DeveloperExamplesFeature {
         } catch { work.result = .failure(error) }
       }
     }
-    defer { if self.lookupWork[route]?.id == work.id { self.lookupWork[route] = nil } }
+    defer { if self.pendingProjectLookupsByRoute[route]?.id == work.id { self.pendingProjectLookupsByRoute[route] = nil } }
     await work.task?.value
     try Task.checkCancellation()
     guard self.session == session, self.latestLookupIDsByRoute[route] == work.id else {
@@ -254,7 +254,7 @@ public final class DeveloperExamplesFeature {
     return try result.get()
   }
   public func cancelLookup(route: UUID) {
-    self.lookupWork.removeValue(forKey: route)?.task?.cancel()
+    self.pendingProjectLookupsByRoute.removeValue(forKey: route)?.task?.cancel()
     self.latestLookupIDsByRoute[route] = nil
   }
   private func cancelPage(route: UUID) {
@@ -274,7 +274,7 @@ public final class DeveloperExamplesFeature {
     self.suspend(route: route)
     self.paginationSnapshotsByRoute[route] = nil
     self.richTextSnapshotsByRoute[route] = nil
-    self.listSessions[route] = nil
+    self.richTextListSessionsByRoute[route] = nil
   }
   public func reset() {
     let routes = Set(self.paginationSnapshotsByRoute.keys).union(self.richTextSnapshotsByRoute.keys).union(self.latestLookupIDsByRoute.keys)

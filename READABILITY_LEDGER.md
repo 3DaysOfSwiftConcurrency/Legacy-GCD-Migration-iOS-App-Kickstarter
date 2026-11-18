@@ -239,3 +239,9 @@ callers or tests affected by a rename.
   the authorization code and PKCE values, and the lookup that resolves a category or
   subcategory from a deep link. Reviewed OAuth and discovery routing tests. Swift
   parsing, Swift token comparison and git diff --check passed.
+
+- Activity, CreatorDrafts, DeveloperExamples, Discussion, Friends, Messaging and
+  Onboarding. Named state by the account or route it belongs to, and retained tasks by
+  their actions. Reviewed focused feed, queued edit, pagination, comment, follow,
+  mailbox and permission tests. Swift parsing, Swift token comparison and git diff
+  --check passed.
