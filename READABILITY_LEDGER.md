@@ -125,7 +125,13 @@ reopen or replace the completed CFA migration ledger.
   signing-disabled generic Library-iOS simulator build was blocked during Swift package
   resolution. PledgeFeatureTests and checkout ViewModel tests could not run because
   CoreSimulator refused connections.
+- PledgedProjects: named loadNextPage, the internal page request, and the retained
+  page-load tasks. Updated the overview ViewModel and focused pagination tests. Swift
+  parsing and git diff --check passed. The signing-disabled generic Library-iOS
+  simulator build was blocked during Swift package resolution.
+  PledgedProjectsFeatureTests and PPOViewModel tests could not run because
+  CoreSimulator refused connections.
 
 ## Current slice
 
-- PledgedProjects Feature and the overview screen.
+- Profile Feature and its avatar and project collection callers.

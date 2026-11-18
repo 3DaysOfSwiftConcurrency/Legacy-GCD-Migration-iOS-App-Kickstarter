@@ -157,7 +157,7 @@ public final class PledgedProjectsFeature {
     var tiers: [PledgeProjectsOverviewSort] = []
   }
   private var routes: [UUID: Route] = [:]
-  private var tasks: [UUID: Task<Void, Never>] = [:]
+  private var pageLoadTasks: [UUID: Task<Void, Never>] = [:]
 
   private func route(_ id: UUID) -> Route {
     if let route = self.routes[id] { return route }
@@ -171,13 +171,13 @@ public final class PledgedProjectsFeature {
 
   @discardableResult
   public func requestFirstPage(route: UUID) -> Task<Void, Never> {
-    self.request(route: route, cursor: nil)
+    self.requestPage(route: route, cursor: nil)
   }
   public func refresh(route: UUID) async {
     guard !Task.isCancelled else { return }
     await self.requestFirstPage(route: route).value
   }
-  public func loadMore(route id: UUID) async {
+  public func loadNextPage(route id: UUID) async {
     guard !Task.isCancelled else { return }
     let route = self.route(id)
     if route.session != self.session || route.tiers != self.enabledTiers {
@@ -185,12 +185,12 @@ public final class PledgedProjectsFeature {
     } else if let pending = route.pending {
       await pending.task.value
     } else if let cursor = route.snapshots.value.cursor {
-      await self.request(route: id, cursor: cursor).value
+      await self.requestPage(route: id, cursor: cursor).value
     }
     // A terminal page is already complete; it must never wait for another publication.
   }
 
-  private func request(route id: UUID, cursor: String?) -> Task<Void, Never> {
+  private func requestPage(route id: UUID, cursor: String?) -> Task<Void, Never> {
     let route = self.route(id)
     let session = self.session
     let tiers = self.enabledTiers
@@ -213,7 +213,7 @@ public final class PledgedProjectsFeature {
     let requestID = UUID()
     let task = Task { [self] in
       defer {
-        self.tasks[requestID] = nil
+        self.pageLoadTasks[requestID] = nil
         if route.pending?.id == requestID { route.pending = nil }
       }
       do {
@@ -253,7 +253,7 @@ public final class PledgedProjectsFeature {
     route.tiers = tiers
     route.pending = Pending(
       id: requestID, cursor: cursor, tiers: tiers, session: session, task: task)
-    self.tasks[requestID] = task
+    self.pageLoadTasks[requestID] = task
     route.snapshots.send(.loading(previous: previous))
     return task
   }
@@ -269,8 +269,8 @@ public final class PledgedProjectsFeature {
     }
   }
   public func waitForOperations() async {
-    while !self.tasks.isEmpty {
-      for task in Array(self.tasks.values) { await task.value }
+    while !self.pageLoadTasks.isEmpty {
+      for task in Array(self.pageLoadTasks.values) { await task.value }
     }
   }
 }

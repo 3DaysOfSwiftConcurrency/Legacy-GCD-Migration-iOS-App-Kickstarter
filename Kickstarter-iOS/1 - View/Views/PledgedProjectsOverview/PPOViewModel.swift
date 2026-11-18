@@ -312,7 +312,7 @@ final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutp
   }
 
   func loadMore() async {
-    await self.pledgedProjectsFeature.loadMore(route: self.route)
+    await self.pledgedProjectsFeature.loadNextPage(route: self.route)
   }
 
   func refresh() async {

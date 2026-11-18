@@ -79,14 +79,14 @@ final class PledgedProjectsFeatureTests: TestCase {
     await self.provider.gate.waitFor(1)
     try self.provider.gate.finish(0, .success(try .fakeOverview(1...3, more: true)))
     await first.value
-    let next = Task { await self.feature.loadMore(route: self.route) }
+    let next = Task { await self.feature.loadNextPage(route: self.route) }
     await self.provider.gate.waitFor(2)
     XCTAssertEqual(self.provider.inputs[1].cursor, "3")
     try self.provider.gate.finish(1, .success(try .fakeOverview(4...5)))
     await next.value
     XCTAssertEqual(self.snapshots.last?.values.map(\.projectId), [1, 2, 3, 4, 5])
     XCTAssertEqual(self.snapshots.last?.page, 2)
-    await self.feature.loadMore(route: self.route)
+    await self.feature.loadNextPage(route: self.route)
     XCTAssertEqual(self.provider.inputs.count, 2)
   }
   func testRefreshRejectsLatePaginationCompletion() async throws {
@@ -95,7 +95,7 @@ final class PledgedProjectsFeatureTests: TestCase {
     await self.provider.gate.waitFor(1)
     try self.provider.gate.finish(0, .success(try .fakeOverview(1...3, more: true)))
     await first.value
-    let next = Task { await self.feature.loadMore(route: self.route) }
+    let next = Task { await self.feature.loadNextPage(route: self.route) }
     await self.provider.gate.waitFor(2)
     let refresh = self.feature.requestFirstPage(route: self.route)
     await self.provider.gate.waitFor(3)
