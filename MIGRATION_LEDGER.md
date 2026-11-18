@@ -6077,3 +6077,40 @@ switch interaction remain unverified. ProjectNotificationsViewController remains
 legacy child composition seam. The CFA gate rejects restored global selection across the
 Notifications screen graph and rejects its parameterless factory. This is not full CFA
 compliance. Swift packages, target identifiers and existing history are unchanged. No push.
+
+## CFA Migration Engine
+
+<!-- CFA Migration Engine state: managed -->
+
+```json
+{
+  "schemaVersion": 3,
+  "goal": "Use the CFA Migration Engine to audit and incrementally verify the already CFA-structured Kickstarter application without redoing completed migration work.",
+  "scope": "Current Kickstarter app and affected test targets; preserve behavior, target identity, existing CFA structure and completed lifecycle-owner removal.",
+  "baseline": {
+    "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
+    "dirty": false
+  },
+  "phase": "audit",
+  "nextAction": "Semantically review 91 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "evidence": [
+    {
+      "id": "migration-engine-acceptance-audit",
+      "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 0c3094458baa6521e3508b3e2a1931eea99806398e6c83574f4a187a92d53e40; 2183 Swift files; 91 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":8,\"feature-tests-missing\":1,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"scheduled-app-model-launch\":1,\"screen-initializer-inputs\":6,\"view-feature-access\":2,\"view-model-initializer-construction\":1,\"view-model-missing\":23,\"view-model-ownership\":7,\"view-model-test-placement\":7,\"view-model-test-suite-unresolved\":1,\"view-model-tests-missing\":1}."
+    }
+  ],
+  "attempts": [
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    }
+  ],
+  "blocker": null,
+  "completionGate": null
+}
+```
+
+<!-- /CFA Migration Engine state -->
