@@ -5673,9 +5673,38 @@ Presentation tests. Both runs had zero failures and skips on iPhone 17 Pro Max, 
 Evidence: `/private/tmp/kickstarter-pledge-manager-composition-library.xcresult` and
 `/private/tmp/kickstarter-pledge-manager-composition-presentation.xcresult`.
 
-ActivitiesViewController and MessagesViewController still call the legacy default Pledge
-Manager factory and remain follow-up migration work. The whole suites remain unverified.
+MessagesViewController still calls the legacy default Pledge Manager factory and remains
+follow-up migration work. The whole suites remain unverified.
 The CFA gate rejects direct PledgeFeature resolution inside Pledge Manager, parameterless
 native Manage Pledge construction there, and default factory calls in the three migrated
 callers. This is not full CFA compliance. Swift packages, target identifiers and existing
 history are unchanged. No push.
+
+### Activities feature graph — 18 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes ActivityComposition as the Activities vertical-slice graph: the
+AppModel-owned ActivityFeature plus the same nested ProjectPageComposition used for
+Project Page, survey and Manage Pledge destinations. Root Tabs and Pledged Projects pass
+that graph into ActivitiesViewController. The controller constructs its view model from
+the supplied ActivityFeature and forwards the nested destination graph instead of
+selecting process-global defaults. Storyboard construction, notification handling and
+all existing navigation presentation styles remain unchanged.
+
+Focused AppModelTests and ActivitiesViewModelTests passed all 23 tests. Focused
+PPOContainerViewModelTests and RootTabsNavigationTests passed all 12 tests. Both runs had
+zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-activities-composition-library.xcresult` and
+`/private/tmp/kickstarter-activities-composition-presentation.xcresult`.
+
+The focused non-visual ActivitiesViewController smoke attempt did not execute its body:
+the shared Presentation test harness crashed at `preferredSimulatorCheck()` because the
+run used iPhone 17 Pro Max, iOS 26.2 rather than its required reference simulator.
+Evidence: `/private/tmp/kickstarter-activities-controller-focused.xcresult`. Activity
+snapshots, live navigation and the whole Library and Presentation suites remain
+unverified. The CFA gate rejects restored global composition in Activities, default
+destination factories there, and parameterless Activities construction from Root Tabs or
+Pledged Projects. Messages remains the outstanding legacy caller identified by the prior
+Pledge Manager checkpoint. This is not full CFA compliance. Swift packages, target
+identifiers and existing history are unchanged. No push.

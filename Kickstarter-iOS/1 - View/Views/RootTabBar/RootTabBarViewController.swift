@@ -34,7 +34,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   fileprivate lazy var viewModel: RootViewModelType = RootViewModel(
     sessionFeature: self.composition.sessionFeature,
     profileFeature: self.composition.profileFeature,
-    activityFeature: self.composition.activityFeature,
+    activityFeature: self.composition.activities.activityFeature,
     settingsFeature: self.composition.settingsFeature,
     analytics: self.composition.analytics,
     badgePresentationDelay: self.composition.badgePresentationDelay,
@@ -170,7 +170,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
         guard let discovery = controller.discoveryNavigationController(at: index),
               !(discovery.topViewController is ActivitiesViewController) else { return }
         discovery.pushViewController(
-          ActivitiesViewController.instantiate(),
+          ActivitiesViewController.instantiate(composition: controller.composition.activities),
           animated: discovery.viewIfLoaded?.window != nil
         )
       }
@@ -360,7 +360,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     case .discovery:
       return DiscoveryViewController.instantiate()
     case .activities:
-      return ActivitiesViewController.instantiate()
+      return ActivitiesViewController.instantiate(composition: self.composition.activities)
     case .pledgedProjectsAndActivities:
       return PPOContainerViewController(composition: self.composition.pledgedProjects)
     case .search:

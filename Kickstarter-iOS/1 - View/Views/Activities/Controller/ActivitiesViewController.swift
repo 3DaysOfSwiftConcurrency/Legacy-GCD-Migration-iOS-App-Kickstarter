@@ -4,7 +4,20 @@ import Prelude
 import UIKit
 
 internal final class ActivitiesViewController: UITableViewController {
-  fileprivate let viewModel = ActivitiesViewModel(activityFeature: AppModel.shared.activityFeature)
+  private var activityComposition: ActivityComposition?
+  private var composition: ActivityComposition {
+    guard let activityComposition else {
+      preconditionFailure("ActivitiesViewController must be created with instantiate(composition:)")
+    }
+    return activityComposition
+  }
+  private var configuredViewModel: ActivitiesViewModel?
+  fileprivate var viewModel: ActivitiesViewModel {
+    guard let configuredViewModel else {
+      preconditionFailure("ActivitiesViewController must be created with instantiate(composition:)")
+    }
+    return configuredViewModel
+  }
   fileprivate let dataSource = ActivitiesDataSource()
   private var sessionEndedObserver: MainActorNotificationObservation?
   private var sessionStartedObserver: MainActorNotificationObservation?
@@ -12,8 +25,13 @@ internal final class ActivitiesViewController: UITableViewController {
 
   fileprivate var emptyStatesController: EmptyStatesViewController?
 
-  internal static func instantiate() -> ActivitiesViewController {
-    return Storyboard.Activity.instantiate(ActivitiesViewController.self)
+  internal static func instantiate(composition: ActivityComposition) -> ActivitiesViewController {
+    let viewController = Storyboard.Activity.instantiate(ActivitiesViewController.self)
+    viewController.activityComposition = composition
+    viewController.configuredViewModel = ActivitiesViewModel(
+      activityFeature: composition.activityFeature
+    )
+    return viewController
   }
 
   private var didSetupBottomInsets = false
@@ -22,15 +40,15 @@ internal final class ActivitiesViewController: UITableViewController {
     super.init(coder: aDecoder)
 
     self.sessionStartedObserver = MainActorNotificationObservation(name: .ksr_sessionStarted) { [weak self] _ in
-        self?.viewModel.userSessionStarted()
+        self?.configuredViewModel?.userSessionStarted()
       }
 
     self.sessionEndedObserver = MainActorNotificationObservation(name: .ksr_sessionEnded) { [weak self] _ in
-        self?.viewModel.userSessionEnded()
+        self?.configuredViewModel?.userSessionEnded()
       }
 
     self.userUpdatedObserver = MainActorNotificationObservation(name: .ksr_userUpdated) { [weak self] _ in
-        self?.viewModel.currentUserUpdated()
+        self?.configuredViewModel?.currentUserUpdated()
       }
   }
 
@@ -158,7 +176,8 @@ internal final class ActivitiesViewController: UITableViewController {
     let projectParam = Either<Project, any ProjectPageParam>(left: project)
     let nav = ProjectPageViewController.navigationController(
       withProjectOrParam: projectParam,
-      refInfo: RefInfo(refTag)
+      refInfo: RefInfo(refTag),
+      composition: self.composition.projectPage
     )
 
     self.present(nav, animated: true, completion: nil)
@@ -166,7 +185,10 @@ internal final class ActivitiesViewController: UITableViewController {
 
   fileprivate func goToSurveyResponse(surveyResponse: SurveyResponse) {
     let url = surveyResponse.urls.web.survey
-    let vc = PledgeManagerWebViewController.configuredWith(url: url)
+    let vc = PledgeManagerWebViewController.configuredWith(
+      url: url,
+      composition: self.composition.projectPage
+    )
     vc.delegate = self
 
     let nav = UINavigationController(rootViewController: vc)
@@ -181,7 +203,11 @@ internal final class ActivitiesViewController: UITableViewController {
   }
 
   fileprivate func goToManagePledge(params: ManagePledgeViewParamConfigData) {
-    let vc = ManagePledgeViewController.controller(with: params, delegate: self)
+    let vc = ManagePledgeViewController.controller(
+      with: params,
+      delegate: self,
+      composition: self.composition.projectPage.managePledge
+    )
     self.present(vc, animated: true)
   }
 }

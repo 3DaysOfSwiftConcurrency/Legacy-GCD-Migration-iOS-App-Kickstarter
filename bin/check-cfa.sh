@@ -358,6 +358,16 @@ reject_matches 'Pledged Projects analytics belong to PledgedProjectsFeature comp
 reject_matches 'Pledged Projects receives one composed feature graph.' \
   'AppModel[.]shared|AppEnvironment[.]current|sessionFeature' \
   "$app_view/Views/PledgedProjectsOverview/PPOContainerViewController.swift"
+reject_matches 'Activities receives one composed feature graph.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/Activities/Controller/ActivitiesViewController.swift"
+reject_matches 'Activities forwards its composed destination graph.' \
+  'PledgeManagerWebViewController[.]configuredWith[(]url: url[)]|ManagePledgeViewController[.]controller[(]with: params, delegate: self[)]' \
+  "$app_view/Views/Activities/Controller/ActivitiesViewController.swift"
+reject_matches 'Activities entry points supply their composed feature graph.' \
+  'ActivitiesViewController[.]instantiate[(][)]' \
+  "$app_view/Views/RootTabBar/RootTabBarViewController.swift" \
+  "$app_view/Views/PledgedProjectsOverview/PPOContainerViewController.swift"
 reject_matches 'Pledged Projects forwards its composed Manage Pledge graph.' \
   'ManagePledgeViewController[.]controller[(]with: data, delegate: self[)]' \
   "$app_view/Views/PledgedProjectsOverview/PPOContainerViewController.swift"

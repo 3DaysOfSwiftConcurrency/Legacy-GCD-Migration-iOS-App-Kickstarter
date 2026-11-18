@@ -362,17 +362,19 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(
       first.pledgedProjectsComposition.pledgedProjectsFeature === first.pledgedProjectsFeature
     )
-    XCTAssertTrue(first.pledgedProjectsComposition.activityFeature === first.activityFeature)
     XCTAssertTrue(
-      first.pledgedProjectsComposition.projectPage.managePledge.pledgeFeature
+      first.pledgedProjectsComposition.activities.activityFeature === first.activityFeature
+    )
+    XCTAssertTrue(
+      first.pledgedProjectsComposition.activities.projectPage.managePledge.pledgeFeature
         === first.pledgeFeature
     )
     XCTAssertTrue(
-      first.pledgedProjectsComposition.projectPage.managePledge.paymentsFeature
+      first.pledgedProjectsComposition.activities.projectPage.managePledge.paymentsFeature
         === first.paymentsFeature
     )
     XCTAssertTrue(
-      first.pledgedProjectsComposition.projectPage.managePledge.rewardsFeature
+      first.pledgedProjectsComposition.activities.projectPage.managePledge.rewardsFeature
         === first.rewardsFeature
     )
     XCTAssertTrue(
@@ -424,7 +426,13 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(first.pledgeCheckoutComposition.paymentsFeature === first.paymentsFeature)
     XCTAssertTrue(first.rootTabComposition.sessionFeature === first.sessionFeature)
     XCTAssertTrue(first.rootTabComposition.profileFeature === first.profileFeature)
-    XCTAssertTrue(first.rootTabComposition.activityFeature === first.activityFeature)
+    XCTAssertTrue(first.activityComposition.activityFeature === first.activityFeature)
+    XCTAssertTrue(
+      first.activityComposition.projectPage.managePledge.pledgeFeature === first.pledgeFeature
+    )
+    XCTAssertTrue(
+      first.rootTabComposition.activities.activityFeature === first.activityFeature
+    )
     XCTAssertTrue(first.rootTabComposition.settingsFeature === first.settingsFeature)
     XCTAssertTrue(first.managePledgeComposition.pledgeFeature === first.pledgeFeature)
     XCTAssertTrue(first.managePledgeComposition.paymentsFeature === first.paymentsFeature)

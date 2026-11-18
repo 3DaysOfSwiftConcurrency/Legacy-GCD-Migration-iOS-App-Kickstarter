@@ -158,10 +158,23 @@ public struct PledgeCheckoutComposition {
   }
 }
 
+public struct ActivityComposition {
+  public let activityFeature: ActivityFeature
+  public let projectPage: ProjectPageComposition
+
+  public init(
+    activityFeature: ActivityFeature,
+    projectPage: ProjectPageComposition
+  ) {
+    self.activityFeature = activityFeature
+    self.projectPage = projectPage
+  }
+}
+
 public struct RootTabComposition {
   public let sessionFeature: SessionFeature
   public let profileFeature: ProfileFeature
-  public let activityFeature: ActivityFeature
+  public let activities: ActivityComposition
   public let settingsFeature: SettingsFeature
   public let analytics: () -> KSRAnalytics
   public let badgePresentationDelay: () -> TimeInterval
@@ -171,7 +184,7 @@ public struct RootTabComposition {
   public init(
     sessionFeature: SessionFeature,
     profileFeature: ProfileFeature,
-    activityFeature: ActivityFeature,
+    activities: ActivityComposition,
     settingsFeature: SettingsFeature,
     analytics: @escaping () -> KSRAnalytics,
     badgePresentationDelay: @escaping () -> TimeInterval,
@@ -180,7 +193,7 @@ public struct RootTabComposition {
   ) {
     self.sessionFeature = sessionFeature
     self.profileFeature = profileFeature
-    self.activityFeature = activityFeature
+    self.activities = activities
     self.settingsFeature = settingsFeature
     self.analytics = analytics
     self.badgePresentationDelay = badgePresentationDelay
@@ -210,17 +223,14 @@ public struct ManagePledgeComposition {
 
 public struct PledgedProjectsComposition {
   public let pledgedProjectsFeature: PledgedProjectsFeature
-  public let activityFeature: ActivityFeature
-  public let projectPage: ProjectPageComposition
+  public let activities: ActivityComposition
 
   public init(
     pledgedProjectsFeature: PledgedProjectsFeature,
-    activityFeature: ActivityFeature,
-    projectPage: ProjectPageComposition
+    activities: ActivityComposition
   ) {
     self.pledgedProjectsFeature = pledgedProjectsFeature
-    self.activityFeature = activityFeature
-    self.projectPage = projectPage
+    self.activities = activities
   }
 }
 
@@ -262,6 +272,13 @@ public final class AppModel {
     )
   }
 
+  public var activityComposition: ActivityComposition {
+    ActivityComposition(
+      activityFeature: self.activityFeature,
+      projectPage: self.projectPageComposition
+    )
+  }
+
   public var pledgeCheckoutComposition: PledgeCheckoutComposition {
     PledgeCheckoutComposition(
       pledgeFeature: self.pledgeFeature,
@@ -282,7 +299,7 @@ public final class AppModel {
     RootTabComposition(
       sessionFeature: self.sessionFeature,
       profileFeature: self.profileFeature,
-      activityFeature: self.activityFeature,
+      activities: self.activityComposition,
       settingsFeature: self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
@@ -303,8 +320,7 @@ public final class AppModel {
   public var pledgedProjectsComposition: PledgedProjectsComposition {
     PledgedProjectsComposition(
       pledgedProjectsFeature: self.pledgedProjectsFeature,
-      activityFeature: self.activityFeature,
-      projectPage: self.projectPageComposition
+      activities: self.activityComposition
     )
   }
 

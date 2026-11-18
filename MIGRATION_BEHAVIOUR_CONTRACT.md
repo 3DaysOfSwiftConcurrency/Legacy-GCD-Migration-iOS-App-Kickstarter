@@ -2300,5 +2300,18 @@ safe for arbitrary concurrent environment mutation.
   Project Page and Pledged Projects now pass composition explicitly.
 - Focused AppModel/Pledge Manager coverage passes 22 tests and focused survey/Pledged
   Projects/root presentation coverage passes 13 tests.
-- Activities and Messages still use the legacy default factory and remain explicit
-  follow-up work.
+- Messages still uses the legacy default factory and remains explicit follow-up work.
+
+## Activities feature graph — 18 November 2026
+
+- Root Tabs and Pledged Projects now open Activities with one AppModel-owned
+  ActivityComposition containing the exact ActivityFeature used by the screen model and
+  the nested ProjectPageComposition used by its destinations.
+- Project selection, survey response and Manage Pledge continue to use their established
+  UIKit presentation routes, now with the same supplied graph rather than independently
+  selecting process-global defaults.
+- Focused Activities/AppModel coverage passes 23 tests and focused Pledged Projects/root
+  navigation coverage passes 12 tests. A focused controller smoke attempt was blocked by
+  the snapshot harness reference-simulator guard before its test body ran. Activity
+  snapshots and live navigation remain unverified; Messages remains the next legacy
+  Pledge Manager caller.

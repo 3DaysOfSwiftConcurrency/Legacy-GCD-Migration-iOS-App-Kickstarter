@@ -9,6 +9,7 @@ import SwiftUI
 
 public class PPOContainerViewController: PagedContainerViewController<PPOContainerViewController.Page>,
   MessageBannerViewControllerPresenting {
+  private let activityComposition: ActivityComposition
   private let confirmation = StripeConfirmationOperation()
   private let managePledgeComposition: ManagePledgeComposition
   private let paymentsFeature: PaymentsFeature
@@ -17,14 +18,15 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
   private let viewModel: PPOContainerViewModel
 
   public init(composition: PledgedProjectsComposition) {
-    self.managePledgeComposition = composition.projectPage.managePledge
-    self.paymentsFeature = composition.projectPage.managePledge.paymentsFeature
-    self.projectPageComposition = composition.projectPage
+    self.activityComposition = composition.activities
+    self.managePledgeComposition = composition.activities.projectPage.managePledge
+    self.paymentsFeature = composition.activities.projectPage.managePledge.paymentsFeature
+    self.projectPageComposition = composition.activities.projectPage
     self.pledgedProjectsFeature = composition.pledgedProjectsFeature
     self.viewModel = PPOContainerViewModel(
-      pledgeFeature: composition.projectPage.managePledge.pledgeFeature,
-      activityFeature: composition.activityFeature,
-      paymentsFeature: composition.projectPage.managePledge.paymentsFeature
+      pledgeFeature: composition.activities.projectPage.managePledge.pledgeFeature,
+      activityFeature: composition.activities.activityFeature,
+      paymentsFeature: composition.activities.projectPage.managePledge.paymentsFeature
     )
     super.init(nibName: nil, bundle: nil)
   }
@@ -60,7 +62,9 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
     let ppoViewController = UIHostingController(rootView: ppoView)
     ppoViewController.title = Page.projectAlerts(.none).name
 
-    let activitiesViewController = ActivitiesViewController.instantiate()
+    let activitiesViewController = ActivitiesViewController.instantiate(
+      composition: self.activityComposition
+    )
     activitiesViewController.title = Page.activityFeed(.none).name
 
     self.setPagedViewControllers([

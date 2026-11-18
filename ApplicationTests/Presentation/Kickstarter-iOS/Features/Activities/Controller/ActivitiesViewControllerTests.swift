@@ -144,7 +144,9 @@ internal final class ActivitiesViewControllerTests: TestCase {
         language: language,
         userDefaults: MockKeyValueStore()
       ) {
-        let vc = ActivitiesViewController.instantiate()
+        let vc = ActivitiesViewController.instantiate(
+          composition: AppModel.shared.activityComposition
+        )
         vc.viewWillAppear(true)
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
         parent.view.frame.size.height = 2_360
@@ -182,7 +184,9 @@ internal final class ActivitiesViewControllerTests: TestCase {
         language: language,
         userDefaults: MockKeyValueStore()
       ) {
-        let vc = ActivitiesViewController.instantiate()
+        let vc = ActivitiesViewController.instantiate(
+          composition: AppModel.shared.activityComposition
+        )
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
         parent.view.frame.size.height = 900
 
@@ -193,7 +197,9 @@ internal final class ActivitiesViewControllerTests: TestCase {
   }
 
   func testScrollToTop() {
-    let controller = ActivitiesViewController.instantiate()
+    let controller = ActivitiesViewController.instantiate(
+      composition: AppModel.shared.activityComposition
+    )
 
     XCTAssertNotNil(controller.view as? UIScrollView)
   }

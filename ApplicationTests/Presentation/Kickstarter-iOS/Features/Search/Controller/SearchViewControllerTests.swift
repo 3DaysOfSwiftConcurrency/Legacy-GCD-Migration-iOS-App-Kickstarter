@@ -277,7 +277,9 @@ internal final class SearchViewContollerTests: TestCase {
   }
 
   func testScrollToTop() {
-    let controller = ActivitiesViewController.instantiate()
+    let controller = ActivitiesViewController.instantiate(
+      composition: AppModel.shared.activityComposition
+    )
 
     XCTAssertNotNil(controller.view as? UIScrollView)
   }
