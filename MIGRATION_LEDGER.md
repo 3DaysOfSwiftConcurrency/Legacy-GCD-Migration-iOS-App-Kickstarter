@@ -6091,8 +6091,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "audit",
-  "nextAction": "Semantically review 81 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "phase": "hybrid-review",
+  "nextAction": "Trace task lifetime and state ownership through the remaining cross-feature dependencies, starting with PledgedProjects and ProjectDetails.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6165,6 +6165,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",
       "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Semantically reviewed the remaining SwiftUI ownership and route scanner leads.",
+      "result": "PPO, Report Project and Shipping Locations already use private StateObject ownership; Sort is a generic presentation component with no Feature route. These scanner leads do not justify a mechanical refactor."
     }
   ],
   "blocker": null,
