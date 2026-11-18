@@ -6091,8 +6091,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "verify",
-  "nextAction": "Complete a fresh static CFA audit while monitoring the full Library-iOS run; if Xcode does not launch a worker or write a usable result, preserve it as infrastructure-limited and continue independent verification.",
+  "phase": "blocked",
+  "nextAction": "After approval, restart the shared test service, rerun the full Library-iOS suite, and record its actual result before reconsidering completion.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6462,16 +6462,25 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Started a full-suite verification on a second booted iPhone simulator.",
       "result": "The process is alive in Xcode build services but has no test worker and the result bundle lacks Info.plist. This is not a test result; a static audit can proceed independently."
+    },
+    {
+      "action": "Completed independent verification and isolated the remaining test gate.",
+      "result": "The static CFA audit is unchanged and both available booted iPhone simulators reproducibly stall in Xcode build services for ten minutes before any test worker starts. A service restart may interrupt other active simulator work, so it requires the user’s decision."
+    },
+    {
+      "action": "Recorded a migration blocker.",
+      "result": "Two independent ten-minute full Library-iOS runs on separate booted iPhone simulators remained in Xcode build services without launching a test worker or writing a usable result bundle."
     }
   ],
-  "blocker": null,
+  "blocker": {
+    "reason": "Two independent ten-minute full Library-iOS runs on separate booted iPhone simulators remained in Xcode build services without launching a test worker or writing a usable result bundle.",
+    "unblockCondition": "User approves restarting the shared CoreSimulator/Xcode test service, which may interrupt other active simulator work."
+  },
   "completionGate": null,
   "continuation": {
     "host": "codex",
     "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47",
-    "pending": {
-      "token": "a4e99a2f-e879-4a2e-9164-fb6c05e0b1b1"
-    }
+    "pending": null
   }
 }
 ```
