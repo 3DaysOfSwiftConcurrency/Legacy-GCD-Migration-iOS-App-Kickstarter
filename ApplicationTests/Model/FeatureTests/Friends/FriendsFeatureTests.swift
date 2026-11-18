@@ -188,7 +188,7 @@ final class FriendsFeatureTests: TestCase {
     XCTAssertEqual(first.isFriend, true)
     XCTAssertEqual(duplicate.isFriend, true)
     XCTAssertEqual(last.isFriend, false)
-    XCTAssertEqual(self.feature.cached(user).isFriend, false)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(user).isFriend, false)
   }
 
   func testCancelledObserverDoesNotCancelAdmittedWriteOrDuplicateRetry() async throws {
@@ -200,7 +200,7 @@ final class FriendsFeatureTests: TestCase {
     _ = try await next.value
     await self.feature.waitForOperations()
     XCTAssertEqual(self.provider.operations, ["1:true"])
-    XCTAssertEqual(self.feature.cached(Self.user(1)).isFriend, true)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, true)
   }
 
   func testFailedWriteDoesNotPoisonQueueOrCacheAndIsNotAutomaticallyRetried() async throws {
@@ -213,8 +213,8 @@ final class FriendsFeatureTests: TestCase {
     do { _ = try await first.value; XCTFail("Expected failed follow") } catch { }
     _ = try await next.value
     XCTAssertEqual(self.provider.operations, ["1:true", "2:true"])
-    XCTAssertEqual(self.feature.cached(Self.user(1)).isFriend, false)
-    XCTAssertEqual(self.feature.cached(Self.user(2)).isFriend, true)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, false)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(2)).isFriend, true)
   }
 
   func testNewSessionRejectsOldQueuedWriteAndOldCacheCommit() async throws {
@@ -230,8 +230,8 @@ final class FriendsFeatureTests: TestCase {
     _ = await queued.result
     _ = try await current.value
     XCTAssertEqual(self.provider.operations, ["1:true", "3:true"])
-    XCTAssertEqual(self.feature.cached(Self.user(1)).isFriend, false)
-    XCTAssertEqual(self.feature.cached(Self.user(3)).isFriend, true)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, false)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(3)).isFriend, true)
   }
 
   func testFollowAllIsOrderedAndInvalidatesOldPageBeforeRefresh() async throws {
@@ -251,7 +251,7 @@ final class FriendsFeatureTests: TestCase {
     await page?.value
     await self.feature.waitForOperations()
     XCTAssertTrue(self.feature.snapshot(route: self.route).users.isEmpty)
-    XCTAssertEqual(self.feature.cached(Self.user(1)).isFriend, false)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, false)
     await self.feature.loadNextPage(route: self.route)
     XCTAssertEqual(self.provider.pages.count, 1)
   }
@@ -321,7 +321,7 @@ final class FriendsFeatureTests: TestCase {
     try gate.finish(0, .success(()))
     await vm.waitForObservations()
     XCTAssertEqual(vm.hideFollowButton, false)
-    XCTAssertEqual(feature.cached(Self.user(1)).isFriend, false)
+    XCTAssertEqual(feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, false)
   }
 
   func testFollowAllDelayedRefreshCannotStartInReplacementSession() async throws {
@@ -382,16 +382,16 @@ final class FriendsFeatureTests: TestCase {
   func testNativeCommandsReturnOnlyAfterConfirmedState() async throws {
     let command = Task { try await self.feature.setFollowing(user: Self.user(1), following: true) }
     await self.provider.writes.waitFor(1)
-    XCTAssertEqual(self.feature.cached(Self.user(1)).isFriend, false)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, false)
     try self.provider.writes.finish(0, .success(()))
     let user = try await command.value
     XCTAssertEqual(user.isFriend, true)
-    XCTAssertEqual(self.feature.cached(Self.user(1)).isFriend, true)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, true)
     let all = Task { try await self.feature.followAll() }
     await self.provider.writes.waitFor(2)
     try self.provider.writes.finish(1, .success(()))
     try await all.value
-    XCTAssertEqual(self.feature.cached(Self.user(1)).isFriend, false)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, false)
   }
 
   private static func user(_ id: Int) -> User {

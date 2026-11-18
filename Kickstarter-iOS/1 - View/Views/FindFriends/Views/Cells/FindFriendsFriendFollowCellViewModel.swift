@@ -28,7 +28,7 @@ public final class FindFriendsFriendFollowCellViewModel {
   }
 
   public func configureWith(friend: User) {
-    let friend = self.friendsFeature.cached(friend)
+    let friend = self.friendsFeature.userWithCachedFollowingStatus(friend)
     self.friend = friend
     self.imageURL = URL(string: friend.avatar.medium)
     self.location = friend.location?.displayableName ?? ""

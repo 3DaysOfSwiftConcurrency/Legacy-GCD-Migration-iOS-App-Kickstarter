@@ -18,7 +18,7 @@ public final class ActivityFriendFollowCellViewModel {
   }
 
   public func configureWith(activity: Activity) {
-    self.friend = activity.user.map { self.friendsFeature.cached($0) }
+    self.friend = activity.user.map { self.friendsFeature.userWithCachedFollowingStatus($0) }
     guard let friend = self.friend else { return }
     self.friendImageURL = URL(string: friend.avatar.small)
     let string = Strings.activity_user_name_is_now_following_you(user_name: "<b>\(friend.name)</b>")

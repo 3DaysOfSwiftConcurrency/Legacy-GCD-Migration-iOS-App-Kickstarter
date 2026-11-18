@@ -88,7 +88,13 @@ reopen or replace the completed CFA migration ledger.
   --check passed. The signing-disabled generic Library-iOS simulator build was blocked
   during Swift package resolution. DiscussionFeatureTests and comment ViewModel tests
   could not run because CoreSimulator refused connections.
+- Friends: userWithCachedFollowingStatus explains the returned user. Named the cached
+  values and the newest queued follow write per session. Updated Find Friends, Activity
+  follow cells, and focused tests. Swift parsing and git diff --check passed. The
+  signing-disabled generic Library-iOS simulator build was blocked during Swift package
+  resolution. FriendsFeatureTests and follow cell ViewModel tests could not run because
+  CoreSimulator refused connections.
 
 ## Current slice
 
-- Friends Feature and its follow and pagination callers.
+- Help Feature and the Help Web screen.
