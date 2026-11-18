@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Semantically review 63 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "nextAction": "Trace the Statsig debug and VideoFeed share-sheet routes, then continue lifecycle review of remaining screen candidates.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6268,6 +6268,13 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "cfa-engine-audit",
       "outcome": "observed",
       "summary": "Fingerprint ea65adc55f7b6f9558da78b160b7b7e91c30fdb9c80eb139a6d6fc15291ca6e4; 2184 Swift files; 63 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":22,\"view-model-ownership\":1}."
+    },
+    {
+      "id": "reusable-presentation-semantic-review",
+      "revision": "91377eda6",
+      "kind": "source-review",
+      "outcome": "passed",
+      "summary": "Semantic CFA review confirmed these scanner candidates are reusable presentation components rather than feature-owning screens: VideoFeedBannerView, OnboardingItemView, EstimatedShippingCheckoutView, PPOEmptyStateView, ReportProjectLabelView, FundedPercentageCircleView, VideoFeedBottomOverlayView, VideoFeedOverlayView, VideoFeedProgressBarView, VideoFeedRightRailView, VideoFeedToastContainerView and VideoFeedToastView. They receive immutable display data, bindings, player state or UI event closures from their owning screen and do not acquire AppModel or Feature dependencies. Their view-scoped tasks use task identity/cancellation checks."
     }
   ],
   "attempts": [
@@ -6346,6 +6353,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",
       "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Semantically reviewed reusable presentation scanner candidates.",
+      "result": "The reviewed candidates are display components owned by parent screens; no feature boundary or dedicated ViewModel is required."
     }
   ],
   "blocker": null,
