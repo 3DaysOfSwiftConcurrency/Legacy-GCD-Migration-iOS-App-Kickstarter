@@ -100,7 +100,13 @@ reopen or replace the completed CFA migration ledger.
   disabled generic Library-iOS simulator build was blocked during Swift package
   resolution. HelpFeatureTests and HelpWebViewModelTests could not run because
   CoreSimulator refused connections.
+- Messaging: named searchMessageThreads for the results the search screen receives, the
+  retained mailboxes by route, and the session guard against obsolete results. Reviewed
+  mailbox, search, and send tests. Swift parsing and git diff --check passed. The
+  signing-disabled generic Library-iOS simulator build was blocked during Swift package
+  resolution. MessagingFeatureTests and message search tests could not run because
+  CoreSimulator refused connections.
 
 ## Current slice
 
-- Messaging Feature and the mailbox and thread screens.
+- Onboarding Feature and permission presentation.

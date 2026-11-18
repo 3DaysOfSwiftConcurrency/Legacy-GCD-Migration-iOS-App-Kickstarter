@@ -57,7 +57,7 @@ public final class MessagingFeature {
   private var session: Session {
     Session(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
-  private func requireCurrent(_ session: Session) throws {
+  private func ensureMessagingSessionIsCurrent(_ session: Session) throws {
     try Task.checkCancellation()
     guard self.session == session else { throw CancellationError() }
   }
@@ -91,26 +91,26 @@ public final class MessagingFeature {
       self.mailbox = mailbox; self.project = project; self.session = session
     }
   }
-  private var mailboxes: [UUID: MailboxRoute] = [:]
-  public func snapshot(route: UUID) -> MailboxSnapshot { self.mailboxes[route]?.snapshot ?? MailboxSnapshot() }
+  private var mailboxStatesByRoute: [UUID: MailboxRoute] = [:]
+  public func snapshot(route: UUID) -> MailboxSnapshot { self.mailboxStatesByRoute[route]?.snapshot ?? MailboxSnapshot() }
 
   @discardableResult
   public func requestMailbox(
     route: UUID, mailbox: Mailbox, project: Project?, refresh: Bool = false
   ) -> Task<Void, Never> {
-    if !refresh, let existing = self.mailboxes[route], existing.mailbox == mailbox,
+    if !refresh, let existing = self.mailboxStatesByRoute[route], existing.mailbox == mailbox,
        existing.project?.id == project?.id, existing.session == self.session,
        let request = existing.request { return request.task }
-    let previous = self.mailboxes[route]
+    let previous = self.mailboxStatesByRoute[route]
     previous?.request?.task.cancel()
     let state = MailboxRoute(mailbox: mailbox, project: project, session: self.session)
-    self.mailboxes[route] = state
+    self.mailboxStatesByRoute[route] = state
     return self.startPage(route: route, state: state, cursor: nil)
   }
 
   @discardableResult
   public func requestNextPage(route: UUID) -> Task<Void, Never>? {
-    guard let state = self.mailboxes[route], state.session == self.session else { return nil }
+    guard let state = self.mailboxStatesByRoute[route], state.session == self.session else { return nil }
     if let request = state.request { return request.task }
     guard let cursor = state.cursor else { return nil }
     return self.startPage(route: route, state: state, cursor: cursor)
@@ -125,23 +125,23 @@ public final class MessagingFeature {
     let task = Task { [weak self, sleep] in
       guard let self else { return }
       defer {
-        if self.mailboxes[route]?.request?.id == id {
+        if self.mailboxStatesByRoute[route]?.request?.id == id {
           state.request = nil
           state.snapshot.isLoading = false
         }
       }
       do {
-        try self.requireCurrent(state.session)
+        try self.ensureMessagingSessionIsCurrent(state.session)
         let envelope = try await provider.page(mailbox: state.mailbox, project: state.project, cursor: cursor)
         try await sleep(delay)
-        try self.requireCurrent(state.session)
-        guard self.mailboxes[route]?.request?.id == id else { return }
+        try self.ensureMessagingSessionIsCurrent(state.session)
+        guard self.mailboxStatesByRoute[route]?.request?.id == id else { return }
         // Preserve the original concatenation and empty-page sentinel.
         state.cursor = envelope.messageThreads.isEmpty ? nil : envelope.urls.api.moreMessageThreads
         state.snapshot.threads += envelope.messageThreads
       } catch {
         guard !Task.isCancelled, self.session == state.session,
-              self.mailboxes[route]?.request?.id == id else { return }
+              self.mailboxStatesByRoute[route]?.request?.id == id else { return }
         state.snapshot.error = (error as? ErrorEnvelope) ?? .couldNotParseJSON
       }
     }
@@ -150,47 +150,47 @@ public final class MessagingFeature {
   }
 
   public func release(route: UUID) {
-    self.mailboxes.removeValue(forKey: route)?.request?.task.cancel()
+    self.mailboxStatesByRoute.removeValue(forKey: route)?.request?.task.cancel()
   }
 
   public func reset() {
-    for route in self.mailboxes.values { route.request?.task.cancel() }
-    self.mailboxes = [:]
+    for route in self.mailboxStatesByRoute.values { route.request?.task.cancel() }
+    self.mailboxStatesByRoute = [:]
   }
 
-  public func search(query: String, project: Project?) async throws -> [MessageThread] {
+  public func searchMessageThreads(query: String, project: Project?) async throws -> [MessageThread] {
     guard !query.isEmpty else { return [] }
     let session = self.session
-    try self.requireCurrent(session)
+    try self.ensureMessagingSessionIsCurrent(session)
     let value = try await self.makeProvider().search(query: query, project: project)
-    try self.requireCurrent(session)
+    try self.ensureMessagingSessionIsCurrent(session)
     return value.messageThreads
   }
 
   public func thread(id: Int) async throws -> MessageThreadEnvelope? {
     let session = self.session
-    try self.requireCurrent(session)
+    try self.ensureMessagingSessionIsCurrent(session)
     let value = try await self.makeProvider().thread(id: id)
-    try self.requireCurrent(session)
+    try self.ensureMessagingSessionIsCurrent(session)
     return value
   }
 
   public func thread(backing: Backing) async throws -> MessageThreadEnvelope? {
     let session = self.session
-    try self.requireCurrent(session)
+    try self.ensureMessagingSessionIsCurrent(session)
     let value = try await self.makeProvider().thread(backing: backing)
-    try self.requireCurrent(session)
+    try self.ensureMessagingSessionIsCurrent(session)
     return value
   }
 
   public func backing(id: Int?, project: Project, user: User) async throws -> Backing {
     let session = self.session
-    try self.requireCurrent(session)
+    try self.ensureMessagingSessionIsCurrent(session)
     let provider = self.makeProvider()
     let value: Backing
     if let id { value = try await provider.backing(id: id) }
     else { value = try await provider.backing(project: project, user: user) }
-    try self.requireCurrent(session)
+    try self.ensureMessagingSessionIsCurrent(session)
     return value
   }
 
@@ -226,13 +226,13 @@ public final class MessagingFeature {
         if self.sends[destination]?.id == id { self.sends[destination] = nil }
       }
       if let previous { _ = await previous.task.result }
-      try self.requireCurrent(destination.session)
+      try self.ensureMessagingSessionIsCurrent(destination.session)
       do {
         let message = try await provider.send(body: body, subject: subject)
-        try self.requireCurrent(destination.session)
+        try self.ensureMessagingSessionIsCurrent(destination.session)
         return message
       } catch {
-        try self.requireCurrent(destination.session)
+        try self.ensureMessagingSessionIsCurrent(destination.session)
         throw error
       }
     }
@@ -255,13 +255,13 @@ public final class MessagingFeature {
     let provider = self.makeProvider()
     let task = Task { [self] in
       defer { self.readWrites[key] = nil }
-      try self.requireCurrent(key.session)
+      try self.ensureMessagingSessionIsCurrent(key.session)
       do {
         let value = try await provider.markRead(thread)
-        try self.requireCurrent(key.session)
+        try self.ensureMessagingSessionIsCurrent(key.session)
         return value
       } catch {
-        try self.requireCurrent(key.session)
+        try self.ensureMessagingSessionIsCurrent(key.session)
         throw error
       }
     }
@@ -271,8 +271,8 @@ public final class MessagingFeature {
 
   public func waitForOperations() async {
     while !self.sendTasks.isEmpty || !self.readWrites.isEmpty
-      || self.mailboxes.values.contains(where: { $0.request != nil }) {
-      for route in Array(self.mailboxes.values) { await route.request?.task.value }
+      || self.mailboxStatesByRoute.values.contains(where: { $0.request != nil }) {
+      for route in Array(self.mailboxStatesByRoute.values) { await route.request?.task.value }
       for task in Array(self.sendTasks.values) { _ = await task.result }
       for task in Array(self.readWrites.values) { _ = await task.result }
       await Task.yield()

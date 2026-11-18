@@ -53,7 +53,7 @@ public final class MessagesSearchViewModel {
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.isVisible, self.didLoad, self.revision == revision else { return }
-        let results = try await messagingFeature.search(query: query, project: self.project)
+        let results = try await messagingFeature.searchMessageThreads(query: query, project: self.project)
         try Task.checkCancellation()
         guard self.isVisible, self.revision == revision else { return }
         self.messageThreads = results
