@@ -27,7 +27,11 @@ internal final class SettingsViewControllerTests: TestCase {
   )
   private lazy var composition = SettingsComposition(
     settingsFeature: self.settingsFeature,
-    findFriends: self.findFriendsComposition
+    findFriends: self.findFriendsComposition,
+    notifications: SettingsNotificationsComposition(
+      settingsFeature: self.settingsFeature,
+      isVoiceOverRunning: { false }
+    )
   )
 
   override func setUp() async throws {

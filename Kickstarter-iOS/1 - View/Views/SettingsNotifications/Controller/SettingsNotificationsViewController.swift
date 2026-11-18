@@ -8,11 +8,20 @@ internal final class SettingsNotificationsViewController: UIViewController {
   @IBOutlet fileprivate var emailFrequencyPickerView: UIPickerView!
   @IBOutlet fileprivate var emailPickerViewTopConstraint: NSLayoutConstraint!
 
-  private let viewModel = SettingsNotificationsViewModel(settingsFeature: AppModel.shared.settingsFeature)
-  private let dataSource: SettingsNotificationsDataSource = SettingsNotificationsDataSource()
+  private var composition: SettingsNotificationsComposition!
+  private lazy var viewModel = SettingsNotificationsViewModel(
+    settingsFeature: self.composition.settingsFeature
+  )
+  private lazy var dataSource = SettingsNotificationsDataSource(
+    settingsFeature: self.composition.settingsFeature
+  )
 
-  internal static func instantiate() -> SettingsNotificationsViewController {
-    return Storyboard.SettingsNotifications.instantiate(SettingsNotificationsViewController.self)
+  internal static func instantiate(
+    composition: SettingsNotificationsComposition
+  ) -> SettingsNotificationsViewController {
+    let viewController = Storyboard.SettingsNotifications.instantiate(SettingsNotificationsViewController.self)
+    viewController.composition = composition
+    return viewController
   }
 
   internal override func viewDidLoad() {
@@ -93,7 +102,7 @@ internal final class SettingsNotificationsViewController: UIViewController {
           self.view.gestureRecognizers?.removeAll()
         }
 
-        if !isHidden, AppEnvironment.current.isVoiceOverRunning() {
+        if !isHidden, self.composition.isVoiceOverRunning() {
           // Tells VoiceOver to ignore other elements in the same parent view
           self.emailFrequencyPickerView.accessibilityViewIsModal = true
 
@@ -107,7 +116,7 @@ internal final class SettingsNotificationsViewController: UIViewController {
         self.view.layoutIfNeeded()
       },
       completion: { [weak self] _ in
-        if isHidden, AppEnvironment.current.isVoiceOverRunning() {
+        if isHidden, self?.composition.isVoiceOverRunning() == true {
           // Tells VoiceOver to re-enable focus on other elements in the same parent view
           self?.emailFrequencyPickerView.accessibilityViewIsModal = false
 

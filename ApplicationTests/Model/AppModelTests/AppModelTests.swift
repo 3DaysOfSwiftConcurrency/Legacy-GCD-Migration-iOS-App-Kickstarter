@@ -479,6 +479,7 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(first.findFriendsComposition.friendsFeature === first.friendsFeature)
     XCTAssertTrue(first.findFriendsComposition.settingsFeature === first.settingsFeature)
     XCTAssertTrue(first.settingsComposition.findFriends.friendsFeature === first.friendsFeature)
+    XCTAssertTrue(first.settingsComposition.notifications.settingsFeature === first.settingsFeature)
     XCTAssertTrue(first.discoveryComposition.findFriends.friendsFeature === first.friendsFeature)
     XCTAssertTrue(
       first.rootTabComposition.backerDashboard.settings.findFriends.friendsFeature === first.friendsFeature

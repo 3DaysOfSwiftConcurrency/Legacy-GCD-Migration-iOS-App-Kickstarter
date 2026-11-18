@@ -20,7 +20,7 @@ final class SettingsNotificationCell: UITableViewCell, NibLoading, ValueCell {
 
   weak var delegate: SettingsNotificationCellDelegate?
 
-  private let viewModel = SettingsNotificationCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
+  private var viewModel: SettingsNotificationCellViewModel?
   private lazy var tapGesture: UITapGestureRecognizer = {
     UITapGestureRecognizer(target: self, action: #selector(self.cellBackgroundTapped))
   }()
@@ -32,9 +32,12 @@ final class SettingsNotificationCell: UITableViewCell, NibLoading, ValueCell {
   }
 
   func configureWith(value cellValue: SettingsNotificationCellValue) {
+    guard let viewModel else {
+      preconditionFailure("SettingsNotificationCell requires SettingsFeature composition.")
+    }
     self.notificationType = cellValue.cellType
 
-    self.viewModel.configure(with: cellValue)
+    viewModel.configure(with: cellValue)
 
     let accessibilityElementsHidden = cellValue.cellType.accessibilityElementsHidden
 
@@ -110,29 +113,30 @@ final class SettingsNotificationCell: UITableViewCell, NibLoading, ValueCell {
       )
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
-
-    self.viewModel.onChange = { [weak self] in self?.renderNotificationState() }
-    self.viewModel.onUserUpdated = { [weak self] user in
+  func configure(settingsFeature: SettingsFeature) {
+    guard self.viewModel == nil else { return }
+    let viewModel = SettingsNotificationCellViewModel(settingsFeature: settingsFeature)
+    self.viewModel = viewModel
+    viewModel.onChange = { [weak self] in self?.renderNotificationState() }
+    viewModel.onUserUpdated = { [weak self] user in
       guard let self else { return }
       self.delegate?.settingsNotificationCell(self, didUpdateUser: user)
     }
-    self.viewModel.onError = { [weak self] error in
+    viewModel.onError = { [weak self] error in
       guard let self else { return }
       self.delegate?.settingsNotificationCell(self, didFailToUpdateUser: error)
     }
   }
 
   private func renderNotificationState() {
-    guard let type = self.viewModel.cellType else { return }
-    if let enabled = self.viewModel.emailEnabled {
+    guard let viewModel, let type = viewModel.cellType else { return }
+    if let enabled = viewModel.emailEnabled {
       self.emailNotificationsButton.isSelected = enabled
       self.emailNotificationsButton.accessibilityLabel = enabled
         ? Strings.Notification_email_notification_on(notification: type.title)
         : Strings.Notification_email_notification_off(notification: type.title)
     }
-    if let enabled = self.viewModel.pushEnabled {
+    if let enabled = viewModel.pushEnabled {
       self.pushNotificationsButton.isSelected = enabled
       self.pushNotificationsButton.accessibilityLabel = enabled
         ? Strings.Notification_push_notification_on(notification: type.title)
@@ -140,7 +144,7 @@ final class SettingsNotificationCell: UITableViewCell, NibLoading, ValueCell {
     }
     self.emailNotificationsButton.isHidden = !type.shouldShowEmailNotificationButton
     self.pushNotificationsButton.isHidden = !type.shouldShowPushNotificationButton
-    self.projectCountLabel.text = self.viewModel.projectCountText
+    self.projectCountLabel.text = viewModel.projectCountText
     if type.shouldShowEmailNotificationButton || type.shouldShowPushNotificationButton {
       self.addGestureRecognizer(self.tapGesture)
     } else {
@@ -149,11 +153,11 @@ final class SettingsNotificationCell: UITableViewCell, NibLoading, ValueCell {
   }
 
   @IBAction func emailNotificationsButtonTapped(_ sender: UIButton) {
-    self.viewModel.didTapEmailNotificationsButton(selected: sender.isSelected)
+    self.viewModel?.didTapEmailNotificationsButton(selected: sender.isSelected)
   }
 
   @IBAction func pushNotificationsButtonTapped(_ sender: UIButton) {
-    self.viewModel.didTapPushNotificationsButton(selected: sender.isSelected)
+    self.viewModel?.didTapPushNotificationsButton(selected: sender.isSelected)
   }
 
   @IBAction func cellBackgroundTapped(_: Any) {

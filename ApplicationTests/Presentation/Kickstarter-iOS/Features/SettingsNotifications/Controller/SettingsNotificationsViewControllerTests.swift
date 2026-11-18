@@ -8,6 +8,19 @@ import SnapshotTesting
 import UIKit
 
 final class SettingsNotificationsViewControllerTests: TestCase {
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var settingsFeature = SettingsFeature(
+    sessionFeature: self.sessionFeature,
+    responseDeliverySleep: { _ in },
+    makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var composition = SettingsNotificationsComposition(
+    settingsFeature: self.settingsFeature,
+    isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
+  )
+
   override func setUp() async throws {
     try await super.setUp()
     UIView.setAnimationsEnabled(false)
@@ -35,8 +48,8 @@ final class SettingsNotificationsViewControllerTests: TestCase {
         currentUser: currentUser,
         language: language
       ) {
-        let controller = Storyboard.SettingsNotifications.instantiate(
-          SettingsNotificationsViewController.self
+        let controller = SettingsNotificationsViewController.instantiate(
+          composition: self.composition
         )
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 
@@ -64,8 +77,8 @@ final class SettingsNotificationsViewControllerTests: TestCase {
         currentUser: currentUser,
         language: language
       ) {
-        let controller = Storyboard.SettingsNotifications.instantiate(
-          SettingsNotificationsViewController.self
+        let controller = SettingsNotificationsViewController.instantiate(
+          composition: self.composition
         )
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 

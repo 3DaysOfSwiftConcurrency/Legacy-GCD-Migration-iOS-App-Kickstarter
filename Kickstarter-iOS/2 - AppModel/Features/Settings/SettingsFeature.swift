@@ -129,6 +129,7 @@ public final class SettingsFeature {
   private let hasStoredCredentials: @MainActor () -> Bool
   private let applicationVersion: @MainActor () -> String
   private let responseDelay: @MainActor () -> TimeInterval
+  private let identifyUser: @MainActor (User) -> Void
   private let responseDeliverySleep: (TimeInterval) async throws -> Void
   private let refreshDebounce: @MainActor () async throws -> Void
   private var scheduledRefresh: Task<Void, Never>?
@@ -166,6 +167,7 @@ public final class SettingsFeature {
     hasStoredCredentials: @escaping @MainActor () -> Bool = { false },
     applicationVersion: @escaping @MainActor () -> String = { "" },
     responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
+    identifyUser: @escaping @MainActor (User) -> Void = { _ in },
     refreshDebounce: @escaping @MainActor () async throws -> Void = {
       try await Task.sleep(for: .seconds(5))
     },
@@ -179,6 +181,7 @@ public final class SettingsFeature {
     self.hasStoredCredentials = hasStoredCredentials
     self.applicationVersion = applicationVersion
     self.responseDelay = responseDelaySeconds
+    self.identifyUser = identifyUser
     self.responseDeliverySleep = responseDeliverySleep
     self.refreshDebounce = refreshDebounce
     self.makeProvider = makeProvider
@@ -186,6 +189,10 @@ public final class SettingsFeature {
 
   public var responseDelaySeconds: TimeInterval { self.responseDelay() }
   public var appVersionString: String { self.applicationVersion() }
+
+  public func identifyUpdatedUser(_ user: User) {
+    self.identifyUser(user)
+  }
 
   public func waitForResponseDelivery() async throws {
     try await self.responseDeliverySleep(self.responseDelaySeconds)

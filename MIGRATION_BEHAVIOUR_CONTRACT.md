@@ -2463,3 +2463,15 @@ safe for arbitrary concurrent environment mutation.
 - Focused main-module coverage passes 5 tests and focused Newsletters data-source, parent
   Settings and Root Tabs presentation coverage passes 12 tests. Reference snapshots and live
   switch interaction remain unverified because the required reference simulator is unavailable.
+
+## Settings Notifications composition — 18 November 2026
+
+- Settings passes a Notifications composition containing the existing AppModel-owned
+  SettingsFeature and VoiceOver policy through the controller and data source to every
+  notification cell view model.
+- Preference response timing and updated-user identity reporting now belong to SettingsFeature.
+  Loading, email-frequency selection, switch rollback, accessibility focus and error behavior
+  preserve their established presentation and ordering.
+- Focused main-module coverage passes 7 tests and focused Notifications data-source, parent
+  Settings and Root Tabs presentation coverage passes 17 tests. Reference snapshots, live
+  VoiceOver interaction and the Project Notifications child route remain unverified.

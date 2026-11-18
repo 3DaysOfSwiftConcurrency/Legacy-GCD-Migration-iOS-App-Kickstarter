@@ -70,7 +70,7 @@ public final class SettingsNotificationsViewModel {
     let id = UUID()
     let settingsFeature = self.settingsFeature
     let sleep = self.sleep
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = settingsFeature.responseDelaySeconds
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
@@ -91,7 +91,7 @@ public final class SettingsNotificationsViewModel {
 
   public func dismissPickerTap() { self.setPickerHidden(true) }
   public func updateUser(user: User) {
-    AppEnvironment.current.identify(user: user)
+    self.settingsFeature.identifyUpdatedUser(user)
     self.display(user)
   }
   public func failedToUpdateUser(error: String) { self.onError?(error) }

@@ -295,10 +295,29 @@ public struct FindFriendsComposition {
 public struct SettingsComposition {
   public let settingsFeature: SettingsFeature
   public let findFriends: FindFriendsComposition
+  public let notifications: SettingsNotificationsComposition
 
-  public init(settingsFeature: SettingsFeature, findFriends: FindFriendsComposition) {
+  public init(
+    settingsFeature: SettingsFeature,
+    findFriends: FindFriendsComposition,
+    notifications: SettingsNotificationsComposition
+  ) {
     self.settingsFeature = settingsFeature
     self.findFriends = findFriends
+    self.notifications = notifications
+  }
+}
+
+public struct SettingsNotificationsComposition {
+  public let settingsFeature: SettingsFeature
+  public let isVoiceOverRunning: () -> Bool
+
+  public init(
+    settingsFeature: SettingsFeature,
+    isVoiceOverRunning: @escaping () -> Bool
+  ) {
+    self.settingsFeature = settingsFeature
+    self.isVoiceOverRunning = isVoiceOverRunning
   }
 }
 
@@ -485,7 +504,15 @@ public final class AppModel {
   public var settingsComposition: SettingsComposition {
     SettingsComposition(
       settingsFeature: self.settingsFeature,
-      findFriends: self.findFriendsComposition
+      findFriends: self.findFriendsComposition,
+      notifications: self.settingsNotificationsComposition
+    )
+  }
+
+  public var settingsNotificationsComposition: SettingsNotificationsComposition {
+    SettingsNotificationsComposition(
+      settingsFeature: self.settingsFeature,
+      isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
     )
   }
 
@@ -719,6 +746,7 @@ public final class AppModel {
       hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
       applicationVersion: { AppEnvironment.current.mainBundle.appVersionString },
       responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+      identifyUser: { AppEnvironment.current.identify(user: $0) },
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
     )
     let messagingFeature = MessagingFeature(

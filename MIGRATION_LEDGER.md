@@ -6027,3 +6027,32 @@ unavailable. Live switch interaction and the whole Library and Presentation suit
 unverified. The CFA gate rejects restored global selection across the complete Newsletters
 view graph and rejects its legacy parameterless factory. This is not full CFA compliance.
 Swift packages, target identifiers and existing history are unchanged. No push.
+
+### Settings Notifications composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes SettingsNotificationsComposition from its existing SettingsFeature and
+VoiceOver presentation policy. SettingsViewController passes that graph into
+SettingsNotificationsViewController, which constructs its view model and data source from it.
+The data source configures each SettingsNotificationCell with the same SettingsFeature before
+supplying its value, so the full screen graph no longer selects AppModel.shared.
+
+SettingsFeature now owns the response-delay and updated-user identity policies used by this
+route. The screen and cell view models no longer read AppEnvironment.current, while picker
+animation, VoiceOver modal focus, optimistic switch state, rollback, error presentation and
+save ordering remain unchanged.
+
+Focused AppModel graph, SettingsFeature, Notifications screen-model and notification cell-model
+coverage passed all 7 selected main-module tests. Focused Notifications data-source, parent
+Settings view-model and Root Tabs navigation coverage passed all 17 selected Presentation tests
+with zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-settings-notifications-composition-library.xcresult` and
+`/private/tmp/kickstarter-settings-notifications-composition-presentation.xcresult`.
+
+The Notifications reference snapshots compiled but were not executed because the required
+iPad mini (A17 Pro), iOS 18.6 simulator remains unavailable. Live VoiceOver and notification
+switch interaction remain unverified. ProjectNotificationsViewController remains a separate
+legacy child composition seam. The CFA gate rejects restored global selection across the
+Notifications screen graph and rejects its parameterless factory. This is not full CFA
+compliance. Swift packages, target identifiers and existing history are unchanged. No push.

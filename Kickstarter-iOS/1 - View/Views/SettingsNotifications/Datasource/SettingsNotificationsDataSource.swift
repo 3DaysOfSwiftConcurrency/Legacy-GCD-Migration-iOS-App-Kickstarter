@@ -4,7 +4,13 @@ import Prelude
 import UIKit
 
 final class SettingsNotificationsDataSource: ValueCellDataSource {
+  private let settingsFeature: SettingsFeature
   weak var cellDelegate: SettingsNotificationCellDelegate?
+
+  init(settingsFeature: SettingsFeature) {
+    self.settingsFeature = settingsFeature
+    super.init()
+  }
 
   func load(user: User) {
     _ = SettingsNotificationSectionType.allCases
@@ -68,6 +74,7 @@ final class SettingsNotificationsDataSource: ValueCellDataSource {
   override func configureCell(tableCell cell: UITableViewCell, withValue value: Any) {
     switch (cell, value) {
     case let (cell as SettingsNotificationCell, value as SettingsNotificationCellValue):
+      cell.configure(settingsFeature: self.settingsFeature)
       cell.configureWith(value: value)
       cell.delegate = self.cellDelegate
     case let (cell as SettingsNotificationPickerCell, value as SettingsNotificationCellValue):

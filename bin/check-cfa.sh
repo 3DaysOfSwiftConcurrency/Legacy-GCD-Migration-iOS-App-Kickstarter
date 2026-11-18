@@ -402,6 +402,13 @@ reject_matches 'Settings Newsletters receives SettingsFeature through its comple
   "$app_view/Views/SettingsNewsletters/Datasource/SettingsNewslettersDataSource.swift" \
   "$app_view/Views/SettingsNewsletters/Views/Cells/SettingsNewslettersCell.swift" \
   "$app_view/Views/SettingsNewsletters/Views/Cells/SettingsNewslettersTopCell.swift"
+reject_matches 'Settings Notifications receives composition through its complete view graph.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/SettingsNotifications/Controller/SettingsNotificationsViewController.swift" \
+  "$app_view/Views/SettingsNotifications/Controller/SettingsNotificationsViewModel.swift" \
+  "$app_view/Views/SettingsNotifications/Datasource/SettingsNotificationsDataSource.swift" \
+  "$app_view/Views/SettingsNotifications/Views/Cells/SettingsNotificationCell.swift" \
+  "$app_view/Views/SettingsNotifications/Views/Cells/SettingsNotificationCellViewModel.swift"
 reject_matches 'Find Friends models, data source and cells receive their Features from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' \
   "$app_view/Views/FindFriends/Controller/FindFriendsViewController.swift" \
@@ -411,7 +418,7 @@ reject_matches 'Find Friends models, data source and cells receive their Feature
   "$app_view/Views/Activities/Views/Cells/FindFriendsFacebookConnectCell.swift" \
   "$app_view/Views/Activities/Views/Cells/FindFriendsFacebookConnectCellViewModel.swift"
 reject_matches 'Find Friends entry points forward the composed feature graph.' \
-  'BackerDashboardViewController[.]instantiate[(][[:space:]]*messagingComposition:|SettingsViewController[.]instantiate[(][)]|SettingsAccountViewController[.]instantiate[(][)]|SettingsNewslettersViewController[.]instantiate[(][)]|FindFriendsViewController[.]configuredWith[(]source:[^,)]*[)]' \
+  'BackerDashboardViewController[.]instantiate[(][[:space:]]*messagingComposition:|SettingsViewController[.]instantiate[(][)]|SettingsAccountViewController[.]instantiate[(][)]|SettingsNewslettersViewController[.]instantiate[(][)]|SettingsNotificationsViewController[.]instantiate[(][)]|FindFriendsViewController[.]configuredWith[(]source:[^,)]*[)]' \
   "$app_view/Views/RootTabBar/RootTabBarViewController.swift" \
   "$app_view/Views/BackerDashboardPages/Controller/BackerDashboardViewController.swift" \
   "$app_view/Views/Settings/Controller/SettingsViewController.swift" \

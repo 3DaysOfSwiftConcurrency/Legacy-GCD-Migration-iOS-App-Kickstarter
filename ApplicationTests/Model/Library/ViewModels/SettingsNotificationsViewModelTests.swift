@@ -5,8 +5,10 @@ import XCTest
 @MainActor
 final class SettingsNotificationsViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let feature = SettingsFeature(
+  private var identifiedUsers: [User] = []
+  private lazy var feature = SettingsFeature(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
+    identifyUser: { [weak self] in self?.identifiedUsers.append($0) },
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var vm = SettingsNotificationsViewModel(settingsFeature: self.feature, sleep: { _ in })
@@ -39,6 +41,9 @@ final class SettingsNotificationsViewModelTests: TestCase {
       XCTAssertEqual(hidden, [true, false, true])
       XCTAssertEqual(navigated, 1)
       XCTAssertEqual(users, 3)
+      self.vm.updateUser(user: user)
+      XCTAssertEqual(self.identifiedUsers, [user])
+      XCTAssertEqual(users, 4)
     }
   }
 

@@ -214,7 +214,9 @@ extension SettingsViewController {
         settingsFeature: self.composition.settingsFeature
       )
     case .notifications:
-      return SettingsNotificationsViewController.instantiate()
+      return SettingsNotificationsViewController.instantiate(
+        composition: self.composition.notifications
+      )
     default:
       return nil
     }
