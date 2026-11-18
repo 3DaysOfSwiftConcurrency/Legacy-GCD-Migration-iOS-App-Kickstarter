@@ -6091,8 +6091,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "hybrid-review",
-  "nextAction": "Review the remaining coordination group: Friends, Messaging, Payments, Pledge, Profile, ProjectMedia, ProjectReporting, Recommendations and Rewards; run focused tests for reviewed slices.",
+  "phase": "final-audit",
+  "nextAction": "Perform a semantic final pass on residual inspector leads: ViewModel test placement, Help coverage, generic Sort coverage, previews, and reusable component ViewModel exceptions. Then run a fresh audit.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6170,6 +6170,13 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "source-and-test-review",
       "outcome": "passed",
       "summary": "Activity, Authentication, Discovery and Discussion each keep their own Feature state, use session generation/identity checks around async work, and cancel/release stale route work. Their focused LibraryTests passed on iPhone 17 Pro simulator: 93 passed, 0 failed."
+    },
+    {
+      "id": "remaining-feature-coordination-verification",
+      "revision": "1fbfb4eae",
+      "kind": "source-and-test-review",
+      "outcome": "passed",
+      "summary": "Friends, Messaging, Payments, Pledge, Profile, ProjectMedia, ProjectReporting, Recommendations and Rewards keep workflow state/task lifetimes in their own Features, coordinate through SessionFeature or SettingsFeature, and reject stale results. Their focused LibraryTests passed on iPhone 17 Pro simulator: 207 passed, 0 failed."
     }
   ],
   "attempts": [
@@ -6216,6 +6223,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Completed Activity, Authentication, Discovery and Discussion coordination review.",
       "result": "One Feature owns each workflow; session checks and route/task cancellation are independently covered by 93 passing focused tests."
+    },
+    {
+      "action": "Completed the remaining Feature coordination review.",
+      "result": "All remaining coordination candidates preserve a single Feature owner with generation-safe asynchronous work; 207 focused tests passed."
     }
   ],
   "blocker": null,
