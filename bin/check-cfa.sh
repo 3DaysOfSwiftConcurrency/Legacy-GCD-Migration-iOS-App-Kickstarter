@@ -192,7 +192,11 @@ reject_matches 'Project Page view models receive analytics, formatting, and stor
 reject_matches 'DiscoveryFeature receives services, storage, metadata, timing, and session from composition.' \
   'AppModel[.]shared|AppEnvironment' "$discovery_feature"
 reject_matches 'Discovery view models must receive feature dependencies from their controllers.' \
-  'AppModel[.]shared' "$app_view/Views/Discovery/*ViewModel.swift" "$app_view/Views/DiscoveryFilters/*ViewModel.swift"
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/Discovery/Controller/DiscoveryViewModel.swift" \
+  "$app_view/Views/Discovery/Controller/DiscoveryPageViewModel.swift"
+reject_matches 'Discovery filter view models must receive feature dependencies from their controllers.' \
+  'AppModel[.]shared' "$app_view/Views/DiscoveryFilters/*ViewModel.swift"
 reject_matches 'Discovery parent and page controllers receive their graph from Root Tabs.' \
   'AppModel[.]shared|AppEnvironment[.]current' \
   "$app_view/Views/Discovery/Controller/DiscoveryViewController.swift" \

@@ -32,6 +32,28 @@ enum DiscoveryCompositionError: Error { case missingCategoryLoader }
 /// Main-actor updates notify the existing UIKit presentation of changes.
 @MainActor @Observable
 public final class DiscoveryFeature {
+  public struct Analytics {
+    public let selectedSort: (DiscoveryParams.Sort, DiscoveryParams, DiscoveryParams.Sort) -> Void
+    public let discoveryViewed: (DiscoveryParams) -> Void
+    public let projectCardClicked: (Project, DiscoveryParams) -> Void
+
+    public init(
+      selectedSort: @escaping (DiscoveryParams.Sort, DiscoveryParams, DiscoveryParams.Sort) -> Void,
+      discoveryViewed: @escaping (DiscoveryParams) -> Void,
+      projectCardClicked: @escaping (Project, DiscoveryParams) -> Void
+    ) {
+      self.selectedSort = selectedSort
+      self.discoveryViewed = discoveryViewed
+      self.projectCardClicked = projectCardClicked
+    }
+
+    public static let noop = Self(
+      selectedSort: { _, _, _ in },
+      discoveryViewed: { _ in },
+      projectCardClicked: { _, _ in }
+    )
+  }
+
   public var serverEnvironment: EnvironmentType { self.resolveServerEnvironment() }
   public var isDebugBuild: Bool { self.resolveIsDebugBuild() }
   public struct PageSnapshot {
@@ -59,6 +81,7 @@ public final class DiscoveryFeature {
   private var recommendationDelivery: (id: UUID, task: Task<Void, Never>)?
   private var recommendationGeneration = 0
   private let provider: any DiscoveryProvider
+  private let analytics: Analytics
   private let loadCategories: @MainActor () async throws -> RootCategoriesEnvelope
   private let resolveCategoryCache: @MainActor () -> KSCache
   private let resolveLocalStore: (@MainActor () -> any KeyValueStoreType)?
@@ -273,6 +296,7 @@ public final class DiscoveryFeature {
 
   public init(
     provider: any DiscoveryProvider,
+    analytics: Analytics = .noop,
     loadCategories: (@MainActor () async throws -> RootCategoriesEnvelope)? = nil,
     categoryCache: (@MainActor () -> KSCache)? = nil,
     localStore: (@MainActor () -> any KeyValueStoreType)? = nil,
@@ -288,6 +312,7 @@ public final class DiscoveryFeature {
     sessionFeature: SessionFeature
   ) {
     self.provider = provider
+    self.analytics = analytics
     self.loadCategories = loadCategories ?? { throw DiscoveryCompositionError.missingCategoryLoader }
     let fallbackCategoryCache = KSCache()
     self.resolveCategoryCache = categoryCache ?? { fallbackCategoryCache }
@@ -298,6 +323,22 @@ public final class DiscoveryFeature {
     self.responseDelaySeconds = responseDelaySeconds
     self.sleep = sleep
     self.sessionFeature = sessionFeature
+  }
+
+  public func selectedSortChanged(
+    from previous: DiscoveryParams.Sort,
+    parameters: DiscoveryParams,
+    to current: DiscoveryParams.Sort
+  ) {
+    self.analytics.selectedSort(previous, parameters, current)
+  }
+
+  public func discoveryViewed(parameters: DiscoveryParams) {
+    self.analytics.discoveryViewed(parameters)
+  }
+
+  public func projectCardClicked(project: Project, parameters: DiscoveryParams) {
+    self.analytics.projectCardClicked(project, parameters)
   }
 
   func waitForDeepLinkResponse(_ seconds: TimeInterval) async throws {

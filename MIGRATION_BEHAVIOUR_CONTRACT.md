@@ -2361,3 +2361,13 @@ safe for arbitrary concurrent environment mutation.
 - Focused Discovery/AppModel coverage passes 65 tests and focused page-data-source/root
   navigation coverage passes 10 tests. Header construction, page analytics, save-cell
   dependencies, snapshots and live navigation remain explicit follow-up work.
+
+## Discovery analytics ownership — 18 November 2026
+
+- DiscoveryFeature owns semantic selected-sort, Discovery-viewed and project-card-clicked
+  analytics commands; AppModel supplies their live KSRAnalytics implementation.
+- DiscoveryViewModel and DiscoveryPageViewModel preserve their characterized event timing
+  while no longer selecting the process-global analytics environment.
+- Focused Discovery view-model coverage passes 57 tests and direct Feature API coverage
+  passes 1 test. Header construction, save-cell dependencies, snapshots, live navigation
+  and whole target suites remain unverified.

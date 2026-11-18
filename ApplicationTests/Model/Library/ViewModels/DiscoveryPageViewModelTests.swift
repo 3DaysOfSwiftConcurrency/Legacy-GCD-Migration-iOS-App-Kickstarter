@@ -15,6 +15,7 @@ internal final class DiscoveryPageViewModelTests: TestCase {
   private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
   private lazy var feature = DiscoveryFeature(
     provider: EnvironmentDiscoveryProvider(),
+    analytics: environmentDiscoveryAnalytics(),
     loadCategories: { try await AppEnvironment.current.apiService.fetchSearchCategories() },
     localStore: { AppEnvironment.current.userDefaults },
     cloudStore: { AppEnvironment.current.ubiquitousStore },

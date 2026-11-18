@@ -11,6 +11,35 @@ import XCTest
 final class DiscoveryFeatureTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
+  func testAnalyticsCommandsForwardDomainValues() {
+    var sorts: [(DiscoveryParams.Sort, DiscoveryParams, DiscoveryParams.Sort)] = []
+    var views: [DiscoveryParams] = []
+    var clicks: [(Int, DiscoveryParams)] = []
+    let parameters = DiscoveryParams.defaults |> DiscoveryParams.lens.sort .~ .popular
+    let project = Project.template |> Project.lens.id .~ 42
+    let feature = DiscoveryFeature(
+      provider: ControlledDiscoveryProvider(),
+      analytics: .init(
+        selectedSort: { sorts.append(($0, $1, $2)) },
+        discoveryViewed: { views.append($0) },
+        projectCardClicked: { clicks.append(($0.id, $1)) }
+      ),
+      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+    )
+
+    feature.selectedSortChanged(from: .magic, parameters: parameters, to: .popular)
+    feature.discoveryViewed(parameters: parameters)
+    feature.projectCardClicked(project: project, parameters: parameters)
+
+    XCTAssertEqual(sorts.count, 1)
+    XCTAssertEqual(sorts.first?.0, .magic)
+    XCTAssertEqual(sorts.first?.1, parameters)
+    XCTAssertEqual(sorts.first?.2, .popular)
+    XCTAssertEqual(views, [parameters])
+    XCTAssertEqual(clicks.first?.0, 42)
+    XCTAssertEqual(clicks.first?.1, parameters)
+  }
+
   func testRecommendationAvailabilityRejectsCompletionAfterSessionReset() async throws {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }

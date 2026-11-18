@@ -4581,6 +4581,29 @@ CFA gate rejects restored global selection in the parent/page controllers and de
 construction from Root Tabs or the page data source. This is not full CFA compliance.
 Swift packages, target identifiers and existing history are unchanged. No push.
 
+### Discovery analytics ownership — 18 November 2026
+
+Author: Matthew Thomas.
+
+DiscoveryFeature now owns the semantic selected-sort, Discovery-viewed and project-card
+analytics commands. DiscoveryViewModel and DiscoveryPageViewModel forward domain values
+to that Feature instead of resolving the process-global analytics environment. AppModel
+provides the live KSRAnalytics adapter, preserving the existing event names, contexts and
+timing. Focused tests characterize forwarding at both the view-model and Feature API
+boundaries.
+
+Focused DiscoveryPageViewModelTests and DiscoveryViewModelTests passed all 57 tests. The
+direct DiscoveryFeature analytics test passed 1 test. Both runs had zero failures and
+skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-discovery-analytics-library.xcresult` and
+`/private/tmp/kickstarter-discovery-analytics-feature-final.xcresult`.
+
+Discovery header construction and project save-cell dependencies remain follow-up work.
+Snapshots, live navigation and the whole Library and Presentation suites remain
+unverified. The CFA gate rejects restored AppModel or AppEnvironment access in the two
+migrated Discovery view models. This is not full CFA compliance. Swift packages, target
+identifiers and existing history are unchanged. No push.
+
 ### Root Tabs reads floating policy through Settings — 17 November 2026
 
 Author: Matthew Thomas.

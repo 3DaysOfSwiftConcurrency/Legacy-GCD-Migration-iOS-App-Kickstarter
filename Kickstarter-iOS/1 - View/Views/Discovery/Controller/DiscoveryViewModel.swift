@@ -114,30 +114,13 @@ final class DiscoveryViewModel {
     }
     if isUserAction, self.previousUserSort != sort {
       if let params = self.currentParameters {
-        AppEnvironment.current.ksrAnalytics.trackDiscoverySelectedSort(
-          prevSort: self.previousUserSort, params: params,
-          discoverySortContext: self.getDiscoverySortTypeContext(from: sort)
+        self.discoveryFeature.selectedSortChanged(
+          from: self.previousUserSort,
+          parameters: params,
+          to: sort
         )
       }
       self.previousUserSort = sort
-    }
-  }
-
-  /// convert DiscoveryParams.Sort to TypeContext.DiscoverySortContext
-  private func getDiscoverySortTypeContext(
-    from sort: DiscoveryParams.Sort
-  ) -> KSRAnalytics.TypeContext.DiscoverySortContext {
-    switch sort {
-    case .endingSoon: return .endingSoon
-    case .magic: return .magic
-    case .newest: return .newest
-    case .popular: return .popular
-    default:
-      assert(
-        false,
-        "The other sort types were added for GraphQL compatibility, and should never come up in V1 Discover."
-      )
-      return .magic
     }
   }
 

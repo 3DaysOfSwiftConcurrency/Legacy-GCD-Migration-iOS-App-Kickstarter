@@ -607,6 +607,38 @@ public final class AppModel {
     )
     let discoveryFeature = DiscoveryFeature(
       provider: AsyncDiscoveryProvider(service: AppEnvironment.current.apiService),
+      analytics: .init(
+        selectedSort: { previous, parameters, current in
+          let context: KSRAnalytics.TypeContext.DiscoverySortContext
+          switch current {
+          case .endingSoon: context = .endingSoon
+          case .magic: context = .magic
+          case .newest: context = .newest
+          case .popular: context = .popular
+          default:
+            assert(
+              false,
+              "The other sort types were added for GraphQL compatibility, and should never come up in V1 Discover."
+            )
+            context = .magic
+          }
+          AppEnvironment.current.ksrAnalytics.trackDiscoverySelectedSort(
+            prevSort: previous,
+            params: parameters,
+            discoverySortContext: context
+          )
+        },
+        discoveryViewed: { AppEnvironment.current.ksrAnalytics.trackDiscovery(params: $0) },
+        projectCardClicked: {
+          AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(
+            page: .discovery,
+            project: $0,
+            typeContext: .init(params: $1),
+            location: .discoverAdvanced,
+            params: $1
+          )
+        }
+      ),
       loadCategories: { try await AppEnvironment.current.apiService.fetchSearchCategories() },
       categoryCache: { AppEnvironment.current.cache },
       localStore: { AppEnvironment.current.userDefaults },

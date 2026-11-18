@@ -241,7 +241,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   private func requestFirstPage(_ parameters: DiscoveryParams) {
     guard let sort = self.currentSort else { return }
     self.pageTask = self.discoveryFeature.requestRefresh(sort: sort, parameters: parameters, force: true)
-    if self.hasWillAppeared { AppEnvironment.current.ksrAnalytics.trackDiscovery(params: parameters) }
+    if self.hasWillAppeared { self.discoveryFeature.discoveryViewed(parameters: parameters) }
   }
 
   private var hasPulledToRefresh = false
@@ -372,10 +372,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
       self.onGoToProjectPlaylist?(project, projects, .fromParams(parameters))
     }
     if let parameters = self.currentNavigationParameters {
-      AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(
-        page: .discovery, project: project, typeContext: .init(params: parameters),
-        location: .discoverAdvanced, params: parameters
-      )
+      self.discoveryFeature.projectCardClicked(project: project, parameters: parameters)
     }
   }
 
@@ -404,7 +401,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
     self.refreshCurrentUser()
     self.hasWillAppeared = true
     if let parameters = self.lastReadyParameters {
-      AppEnvironment.current.ksrAnalytics.trackDiscovery(params: parameters)
+      self.discoveryFeature.discoveryViewed(parameters: parameters)
     }
     if !self.hasAppearedForLoading {
       self.hasAppearedForLoading = true
