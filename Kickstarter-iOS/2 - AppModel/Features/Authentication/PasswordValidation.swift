@@ -2,8 +2,8 @@ import Foundation
 
 public typealias Password = String
 
-public func passwordLengthValid(_ pw: Password) -> Bool {
-  return pw.count > 5
+public func passwordLengthValid(_ password: Password) -> Bool {
+  return password.count > 5
 }
 
 public func passwordFormValid(_ requirements: (notEmpty: Bool, match: Bool, length: Bool)) -> Bool {

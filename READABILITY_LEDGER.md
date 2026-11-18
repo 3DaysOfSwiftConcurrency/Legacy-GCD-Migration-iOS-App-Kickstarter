@@ -234,3 +234,8 @@ callers or tests affected by a rename.
   bytes in identity Codable methods, checkout tracking properties, and the Braze
   integration key. Checked attribution callers and checkout and identity tracking
   tests. Swift parsing, Swift token comparison and git diff --check passed.
+
+- Authentication and Discovery helpers. Named password length and email format inputs,
+  the authorization code and PKCE values, and the lookup that resolves a category or
+  subcategory from a deep link. Reviewed OAuth and discovery routing tests. Swift
+  parsing, Swift token comparison and git diff --check passed.

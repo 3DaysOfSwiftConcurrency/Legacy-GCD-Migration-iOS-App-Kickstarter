@@ -14,22 +14,22 @@ extension DiscoveryFeature {
     guard let category else { return params }
     let envelope = try await self.rootCategories()
     try Task.checkCancellation()
-    let matched = findCategoryFromRootCategories(
+    let matchedCategory = findCategoryFromRootCategories(
       envelope: envelope, categoryParam: category, subcategoryParam: subcategory
     )
     try await self.waitForDeepLinkResponse(responseDelay)
     try Task.checkCancellation()
-    return params |> DiscoveryParams.lens.category .~ matched
+    return params |> DiscoveryParams.lens.category .~ matchedCategory
   }
 }
 
 private func deepLinkCategories(rawParams: [String: String]) -> (Param?, Param?) {
-  let parentCategoryParams = rawParams["parent_category_id"]
-  let subCategoryParams = rawParams["category_id"]
+  let parentCategoryQueryValue = rawParams["parent_category_id"]
+  let categoryQueryValue = rawParams["category_id"]
   var categoryParam: Param?
   var subcategoryParam: Param?
 
-  let rawId: (String?) -> Int? = { rawParam in
+  let parseCategoryID: (String?) -> Int? = { rawParam in
     guard let rawParamValue = rawParam else {
       return .none
     }
@@ -37,7 +37,7 @@ private func deepLinkCategories(rawParams: [String: String]) -> (Param?, Param?)
     return Int(rawParamValue)
   }
 
-  let rawName: (String?) -> String? = { rawParam in
+  let readCategorySlug: (String?) -> String? = { rawParam in
     guard let rawParamValue = rawParam else {
       return .none
     }
@@ -45,22 +45,22 @@ private func deepLinkCategories(rawParams: [String: String]) -> (Param?, Param?)
     return String(rawParamValue)
   }
 
-  if let categoryId = rawId(parentCategoryParams) {
+  if let categoryId = parseCategoryID(parentCategoryQueryValue) {
     categoryParam = Param.id(categoryId)
-  } else if let categoryName = rawName(parentCategoryParams) {
+  } else if let categoryName = readCategorySlug(parentCategoryQueryValue) {
     categoryParam = Param.slug(categoryName)
   }
 
-  if let subcategoryId = rawId(subCategoryParams) {
+  if let subcategoryId = parseCategoryID(categoryQueryValue) {
     subcategoryParam = Param.id(subcategoryId)
-  } else if let subcategoryName = rawName(subCategoryParams) {
+  } else if let subcategoryName = readCategorySlug(categoryQueryValue) {
     subcategoryParam = Param.slug(subcategoryName)
   }
 
-  let subCategoryWithNoParentCategory = categoryParam == nil && subcategoryParam != nil
+  let hasCategoryWithoutParent = categoryParam == nil && subcategoryParam != nil
 
-  categoryParam = subCategoryWithNoParentCategory ? subcategoryParam : categoryParam
-  subcategoryParam = subCategoryWithNoParentCategory ? nil : subcategoryParam
+  categoryParam = hasCategoryWithoutParent ? subcategoryParam : categoryParam
+  subcategoryParam = hasCategoryWithoutParent ? nil : subcategoryParam
 
   return (categoryParam, subcategoryParam)
 }
@@ -71,21 +71,21 @@ private func findCategoryFromRootCategories(
   categoryParam: Param,
   subcategoryParam: Param?
 ) -> KsApi.Category? {
-  let allRootCategoryIdsAndNames = envelope.rootCategories.compactMap { $0 }
+  let rootCategories = envelope.rootCategories.compactMap { $0 }
 
-  let allSubcategoryIdsAndNames = envelope.rootCategories.compactMap { $0.subcategories?.nodes }
+  let subcategories = envelope.rootCategories.compactMap { $0.subcategories?.nodes }
     .flatMap { $0 }
 
-  let allCategoryIdsAndNames = allRootCategoryIdsAndNames + allSubcategoryIdsAndNames
+  let allCategories = rootCategories + subcategories
 
-  let routableCategory = allCategoryIdsAndNames.first(where: { category in
+  let routableCategory = allCategories.first(where: { category in
     category.intID == categoryParam.id
       || category.name.lowercased() == categoryParam.slug?.lowercased()
   })
 
   let routableSubcategory =
     routableCategory != nil
-    ? allCategoryIdsAndNames.first(where: { category in
+    ? allCategories.first(where: { category in
       category.intID == subcategoryParam?.id
         || category.name.lowercased()
           == subcategoryParam?.slug?

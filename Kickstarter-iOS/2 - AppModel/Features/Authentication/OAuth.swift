@@ -43,10 +43,10 @@ public final class OAuth {
         return nil
       }
 
-      let challenge = try PKCE.createCodeChallenge(fromVerifier: verifier)
+      let codeChallenge = try PKCE.createCodeChallenge(fromVerifier: verifier)
 
       guard let url = self.authenticationFeature.oauthAuthorizationURL(
-        codeChallenge: challenge, redirectScheme: Self.redirectScheme
+        codeChallenge: codeChallenge, redirectScheme: Self.redirectScheme
       ) else {
         return nil
       }
@@ -113,8 +113,8 @@ public final class OAuth {
       Crashlytics.crashlytics().record(error: OAuthError.redirectError(error).nsError)
       return .failure(errorMessage: Strings.Something_went_wrong_please_try_again())
     }
-    if self.isRedirectURLCanceled(url) { return .canceled }
-    guard let code = self.codeFromRedirectURL(url) else {
+    if self.redirectIndicatesCancellation(url) { return .canceled }
+    guard let code = self.authorizationCodeFromRedirectURL(url) else {
       Crashlytics.crashlytics().record(error: OAuthError.missingCodeError.nsError)
       return .failure(errorMessage: Strings.Something_went_wrong_please_try_again())
     }
@@ -130,7 +130,7 @@ public final class OAuth {
     }
   }
 
-  private static func codeFromRedirectURL(_ url: URL?) -> String? {
+  private static func authorizationCodeFromRedirectURL(_ url: URL?) -> String? {
     guard let redirectURL = url else {
       return nil
     }
@@ -139,7 +139,7 @@ public final class OAuth {
     return components?.queryItems?.first(where: { $0.name == "code" })?.value
   }
 
-  private static func isRedirectURLCanceled(_ url: URL?) -> Bool {
+  private static func redirectIndicatesCancellation(_ url: URL?) -> Bool {
     guard let redirectURL = url else {
       return false
     }
