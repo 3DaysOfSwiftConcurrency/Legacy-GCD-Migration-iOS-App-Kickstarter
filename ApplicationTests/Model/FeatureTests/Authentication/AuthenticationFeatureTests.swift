@@ -45,7 +45,7 @@ final class AuthenticationFeatureTests: XCTestCase {
     XCTAssertEqual(events, ["page", "submit", "tout", "initiate"])
   }
 
-  func testRedirectSharesPendingURL() async throws {
+  func testSameEmailLinkAndRouteSharePendingRedirect() async throws {
     let route = UUID()
     let gate = AccountRequestGate<URL?>()
     defer { gate.releaseAll() }
@@ -55,9 +55,9 @@ final class AuthenticationFeatureTests: XCTestCase {
       resolveRedirect: { _ in try await gate.request() }
     )
     let url = try XCTUnwrap(URL(string: "https://example.test/click"))
-    let first = Task { try await feature.firstRedirect(url, route: route) }
+    let first = Task { try await feature.resolveFirstEmailRedirect(url, route: route) }
     await gate.waitFor(1)
-    let second = Task { try await feature.firstRedirect(url, route: route) }
+    let second = Task { try await feature.resolveFirstEmailRedirect(url, route: route) }
     await Task.yield()
     try gate.finish(0, .success(url))
     let firstValue = try await first.value
@@ -76,16 +76,16 @@ final class AuthenticationFeatureTests: XCTestCase {
       resolveRedirect: { _ in try await gate.request() }
     )
     let url = try XCTUnwrap(URL(string: "https://example.test/click"))
-    let old = Task { try await feature.firstRedirect(url, route: route) }
+    let old = Task { try await feature.resolveFirstEmailRedirect(url, route: route) }
     await gate.waitFor(1)
-    feature.releaseEmailRedirect(route: route)
+    feature.cancelEmailRedirect(route: route)
     try gate.finish(0, .success(url))
     if case .failure(is CancellationError) = await old.result {
     } else {
       XCTFail("Obsolete redirect escaped its owner")
     }
   }
-  func testResetRejectsRedirectAndNextAttemptCanRetry() async throws {
+  func testCancellingAllEmailRedirectsRejectsOldResultAndAllowsRetry() async throws {
     let route = UUID()
     let gate = AccountRequestGate<URL?>()
     defer { gate.releaseAll() }
@@ -95,15 +95,15 @@ final class AuthenticationFeatureTests: XCTestCase {
       resolveRedirect: { _ in try await gate.request() }
     )
     let url = try XCTUnwrap(URL(string: "https://example.test/click"))
-    let old = Task { try await feature.firstRedirect(url, route: route) }
+    let old = Task { try await feature.resolveFirstEmailRedirect(url, route: route) }
     await gate.waitFor(1)
-    feature.resetEmailRedirects()
+    feature.cancelAllEmailRedirects()
     try gate.finish(0, .success(url))
     if case .failure(is CancellationError) = await old.result {
     } else {
       XCTFail("Obsolete redirect escaped its owner")
     }
-    let next = Task { try await feature.firstRedirect(url, route: route) }
+    let next = Task { try await feature.resolveFirstEmailRedirect(url, route: route) }
     await gate.waitFor(2)
     try gate.finish(1, .success(nil))
     let result = try await next.value
@@ -258,9 +258,9 @@ final class AuthenticationFeatureTests: XCTestCase {
   func testPasswordResetSharesSendAndCancelledWaiterCannotCancelAnother() async throws {
     let fixture = AuthenticationFixture()
     defer { fixture.provider.resetGate.releaseAll() }
-    let first = Task { try await fixture.feature.resetPassword(email: "person@example.invalid") }
+    let first = Task { try await fixture.feature.requestPasswordReset(email: "person@example.invalid") }
     await fixture.provider.resetGate.waitFor(1)
-    let second = Task { try await fixture.feature.resetPassword(email: "person@example.invalid") }
+    let second = Task { try await fixture.feature.requestPasswordReset(email: "person@example.invalid") }
     await Task.yield()
     first.cancel()
     try fixture.provider.resetGate.finish(0, .success(()))
@@ -275,9 +275,9 @@ final class AuthenticationFeatureTests: XCTestCase {
   func testPasswordResetReplacesOldEmailAndSuppressesLateFailure() async throws {
     let fixture = AuthenticationFixture()
     defer { fixture.provider.resetGate.releaseAll() }
-    let old = Task { try await fixture.feature.resetPassword(email: "old@example.invalid") }
+    let old = Task { try await fixture.feature.requestPasswordReset(email: "old@example.invalid") }
     await fixture.provider.resetGate.waitFor(1)
-    let new = Task { try await fixture.feature.resetPassword(email: "new@example.invalid") }
+    let new = Task { try await fixture.feature.requestPasswordReset(email: "new@example.invalid") }
     await fixture.provider.resetGate.waitFor(2)
     try fixture.provider.resetGate.finish(1, .success(()))
     try fixture.provider.resetGate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -292,12 +292,12 @@ final class AuthenticationFeatureTests: XCTestCase {
     defer { fixture.provider.resetGate.releaseAll(); fixture.provider.gate.releaseAll() }
     let login = Task { try await fixture.feature.authenticate(.facebook("fixture")) }
     await fixture.provider.gate.waitFor(1)
-    let failed = Task { try await fixture.feature.resetPassword(email: "person@example.invalid") }
+    let failed = Task { try await fixture.feature.requestPasswordReset(email: "person@example.invalid") }
     await fixture.provider.resetGate.waitFor(1)
     try fixture.provider.resetGate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { try await failed.value; XCTFail("Expected failure") } catch { }
     XCTAssertEqual(fixture.logins, 0)
-    let retry = Task { try await fixture.feature.resetPassword(email: "person@example.invalid") }
+    let retry = Task { try await fixture.feature.requestPasswordReset(email: "person@example.invalid") }
     await fixture.provider.resetGate.waitFor(2)
     try fixture.provider.resetGate.finish(1, .success(()))
     try await retry.value
@@ -310,7 +310,7 @@ final class AuthenticationFeatureTests: XCTestCase {
   func testCancelledPasswordResetCallerCannotReportSuccess() async throws {
     let fixture = AuthenticationFixture()
     defer { fixture.provider.resetGate.releaseAll() }
-    let request = Task { try await fixture.feature.resetPassword(email: "person@example.invalid") }
+    let request = Task { try await fixture.feature.requestPasswordReset(email: "person@example.invalid") }
     await fixture.provider.resetGate.waitFor(1)
     request.cancel()
     try fixture.provider.resetGate.finish(0, .success(()))
@@ -416,7 +416,7 @@ final class AuthenticationFeatureTests: XCTestCase {
   func testResendNeverCommitsUnexpectedSuccessAndRemainsDistinctFromLogin() async throws {
     let fixture = AuthenticationFixture()
     defer { fixture.provider.gate.releaseAll() }
-    let resend = Task { try await fixture.feature.resendCode(.facebook("fixture-token")) }
+    let resend = Task { try await fixture.feature.requestNewTwoFactorCode(.facebook("fixture-token")) }
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.gate.finish(0, .success(fixture.envelope))
     try await resend.value
@@ -461,7 +461,7 @@ final class AuthenticationFeatureTests: XCTestCase {
     defer { fixture.provider.gate.releaseAll() }
     let login = Task { try await fixture.feature.authenticate(.facebook("fixture-token"), code: "123456") }
     await fixture.provider.gate.waitFor(1)
-    let resend = Task { try await fixture.feature.resendCode(.facebook("fixture-token")) }
+    let resend = Task { try await fixture.feature.requestNewTwoFactorCode(.facebook("fixture-token")) }
     await fixture.provider.gate.waitFor(2)
     let challenge = ErrorEnvelope(errorMessages: ["Verification required"], ksrCode: .TfaRequired, httpCode: 403, exception: nil)
     try fixture.provider.gate.finish(1, .failure(challenge))

@@ -57,7 +57,7 @@ extension AppModel {
     let startingSession = self.currentDeepLinkSession
     try self.ensureDeepLinkSessionIsCurrent(startingSession)
     do {
-      let destination = try await self.authenticationFeature.firstRedirect(url, route: route)
+      let destination = try await self.authenticationFeature.resolveFirstEmailRedirect(url, route: route)
       try self.ensureDeepLinkSessionIsCurrent(startingSession)
       return destination
     } catch {
@@ -67,7 +67,7 @@ extension AppModel {
   }
 
   func releaseEmailLinkResolution(for route: UUID) {
-    self.authenticationFeature.releaseEmailRedirect(route: route)
+    self.authenticationFeature.cancelEmailRedirect(route: route)
   }
 
   private func ensureDeepLinkSessionIsCurrent(_ session: DeepLinkSession) throws {

@@ -30,7 +30,7 @@ public final class ResetPasswordViewModel {
     let revision = self.revision
     self.resetTask = Task { [weak self, authenticationFeature] in
       do {
-        try await authenticationFeature.resetPassword(email: email)
+        try await authenticationFeature.requestPasswordReset(email: email)
         try Task.checkCancellation()
         guard self?.revision == revision else { return }
         self?.onResetSuccess?(

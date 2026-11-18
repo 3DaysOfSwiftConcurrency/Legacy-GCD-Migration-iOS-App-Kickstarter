@@ -126,7 +126,7 @@ public final class AuthenticationFeature {
     let generation: Int
     let task: Task<AccessTokenEnvelope, Error>
     var waiters = 0
-    var committedGeneration: Int?
+    var establishedSessionGeneration: Int?
 
     init(
       credentials: Credentials, code: String?, operation: Operation, userID: Int?, generation: Int,
@@ -151,23 +151,23 @@ public final class AuthenticationFeature {
     let task: Task<Value, Error>
   }
   private let resolveRedirect: (URL) async throws -> URL?
-  private var redirects: [UUID: (url: URL, request: Pending<URL?>)] = [:]
-  private var redirectVersions: [UUID: UUID] = [:]
+  private var pendingEmailRedirectsByRoute: [UUID: (url: URL, request: Pending<URL?>)] = [:]
+  private var latestEmailRedirectIDsByRoute: [UUID: UUID] = [:]
   private let session: SessionFeature
   private let platform: Platform
   private let makeProvider: () -> any AuthenticationProvider
   // The legacy screen allows resend and verification concurrently. A resend
   // must not supersede a submitted code; replacements are scoped per operation.
-  private var current: [Operation: Attempt] = [:]
+  private var currentAttemptsByOperation: [Operation: Attempt] = [:]
   private var attempts: [UUID: Attempt] = [:]
-  private final class ResetAttempt {
+  private final class PasswordResetRequest {
     let email: String
     let task: Task<Void, Error>
     var waiters = 0
     init(email: String, task: Task<Void, Error>) { self.email = email; self.task = task }
   }
 
-  private var resetAttempt: ResetAttempt?
+  private var passwordResetRequest: PasswordResetRequest?
   public private(set) var lastError: Error?
   public var sessionGeneration: Int { self.session.generation }
 
@@ -189,45 +189,47 @@ public final class AuthenticationFeature {
 
   /// One replaceable email-link read per navigation route. URL is Sendable;
   /// the session and operation identity are checked again after every waiter resumes.
-  public func firstRedirect(_ url: URL, route: UUID) async throws -> URL? {
+  public func resolveFirstEmailRedirect(_ url: URL, route: UUID) async throws -> URL? {
     try Task.checkCancellation()
     let session = Session(userID: self.session.currentUser?.id, generation: self.session.generation)
     let pending: Pending<URL?>
-    if let current = self.redirects[route], current.url == url, current.request.session == session {
+    if let current = self.pendingEmailRedirectsByRoute[route], current.url == url, current.request.session == session {
       pending = current.request
     } else {
-      self.releaseEmailRedirect(route: route)
+      self.cancelEmailRedirect(route: route)
       let id = UUID()
       let task = Task { [self] in
         defer {
-          if self.redirects[route]?.request.id == id { self.redirects[route] = nil }
+          if self.pendingEmailRedirectsByRoute[route]?.request.id == id {
+            self.pendingEmailRedirectsByRoute[route] = nil
+          }
         }
-        try self.requireCurrentRedirectSession(session)
+        try self.ensureEmailRedirectSessionIsCurrent(session)
         let value = try await self.resolveRedirect(url)
-        try self.requireCurrentRedirectSession(session)
-        guard self.redirectVersions[route] == id else { throw CancellationError() }
+        try self.ensureEmailRedirectSessionIsCurrent(session)
+        guard self.latestEmailRedirectIDsByRoute[route] == id else { throw CancellationError() }
         return value
       }
       pending = Pending(id: id, session: session, task: task)
-      self.redirects[route] = (url, pending)
-      self.redirectVersions[route] = id
+      self.pendingEmailRedirectsByRoute[route] = (url, pending)
+      self.latestEmailRedirectIDsByRoute[route] = id
     }
     let value = try await pending.task.value
-    try self.requireCurrentRedirectSession(session)
-    guard self.redirectVersions[route] == pending.id else { throw CancellationError() }
+    try self.ensureEmailRedirectSessionIsCurrent(session)
+    guard self.latestEmailRedirectIDsByRoute[route] == pending.id else { throw CancellationError() }
     return value
   }
 
-  func releaseEmailRedirect(route: UUID) {
-    self.redirects.removeValue(forKey: route)?.request.task.cancel()
-    self.redirectVersions[route] = nil
+  func cancelEmailRedirect(route: UUID) {
+    self.pendingEmailRedirectsByRoute.removeValue(forKey: route)?.request.task.cancel()
+    self.latestEmailRedirectIDsByRoute[route] = nil
   }
 
-  func resetEmailRedirects() {
-    for route in Array(self.redirectVersions.keys) { self.releaseEmailRedirect(route: route) }
+  func cancelAllEmailRedirects() {
+    for route in Array(self.latestEmailRedirectIDsByRoute.keys) { self.cancelEmailRedirect(route: route) }
   }
 
-  private func requireCurrentRedirectSession(_ session: Session) throws {
+  private func ensureEmailRedirectSessionIsCurrent(_ session: Session) throws {
     try Task.checkCancellation()
     guard self.session.isCurrent(userID: session.userID, generation: session.generation) else {
       throw CancellationError()
@@ -249,64 +251,67 @@ public final class AuthenticationFeature {
     code: String? = nil
   ) async throws -> AccessTokenEnvelope {
     try Task.checkCancellation()
-    return try await self.finish(self.admit(credentials, code: code, resend: false))
+    let attempt = self.startOrReuseAuthenticationAttempt(credentials, code: code, operation: .login)
+    return try await self.awaitAuthenticationResult(attempt)
   }
 
-  public func resendCode(_ credentials: Credentials) async throws {
+  public func requestNewTwoFactorCode(_ credentials: Credentials) async throws {
     try Task.checkCancellation()
-    _ = try await self.finish(self.admit(credentials, code: nil, resend: true))
+    let attempt = self.startOrReuseAuthenticationAttempt(credentials, code: nil, operation: .resend)
+    _ = try await self.awaitAuthenticationResult(attempt)
   }
 
   /// Independent of login/resend. Duplicate pending requests share one send;
   /// changed email replaces presentation. Cancellation cannot unsend an email
   /// or undo account creation on the server; no write is automatically retried.
-  public func resetPassword(email: String) async throws {
+  public func requestPasswordReset(email: String) async throws {
     try Task.checkCancellation()
-    try await self.finishReset(self.admitReset(email: email))
+    try await self.awaitPasswordResetRequest(self.startOrReusePasswordResetRequest(email: email))
   }
 
-  private func admitReset(email: String) -> ResetAttempt {
-    let attempt: ResetAttempt
-    if let current = self.resetAttempt, current.email == email {
+  private func startOrReusePasswordResetRequest(email: String) -> PasswordResetRequest {
+    let attempt: PasswordResetRequest
+    if let current = self.passwordResetRequest, current.email == email {
       attempt = current
     } else {
-      self.resetAttempt?.task.cancel()
+      self.passwordResetRequest?.task.cancel()
       let provider = self.makeProvider()
-      attempt = ResetAttempt(email: email, task: Task {
+      attempt = PasswordResetRequest(email: email, task: Task {
         try Task.checkCancellation()
         try await provider.resetPassword(email: email)
       })
-      self.resetAttempt = attempt
+      self.passwordResetRequest = attempt
     }
     attempt.waiters += 1
     return attempt
   }
 
-  private func finishReset(_ attempt: ResetAttempt) async throws {
+  private func awaitPasswordResetRequest(_ attempt: PasswordResetRequest) async throws {
     defer {
       attempt.waiters -= 1
-      if attempt.waiters == 0, self.resetAttempt === attempt { self.resetAttempt = nil }
+      if attempt.waiters == 0, self.passwordResetRequest === attempt { self.passwordResetRequest = nil }
     }
     do {
       try await attempt.task.value
       try Task.checkCancellation()
-      guard self.resetAttempt === attempt else { throw CancellationError() }
+      guard self.passwordResetRequest === attempt else { throw CancellationError() }
     } catch {
       try Task.checkCancellation()
-      guard self.resetAttempt === attempt else { throw CancellationError() }
+      guard self.passwordResetRequest === attempt else { throw CancellationError() }
       throw error
     }
   }
 
-  private func admit(_ credentials: Credentials, code: String?, resend: Bool) -> Attempt {
-    let operation: Operation = resend ? .resend : .login
-    if let current = self.current[operation],
+  private func startOrReuseAuthenticationAttempt(
+    _ credentials: Credentials, code: String?, operation: Operation
+  ) -> Attempt {
+    if let current = self.currentAttemptsByOperation[operation],
        current.credentials == credentials, current.code == code,
        self.session.isCurrent(userID: current.userID, generation: current.generation) {
       current.waiters += 1
       return current
     }
-    self.current[operation]?.task.cancel()
+    self.currentAttemptsByOperation[operation]?.task.cancel()
     let provider = self.makeProvider()
     let task = Task {
       try Task.checkCancellation()
@@ -317,25 +322,27 @@ public final class AuthenticationFeature {
       userID: self.session.currentUser?.id, generation: self.session.generation, task: task
     )
     attempt.waiters = 1
-    self.current[operation] = attempt
+    self.currentAttemptsByOperation[operation] = attempt
     self.attempts[attempt.id] = attempt
     self.lastError = nil
     return attempt
   }
 
-  private func finish(_ attempt: Attempt) async throws -> AccessTokenEnvelope {
+  private func awaitAuthenticationResult(_ attempt: Attempt) async throws -> AccessTokenEnvelope {
     defer {
       attempt.waiters -= 1
       if attempt.waiters == 0 {
         self.attempts[attempt.id] = nil
-        if self.current[attempt.operation]?.id == attempt.id { self.current[attempt.operation] = nil }
+        if self.currentAttemptsByOperation[attempt.operation]?.id == attempt.id {
+          self.currentAttemptsByOperation[attempt.operation] = nil
+        }
       }
     }
     do {
       let envelope = try await attempt.task.value
       try Task.checkCancellation()
-      guard self.current[attempt.operation]?.id == attempt.id else { throw CancellationError() }
-      if let committed = attempt.committedGeneration {
+      guard self.currentAttemptsByOperation[attempt.operation]?.id == attempt.id else { throw CancellationError() }
+      if let committed = attempt.establishedSessionGeneration {
         guard self.session.isCurrent(userID: envelope.user.id, generation: committed)
         else { throw CancellationError() }
       } else {
@@ -348,14 +355,14 @@ public final class AuthenticationFeature {
           try self.session.establishSession(
             envelope, userID: attempt.userID, generation: attempt.generation
           )
-          attempt.committedGeneration = self.session.generation
+          attempt.establishedSessionGeneration = self.session.generation
         }
       }
       self.lastError = nil
       return envelope
     } catch {
       try Task.checkCancellation()
-      guard self.current[attempt.operation]?.id == attempt.id,
+      guard self.currentAttemptsByOperation[attempt.operation]?.id == attempt.id,
             self.session.isCurrent(userID: attempt.userID, generation: attempt.generation)
       else { throw CancellationError() }
       if !(error is CancellationError) { self.lastError = error }

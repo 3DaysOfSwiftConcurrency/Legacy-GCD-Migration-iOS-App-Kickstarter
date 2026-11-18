@@ -31,7 +31,7 @@ public final class FacebookResetPasswordViewModel {
     self.isLoading = true
     self.resetTask = Task { [weak self, authenticationFeature] in
       do {
-        try await authenticationFeature.resetPassword(email: email)
+        try await authenticationFeature.requestPasswordReset(email: email)
         try Task.checkCancellation()
         guard let self, self.revision == revision else { return }
         self.isLoading = false

@@ -701,7 +701,7 @@ public final class AppModel {
     self.sessionFeature.sessionChanged()
     self.paymentsFeature.sessionChanged()
     self.settingsFeature.cancelScheduledAccountRefresh()
-    self.authenticationFeature.resetEmailRedirects()
+    self.authenticationFeature.cancelAllEmailRedirects()
     self.discoveryFeature.resetRecommendationAvailability()
     self.settingsFeature.resetApplicationSettings()
     self.developerExamplesFeature.reset()

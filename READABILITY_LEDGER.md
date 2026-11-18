@@ -46,9 +46,18 @@ reopen or replace the completed CFA migration ledger.
   generic `Library-iOS` build passed with the same existing project warnings;
   focused runtime tests remain pending on the unavailable CoreSimulator service.
 
+- AppLifecycle verification: AppModel and AppDelegate handle lifecycle work.
+  The migrated project has no AppLifecycle Feature to review.
+- Authentication Feature (baseline `b68a2f377`): clarified the operations that
+  resolve or cancel an email redirect, request a password reset, and request a
+  new two-factor code. Named the authentication attempt and verification
+  request state. Updated AppModel, the password-reset and two-factor ViewModels,
+  and focused Authentication tests. Swift parsing, caller scans and
+  `git diff --check` passed. Xcode could not resolve Swift package manifests
+  under the session sandbox, so the signing-disabled generic `Library-iOS`
+  build did not reach compilation. CoreSimulator refused connections after
+  routine recovery, so focused runtime tests did not run.
+
 ## Current slice
 
-- AppLifecycle verification: no `AppLifecycleFeature` or AppLifecycle Feature
-  folder exists in the migrated project. Its lifecycle responsibilities are
-  already expressed through AppModel and AppDelegate, so there is no feature to
-  rename. Authentication Feature is next.
+- CreatorDrafts Feature, including the Update Draft screen and focused tests.
