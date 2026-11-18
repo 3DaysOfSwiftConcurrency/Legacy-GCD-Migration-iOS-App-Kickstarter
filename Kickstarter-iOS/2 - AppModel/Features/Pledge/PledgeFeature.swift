@@ -226,21 +226,21 @@ public final class PledgeFeature {
     let command: Command
     let task: Task<Value, Error>
   }
-  private var writeVersion: [SessionIdentity: Int] = [:]
-  private var tails: [SessionIdentity: Pending] = [:]
-  private var commands: [UUID: Task<Value, Error>] = [:]
+  private var writeRevisionBySession: [SessionIdentity: Int] = [:]
+  private var latestQueuedWriteBySession: [SessionIdentity: Pending] = [:]
+  private var pledgeWriteTasks: [UUID: Task<Value, Error>] = [:]
 
   private func request(_ command: Command) -> Task<Value, Error> {
     let session = self.sessionIdentity
-    let previous = self.tails[session]
+    let previous = self.latestQueuedWriteBySession[session]
     if let previous, previous.command == command { return previous.task }
-    self.writeVersion[session, default: 0] += 1
+    self.writeRevisionBySession[session, default: 0] += 1
     let id = UUID()
     let provider = self.makeProvider()
     let task = Task { [self] in
       defer {
-        self.commands[id] = nil
-        if self.tails[session]?.id == id { self.tails[session] = nil }
+        self.pledgeWriteTasks[id] = nil
+        if self.latestQueuedWriteBySession[session]?.id == id { self.latestQueuedWriteBySession[session] = nil }
       }
       if let previous { _ = await previous.task.result }
       try self.requireCurrent(session)
@@ -277,8 +277,8 @@ public final class PledgeFeature {
         throw error
       }
     }
-    self.tails[session] = Pending(id: id, command: command, task: task)
-    self.commands[id] = task
+    self.latestQueuedWriteBySession[session] = Pending(id: id, command: command, task: task)
+    self.pledgeWriteTasks[id] = task
     return task
   }
 
@@ -538,27 +538,27 @@ public final class PledgeFeature {
       return try result.get()
     }
   }
-  private var reads: [UUID: PendingRead] = [:]
-  private var readVersions: [UUID: UUID] = [:]
+  private var pendingReadsByRoute: [UUID: PendingRead] = [:]
+  private var latestReadRequestIDsByRoute: [UUID: UUID] = [:]
   private var readTasks: [UUID: Task<Void, Never>] = [:]
 
   private func requestRead(route: UUID, input: Read) -> PendingRead {
     let session = self.sessionIdentity
-    let version = self.writeVersion[session, default: 0]
-    if let pending = self.reads[route], pending.input == input, pending.session == session,
+    let version = self.writeRevisionBySession[session, default: 0]
+    if let pending = self.pendingReadsByRoute[route], pending.input == input, pending.session == session,
       pending.version == version
     {
       return pending
     }
-    self.reads[route]?.task.cancel()
+    self.pendingReadsByRoute[route]?.task.cancel()
     let id = UUID()
     let provider = self.makeProvider()
-    let precedingWrite = self.tails[session]?.task
+    let precedingWrite = self.latestQueuedWriteBySession[session]?.task
     let outcome = ReadOutcome()
     let task = Task { [self] in
       defer {
         self.readTasks[id] = nil
-        if self.reads[route]?.id == id { self.reads[route] = nil }
+        if self.pendingReadsByRoute[route]?.id == id { self.pendingReadsByRoute[route] = nil }
       }
       do {
         // A refresh must not overtake a write that the screen has already admitted.
@@ -585,8 +585,8 @@ public final class PledgeFeature {
     }
     let pending = PendingRead(
       id: id, input: input, version: version, session: session, task: task, outcome: outcome)
-    self.readVersions[route] = id
-    self.reads[route] = pending
+    self.latestReadRequestIDsByRoute[route] = id
+    self.pendingReadsByRoute[route] = pending
     self.readTasks[id] = task
     return pending
   }
@@ -600,10 +600,10 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     do {
       let request = self.requestRead(route: route, input: .updateContext(param, updateID))
-      let version = self.readVersions[route]
+      let version = self.latestReadRequestIDsByRoute[route]
       let value = try await request.value()
       try self.requireCurrent(session)
-      guard self.readVersions[route] == version else { throw CancellationError() }
+      guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
       return try Self.updateContext(value)
     } catch {
       try self.requireCurrent(session)
@@ -620,12 +620,12 @@ public final class PledgeFeature {
   func requestPaymentPlan(route: UUID, slug: String, amount: String) -> Task<PledgePaymentPlan?, Error> {
     let session = self.sessionIdentity
     let request = self.requestRead(route: route, input: .plan(slug, amount))
-    let version = self.readVersions[route]
+    let version = self.latestReadRequestIDsByRoute[route]
     return Task {
       do {
         let value = try await request.value()
         try self.requireCurrent(session)
-        guard self.readVersions[route] == version else { throw CancellationError() }
+        guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
         return try Self.plan(value)
       } catch {
         try self.requireCurrent(session)
@@ -650,10 +650,10 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     do {
       let request = self.requestRead(route: route, input: .project(param))
-      let version = self.readVersions[route]
+      let version = self.latestReadRequestIDsByRoute[route]
       let value = try await request.value()
       try self.requireCurrent(session)
-      guard self.readVersions[route] == version else { throw CancellationError() }
+      guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
       return try Self.project(value)
     } catch {
       try self.requireCurrent(session)
@@ -665,10 +665,10 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     do {
       let request = self.requestRead(route: route, input: .backing(id))
-      let version = self.readVersions[route]
+      let version = self.latestReadRequestIDsByRoute[route]
       let value = try await request.value()
       try self.requireCurrent(session)
-      guard self.readVersions[route] == version else { throw CancellationError() }
+      guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
       return try Self.backing(value)
     } catch {
       try self.requireCurrent(session)
@@ -684,22 +684,22 @@ public final class PledgeFeature {
     return backing
   }
   public func releaseRead(route: UUID) {
-    self.readVersions[route] = nil
-    self.reads.removeValue(forKey: route)?.task.cancel()
+    self.latestReadRequestIDsByRoute[route] = nil
+    self.pendingReadsByRoute.removeValue(forKey: route)?.task.cancel()
   }
 
   public func reset() {
-    for pending in self.reads.values { pending.task.cancel() }
-    self.reads.removeAll()
-    self.readVersions.removeAll()
-    self.writeVersion.removeAll()
+    for pending in self.pendingReadsByRoute.values { pending.task.cancel() }
+    self.pendingReadsByRoute.removeAll()
+    self.latestReadRequestIDsByRoute.removeAll()
+    self.writeRevisionBySession.removeAll()
     // In-flight writes settle. Old queued writes fail their generation check
     // before provider admission; a new account has its own queue.
   }
   public func waitForOperations() async {
-    while !self.commands.isEmpty || !self.readTasks.isEmpty {
+    while !self.pledgeWriteTasks.isEmpty || !self.readTasks.isEmpty {
       for task in Array(self.readTasks.values) { await task.value }
-      for task in Array(self.commands.values) { _ = await task.result }
+      for task in Array(self.pledgeWriteTasks.values) { _ = await task.result }
     }
   }
 }
