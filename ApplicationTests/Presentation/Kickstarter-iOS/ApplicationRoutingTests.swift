@@ -197,7 +197,7 @@ final class ApplicationRoutingTests: TestCase {
     await self.settingsFeature.waitForOperations()
   }
 
-  private var accountUpdateHandler: @MainActor (AppModel.AccountUpdate) -> Void {
+  private var accountRefreshUpdateHandler: @MainActor (AppModel.AccountRefreshUpdate) -> Void {
     { [weak self] update in
       guard let self else { return }
       switch update {
@@ -251,7 +251,7 @@ final class ApplicationRoutingTests: TestCase {
     self.applicationDidFinishLaunchingReturnValue = self.deepLinkRouter.routeLaunchShortcut(
       launchOptions?[.shortcutItem], route: self.navigationRoute, perform: self.navigationActionHandler
     )
-    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
   }
 
   private func openLink(
@@ -285,7 +285,7 @@ final class ApplicationRoutingTests: TestCase {
 
   private func startSession() {
     self.deepLinkRouter.release(route: self.navigationRoute)
-    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
   }
 
   private func launchApplication(
@@ -297,7 +297,7 @@ final class ApplicationRoutingTests: TestCase {
 
   private func enterForeground() {
     self.onboardingFeature.refreshNotificationAuthorization()
-    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
   }
 
   func testResetApplicationIconBadgeNumber_registeredForPushNotifications_WillEnterForeground() async {
@@ -353,7 +353,7 @@ final class ApplicationRoutingTests: TestCase {
       application: UIApplication.shared,
       launchOptions: [:]
     )
-    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
     self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
   }
 
@@ -371,19 +371,19 @@ final class ApplicationRoutingTests: TestCase {
     self.updateCurrentUserInEnvironment.assertValues([env.user])
     self.postNotificationName.assertDidNotEmitValue()
 
-    self.model.notifyUserUpdated(notificationCenter: self.notificationCenter)
+    self.model.postUserUpdatedNotification(notificationCenter: self.notificationCenter)
 
     self.updateCurrentUserInEnvironment.assertValues([env.user])
     self.postNotificationName.assertValues([.ksr_userUpdated])
 
-    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
     await self.settingsFeature.waitForScheduledAccountRefresh()
     await self.settingsFeature.waitForOperations()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user, env.user])
     self.postNotificationName.assertValues([.ksr_userUpdated])
 
-    self.model.notifyUserUpdated(notificationCenter: self.notificationCenter)
+    self.model.postUserUpdatedNotification(notificationCenter: self.notificationCenter)
 
     self.updateCurrentUserInEnvironment.assertValues([env.user, env.user])
     self.postNotificationName.assertValues(
@@ -405,7 +405,7 @@ final class ApplicationRoutingTests: TestCase {
       self.updateCurrentUserInEnvironment.assertValues([.template])
       self.postNotificationName.assertDidNotEmitValue()
 
-      self.model.notifyUserUpdated(notificationCenter: self.notificationCenter)
+      self.model.postUserUpdatedNotification(notificationCenter: self.notificationCenter)
 
       self.updateCurrentUserInEnvironment.assertValues([.template])
       self.postNotificationName.assertValues([.ksr_userUpdated])
@@ -1489,7 +1489,7 @@ final class ApplicationRoutingTests: TestCase {
     await self.discoveryFeature.waitForRecommendationRefresh()
     self.setApplicationShortcutItems.assertValues([[.projectsWeLove, .search]])
 
-    self.model.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
     await self.settingsFeature.waitForScheduledAccountRefresh()
     await self.settingsFeature.waitForOperations()
 

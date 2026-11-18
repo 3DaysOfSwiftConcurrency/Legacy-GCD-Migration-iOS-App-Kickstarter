@@ -30,8 +30,13 @@ reopen or replace the completed CFA migration ledger.
   with `CODE_SIGNING_ALLOWED=NO`; its existing extension-version and
   Crashlytics-script warnings remain. Focused runtime tests are pending because
   this Mac's CoreSimulator service remains unavailable after routine recovery.
+- AppModel account refresh: renamed the emitted update, delivery label, setup
+  check and notification method so the account-refresh sequence reads in order.
+  Updated AppDelegate and presentation-test callers. The same generic
+  `Library-iOS` build passed with the existing project warnings; focused runtime
+  tests remain pending on the unavailable CoreSimulator service.
 
 ## Current slice
 
-- AppModel account refresh: trace its action names, callback results and
-  session-replacement protections before making any clarity-only changes.
+- AppModel composition: review the public composition values and factory names,
+  beginning with the presentation boundaries that receive them.

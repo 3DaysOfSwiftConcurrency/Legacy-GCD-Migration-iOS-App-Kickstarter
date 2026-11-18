@@ -165,7 +165,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         AppModel.shared.sessionChanged()
         guard let self else { return }
         self.deepLinkRouter.release(route: self.navigationRoute)
-        AppModel.shared.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+        AppModel.shared.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
       },
       MainActorNotificationObservation(name: .ksr_showNotificationsDialog) { [weak self] notification in
         guard let context = PushNotificationDialog.eligibleContext(for: notification) else { return }
@@ -177,7 +177,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         AppModel.shared.sessionChanged()
         guard let self else { return }
         self.deepLinkRouter.release(route: self.navigationRoute)
-        AppModel.shared.refreshAccount(onUpdate: self.accountUpdateHandler)
+        AppModel.shared.refreshAccount(delivering: self.accountRefreshUpdateHandler)
         DispatchQueue.main.async { UIApplication.shared.unregisterForRemoteNotifications() }
       }
     ]
@@ -193,7 +193,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     let shouldContinueLaunch = self.deepLinkRouter.routeLaunchShortcut(
       launchOptions?[.shortcutItem], route: self.navigationRoute, perform: self.navigationActionHandler
     )
-    AppModel.shared.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    AppModel.shared.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
 
     AppModel.shared.preparePermissions()
     self.synchronizePreferences()
@@ -204,11 +204,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     return shouldContinueLaunch
   }
 
-  private var accountUpdateHandler: @MainActor (AppModel.AccountUpdate) -> Void {
-    { [weak self] in self?.handleAccountUpdate($0) }
+  private var accountRefreshUpdateHandler: @MainActor (AppModel.AccountRefreshUpdate) -> Void {
+    { [weak self] in self?.handleAccountRefreshUpdate($0) }
   }
 
-  private func handleAccountUpdate(_ update: AppModel.AccountUpdate) {
+  private func handleAccountRefreshUpdate(_ update: AppModel.AccountRefreshUpdate) {
     switch update {
     case .user:
       DispatchQueue.main.async { [weak self] in
@@ -216,7 +216,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         guard let user = AppModel.shared.sessionFeature.currentUser else { return }
         self?.braze?.changeUser(userId: String(user.id))
         AppEnvironment.current.identify(user: user)
-        self?.notifyUserUpdated()
+        self?.postUserUpdatedNotification()
       }
     case .invalidSession:
       let session = AppModel.shared.sessionFeature
@@ -239,8 +239,8 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
   }
 
-  private func notifyUserUpdated() {
-    DispatchQueue.main.async { AppModel.shared.notifyUserUpdated() }
+  private func postUserUpdatedNotification() {
+    DispatchQueue.main.async { AppModel.shared.postUserUpdatedNotification() }
   }
 
   func applicationDidBecomeActive(_: UIApplication) {
@@ -253,7 +253,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func applicationWillEnterForeground(_: UIApplication) {
     AppModel.shared.refreshNotificationAuthorization()
-    AppModel.shared.refreshAccountAndSetup(onUpdate: self.accountUpdateHandler)
+    AppModel.shared.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
     AppModel.shared.applicationWillEnterForeground()
   }
 
@@ -395,7 +395,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
             let user = session.currentUser else { return }
       self?.braze?.changeUser(userId: String(user.id))
       AppEnvironment.current.identify(user: user)
-      self?.notifyUserUpdated()
+      self?.postUserUpdatedNotification()
     }
   }
 
