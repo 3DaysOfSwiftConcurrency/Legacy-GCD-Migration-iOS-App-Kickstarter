@@ -327,7 +327,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   private func receiveActivities(_ activities: [Activity], sort: DiscoveryParams.Sort) {
     guard self.currentSort == sort, self.lastRawActivities != activities else { return }
     self.lastRawActivities = activities
-    self.publishActivities(self.discoveryFeature.consumeUnseenActivitySample(activities))
+    self.publishActivities(self.discoveryFeature.recordSeenAndReturnNewActivitySample(activities))
   }
   private var currentNavigationParameters: DiscoveryParams?
   private var currentNavigationProjects: [Project]?

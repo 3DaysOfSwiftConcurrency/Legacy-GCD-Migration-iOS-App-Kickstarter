@@ -75,11 +75,11 @@ public final class DiscoveryFeature {
   }
 
   private var pages: [String: Page] = [:]
-  private var recommendationRequest: (
+  private var recommendationAvailabilityRequest: (
     id: UUID, userID: Int, accountID: Int?, sessionGeneration: Int, task: Task<Bool, Error>
   )?
-  private var recommendationDelivery: (id: UUID, task: Task<Void, Never>)?
-  private var recommendationGeneration = 0
+  private var recommendationAvailabilityDeliveryTask: (id: UUID, task: Task<Void, Never>)?
+  private var recommendationRequestGeneration = 0
   private let provider: any DiscoveryProvider
   private let analytics: Analytics
   private let loadCategories: @MainActor () async throws -> RootCategoriesEnvelope
@@ -143,7 +143,7 @@ public final class DiscoveryFeature {
     return (try? JSONDecoder().decode([KsApi.Category].self, from: data)) ?? []
   }
 
-  public func consumeUnseenActivitySample(_ activities: [Activity]) -> [Activity] {
+  public func recordSeenAndReturnNewActivitySample(_ activities: [Activity]) -> [Activity] {
     guard let store = self.resolveLocalStore?() else { return activities }
     let lastSeenID = store.lastSeenActivitySampleId
     let unseenActivities = activities.filter { $0.id != lastSeenID }
@@ -170,25 +170,25 @@ public final class DiscoveryFeature {
   public func hasRecommendations(for user: User?) async throws -> Bool {
     try Task.checkCancellation()
     guard let user else {
-      self.resetRecommendationRead()
+      self.cancelRecommendationAvailabilityRequest()
       return false
     }
     let accountID = self.sessionFeature.currentUser?.id
     let sessionGeneration = self.sessionFeature.generation
-    if let request = self.recommendationRequest, request.userID == user.id,
+    if let request = self.recommendationAvailabilityRequest, request.userID == user.id,
        request.accountID == accountID, request.sessionGeneration == sessionGeneration {
-      return try await self.recommendationAvailability(
-        request.task, generation: self.recommendationGeneration,
+      return try await self.awaitCurrentRecommendationAvailability(
+        request.task, generation: self.recommendationRequestGeneration,
         accountID: accountID, sessionGeneration: sessionGeneration
       )
     }
-    self.resetRecommendationRead()
-    let generation = self.recommendationGeneration
+    self.cancelRecommendationAvailabilityRequest()
+    let generation = self.recommendationRequestGeneration
     let id = UUID()
     let provider = self.provider
     let task = Task { @MainActor in
       defer {
-        if self.recommendationRequest?.id == id { self.recommendationRequest = nil }
+        if self.recommendationAvailabilityRequest?.id == id { self.recommendationAvailabilityRequest = nil }
       }
       do {
         let parameters = DiscoveryParams.defaults
@@ -204,18 +204,18 @@ public final class DiscoveryFeature {
         return false
       }
     }
-    self.recommendationRequest = (id, user.id, accountID, sessionGeneration, task)
-    return try await self.recommendationAvailability(
+    self.recommendationAvailabilityRequest = (id, user.id, accountID, sessionGeneration, task)
+    return try await self.awaitCurrentRecommendationAvailability(
       task, generation: generation, accountID: accountID, sessionGeneration: sessionGeneration
     )
   }
 
-  private func recommendationAvailability(
+  private func awaitCurrentRecommendationAvailability(
     _ task: Task<Bool, Error>, generation: Int, accountID: Int?, sessionGeneration: Int
   ) async throws -> Bool {
     let value = try await task.value
     try Task.checkCancellation()
-    guard generation == self.recommendationGeneration,
+    guard generation == self.recommendationRequestGeneration,
           self.sessionFeature.isCurrent(userID: accountID, generation: sessionGeneration) else {
       throw CancellationError()
     }
@@ -232,38 +232,38 @@ public final class DiscoveryFeature {
     let task = Task { [weak self] in
       guard let self else { return }
       defer {
-        if self.recommendationDelivery?.id == id { self.recommendationDelivery = nil }
+        if self.recommendationAvailabilityDeliveryTask?.id == id { self.recommendationAvailabilityDeliveryTask = nil }
       }
       do {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: user?.id, generation: generation) else { return }
         let available = try await self.hasRecommendations(for: user)
         try Task.checkCancellation()
-        guard self.recommendationDelivery?.id == id,
+        guard self.recommendationAvailabilityDeliveryTask?.id == id,
               self.sessionFeature.isCurrent(userID: user?.id, generation: generation) else { return }
         onResult(available)
       } catch { /* Failed or superseded reads leave the application's shortcuts in place. */ }
     }
-    self.recommendationDelivery = (id, task)
+    self.recommendationAvailabilityDeliveryTask = (id, task)
     return task
   }
 
   func cancelRecommendationRefresh() {
-    self.recommendationDelivery?.task.cancel()
-    self.recommendationDelivery = nil
+    self.recommendationAvailabilityDeliveryTask?.task.cancel()
+    self.recommendationAvailabilityDeliveryTask = nil
   }
 
-  func waitForRecommendationRefresh() async { await self.recommendationDelivery?.task.value }
+  func waitForRecommendationRefresh() async { await self.recommendationAvailabilityDeliveryTask?.task.value }
 
-  private func resetRecommendationRead() {
-    self.recommendationGeneration += 1
-    self.recommendationRequest?.task.cancel()
-    self.recommendationRequest = nil
+  private func cancelRecommendationAvailabilityRequest() {
+    self.recommendationRequestGeneration += 1
+    self.recommendationAvailabilityRequest?.task.cancel()
+    self.recommendationAvailabilityRequest = nil
   }
 
   func resetRecommendationAvailability() {
     self.cancelRecommendationRefresh()
-    self.resetRecommendationRead()
+    self.cancelRecommendationAvailabilityRequest()
   }
 
   public var currentUserHasSocialConnections: Bool {

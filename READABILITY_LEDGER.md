@@ -75,7 +75,14 @@ reopen or replace the completed CFA migration ledger.
   Library-iOS simulator build was blocked during Swift package resolution.
   DeveloperExamplesFeatureTests and the pagination and rich-text ViewModel tests could
   not run because CoreSimulator refused connections.
+- Discovery: distinguished the recommendation availability fetch from its delivery task
+  and named the activity sample's last-seen update. Updated the Discovery page
+  ViewModel. Reviewed availability, session replacement and pagination tests. Swift
+  parsing and git diff --check passed. The signing-disabled generic Library-iOS
+  simulator build was blocked during Swift package resolution. DiscoveryFeatureTests
+  and Discovery page ViewModel tests could not run because CoreSimulator refused
+  connections.
 
 ## Current slice
 
-- Discovery Feature and its page and recommendation availability callers.
+- Discussion Feature and its comment and moderation callers.
