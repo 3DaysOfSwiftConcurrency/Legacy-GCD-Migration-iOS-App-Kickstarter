@@ -87,11 +87,13 @@ final class ActivitiesViewModel {
       self.hasAppeared = true
       if let activities = self.lastActivity { self.publishActivities(activities, pageResult: true) }
     }
-    if user != nil { self.surveyTask = self.activityFeature.requestSurveys() }
-    if animated, user != nil { self.pageTask = self.activityFeature.requestPage() }
+    if user != nil { self.surveyTask = self.activityFeature.requestUnansweredSurveys() }
+    if animated, user != nil { self.pageTask = self.activityFeature.requestActivityPage() }
   }
   func userSessionStarted() {
-    if self.activityFeature.sessionFeature.currentUser != nil { self.pageTask = self.activityFeature.requestPage() }
+    if self.activityFeature.sessionFeature.currentUser != nil {
+      self.pageTask = self.activityFeature.requestActivityPage()
+    }
   }
   func userSessionEnded() {
     self.lastActivity = nil
@@ -102,16 +104,20 @@ final class ActivitiesViewModel {
   func refresh() {
     self.pendingRefreshes += 1
     self.drainBadgeEvents()
-    if self.activityFeature.sessionFeature.currentUser != nil { self.pageTask = self.activityFeature.requestPage() }
+    if self.activityFeature.sessionFeature.currentUser != nil {
+      self.pageTask = self.activityFeature.requestActivityPage()
+    }
   }
   func willDisplayRow(_ row: Int, outOf totalRows: Int) {
     let nearBottom = totalRows > 3 && row >= totalRows - 2
     guard self.lastNearBottom != nearBottom else { return }
     self.lastNearBottom = nearBottom
-    if nearBottom { self.pageTask = self.activityFeature.requestPage(next: true) }
+    if nearBottom { self.pageTask = self.activityFeature.requestActivityPage(next: true) }
   }
   func surveyResponseViewControllerDismissed() {
-    if self.activityFeature.sessionFeature.currentUser != nil { self.surveyTask = self.activityFeature.requestSurveys() }
+    if self.activityFeature.sessionFeature.currentUser != nil {
+      self.surveyTask = self.activityFeature.requestUnansweredSurveys()
+    }
   }
   func managePledgeViewControllerDidFinish() { self.refreshUser(.user) }
   func erroredBackingViewDidTapManage(with backing: ProjectAndBackingEnvelope) {

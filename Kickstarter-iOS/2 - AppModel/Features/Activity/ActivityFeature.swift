@@ -54,10 +54,10 @@ public final class ActivityFeature {
   private let sleep: (TimeInterval) async throws -> Void
   private var accountID: Int?
   private var generation: Int?
-  private var cursor: String?
-  private var pageItems: [Activity] = []
-  private var request: (token: UUID, cursor: String?, task: Task<Void, Never>)?
-  private var surveyRequest: (token: UUID, task: Task<Void, Never>)?
+  private var nextPageCursor: String?
+  private var accumulatedActivityPageItems: [Activity] = []
+  private var activityPageRequest: (token: UUID, cursor: String?, task: Task<Void, Never>)?
+  private var unansweredSurveyRequest: (token: UUID, task: Task<Void, Never>)?
   public enum Event {
     case activities([Activity])
     case loading(Bool)
@@ -113,31 +113,39 @@ public final class ActivityFeature {
   }
 
   public func reset() {
-    self.request?.task.cancel()
-    self.surveyRequest?.task.cancel()
-    self.request = nil
-    self.surveyRequest = nil
+    self.activityPageRequest?.task.cancel()
+    self.unansweredSurveyRequest?.task.cancel()
+    self.activityPageRequest = nil
+    self.unansweredSurveyRequest = nil
     self.activities = []
-    self.pageItems = []
+    self.accumulatedActivityPageItems = []
     self.surveys = []
-    self.cursor = nil
+    self.nextPageCursor = nil
     self.error = nil
     self.surveyError = nil
     if self.isLoading { self.isLoading = false; self.publish(.loading(false)) }
   }
 
-  public func refresh() async { await self.requestPage()?.value }
-  public func loadNextPage() async { await self.requestPage(next: true)?.value }
+  public func refreshActivityFeed() async { await self.requestActivityPage()?.value }
+  public func loadNextActivityFeedPage() async {
+    await self.requestActivityPage(next: true)?.value
+  }
 
   @discardableResult
-  public func requestPage(next: Bool = false) -> Task<Void, Never>? {
+  public func requestActivityPage(next: Bool = false) -> Task<Void, Never>? {
     self.synchronizeAccount()
     guard self.accountID != nil else { return nil }
-    if let request = self.request, next || request.cursor == nil { return request.task }
-    guard !next || self.cursor != nil else { return nil }
-    self.request?.task.cancel()
-    let cursor = next ? self.cursor : nil
-    if !next { self.pageItems = []; self.cursor = nil }
+    if let activityPageRequest = self.activityPageRequest,
+       next || activityPageRequest.cursor == nil {
+      return activityPageRequest.task
+    }
+    guard !next || self.nextPageCursor != nil else { return nil }
+    self.activityPageRequest?.task.cancel()
+    let cursor = next ? self.nextPageCursor : nil
+    if !next {
+      self.accumulatedActivityPageItems = []
+      self.nextPageCursor = nil
+    }
     let token = UUID()
     let userID = self.accountID
     let generation = self.sessionFeature.generation
@@ -148,8 +156,8 @@ public final class ActivityFeature {
     let task = Task { [weak self, sleep] in
       guard let self else { return }
       defer {
-        if self.request?.token == token {
-          self.request = nil
+        if self.activityPageRequest?.token == token {
+          self.activityPageRequest = nil
           self.isLoading = false
           self.publish(.loading(false))
         }
@@ -160,52 +168,60 @@ public final class ActivityFeature {
         let envelope = try await provider.page(cursor: cursor)
         try await sleep(delay)
         try Task.checkCancellation()
-        guard self.request?.token == token,
+        guard self.activityPageRequest?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        self.cursor = envelope.activities.isEmpty ? nil : envelope.urls.api.moreActivities
-        self.pageItems += envelope.activities
-        self.activities = self.pageItems.isEmpty ? [] : (self.activities + self.pageItems).distincts()
+        self.nextPageCursor = envelope.activities.isEmpty ? nil : envelope.urls.api.moreActivities
+        self.accumulatedActivityPageItems += envelope.activities
+        self.activities = self.accumulatedActivityPageItems.isEmpty ? []
+          : (self.activities + self.accumulatedActivityPageItems).distincts()
           .sorted { $0.id > $1.id }
         self.publish(.activities(self.activities))
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), self.request?.token == token,
+        guard !Task.isCancelled, !(error is CancellationError), self.activityPageRequest?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self.error = error
       }
     }
-    self.request = (token, cursor, task)
+    self.activityPageRequest = (token, cursor, task)
     self.publish(.loading(true))
     return task
   }
 
   @discardableResult
-  public func requestSurveys() -> Task<Void, Never>? {
+  public func requestUnansweredSurveys() -> Task<Void, Never>? {
     self.synchronizeAccount()
     guard let userID = self.accountID else { return nil }
-    if let request = self.surveyRequest { return request.task }
+    if let unansweredSurveyRequest = self.unansweredSurveyRequest {
+      return unansweredSurveyRequest.task
+    }
     let generation = self.sessionFeature.generation
     let token = UUID()
     let provider = self.makeProvider()
     self.surveyError = nil
     let task = Task { [weak self] in
       guard let self else { return }
-      defer { if self.surveyRequest?.token == token { self.surveyRequest = nil } }
+      defer {
+        if self.unansweredSurveyRequest?.token == token {
+          self.unansweredSurveyRequest = nil
+        }
+      }
       do {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         let surveys = try await provider.surveys()
         try Task.checkCancellation()
-        guard self.surveyRequest?.token == token,
+        guard self.unansweredSurveyRequest?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self.surveys = surveys
         self.publish(.surveys(surveys))
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), self.surveyRequest?.token == token,
+        guard !Task.isCancelled, !(error is CancellationError),
+              self.unansweredSurveyRequest?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         self.surveyError = error
       }
     }
-    self.surveyRequest = (token, task)
+    self.unansweredSurveyRequest = (token, task)
     return task
   }
 }

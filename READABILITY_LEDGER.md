@@ -40,8 +40,13 @@ reopen or replace the completed CFA migration ledger.
   effects. Updated AppDelegate and AppModel-test callers. The generic
   `Library-iOS` build passed with the same existing project warnings; focused
   runtime tests remain pending on the unavailable CoreSimulator service.
+- Activity Feature: renamed public feed and survey operations, retained task
+  handles, pagination state and related presentation callers so every name says
+  which Activity data it coordinates. Updated focused feature tests. The
+  generic `Library-iOS` build passed with the same existing project warnings;
+  focused runtime tests remain pending on the unavailable CoreSimulator service.
 
 ## Current slice
 
-- Activity Feature: trace its public actions, asynchronous task ownership and
-  related presentation callers before making clarity-only changes.
+- AppLifecycle Feature: trace lifecycle commands, retained work and AppDelegate
+  callers before making clarity-only changes.
