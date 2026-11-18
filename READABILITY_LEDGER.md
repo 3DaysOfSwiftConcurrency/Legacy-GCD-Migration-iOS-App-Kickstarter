@@ -16,8 +16,8 @@ reopen or replace the completed CFA migration ledger.
 ## Baseline
 
 - Revision: `d9259e262` — verified CFA migration completion.
-- AppModel Feature folders: Activity, AppLifecycle, Authentication,
-  CreatorDrafts, DeveloperExamples, Discovery, Discussion, Friends, Help,
+- AppModel Feature folders: Activity, Authentication, CreatorDrafts,
+  DeveloperExamples, Discovery, Discussion, Friends, Help,
   Messaging, Onboarding, Payments, Pledge, PledgedProjects, Profile,
   ProjectDetails, ProjectMedia, ProjectReporting, Recommendations,
   RemoteConfiguration, Rewards, Search, Session and Settings.
@@ -48,5 +48,7 @@ reopen or replace the completed CFA migration ledger.
 
 ## Current slice
 
-- AppLifecycle Feature: trace lifecycle commands, retained work and AppDelegate
-  callers before making clarity-only changes.
+- AppLifecycle verification: no `AppLifecycleFeature` or AppLifecycle Feature
+  folder exists in the migrated project. Its lifecycle responsibilities are
+  already expressed through AppModel and AppDelegate, so there is no feature to
+  rename. Authentication Feature is next.
