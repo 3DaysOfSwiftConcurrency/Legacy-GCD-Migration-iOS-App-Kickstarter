@@ -15,11 +15,11 @@ public struct EnvironmentVariables {
 extension EnvironmentVariables {
   public var isTrackingEnabled: Bool {
     #if DEBUG
-      guard let value = self.processInfo.environment[VariableName.trackingEnabled.rawValue] else {
+      guard let trackingEnabledSetting = self.processInfo.environment[VariableName.trackingEnabled.rawValue] else {
         return false
       }
 
-      return NSString(string: value).boolValue
+      return NSString(string: trackingEnabledSetting).boolValue
     #else
       return true
     #endif

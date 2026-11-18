@@ -42,18 +42,18 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
     self.activityFeature = activityFeature
     let sessionStarted = NotificationCenter.default
       .publisher(for: .ksr_sessionStarted)
-      .withEmptyValues()
+      .mapOutputToVoid()
 
     let sessionEnded = NotificationCenter.default
       .publisher(for: .ksr_sessionEnded)
-      .withEmptyValues()
+      .mapOutputToVoid()
 
     let userUpdated = NotificationCenter.default
       .publisher(for: .ksr_userUpdated)
-      .withEmptyValues()
+      .mapOutputToVoid()
 
     let unseenActivityCount = Publishers.Merge4(
-      self.viewWillAppearSubject.withEmptyValues(),
+      self.viewWillAppearSubject.mapOutputToVoid(),
       userUpdated,
       sessionStarted,
       sessionEnded
@@ -107,10 +107,10 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
       self.actionFinishedPerformingSubject,
       self.process3DSAuthenticationState
         .filter { $0 == .succeeded }
-        .withEmptyValues(),
+        .mapOutputToVoid(),
       self.showBannerSubject
         .filter { $0.type == .success }
-        .withEmptyValues(),
+        .mapOutputToVoid(),
       self.receiptFailureSubject
     )
     .sink { [weak self] () in

@@ -183,7 +183,7 @@ private func allRoutes(webBaseURL: URL) -> [String: (RouteParamsDecoded) -> Navi
 }
 
 private func deepLinkRoutes(webBaseURL: URL) -> [String: (RouteParamsDecoded) -> Navigation?] {
-  allRoutes(webBaseURL: webBaseURL).restrict(
+  allRoutes(webBaseURL: webBaseURL).keepingOnly(
   keys: [
     "/",
     "/activity",
@@ -626,14 +626,14 @@ private func refInfoFromParams(_ params: RouteParamsDecoded) -> RefInfo? {
 }
 
 extension Dictionary {
-  fileprivate func restrict(keys: Set<Key>) -> Dictionary {
-    var result = Dictionary()
+  fileprivate func keepingOnly(keys: Set<Key>) -> Dictionary {
+    var retainedEntries = Dictionary()
     self.forEach { key, value in
       if keys.contains(key) {
-        result[key] = value
+        retainedEntries[key] = value
       }
     }
-    return result
+    return retainedEntries
   }
 }
 

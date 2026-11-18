@@ -213,3 +213,13 @@ still refused connections after routine recovery.
 The readability checkpoints are committed locally. Push attempts to
 `origin/migration/cfa-swift-concurrency` failed because this session could not
 resolve `github.com`.
+
+## Model file naming pass
+
+Baseline: `55a4ff161`. Scope is each Swift file under `2 - AppModel` and any
+callers or tests affected by a rename.
+
+- AppModel, navigation and composition. Named persisted environment values, restored
+  environment, allowed route keys, and the publisher that maps output to Void. Traced
+  its PPOContainer caller and reviewed environment and navigation tests. Swift
+  parsing, Swift token comparison and git diff --check passed.

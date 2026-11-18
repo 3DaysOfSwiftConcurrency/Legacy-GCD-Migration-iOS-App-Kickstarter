@@ -5,7 +5,7 @@ extension Publisher {
   /// while preserving the timing and completion/error events.
   ///
   /// - Returns: A publisher that emits `Void` for each value from the upstream publisher.
-  public func withEmptyValues() -> Publishers.Map<Self, Void> {
+  public func mapOutputToVoid() -> Publishers.Map<Self, Void> {
     map { _ in () }
   }
 }

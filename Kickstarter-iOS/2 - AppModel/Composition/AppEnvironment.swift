@@ -66,7 +66,7 @@ public struct AppEnvironment: AppEnvironmentType {
   /**
    A global stack of environments.
    */
-  fileprivate static var stack: [Environment] = [Environment()]
+  fileprivate static var environmentStack: [Environment] = [Environment()]
 
   /**
    Invoke when an access token has been acquired and you want to log the user in. Replaces the current
@@ -206,7 +206,7 @@ public struct AppEnvironment: AppEnvironmentType {
 
   // The most recent environment on the stack.
   public static var current: Environment! {
-    return stack.last
+    return environmentStack.last
   }
 
   // Push a new environment onto the stack.
@@ -214,32 +214,32 @@ public struct AppEnvironment: AppEnvironmentType {
     self.saveEnvironment(
       environment: env, ubiquitousStore: env.ubiquitousStore, userDefaults: env.userDefaults
     )
-    self.stack.append(env)
+    self.environmentStack.append(env)
     LocalizationValues.update(language: env.language, locale: env.locale)
   }
 
   // Pop an environment off the stack.
   @discardableResult
   public static func popEnvironment() -> Environment? {
-    let last = self.stack.popLast()
-    let next = self.current ?? Environment()
-    LocalizationValues.update(language: next.language, locale: next.locale)
+    let poppedEnvironment = self.environmentStack.popLast()
+    let restoredEnvironment = self.current ?? Environment()
+    LocalizationValues.update(language: restoredEnvironment.language, locale: restoredEnvironment.locale)
     self.saveEnvironment(
-      environment: next,
-      ubiquitousStore: next.ubiquitousStore,
-      userDefaults: next.userDefaults
+      environment: restoredEnvironment,
+      ubiquitousStore: restoredEnvironment.ubiquitousStore,
+      userDefaults: restoredEnvironment.userDefaults
     )
 
     // If there are no more items in the stack,
     // then the next call to AppEvironment.current will fail.
-    assert(self.stack.count > 0)
+    assert(self.environmentStack.count > 0)
 
-    return last
+    return poppedEnvironment
   }
 
   internal static func resetStackForUnitTests() {
-    while self.stack.count > 1 {
-      _ = self.stack.popLast()
+    while self.environmentStack.count > 1 {
+      _ = self.environmentStack.popLast()
     }
 
     let next = Environment()
@@ -249,7 +249,7 @@ public struct AppEnvironment: AppEnvironmentType {
   // Replace the current environment with a new environment.
   public static func replaceCurrentEnvironment(_ env: Environment) {
     self.pushEnvironment(env)
-    self.stack.remove(at: self.stack.count - 2)
+    self.environmentStack.remove(at: self.environmentStack.count - 2)
   }
 
   // Pushes a new environment onto the stack that changes only a subset of the current global dependencies.
@@ -463,24 +463,24 @@ public struct AppEnvironment: AppEnvironmentType {
     ubiquitousStore _: KeyValueStoreType,
     userDefaults: KeyValueStoreType
   ) -> Environment {
-    let data = userDefaults.dictionary(forKey: self.environmentStorageKey) ?? [:]
+    let storedEnvironmentValues = userDefaults.dictionary(forKey: self.environmentStorageKey) ?? [:]
 
     var service = self.current.apiService
     var currentUser: User? // Will only be set if an OAuth token is also set
     var currentUserServerFeatures: [ServerFeature]? // Will only be set if an OAuth token is also set
-    let configDict: [String: Any]? = data["config"] as? [String: Any]
-    let config: Config? = configDict.flatMap(Config.decodeJSONDictionary)
+    let encodedConfiguration: [String: Any]? = storedEnvironmentValues["config"] as? [String: Any]
+    let config: Config? = encodedConfiguration.flatMap(Config.decodeJSONDictionary)
 
     // If there is an oauth token stored, then we can authenticate our api service
 
     if let oauthToken = fetchOAuthTokenFromKeychain(enabled: featureUseKeychainForOAuthTokenEnabled()) {
       service = service.login(OauthToken(token: oauthToken))
-    } else if let oauthToken = data["apiService.oauthToken.token"] as? String {
+    } else if let oauthToken = storedEnvironmentValues["apiService.oauthToken.token"] as? String {
       service = service.login(OauthToken(token: oauthToken))
     }
 
     // Try restoring the client id for the api service
-    if let clientId = data["apiService.serverConfig.apiClientAuth.clientId"] as? String {
+    if let clientId = storedEnvironmentValues["apiService.serverConfig.apiClientAuth.clientId"] as? String {
       service = Service(
         serverConfig: ServerConfig(
           apiBaseUrl: service.serverConfig.apiBaseUrl,
@@ -496,9 +496,9 @@ public struct AppEnvironment: AppEnvironmentType {
     }
 
     // Try restoring the base urls for the api service
-    if let apiBaseUrlString = data["apiService.serverConfig.apiBaseUrl"] as? String,
+    if let apiBaseUrlString = storedEnvironmentValues["apiService.serverConfig.apiBaseUrl"] as? String,
        let apiBaseUrl = URL(string: apiBaseUrlString),
-       let webBaseUrlString = data["apiService.serverConfig.webBaseUrl"] as? String,
+       let webBaseUrlString = storedEnvironmentValues["apiService.serverConfig.webBaseUrl"] as? String,
        let webBaseUrl = URL(string: webBaseUrlString) {
       service = Service(
         serverConfig: ServerConfig(
@@ -515,8 +515,8 @@ public struct AppEnvironment: AppEnvironmentType {
     }
 
     // Try restoring the basic auth data for the api service
-    if let username = data["apiService.serverConfig.basicHTTPAuth.username"] as? String,
-       let password = data["apiService.serverConfig.basicHTTPAuth.password"] as? String {
+    if let username = storedEnvironmentValues["apiService.serverConfig.basicHTTPAuth.username"] as? String,
+       let password = storedEnvironmentValues["apiService.serverConfig.basicHTTPAuth.password"] as? String {
       service = Service(
         serverConfig: ServerConfig(
           apiBaseUrl: service.serverConfig.apiBaseUrl,
@@ -532,7 +532,7 @@ public struct AppEnvironment: AppEnvironmentType {
     }
 
     // Try restoring the environment
-    if let environment = data["apiService.serverConfig.environment"] as? String,
+    if let environment = storedEnvironmentValues["apiService.serverConfig.environment"] as? String,
        let environmentType = EnvironmentType(rawValue: environment) {
       let serverConfig = ServerConfig.config(for: environmentType)
 
@@ -546,13 +546,13 @@ public struct AppEnvironment: AppEnvironmentType {
 
     // Try restore the current user
     if service.oauthToken != nil {
-      currentUser = data["currentUser"].flatMap(tryDecode)
-      currentUserServerFeatures = (data["currentUserServerFeatures"] as? [String])?
+      currentUser = storedEnvironmentValues["currentUser"].flatMap(tryDecode)
+      currentUserServerFeatures = (storedEnvironmentValues["currentUserServerFeatures"] as? [String])?
         .compactMap { ServerFeature(rawValue: $0) }
     }
 
     // Try restore the PPO settings
-    let currentUserPPOSettings: PPOUserSettings? = data["currentUserPPOSettings"].flatMap(tryDecode)
+    let currentUserPPOSettings: PPOUserSettings? = storedEnvironmentValues["currentUserPPOSettings"].flatMap(tryDecode)
 
     return Environment(
       apiService: service,
@@ -573,33 +573,33 @@ public struct AppEnvironment: AppEnvironmentType {
   ) {
     // Preserve the active stack's policy, including when a new environment is being pushed.
     let useKeychain = featureEnabled(feature: .useKeychainForOAuthToken, environment: self.current)
-    var data: [String: Any] = [:]
+    var storedEnvironmentValues: [String: Any] = [:]
 
     // swiftformat:disable wrap
 
     if let oauthToken = env.apiService.oauthToken?.token {
       // Try to save to the keychain, but if that fails, save to user defaults
       if !self.storeOAuthTokenToKeychain(oauthToken, enabled: useKeychain) {
-        data["apiService.oauthToken.token"] = oauthToken
+        storedEnvironmentValues["apiService.oauthToken.token"] = oauthToken
       }
     } else {
       _ = self.removeOAuthTokenFromKeychain(enabled: useKeychain)
     }
 
-    data["apiService.serverConfig.apiBaseUrl"] = env.apiService.serverConfig.apiBaseUrl.absoluteString
-    data["apiService.serverConfig.apiClientAuth.clientId"] = env.apiService.serverConfig.apiClientAuth.clientId
-    data["apiService.serverConfig.basicHTTPAuth.username"] = env.apiService.serverConfig.basicHTTPAuth?.username
-    data["apiService.serverConfig.basicHTTPAuth.password"] = env.apiService.serverConfig.basicHTTPAuth?.password
-    data["apiService.serverConfig.webBaseUrl"] = env.apiService.serverConfig.webBaseUrl.absoluteString
-    data["apiService.serverConfig.environment"] = env.apiService.serverConfig.environment.description
-    data["apiService.language"] = env.apiService.language
-    data["apiService.currency"] = env.apiService.currency
-    data["config"] = env.config?.encode()
-    data["currentUser"] = env.currentUser?.encode()
-    data["currentUserServerFeatures"] = env.currentUserServerFeatures?.map { $0.rawValue }
-    data["currentUserPPOSettings"] = env.currentUserPPOSettings?.encode()
+    storedEnvironmentValues["apiService.serverConfig.apiBaseUrl"] = env.apiService.serverConfig.apiBaseUrl.absoluteString
+    storedEnvironmentValues["apiService.serverConfig.apiClientAuth.clientId"] = env.apiService.serverConfig.apiClientAuth.clientId
+    storedEnvironmentValues["apiService.serverConfig.basicHTTPAuth.username"] = env.apiService.serverConfig.basicHTTPAuth?.username
+    storedEnvironmentValues["apiService.serverConfig.basicHTTPAuth.password"] = env.apiService.serverConfig.basicHTTPAuth?.password
+    storedEnvironmentValues["apiService.serverConfig.webBaseUrl"] = env.apiService.serverConfig.webBaseUrl.absoluteString
+    storedEnvironmentValues["apiService.serverConfig.environment"] = env.apiService.serverConfig.environment.description
+    storedEnvironmentValues["apiService.language"] = env.apiService.language
+    storedEnvironmentValues["apiService.currency"] = env.apiService.currency
+    storedEnvironmentValues["config"] = env.config?.encode()
+    storedEnvironmentValues["currentUser"] = env.currentUser?.encode()
+    storedEnvironmentValues["currentUserServerFeatures"] = env.currentUserServerFeatures?.map { $0.rawValue }
+    storedEnvironmentValues["currentUserPPOSettings"] = env.currentUserPPOSettings?.encode()
     // swiftformat:enable wrap
 
-    userDefaults.set(data, forKey: self.environmentStorageKey)
+    userDefaults.set(storedEnvironmentValues, forKey: self.environmentStorageKey)
   }
 }
