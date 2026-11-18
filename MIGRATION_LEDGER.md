@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "hybrid-review",
-  "nextAction": "Trace task lifetime and state ownership through the remaining cross-feature dependencies, starting with PledgedProjects and ProjectDetails.",
+  "nextAction": "Review target-boundary exceptions and the remaining SessionFeature/SettingsFeature coordination, beginning with RichPushNotifications and DeveloperExamples.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6176,6 +6176,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Semantically reviewed the remaining SwiftUI ownership and route scanner leads.",
       "result": "PPO, Report Project and Shipping Locations already use private StateObject ownership; Sort is a generic presentation component with no Feature route. These scanner leads do not justify a mechanical refactor."
+    },
+    {
+      "action": "Completed Pledged Projects and Project Details task-lifetime review.",
+      "result": "Per-route cancellation, stale-publication guards and teardown release are covered by 39 passing focused tests. Continue with independent target-boundary and coordination review."
     }
   ],
   "blocker": null,
