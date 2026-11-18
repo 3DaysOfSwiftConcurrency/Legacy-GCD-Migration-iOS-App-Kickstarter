@@ -12,9 +12,13 @@ internal protocol MessageDialogViewControllerDelegate: AnyObject {
 
 internal final class MessageDialogViewController: UIViewController {
   private var keyboardObservation: Keyboard.Observation?
-  fileprivate let viewModel = MessageDialogViewModel(
-    messagingFeature: AppModel.shared.messagingFeature
-  )
+  private var configuredViewModel: MessageDialogViewModel?
+  fileprivate var viewModel: MessageDialogViewModel {
+    guard let configuredViewModel else {
+      preconditionFailure("MessageDialogViewController requires MessagingFeature")
+    }
+    return configuredViewModel
+  }
   internal weak var delegate: MessageDialogViewControllerDelegate?
 
   @IBOutlet private var bodyTextView: UITextView!
@@ -26,9 +30,11 @@ internal final class MessageDialogViewController: UIViewController {
 
   internal static func configuredWith(
     messageSubject: MessageSubject,
-    context: KSRAnalytics.MessageDialogContext
+    context: KSRAnalytics.MessageDialogContext,
+    messagingFeature: MessagingFeature
   ) -> MessageDialogViewController {
     let vc = Storyboard.Messages.instantiate(MessageDialogViewController.self)
+    vc.configuredViewModel = MessageDialogViewModel(messagingFeature: messagingFeature)
     vc.viewModel.configureWith(messageSubject: messageSubject, context: context)
     vc.modalPresentationStyle = .formSheet
     return vc

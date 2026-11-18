@@ -854,7 +854,11 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
 
   private func presentMessageDialog(project: Project) {
     let dialog = MessageDialogViewController
-      .configuredWith(messageSubject: .project(id: project.id, name: project.name), context: .projectPage)
+      .configuredWith(
+        messageSubject: .project(id: project.id, name: project.name),
+        context: .projectPage,
+        messagingFeature: self.composition.managePledge.messagingFeature
+      )
     dialog.modalPresentationStyle = .formSheet
     dialog.delegate = self
     self.present(
@@ -917,7 +921,10 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   }
 
   private func goToCreatorProfile(forProject project: any ProjectCreatorConfiguration) {
-    let vc = ProjectCreatorViewController.configuredWith(project: project)
+    let vc = ProjectCreatorViewController.configuredWith(
+      project: project,
+      messagingFeature: self.composition.managePledge.messagingFeature
+    )
 
     if self.traitCollection.userInterfaceIdiom == .pad {
       let nav = UINavigationController(rootViewController: vc)

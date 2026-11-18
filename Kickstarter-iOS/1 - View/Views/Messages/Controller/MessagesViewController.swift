@@ -8,29 +8,52 @@ import UIKit
 internal final class MessagesViewController: UITableViewController, MessageBannerViewControllerPresenting {
   @IBOutlet fileprivate var replyBarButtonItem: UIBarButtonItem!
 
-  fileprivate let viewModel: MessagesViewModel = MessagesViewModel(
-    messagingFeature: AppModel.shared.messagingFeature,
-    discussionFeature: AppModel.shared.discussionFeature
-  )
+  private var messagingComposition: MessagingComposition?
+  private var composition: MessagingComposition {
+    guard let messagingComposition else {
+      preconditionFailure("MessagesViewController requires MessagingComposition")
+    }
+    return messagingComposition
+  }
+  private var configuredViewModel: MessagesViewModel?
+  fileprivate var viewModel: MessagesViewModel {
+    guard let configuredViewModel else {
+      preconditionFailure("MessagesViewController requires MessagingComposition")
+    }
+    return configuredViewModel
+  }
   fileprivate let dataSource = MessagesDataSource()
 
   public var messageBannerViewController: MessageBannerViewController?
   var dismissedAfterBlockingUserHandler: (() -> Void)?
 
-  internal static func configuredWith(messageThread: MessageThread) -> MessagesViewController {
-    let vc = self.instantiate()
+  internal static func configuredWith(
+    messageThread: MessageThread,
+    composition: MessagingComposition
+  ) -> MessagesViewController {
+    let vc = self.instantiate(composition: composition)
     vc.viewModel.configureWith(data: .left(messageThread))
     return vc
   }
 
-  internal static func configuredWith(project: Project, backing: Backing) -> MessagesViewController {
-    let vc = self.instantiate()
+  internal static func configuredWith(
+    project: Project,
+    backing: Backing,
+    composition: MessagingComposition
+  ) -> MessagesViewController {
+    let vc = self.instantiate(composition: composition)
     vc.viewModel.configureWith(data: .right((project: project, backing: backing)))
     return vc
   }
 
-  fileprivate static func instantiate() -> MessagesViewController {
-    return Storyboard.Messages.instantiate(MessagesViewController.self)
+  fileprivate static func instantiate(composition: MessagingComposition) -> MessagesViewController {
+    let viewController = Storyboard.Messages.instantiate(MessagesViewController.self)
+    viewController.messagingComposition = composition
+    viewController.configuredViewModel = MessagesViewModel(
+      messagingFeature: composition.messagingFeature,
+      discussionFeature: composition.discussionFeature
+    )
+    return viewController
   }
 
   internal override func viewDidLoad() {
@@ -133,7 +156,11 @@ internal final class MessagesViewController: UITableViewController, MessageBanne
     context: KSRAnalytics.MessageDialogContext
   ) {
     let dialog = MessageDialogViewController
-      .configuredWith(messageSubject: .messageThread(messageThread), context: context)
+      .configuredWith(
+        messageSubject: .messageThread(messageThread),
+        context: context,
+        messagingFeature: self.composition.messagingFeature
+      )
     dialog.modalPresentationStyle = .formSheet
     dialog.delegate = self
     self.present(
@@ -147,19 +174,26 @@ internal final class MessagesViewController: UITableViewController, MessageBanne
     let projectParam = Either<Project, any ProjectPageParam>(left: project)
     let nav = ProjectPageViewController.navigationController(
       withProjectOrParam: projectParam,
-      refInfo: RefInfo(refTag)
+      refInfo: RefInfo(refTag),
+      composition: self.composition.projectPage
     )
 
     self.present(nav, animated: true, completion: nil)
   }
 
   fileprivate func goToBacking(with params: ManagePledgeViewParamConfigData) {
-    let vc = ManagePledgeViewController.controller(with: params)
+    let vc = ManagePledgeViewController.controller(
+      with: params,
+      composition: self.composition.projectPage.managePledge
+    )
     self.present(vc, animated: true)
   }
 
   fileprivate func goToPMPledeView(with url: String) {
-    let vc = PledgeManagerWebViewController.configuredWith(url: url)
+    let vc = PledgeManagerWebViewController.configuredWith(
+      url: url,
+      composition: self.composition.projectPage
+    )
     let nav = NavigationController(rootViewController: vc)
     nav.modalPresentationStyle = .pageSheet
     self.present(nav, animated: true)

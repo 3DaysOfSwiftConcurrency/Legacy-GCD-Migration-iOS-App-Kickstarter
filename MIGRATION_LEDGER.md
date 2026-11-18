@@ -5705,6 +5705,31 @@ Evidence: `/private/tmp/kickstarter-activities-controller-focused.xcresult`. Act
 snapshots, live navigation and the whole Library and Presentation suites remain
 unverified. The CFA gate rejects restored global composition in Activities, default
 destination factories there, and parameterless Activities construction from Root Tabs or
-Pledged Projects. Messages remains the outstanding legacy caller identified by the prior
-Pledge Manager checkpoint. This is not full CFA compliance. Swift packages, target
-identifiers and existing history are unchanged. No push.
+Pledged Projects. This is not full CFA compliance. Swift packages, target identifiers and
+existing history are unchanged. No push.
+
+### Messaging feature graph — 18 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes MessagingComposition as the Messaging vertical-slice graph: the
+AppModel-owned MessagingFeature and DiscussionFeature plus the same nested
+ProjectPageComposition used by Project Page, Manage Pledge and Pledge Manager destinations.
+Root Tabs, Backer Dashboard, Message Threads and Message Search pass that graph through the
+existing UIKit routes. Messaging controllers construct their view models from supplied
+features and no longer select process-global dependencies. Message dialogs receive the
+presenting flow's MessagingFeature explicitly.
+
+Focused AppModel and Messaging view-model coverage passed all 38 tests. Focused
+PPOContainerViewModelTests and RootTabsNavigationTests passed all 12 tests. Both runs had
+zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-messaging-composition-library.xcresult` and
+`/private/tmp/kickstarter-messaging-composition-presentation.xcresult`.
+
+Messaging controller snapshots, live navigation and the whole Library and Presentation
+suites remain unverified. Video Feed still selects the application MessagingFeature when
+constructing Project Creator and remains later composition work. The CFA gate rejects
+restored global feature selection in Messaging controllers, legacy default pledge
+destinations from Messages, and global MessagingFeature selection in Project Creator.
+This is not full CFA compliance. Swift packages, target identifiers and existing history
+are unchanged. No push.

@@ -358,7 +358,10 @@ final class VideoFeedViewController: UIViewController {
   }
 
   private func goToCreatorProfile(for item: VideoFeedItem) {
-    let vc = ProjectCreatorViewController.configuredWith(project: item)
+    let vc = ProjectCreatorViewController.configuredWith(
+      project: item,
+      messagingFeature: AppModel.shared.messagingFeature
+    )
     vc.isPresentedFromVideoFeed = true
 
     let nav = UINavigationController(rootViewController: vc)

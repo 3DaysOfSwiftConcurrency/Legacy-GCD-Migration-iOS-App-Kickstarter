@@ -270,8 +270,15 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
       let profileVC = profileNav.viewControllers.first as? BackerDashboardViewController
     else { return }
 
-    let threadsVC = MessageThreadsViewController.configuredWith(project: nil, refTag: nil)
-    let messageThreadVC = MessagesViewController.configuredWith(messageThread: messageThread)
+    let threadsVC = MessageThreadsViewController.configuredWith(
+      project: nil,
+      refTag: nil,
+      composition: self.composition.messaging
+    )
+    let messageThreadVC = MessagesViewController.configuredWith(
+      messageThread: messageThread,
+      composition: self.composition.messaging
+    )
 
     self.presentedViewController?.dismiss(animated: false, completion: nil)
 
@@ -367,7 +374,9 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
       return SearchViewController.instantiate()
     case let .profile(isLoggedIn):
       return isLoggedIn
-        ? BackerDashboardViewController.instantiate()
+        ? BackerDashboardViewController.instantiate(
+          messagingComposition: self.composition.messaging
+        )
         : LoginToutViewController.configuredWith(loginIntent: .loginTab)
     }
   }

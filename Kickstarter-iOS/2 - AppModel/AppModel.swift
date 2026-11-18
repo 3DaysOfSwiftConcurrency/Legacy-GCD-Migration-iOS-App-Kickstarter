@@ -171,10 +171,27 @@ public struct ActivityComposition {
   }
 }
 
+public struct MessagingComposition {
+  public let messagingFeature: MessagingFeature
+  public let discussionFeature: DiscussionFeature
+  public let projectPage: ProjectPageComposition
+
+  public init(
+    messagingFeature: MessagingFeature,
+    discussionFeature: DiscussionFeature,
+    projectPage: ProjectPageComposition
+  ) {
+    self.messagingFeature = messagingFeature
+    self.discussionFeature = discussionFeature
+    self.projectPage = projectPage
+  }
+}
+
 public struct RootTabComposition {
   public let sessionFeature: SessionFeature
   public let profileFeature: ProfileFeature
   public let activities: ActivityComposition
+  public let messaging: MessagingComposition
   public let settingsFeature: SettingsFeature
   public let analytics: () -> KSRAnalytics
   public let badgePresentationDelay: () -> TimeInterval
@@ -185,6 +202,7 @@ public struct RootTabComposition {
     sessionFeature: SessionFeature,
     profileFeature: ProfileFeature,
     activities: ActivityComposition,
+    messaging: MessagingComposition,
     settingsFeature: SettingsFeature,
     analytics: @escaping () -> KSRAnalytics,
     badgePresentationDelay: @escaping () -> TimeInterval,
@@ -194,6 +212,7 @@ public struct RootTabComposition {
     self.sessionFeature = sessionFeature
     self.profileFeature = profileFeature
     self.activities = activities
+    self.messaging = messaging
     self.settingsFeature = settingsFeature
     self.analytics = analytics
     self.badgePresentationDelay = badgePresentationDelay
@@ -206,17 +225,20 @@ public struct ManagePledgeComposition {
   public let pledgeFeature: PledgeFeature
   public let paymentsFeature: PaymentsFeature
   public let rewardsFeature: RewardsFeature
+  public let messagingFeature: MessagingFeature
   public let checkout: PledgeCheckoutComposition
 
   public init(
     pledgeFeature: PledgeFeature,
     paymentsFeature: PaymentsFeature,
     rewardsFeature: RewardsFeature,
+    messagingFeature: MessagingFeature,
     checkout: PledgeCheckoutComposition
   ) {
     self.pledgeFeature = pledgeFeature
     self.paymentsFeature = paymentsFeature
     self.rewardsFeature = rewardsFeature
+    self.messagingFeature = messagingFeature
     self.checkout = checkout
   }
 }
@@ -279,6 +301,14 @@ public final class AppModel {
     )
   }
 
+  public var messagingComposition: MessagingComposition {
+    MessagingComposition(
+      messagingFeature: self.messagingFeature,
+      discussionFeature: self.discussionFeature,
+      projectPage: self.projectPageComposition
+    )
+  }
+
   public var pledgeCheckoutComposition: PledgeCheckoutComposition {
     PledgeCheckoutComposition(
       pledgeFeature: self.pledgeFeature,
@@ -300,6 +330,7 @@ public final class AppModel {
       sessionFeature: self.sessionFeature,
       profileFeature: self.profileFeature,
       activities: self.activityComposition,
+      messaging: self.messagingComposition,
       settingsFeature: self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
@@ -313,6 +344,7 @@ public final class AppModel {
       pledgeFeature: self.pledgeFeature,
       paymentsFeature: self.paymentsFeature,
       rewardsFeature: self.rewardsFeature,
+      messagingFeature: self.messagingFeature,
       checkout: self.pledgeCheckoutComposition
     )
   }

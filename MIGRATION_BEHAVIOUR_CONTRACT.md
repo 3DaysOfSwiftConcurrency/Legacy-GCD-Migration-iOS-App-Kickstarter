@@ -2300,7 +2300,8 @@ safe for arbitrary concurrent environment mutation.
   Project Page and Pledged Projects now pass composition explicitly.
 - Focused AppModel/Pledge Manager coverage passes 22 tests and focused survey/Pledged
   Projects/root presentation coverage passes 13 tests.
-- Messages still uses the legacy default factory and remains explicit follow-up work.
+- Messaging composition now supplies this destination graph; see the Messaging feature
+  graph checkpoint below.
 
 ## Activities feature graph — 18 November 2026
 
@@ -2313,5 +2314,16 @@ safe for arbitrary concurrent environment mutation.
 - Focused Activities/AppModel coverage passes 23 tests and focused Pledged Projects/root
   navigation coverage passes 12 tests. A focused controller smoke attempt was blocked by
   the snapshot harness reference-simulator guard before its test body ran. Activity
-  snapshots and live navigation remain unverified; Messages remains the next legacy
-  Pledge Manager caller.
+  snapshots and live navigation remain unverified.
+
+## Messaging feature graph — 18 November 2026
+
+- Root Tabs, Backer Dashboard, Message Threads and Message Search now carry one
+  AppModel-owned MessagingComposition containing MessagingFeature, DiscussionFeature and
+  the established ProjectPageComposition destination graph.
+- Messages uses that graph for its own model, reply dialog, Project Page, Manage Pledge and
+  Pledge Manager routes. Project Creator receives MessagingFeature explicitly from its
+  presenting flow.
+- Focused Messaging/AppModel coverage passes 38 tests and focused Pledged Projects/root
+  navigation coverage passes 12 tests. Messaging snapshots, live navigation and whole
+  target suites remain unverified. Video Feed composition remains later migration work.

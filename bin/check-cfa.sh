@@ -38,6 +38,11 @@ pledged_projects_feature="$app_model/Features/PledgedProjects"
 pledged_projects_view="$app_view/Views/PledgedProjectsOverview"
 pledge_feature="$app_model/Features/Pledge/PledgeFeature.swift"
 pledge_manager_view_model="$app_view/Views/SurveyResponse/Controller/PledgeManagerWebViewModel.swift"
+messages_controller="$app_view/Views/Messages/Controller/MessagesViewController.swift"
+message_threads_controller="$app_view/Views/MessageThreads/Controller/MessageThreadsViewController.swift"
+search_messages_controller="$app_view/Views/SearchMessages/SearchMessagesViewController.swift"
+message_dialog_controller="$app_view/Views/MessageDialog/Controller/MessageDialogViewController.swift"
+project_creator_controller="$app_view/Views/ProjectPage/Controller/ProjectCreatorViewController.swift"
 
 reject_matches 'Deep-link data resolution belongs to AppModel and its Features.' \
   'discussionFeature|discoveryFeature|activityFeature|messagingFeature|authenticationFeature|sessionFeature' \
@@ -222,6 +227,14 @@ reject_matches 'Search view models must receive their dependencies explicitly.' 
 reject_matches 'Messaging view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/MessageDialog/*ViewModel.swift" "$app_view/Views/MessageThreads/*ViewModel.swift" \
   "$app_view/Views/Messages/*ViewModel.swift" "$app_view/Views/SearchMessages/*ViewModel.swift"
+reject_matches 'Messaging controllers receive their feature graph from composition.' \
+  'AppModel[.]shared|AppEnvironment[.]current' "$messages_controller" "$message_threads_controller" \
+  "$search_messages_controller" "$message_dialog_controller"
+reject_matches 'Messages forwards its composition graph to project and pledge destinations.' \
+  'ManagePledgeViewController[.]controller[(][[:space:]]*with:[[:space:]]*params[[:space:]]*[)]|PledgeManagerWebViewController[.]configuredWith[(][[:space:]]*url:[[:space:]]*url[[:space:]]*[)]' \
+  "$messages_controller"
+reject_matches 'Project Creator receives MessagingFeature from its presenting graph.' \
+  'AppModel[.]shared[.]messagingFeature' "$project_creator_controller"
 reject_matches 'Features must receive their application dependencies explicitly.' \
   'AppModel[.]shared' "$app_model/Features"
 reject_matches 'Settings must receive environment dependencies from composition.' \

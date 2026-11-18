@@ -4,13 +4,31 @@ import KsApi
 import UIKit
 
 internal final class SearchMessagesViewController: UITableViewController {
-  fileprivate let viewModel = MessagesSearchViewModel(
-    messagingFeature: AppModel.shared.messagingFeature
-  )
+  private var messagingComposition: MessagingComposition?
+  private var composition: MessagingComposition {
+    guard let messagingComposition else {
+      preconditionFailure("SearchMessagesViewController requires MessagingComposition")
+    }
+    return messagingComposition
+  }
+  private var configuredViewModel: MessagesSearchViewModel?
+  fileprivate var viewModel: MessagesSearchViewModel {
+    guard let configuredViewModel else {
+      preconditionFailure("SearchMessagesViewController requires MessagingComposition")
+    }
+    return configuredViewModel
+  }
   fileprivate let dataSource = SearchMessagesDataSource()
 
   @IBOutlet fileprivate var searchTextField: UITextField!
   @IBOutlet fileprivate var loadingView: UIActivityIndicatorView!
+
+  internal func configure(composition: MessagingComposition) {
+    self.messagingComposition = composition
+    self.configuredViewModel = MessagesSearchViewModel(
+      messagingFeature: composition.messagingFeature
+    )
+  }
 
   internal func configureWith(project: Project?) {
     self.viewModel.configureWith(project: project)
@@ -69,7 +87,10 @@ internal final class SearchMessagesViewController: UITableViewController {
   }
 
   fileprivate func goTo(messageThread: MessageThread) {
-    let vc = MessagesViewController.configuredWith(messageThread: messageThread)
+    let vc = MessagesViewController.configuredWith(
+      messageThread: messageThread,
+      composition: self.composition
+    )
     self.navigationController?.pushViewController(vc, animated: true)
   }
 

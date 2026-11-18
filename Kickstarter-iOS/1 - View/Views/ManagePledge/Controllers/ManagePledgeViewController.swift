@@ -522,7 +522,11 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
     messageSubject: MessageSubject,
     context: KSRAnalytics.MessageDialogContext
   ) {
-    let vc = MessageDialogViewController.configuredWith(messageSubject: messageSubject, context: context)
+    let vc = MessageDialogViewController.configuredWith(
+      messageSubject: messageSubject,
+      context: context,
+      messagingFeature: self.composition.messagingFeature
+    )
     let nav = UINavigationController(rootViewController: vc)
     nav.modalPresentationStyle = .formSheet
     vc.delegate = self

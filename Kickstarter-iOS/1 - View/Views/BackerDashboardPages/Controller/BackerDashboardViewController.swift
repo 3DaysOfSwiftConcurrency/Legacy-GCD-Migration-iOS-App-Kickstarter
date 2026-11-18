@@ -5,6 +5,7 @@ import Prelude
 import UIKit
 
 internal final class BackerDashboardViewController: UIViewController {
+  private var messagingComposition: MessagingComposition?
   @IBOutlet private var avatarImageView: CircleAvatarImageView!
   @IBOutlet private var backedMenuButton: UIButton!
   @IBOutlet private var backerNameLabel: UILabel!
@@ -36,8 +37,12 @@ internal final class BackerDashboardViewController: UIViewController {
   private var panGesture = UIPanGestureRecognizer()
   private var projectSavedObserver: MainActorNotificationObservation?
 
-  internal static func instantiate() -> BackerDashboardViewController {
-    return Storyboard.BackerDashboard.instantiate(BackerDashboardViewController.self)
+  internal static func instantiate(
+    messagingComposition: MessagingComposition
+  ) -> BackerDashboardViewController {
+    let viewController = Storyboard.BackerDashboard.instantiate(BackerDashboardViewController.self)
+    viewController.messagingComposition = messagingComposition
+    return viewController
   }
 
   internal override func viewDidLoad() {
@@ -126,8 +131,13 @@ internal final class BackerDashboardViewController: UIViewController {
       self.setAttributedTitles(for: self.savedMenuButton, with: text)
     }
     self.viewModel.onMessages = { [weak self] in
-      let vc = MessageThreadsViewController.configuredWith(project: nil, refTag: .profile)
-      self?.navigationController?.pushViewController(vc, animated: true)
+      guard let self, let messagingComposition = self.messagingComposition else { return }
+      let vc = MessageThreadsViewController.configuredWith(
+        project: nil,
+        refTag: .profile,
+        composition: messagingComposition
+      )
+      self.navigationController?.pushViewController(vc, animated: true)
     }
     self.viewModel.onSettings = { [weak self] in self?.goToSettings() }
     self.viewModel.onNavigate = { [weak self] tab in

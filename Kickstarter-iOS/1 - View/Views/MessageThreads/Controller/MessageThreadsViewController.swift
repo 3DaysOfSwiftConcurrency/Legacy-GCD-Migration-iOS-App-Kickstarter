@@ -6,16 +6,35 @@ import Prelude
 import UIKit
 
 internal final class MessageThreadsViewController: UITableViewController {
-  fileprivate let viewModel = MessageThreadsViewModel(
-    messagingFeature: AppModel.shared.messagingFeature
-  )
+  private var messagingComposition: MessagingComposition?
+  private var composition: MessagingComposition {
+    guard let messagingComposition else {
+      preconditionFailure("MessageThreadsViewController requires MessagingComposition")
+    }
+    return messagingComposition
+  }
+  private var configuredViewModel: MessageThreadsViewModel?
+  fileprivate var viewModel: MessageThreadsViewModel {
+    guard let configuredViewModel else {
+      preconditionFailure("MessageThreadsViewController requires MessagingComposition")
+    }
+    return configuredViewModel
+  }
   fileprivate let dataSource = MessageThreadsDataSource()
 
   @IBOutlet fileprivate var footerView: UIView!
   @IBOutlet fileprivate var mailboxLabel: UILabel!
 
-  internal static func configuredWith(project: Project?, refTag: RefTag?) -> MessageThreadsViewController {
+  internal static func configuredWith(
+    project: Project?,
+    refTag: RefTag?,
+    composition: MessagingComposition
+  ) -> MessageThreadsViewController {
     let vc = Storyboard.Messages.instantiate(MessageThreadsViewController.self)
+    vc.messagingComposition = composition
+    vc.configuredViewModel = MessageThreadsViewModel(
+      messagingFeature: composition.messagingFeature
+    )
     vc.viewModel.configureWith(project: project, refTag: refTag)
     return vc
   }
@@ -86,7 +105,10 @@ internal final class MessageThreadsViewController: UITableViewController {
     didSelectRowAt indexPath: IndexPath
   ) {
     if let messageThread = self.dataSource[indexPath] as? MessageThread {
-      let vc = MessagesViewController.configuredWith(messageThread: messageThread)
+      let vc = MessagesViewController.configuredWith(
+        messageThread: messageThread,
+        composition: self.composition
+      )
 
       vc.dismissedAfterBlockingUserHandler = { [weak self] in
         self?.viewModel.refresh()
@@ -142,6 +164,7 @@ internal final class MessageThreadsViewController: UITableViewController {
           let search = vc as? SearchMessagesViewController else {
       fatalError("Could not instantiate SearchMessagesViewController.")
     }
+    search.configure(composition: self.composition)
 
     self.navigationController?.pushViewController(search, animated: true)
   }

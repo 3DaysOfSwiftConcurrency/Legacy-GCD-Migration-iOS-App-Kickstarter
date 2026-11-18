@@ -419,6 +419,9 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(
       first.projectPageComposition.managePledge.rewardsFeature === first.rewardsFeature
     )
+    XCTAssertTrue(
+      first.projectPageComposition.managePledge.messagingFeature === first.messagingFeature
+    )
     XCTAssertTrue(first.pledgeCheckoutComposition.pledgeFeature === first.pledgeFeature)
     XCTAssertTrue(
       first.pledgeCheckoutComposition.authenticationFeature === first.authenticationFeature
@@ -433,10 +436,20 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(
       first.rootTabComposition.activities.activityFeature === first.activityFeature
     )
+    XCTAssertTrue(
+      first.rootTabComposition.messaging.messagingFeature === first.messagingFeature
+    )
+    XCTAssertTrue(
+      first.messagingComposition.discussionFeature === first.discussionFeature
+    )
+    XCTAssertTrue(
+      first.messagingComposition.projectPage.managePledge.pledgeFeature === first.pledgeFeature
+    )
     XCTAssertTrue(first.rootTabComposition.settingsFeature === first.settingsFeature)
     XCTAssertTrue(first.managePledgeComposition.pledgeFeature === first.pledgeFeature)
     XCTAssertTrue(first.managePledgeComposition.paymentsFeature === first.paymentsFeature)
     XCTAssertTrue(first.managePledgeComposition.rewardsFeature === first.rewardsFeature)
+    XCTAssertTrue(first.managePledgeComposition.messagingFeature === first.messagingFeature)
     XCTAssertTrue(
       first.managePledgeComposition.checkout.pledgeFeature === first.pledgeFeature
     )

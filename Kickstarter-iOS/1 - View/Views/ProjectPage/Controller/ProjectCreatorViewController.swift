@@ -5,17 +5,31 @@ import SafariServices
 import WebKit
 
 internal final class ProjectCreatorViewController: WebViewController {
+  private let messagingFeature: MessagingFeature
   fileprivate let viewModel = ProjectCreatorViewModel(
     projectDetailsFeature: AppModel.shared.projectDetailsFeature
   )
 
   var isPresentedFromVideoFeed = false
 
-  internal static func configuredWith(project: any ProjectCreatorConfiguration)
+  internal static func configuredWith(
+    project: any ProjectCreatorConfiguration,
+    messagingFeature: MessagingFeature
+  )
     -> ProjectCreatorViewController {
-    let vc = ProjectCreatorViewController()
+    let vc = ProjectCreatorViewController(messagingFeature: messagingFeature)
     vc.viewModel.configureWith(project: project)
     return vc
+  }
+
+  private init(messagingFeature: MessagingFeature) {
+    self.messagingFeature = messagingFeature
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is unavailable")
   }
 
   internal override func viewDidLoad() {
@@ -89,7 +103,11 @@ internal final class ProjectCreatorViewController: WebViewController {
   }
 
   fileprivate func goToMessageDialog(subject: MessageSubject, context: KSRAnalytics.MessageDialogContext) {
-    let vc = MessageDialogViewController.configuredWith(messageSubject: subject, context: context)
+    let vc = MessageDialogViewController.configuredWith(
+      messageSubject: subject,
+      context: context,
+      messagingFeature: self.messagingFeature
+    )
     vc.delegate = self
     let nav = UINavigationController(rootViewController: vc)
     nav.modalPresentationStyle = .formSheet
