@@ -130,11 +130,11 @@ public final class PaymentsFeature {
     ))
   }
 
-  func setupForPaymentSettings() async throws -> ClientSecretEnvelope {
+  func createCardSetupIntentForPaymentSettings() async throws -> ClientSecretEnvelope {
     try await self.setup(projectID: nil, context: .profileSettings)
   }
 
-  func setupForPledge(projectID: String, context: PledgeViewContext) async throws -> ClientSecretEnvelope {
+  func createCardSetupIntentForPledge(projectID: String, context: PledgeViewContext) async throws -> ClientSecretEnvelope {
     try await self.setup(
       projectID: projectID, context: context == .latePledge ? .postCampaignCheckout : .crowdfundingCheckout
     )
@@ -175,8 +175,8 @@ public final class PaymentsFeature {
   private struct Pending { let id: UUID; let task: Task<Value, Error> }
   private var pending: [Identity: Pending] = [:]
   private var commands: [UUID: Task<Value, Error>] = [:]
-  private var cardTail: [SessionIdentity: Pending] = [:]
-  private var cardRevision = 0
+  private var latestCardWriteBySession: [SessionIdentity: Pending] = [:]
+  private var cardWriteRevision = 0
 
   private struct CardReadResult: Sendable {
     let revision: Int
@@ -195,17 +195,17 @@ public final class PaymentsFeature {
   private func request(_ command: Command, operation: @escaping @MainActor (any PaymentsProvider) async throws -> Value)
     -> Task<Value, Error> {
     let identity = Identity(session: self.sessionIdentity, command: command)
-    let previous = command.changesCards ? self.cardTail[identity.session] : nil
+    let previous = command.changesCards ? self.latestCardWriteBySession[identity.session] : nil
     if let existing = self.pending[identity],
        !command.changesCards || previous?.id == existing.id { return existing.task }
     let id = UUID()
     let provider = self.makeProvider()
-    if command.changesCards { self.cardRevision += 1 }
+    if command.changesCards { self.cardWriteRevision += 1 }
     let task = Task { [self] in
       defer {
         self.commands[id] = nil
         if self.pending[identity]?.id == id { self.pending[identity] = nil }
-        if self.cardTail[identity.session]?.id == id { self.cardTail[identity.session] = nil }
+        if self.latestCardWriteBySession[identity.session]?.id == id { self.latestCardWriteBySession[identity.session] = nil }
       }
       if let previous { _ = await previous.task.result }
       try self.requireCurrent(identity.session)
@@ -221,7 +221,7 @@ public final class PaymentsFeature {
     let entry = Pending(id: id, task: task)
     self.pending[identity] = entry
     self.commands[id] = task
-    if command.changesCards { self.cardTail[identity.session] = entry }
+    if command.changesCards { self.latestCardWriteBySession[identity.session] = entry }
     return task
   }
 
@@ -232,7 +232,7 @@ public final class PaymentsFeature {
     while true {
       let result = try await self.waitForCardRead(in: session)
       try self.requireCurrent(session)
-      if result.revision == self.cardRevision { return try result.cards.get() }
+      if result.revision == self.cardWriteRevision { return try result.cards.get() }
     }
   }
 
@@ -275,16 +275,16 @@ public final class PaymentsFeature {
   private func readCardsAfterWrites(in session: SessionIdentity) async throws -> CardReadResult {
     while true {
       try self.requireCurrent(session)
-      if let previous = self.cardTail[session] {
+      if let previous = self.latestCardWriteBySession[session] {
         _ = await previous.task.result
         continue
       }
-      let revision = self.cardRevision
+      let revision = self.cardWriteRevision
       let result: Result<UserEnvelope<GraphUser>, Error>
       do { result = .success(try await self.makeProvider().cards()) }
       catch { result = .failure(error) }
       try self.requireCurrent(session)
-      if revision == self.cardRevision { return CardReadResult(revision: revision, cards: result) }
+      if revision == self.cardWriteRevision { return CardReadResult(revision: revision, cards: result) }
     }
   }
 

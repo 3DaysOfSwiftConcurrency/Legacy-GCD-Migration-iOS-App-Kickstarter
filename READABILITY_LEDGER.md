@@ -113,7 +113,13 @@ reopen or replace the completed CFA migration ledger.
   generic Library-iOS simulator build was blocked during Swift package resolution.
   OnboardingFeatureTests and OnboardingViewModel tests could not run because
   CoreSimulator refused connections.
+- Payments: named the two card setup intent entry points by destination. Clarified the
+  newest queued card write and its revision. Updated the payment settings and pledge
+  card ViewModels and setup context tests. Swift parsing and git diff --check passed.
+  The signing-disabled generic Library-iOS simulator build was blocked during Swift
+  package resolution. PaymentsFeatureTests and payment methods ViewModel tests could
+  not run because CoreSimulator refused connections.
 
 ## Current slice
 
-- Payments Feature and card setup presentation.
+- Pledge Feature and backing and checkout presentation.

@@ -170,8 +170,8 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testDistinctSetupContextsRemainIndependent() async throws {
-    let first = Task { try await self.feature.setupForPledge(projectID: "project", context: .pledge) }
-    let second = Task { try await self.feature.setupForPledge(projectID: "project", context: .latePledge) }
+    let first = Task { try await self.feature.createCardSetupIntentForPledge(projectID: "project", context: .pledge) }
+    let second = Task { try await self.feature.createCardSetupIntentForPledge(projectID: "project", context: .latePledge) }
     await self.provider.setups.waitFor(2)
     XCTAssertEqual(self.provider.setupInputs.map { $0.setupIntentContext }, [.crowdfundingCheckout, .postCampaignCheckout])
     XCTAssertEqual(self.provider.setupInputs.map { $0.projectId }, ["project", "project"])

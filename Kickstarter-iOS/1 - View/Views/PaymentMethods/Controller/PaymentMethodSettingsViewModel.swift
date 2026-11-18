@@ -103,7 +103,7 @@ final class PaymentMethodSettingsViewModel {
     self.presentationTasks.replace(.setup) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        let envelope = try await feature.setupForPaymentSettings()
+        let envelope = try await feature.createCardSetupIntentForPaymentSettings()
         try await sleep(1 + delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity), !self.shouldCancel else { return }

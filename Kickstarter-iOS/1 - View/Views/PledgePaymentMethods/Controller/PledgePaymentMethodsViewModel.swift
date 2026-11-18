@@ -192,7 +192,7 @@ final class PledgePaymentMethodsViewModel {
     self.presentationTasks.replace(.setup) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        let envelope = try await feature.setupForPledge(projectID: config.project.graphID, context: config.context)
+        let envelope = try await feature.createCardSetupIntentForPledge(projectID: config.project.graphID, context: config.context)
         try await sleep(1 + delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity), !self.shouldCancel else { return }
