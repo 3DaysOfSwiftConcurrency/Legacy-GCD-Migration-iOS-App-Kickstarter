@@ -228,16 +228,32 @@ public struct SearchComposition {
 public struct DiscoveryComposition {
   public let discoveryFeature: DiscoveryFeature
   public let videoFeed: VideoFeedComposition
+  public let curatedProjects: CuratedProjectsComposition
   public let isPad: () -> Bool
 
   public init(
     discoveryFeature: DiscoveryFeature,
     videoFeed: VideoFeedComposition,
+    curatedProjects: CuratedProjectsComposition,
     isPad: @escaping () -> Bool
   ) {
     self.discoveryFeature = discoveryFeature
     self.videoFeed = videoFeed
+    self.curatedProjects = curatedProjects
     self.isPad = isPad
+  }
+}
+
+public struct CuratedProjectsComposition {
+  public let recommendationsFeature: RecommendationsFeature
+  public let projectMediaFeature: ProjectMediaFeature
+
+  public init(
+    recommendationsFeature: RecommendationsFeature,
+    projectMediaFeature: ProjectMediaFeature
+  ) {
+    self.recommendationsFeature = recommendationsFeature
+    self.projectMediaFeature = projectMediaFeature
   }
 }
 
@@ -391,7 +407,15 @@ public final class AppModel {
     DiscoveryComposition(
       discoveryFeature: self.discoveryFeature,
       videoFeed: self.videoFeedComposition,
+      curatedProjects: self.curatedProjectsComposition,
       isPad: { AppEnvironment.current.device.userInterfaceIdiom == .pad }
+    )
+  }
+
+  public var curatedProjectsComposition: CuratedProjectsComposition {
+    CuratedProjectsComposition(
+      recommendationsFeature: self.recommendationsFeature,
+      projectMediaFeature: self.projectMediaFeature
     )
   }
 
@@ -907,6 +931,7 @@ public final class AppModel {
         connectivity: connectivity,
         webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
         analytics: { AppEnvironment.current.ksrAnalytics },
+        watchResponseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
         savePrompts: .live(),
         makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) }
       )

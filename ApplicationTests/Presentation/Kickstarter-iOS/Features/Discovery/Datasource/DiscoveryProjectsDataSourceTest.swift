@@ -8,7 +8,9 @@ import XCTest
 
 @MainActor
 final class DiscoveryProjectsDataSourceTests: XCTestCase {
-  let dataSource = DiscoveryProjectsDataSource()
+  let dataSource = DiscoveryProjectsDataSource(
+    projectMediaFeature: AppModel.shared.projectMediaFeature
+  )
   let tableView = UITableView()
 
   func testOnboarding() {
@@ -91,5 +93,23 @@ final class DiscoveryProjectsDataSourceTests: XCTestCase {
 
     XCTAssertEqual(section + 1, self.dataSource.numberOfSections(in: self.tableView))
     XCTAssertEqual(3, self.dataSource.tableView(self.tableView, numberOfRowsInSection: section))
+  }
+
+  func testProjectCellsReceiveComposedProjectMediaFeature() {
+    let value = DiscoveryProjectCellRowValue(
+      project: .template,
+      category: nil,
+      params: .defaults
+    )
+    self.tableView.register(nib: Nib.DiscoveryPostcardCell)
+    self.tableView.dataSource = self.dataSource
+    self.dataSource.load(projects: [value.project], params: value.params)
+
+    let indexPath = self.dataSource.indexPath(forProjectRow: 0)
+    XCTAssertTrue(self.dataSource.tableView(self.tableView, cellForRowAt: indexPath) is DiscoveryPostcardCell)
+
+    let card = DiscoveryProjectCardCell(style: .default, reuseIdentifier: nil)
+    card.configure(projectMediaFeature: AppModel.shared.projectMediaFeature)
+    card.configureWith(value: value)
   }
 }

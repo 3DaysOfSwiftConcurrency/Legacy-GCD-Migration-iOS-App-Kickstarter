@@ -26,6 +26,8 @@ internal final class WatchProjectViewModelTests: TestCase {
     try await super.setUp()
     self.feature = ProjectMediaFeature(
       sessionFeature: .live(),
+      analytics: { AppEnvironment.current.ksrAnalytics },
+      watchResponseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       savePrompts: .live(),
       makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) }
     )
@@ -33,8 +35,6 @@ internal final class WatchProjectViewModelTests: TestCase {
     let clock = self.clock!
     self.vm = WatchProjectViewModel(
       projectMediaFeature: self.feature,
-      analytics: { AppEnvironment.current.ksrAnalytics },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       sleep: { try await clock.sleep($0) }
     )
 

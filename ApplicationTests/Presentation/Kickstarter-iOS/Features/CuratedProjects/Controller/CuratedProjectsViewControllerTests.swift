@@ -27,7 +27,9 @@ internal final class CuratedProjectsViewControllerTests: TestCase {
 
     orthogonalCombos(Language.allLanguages, Device.allCases).forEach { language, device in
       withEnvironment(apiService: mockService, language: language) {
-        let controller = CuratedProjectsViewController.instantiate()
+        let controller = CuratedProjectsViewController.instantiate(
+          composition: AppModel.shared.curatedProjectsComposition
+        )
         controller.configure(with: categories, context: .onboarding)
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
         parent.view.frame.size.height = 1_000
@@ -40,5 +42,20 @@ internal final class CuratedProjectsViewControllerTests: TestCase {
         )
       }
     }
+  }
+}
+
+@MainActor
+internal final class CuratedProjectsCompositionTests: TestCase {
+  override var requiresSnapshotReferenceSimulator: Bool { false }
+
+  func testControllerLoadsWithSuppliedComposition() {
+    let controller = CuratedProjectsViewController.instantiate(
+      composition: AppModel.shared.curatedProjectsComposition
+    )
+
+    controller.loadViewIfNeeded()
+
+    XCTAssertTrue(controller.isViewLoaded)
   }
 }

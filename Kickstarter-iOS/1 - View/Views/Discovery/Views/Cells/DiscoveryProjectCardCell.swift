@@ -46,11 +46,7 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
   private lazy var youreABackerView = { UIView(frame: .zero) }()
 
   private let viewModel = DiscoveryProjectCardViewModel()
-  private let watchProjectViewModel = WatchProjectViewModel(
-    projectMediaFeature: AppModel.shared.projectMediaFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics },
-    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
-  )
+  private var watchProjectViewModel: WatchProjectViewModel?
 
   // MARK: - Notification Observers
 
@@ -64,8 +60,6 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
     self.configureSubviews()
     self.setupConstraints()
     self.addShadowLayers()
-    self.configureWatchProjectObservers()
-
     self.bindStyles()
     self.bindViewModel()
   }
@@ -82,9 +76,12 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
   }
 
   func configureWith(value: DiscoveryProjectCellRowValue) {
+    guard let watchProjectViewModel = self.watchProjectViewModel else {
+      preconditionFailure("DiscoveryProjectCardCell requires ProjectMediaFeature composition.")
+    }
     self.render(self.viewModel.configure(with: value))
 
-    self.watchProjectViewModel.configure(with: (
+    watchProjectViewModel.configure(with: (
       value.project,
       KSRAnalytics.PageContext.discovery,
       value.params
@@ -194,10 +191,17 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
       |> youreABackerLabelStyle
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
+  func configure(projectMediaFeature: ProjectMediaFeature) {
+    guard self.watchProjectViewModel == nil else { return }
+    let viewModel = WatchProjectViewModel(projectMediaFeature: projectMediaFeature)
+    self.watchProjectViewModel = viewModel
+    self.bindWatchProjectViewModel(viewModel)
+    self.configureWatchProjectObservers(viewModel)
+    viewModel.awakeFromNib()
+  }
 
-    self.watchProjectViewModel.onEvent = { [weak self] event in
+  private func bindWatchProjectViewModel(_ viewModel: WatchProjectViewModel) {
+    viewModel.onEvent = { [weak self] event in
       guard let self else { return }
       switch event {
       case let .selected(value): self.saveButton.isSelected = value
@@ -405,25 +409,24 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
     return attributedString
   }
 
-  private func configureWatchProjectObservers() {
+  private func configureWatchProjectObservers(_ viewModel: WatchProjectViewModel) {
     self.saveButton.addTarget(self, action: #selector(self.saveButtonTapped(_:)), for: .touchUpInside)
     self.saveButton.addTarget(self, action: #selector(self.saveButtonPressed(_:)), for: .touchDown)
 
-    self.sessionStartedObserver = MainActorNotificationObservation(name: .ksr_sessionStarted) { [weak self] _ in
-      self?.watchProjectViewModel.userSessionStarted()
+    self.sessionStartedObserver = MainActorNotificationObservation(name: .ksr_sessionStarted) { _ in
+      viewModel.userSessionStarted()
     }
 
-    self.sessionEndedObserver = MainActorNotificationObservation(name: .ksr_sessionEnded) { [weak self] _ in
-      self?.watchProjectViewModel.userSessionEnded()
+    self.sessionEndedObserver = MainActorNotificationObservation(name: .ksr_sessionEnded) { _ in
+      viewModel.userSessionEnded()
     }
 
-    self.projectSavedObserver = MainActorNotificationObservation(name: .ksr_projectSaved) { [weak self] notification in
-      self?.watchProjectViewModel.projectFromNotification(
+    self.projectSavedObserver = MainActorNotificationObservation(name: .ksr_projectSaved) { notification in
+      viewModel.projectFromNotification(
         project: notification.userInfo?["project"] as? Project
       )
     }
 
-    self.watchProjectViewModel.awakeFromNib()
   }
 
   private func addShadowLayers() {
@@ -525,11 +528,11 @@ final class DiscoveryProjectCardCell: UITableViewCell, ValueCell {
   // MARK: - Accessors
 
   @objc fileprivate func saveButtonPressed(_: UIButton) {
-    self.watchProjectViewModel.saveButtonTouched()
+    self.watchProjectViewModel?.saveButtonTouched()
   }
 
   @objc fileprivate func saveButtonTapped(_ button: UIButton) {
-    self.watchProjectViewModel.saveButtonTapped(selected: button.isSelected)
+    self.watchProjectViewModel?.saveButtonTapped(selected: button.isSelected)
   }
 }
 

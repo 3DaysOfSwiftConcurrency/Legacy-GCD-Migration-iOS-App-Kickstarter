@@ -4627,6 +4627,34 @@ unverified. The CFA gate rejects restored global selection or parameterless head
 construction. This is not full CFA compliance. Swift packages, target identifiers and
 existing history are unchanged. No push.
 
+### Discovery project-card feature ownership — 18 November 2026
+
+Author: Matthew Thomas.
+
+ProjectMediaFeature now owns the semantic watch-button analytics command and the response
+delivery delay used after watch mutations. WatchProjectViewModel depends only on that
+Feature plus its task clock. DiscoveryComposition nests a CuratedProjectsComposition, and
+the Discovery page carries the same AppModel-owned ProjectMediaFeature through
+DiscoveryProjectsDataSource into both reusable project-card forms. Curated Projects now
+receives RecommendationsFeature and ProjectMediaFeature explicitly from its presenting
+Discovery graph instead of selecting AppModel.shared.
+
+Focused DiscoveryPageViewModelTests and WatchProjectViewModelTests passed all 56 tests,
+and the AppModel graph-identity test passed 1 test.
+Focused non-visual card-dequeue and Curated Projects composition tests passed 2 tests.
+All successful runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2.
+Evidence: `/private/tmp/kickstarter-discovery-card-library-final.xcresult`,
+`/private/tmp/kickstarter-discovery-card-appmodel.xcresult` and
+`/private/tmp/kickstarter-discovery-card-presentation.xcresult`.
+
+DiscoveryProjectCardViewModel and DiscoveryPostcardViewModel still use the legacy
+environment for date-based formatting and remain explicit follow-up work. Reference
+snapshots, live save interaction and whole target suites remain unverified. The CFA gate
+rejects restored cell/global composition, parameterless project data sources, global
+Curated Projects construction, and analytics or timing dependencies in
+WatchProjectViewModel. This is not full CFA compliance. Swift packages, target identifiers
+and existing history are unchanged. No push.
+
 ### Root Tabs reads floating policy through Settings — 17 November 2026
 
 Author: Matthew Thomas.

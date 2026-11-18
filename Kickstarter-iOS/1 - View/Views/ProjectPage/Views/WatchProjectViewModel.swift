@@ -19,8 +19,6 @@ final class WatchProjectViewModel {
 
   var onEvent: ((Event) -> Void)?
   private let projectMediaFeature: ProjectMediaFeature
-  private let analytics: @MainActor () -> KSRAnalytics?
-  private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var configured: WatchProjectValue?
   private var project: Project?
@@ -32,16 +30,12 @@ final class WatchProjectViewModel {
 
   init(
     projectMediaFeature: ProjectMediaFeature,
-    analytics: @escaping @MainActor () -> KSRAnalytics? = { nil },
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
     if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
     else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     try Task.checkCancellation()
   }) {
     self.projectMediaFeature = projectMediaFeature
-    self.analytics = analytics
-    self.responseDelaySeconds = responseDelaySeconds
     self.sleep = sleep
   }
 
@@ -67,9 +61,11 @@ final class WatchProjectViewModel {
 
   func saveButtonTapped(selected: Bool) {
     if let value = self.configured {
-      self.analytics()?.trackWatchProjectButtonClicked(
-        project: value.project, page: value.context, params: value.discoveryParams,
-        typeContext: selected ? .unwatch : .watch
+      self.projectMediaFeature.trackWatchProjectButtonClicked(
+        project: value.project,
+        page: value.context,
+        params: value.discoveryParams,
+        selected: selected
       )
     }
     guard self.isReady else { return }
@@ -102,12 +98,11 @@ final class WatchProjectViewModel {
     }
     let projectMediaFeature = self.projectMediaFeature
     let sleep = self.sleep
-    let responseDelaySeconds = self.responseDelaySeconds
     self.task = Task { [weak self] in
       do { try await sleep(0.5) } catch { return }
       guard !Task.isCancelled, projectMediaFeature.isCurrentIntent(intent),
             let result = await projectMediaFeature.watch(project: project, intent: intent) else { return }
-      do { try await sleep(responseDelaySeconds()) } catch { return }
+      do { try await sleep(projectMediaFeature.responseDelayForWatch()) } catch { return }
       guard !Task.isCancelled, projectMediaFeature.isCurrentIntent(intent) else { return }
       self?.publishProject(result)
     }

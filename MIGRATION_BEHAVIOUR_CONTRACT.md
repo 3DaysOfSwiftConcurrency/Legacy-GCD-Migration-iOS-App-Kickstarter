@@ -2382,3 +2382,14 @@ safe for arbitrary concurrent environment mutation.
 - Focused header view-model coverage passes 14 tests and the parent-to-embedded-header
   composition smoke test passes 1 test. Reference snapshots and live navigation remain
   unverified.
+
+## Discovery project-card feature ownership — 18 November 2026
+
+- ProjectMediaFeature owns watch-button analytics and post-response timing;
+  WatchProjectViewModel receives no analytics object or environment timing closure.
+- Discovery and Curated Projects pass one AppModel-owned ProjectMediaFeature through
+  their composition and data-source boundaries into both reusable project-card forms.
+- Focused Discovery page, watch-project and AppModel graph coverage passes 57 tests; focused
+  card-dequeue and Curated Projects composition coverage passes 2 tests. Date formatting
+  globals in the two card display models, reference snapshots and live save interaction
+  remain unverified follow-up work.

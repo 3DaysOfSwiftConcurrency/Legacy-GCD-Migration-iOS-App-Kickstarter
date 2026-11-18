@@ -16,11 +16,7 @@ internal protocol DiscoveryPostcardCellDelegate: AnyObject {
 
 internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
   fileprivate let viewModel = DiscoveryPostcardViewModel()
-  private let watchProjectViewModel = WatchProjectViewModel(
-    projectMediaFeature: AppModel.shared.projectMediaFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics },
-    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
-  )
+  private var watchProjectViewModel: WatchProjectViewModel?
   internal weak var delegate: DiscoveryPostcardCellDelegate?
 
   @IBOutlet fileprivate var cardView: UIView!
@@ -85,21 +81,6 @@ internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
 
       self.saveButton.addTarget(self, action: #selector(self.saveButtonPressed(_:)), for: .touchDown)
 
-      self.sessionStartedObserver = MainActorNotificationObservation(name: .ksr_sessionStarted) { [weak self] _ in
-        self?.watchProjectViewModel.userSessionStarted()
-      }
-
-      self.sessionEndedObserver = MainActorNotificationObservation(name: .ksr_sessionEnded) { [weak self] _ in
-        self?.watchProjectViewModel.userSessionEnded()
-      }
-
-      self.projectSavedObserver = MainActorNotificationObservation(name: .ksr_projectSaved) { [weak self] notification in
-        self?.watchProjectViewModel.projectFromNotification(
-          project: notification.userInfo?["project"] as? Project
-        )
-      }
-
-      self.watchProjectViewModel.awakeFromNib()
     }
 
     super.awakeFromNib()
@@ -231,20 +212,6 @@ internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
   internal override func bindViewModel() {
     super.bindViewModel()
 
-    self.watchProjectViewModel.onEvent = { [weak self] event in
-      guard let self else { return }
-      switch event {
-      case let .selected(value): self.saveButton.isSelected = value
-      case .impact: generateImpactFeedback()
-      case .success: generateNotificationSuccessFeedback()
-      case .selection: generateSelectionFeedback()
-      case .savedAlert: self.delegate?.discoveryPostcardCellProjectSaveAlert()
-      case .login: self.delegate?.discoveryPostcardCellGoToLoginTout()
-      case let .notification(notification): NotificationCenter.default.post(notification)
-      case .project: break
-      }
-    }
-
     self.projectIsStaffPickView.configureWith(name: Strings.Projects_We_Love(), imageNameString: "icon--small-k")
     self.viewModel.onEvent = { [weak self] event in
       guard let self else { return }
@@ -294,10 +261,22 @@ internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
     }
   }
 
+  internal func configure(projectMediaFeature: ProjectMediaFeature) {
+    guard self.watchProjectViewModel == nil else { return }
+    let viewModel = WatchProjectViewModel(projectMediaFeature: projectMediaFeature)
+    self.watchProjectViewModel = viewModel
+    self.bindWatchProjectViewModel(viewModel)
+    self.configureWatchProjectObservers(viewModel)
+    viewModel.awakeFromNib()
+  }
+
   internal func configureWith(value: DiscoveryProjectCellRowValue) {
+    guard let watchProjectViewModel = self.watchProjectViewModel else {
+      preconditionFailure("DiscoveryPostcardCell requires ProjectMediaFeature composition.")
+    }
     self.viewModel.configure(with: value)
 
-    self.watchProjectViewModel.configure(with: (
+    watchProjectViewModel.configure(with: (
       value.project,
       KSRAnalytics.PageContext.discovery,
       value.params
@@ -314,11 +293,39 @@ internal final class DiscoveryPostcardCell: UITableViewCell, ValueCell {
   }
 
   @objc fileprivate func saveButtonPressed(_: UIButton) {
-    self.watchProjectViewModel.saveButtonTouched()
+    self.watchProjectViewModel?.saveButtonTouched()
   }
 
   @objc fileprivate func saveButtonTapped(_ button: UIButton) {
-    self.watchProjectViewModel.saveButtonTapped(selected: button.isSelected)
+    self.watchProjectViewModel?.saveButtonTapped(selected: button.isSelected)
+  }
+
+  private func bindWatchProjectViewModel(_ viewModel: WatchProjectViewModel) {
+    viewModel.onEvent = { [weak self] event in
+      guard let self else { return }
+      switch event {
+      case let .selected(value): self.saveButton.isSelected = value
+      case .impact: generateImpactFeedback()
+      case .success: generateNotificationSuccessFeedback()
+      case .selection: generateSelectionFeedback()
+      case .savedAlert: self.delegate?.discoveryPostcardCellProjectSaveAlert()
+      case .login: self.delegate?.discoveryPostcardCellGoToLoginTout()
+      case let .notification(notification): NotificationCenter.default.post(notification)
+      case .project: break
+      }
+    }
+  }
+
+  private func configureWatchProjectObservers(_ viewModel: WatchProjectViewModel) {
+    self.sessionStartedObserver = MainActorNotificationObservation(name: .ksr_sessionStarted) { [weak viewModel] _ in
+      viewModel?.userSessionStarted()
+    }
+    self.sessionEndedObserver = MainActorNotificationObservation(name: .ksr_sessionEnded) { [weak viewModel] _ in
+      viewModel?.userSessionEnded()
+    }
+    self.projectSavedObserver = MainActorNotificationObservation(name: .ksr_projectSaved) { [weak viewModel] notification in
+      viewModel?.projectFromNotification(project: notification.userInfo?["project"] as? Project)
+    }
   }
 }
 

@@ -25,7 +25,7 @@ internal final class DiscoveryPageViewController: UITableViewController,
   private var signalObservers: [MainActorNotificationSignalObservation] = []
   private var pendingRefresh: (loading: Bool, animated: Bool)?
   private var needsDeferredReload = false
-  fileprivate let dataSource = DiscoveryProjectsDataSource()
+  fileprivate var dataSource: DiscoveryProjectsDataSource!
   public weak var delegate: DiscoveryPageViewControllerDelegate?
   fileprivate var emptyStatesController: EmptyStatesViewController?
   private lazy var headerLabel = { UILabel(frame: .zero) }()
@@ -41,6 +41,9 @@ internal final class DiscoveryPageViewController: UITableViewController,
   ) -> DiscoveryPageViewController {
     let vc = Storyboard.DiscoveryPage.instantiate(DiscoveryPageViewController.self)
     vc.composition = composition
+    vc.dataSource = DiscoveryProjectsDataSource(
+      projectMediaFeature: composition.videoFeed.projectMediaFeature
+    )
     vc.viewModel = DiscoveryPageViewModel(
       discoveryFeature: composition.discoveryFeature,
       projectMediaFeature: composition.videoFeed.projectMediaFeature
@@ -233,15 +236,18 @@ internal final class DiscoveryPageViewController: UITableViewController,
       }
 
     self.viewModel.outputs.onGoToCuratedProjects = { [weak self] categories in
-        let curatedProjectsVC = CuratedProjectsViewController.instantiate()
+        guard let self else { return }
+        let curatedProjectsVC = CuratedProjectsViewController.instantiate(
+          composition: self.composition.curatedProjects
+        )
         curatedProjectsVC.configure(with: categories, context: .discovery)
 
-        let isIpad = self?.composition.isPad() ?? false
+        let isIpad = self.composition.isPad()
 
         let navController = NavigationController(rootViewController: curatedProjectsVC)
           |> \.modalPresentationStyle .~ (isIpad ? .formSheet : .fullScreen)
 
-        self?.present(navController, animated: true)
+        self.present(navController, animated: true)
       }
 
     self.viewModel.outputs.onScrollsToTopChanged = { [weak self] in

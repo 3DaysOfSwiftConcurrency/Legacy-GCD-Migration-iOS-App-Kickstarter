@@ -7,7 +7,7 @@ import UIKit
 final class CuratedProjectsViewController: UIViewController {
   // MARK: - Properties
 
-  private let dataSource = DiscoveryProjectsDataSource()
+  private var dataSource: DiscoveryProjectsDataSource!
 
   private lazy var doneButton: UIBarButtonItem = {
     UIBarButtonItem(
@@ -33,13 +33,30 @@ final class CuratedProjectsViewController: UIViewController {
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
-  private let viewModel = CuratedProjectsViewModel(
-    recommendationsFeature: AppModel.shared.recommendationsFeature
-  )
+  private var viewModel: CuratedProjectsViewModel!
+
+  @available(*, unavailable, message: "Use instantiate(composition:).")
+  static func instantiate() -> CuratedProjectsViewController {
+    fatalError("Unavailable")
+  }
+
+  static func instantiate(
+    composition: CuratedProjectsComposition
+  ) -> CuratedProjectsViewController {
+    let controller = CuratedProjectsViewController(nibName: nil, bundle: nil)
+    controller.dataSource = DiscoveryProjectsDataSource(
+      projectMediaFeature: composition.projectMediaFeature
+    )
+    controller.viewModel = CuratedProjectsViewModel(
+      recommendationsFeature: composition.recommendationsFeature
+    )
+    return controller
+  }
 
   // MARK: - Lifecycle
 
   override func viewDidLoad() {
+    precondition(self.dataSource != nil && self.viewModel != nil, "Curated Projects requires composition.")
     super.viewDidLoad()
 
     self.navigationController?.configureTransparentNavigationBar()

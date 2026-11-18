@@ -3,6 +3,13 @@ import KsApi
 import UIKit
 
 internal final class DiscoveryProjectsDataSource: ValueCellDataSource {
+  private let projectMediaFeature: ProjectMediaFeature
+
+  init(projectMediaFeature: ProjectMediaFeature) {
+    self.projectMediaFeature = projectMediaFeature
+    super.init()
+  }
+
   internal enum Section: Int {
     case videoFeedBanner
     case onboarding
@@ -94,8 +101,10 @@ internal final class DiscoveryProjectsDataSource: ValueCellDataSource {
     case let (cell as ActivitySampleProjectCell, value as Activity):
       cell.configureWith(value: value)
     case let (cell as DiscoveryPostcardCell, value as DiscoveryProjectCellRowValue):
+      cell.configure(projectMediaFeature: self.projectMediaFeature)
       cell.configureWith(value: value)
     case let (cell as DiscoveryProjectCardCell, value as DiscoveryProjectCellRowValue):
+      cell.configure(projectMediaFeature: self.projectMediaFeature)
       cell.configureWith(value: value)
     case let (cell as DiscoveryOnboardingCell, value as Void):
       cell.configureWith(value: value)

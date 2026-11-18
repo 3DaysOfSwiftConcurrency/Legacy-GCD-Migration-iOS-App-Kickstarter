@@ -210,6 +210,19 @@ reject_matches 'Discovery pages must receive the parent composition graph.' \
 reject_matches 'Discovery header construction must receive DiscoveryFeature explicitly.' \
   'DiscoveryNavigationHeaderViewController[.]instantiate[(][[:space:]]*[)]' \
   "$app_view/Views/Discovery/Controller/*.swift"
+reject_matches 'Discovery project cells receive ProjectMediaFeature from their data source.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/Discovery/Views/Cells/DiscoveryPostcardCell.swift" \
+  "$app_view/Views/Discovery/Views/Cells/DiscoveryProjectCardCell.swift"
+reject_matches 'Discovery project data sources require ProjectMediaFeature composition.' \
+  'DiscoveryProjectsDataSource[(][[:space:]]*[)]' \
+  "$app_view/Views/Discovery/**/*.swift" "$app_view/Views/CuratedProjects/**/*.swift"
+reject_matches 'Curated Projects receives its feature graph from Discovery.' \
+  'AppModel[.]shared|CuratedProjectsViewController[.]instantiate[(][[:space:]]*[)]' \
+  "$app_view/Views/CuratedProjects/**/*.swift" "$app_view/Views/Discovery/**/*.swift"
+reject_matches 'Watch Project uses analytics and timing through ProjectMediaFeature.' \
+  'AppEnvironment[.]current|private let analytics|private let responseDelaySeconds|analytics:[[:space:]]*@escaping|responseDelaySeconds:[[:space:]]*@escaping' \
+  "$app_view/Views/ProjectPage/Views/WatchProjectViewModel.swift"
 reject_matches 'Sign-in view models must receive Authentication from their controllers.' \
   'AppModel[.]shared' "$app_view/Views/Login/*ViewModel.swift" "$app_view/Views/LoginTout/*ViewModel.swift" \
   "$app_view/Views/FacebookConfirmation/*ViewModel.swift" "$app_view/Views/FacebookResetPasswordViewController/*ViewModel.swift"
