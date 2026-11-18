@@ -44,7 +44,7 @@ internal final class RichTextExampleProjectsViewModel {
         }
       }
       do {
-        let project = try await developerExamplesFeature.loadProject(input: input, route: route)
+        let project = try await developerExamplesFeature.lookupProject(input: input, route: route)
         try Task.checkCancellation()
         guard let self, self.lookupID == id else { return }
         if let project { onSelect(project) } else { self.slugError = true }

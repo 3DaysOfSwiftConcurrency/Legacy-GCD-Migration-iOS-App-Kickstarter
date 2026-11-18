@@ -69,7 +69,13 @@ reopen or replace the completed CFA migration ledger.
   simulator build was blocked during Swift package resolution.
   CreatorDraftsFeatureTests and UpdateDraftViewModelTests could not run because
   CoreSimulator refused connections.
+- DeveloperExamples: named the pagination and rich-text snapshots, pending requests,
+  and project lookup by slug or URL. Updated the example ViewModel and focused lookup
+  tests. Swift parsing and git diff --check passed. The signing-disabled generic
+  Library-iOS simulator build was blocked during Swift package resolution.
+  DeveloperExamplesFeatureTests and the pagination and rich-text ViewModel tests could
+  not run because CoreSimulator refused connections.
 
 ## Current slice
 
-- DeveloperExamples Feature and its pagination and rich-text examples.
+- Discovery Feature and its page and recommendation availability callers.

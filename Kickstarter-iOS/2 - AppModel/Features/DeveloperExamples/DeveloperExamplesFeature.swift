@@ -86,12 +86,12 @@ public final class DeveloperExamplesFeature {
   }
   public let sessionFeature: SessionFeature
   @ObservationIgnored private let makeProvider: () -> any DeveloperExamplesProvider
-  private var pages: [UUID: PageSnapshot] = [:]
-  private var lists: [UUID: RichTextSnapshot] = [:]
-  @ObservationIgnored private var pageWork: [UUID: PageWork] = [:]
-  @ObservationIgnored private var listWork: [UUID: ListWork] = [:]
+  private var paginationSnapshotsByRoute: [UUID: PageSnapshot] = [:]
+  private var richTextSnapshotsByRoute: [UUID: RichTextSnapshot] = [:]
+  @ObservationIgnored private var pendingPageLoads: [UUID: PageWork] = [:]
+  @ObservationIgnored private var pendingRichTextLoads: [UUID: ListWork] = [:]
   @ObservationIgnored private var lookupWork: [UUID: LookupWork] = [:]
-  @ObservationIgnored private var lookupVersions: [UUID: UUID] = [:]
+  @ObservationIgnored private var latestLookupIDsByRoute: [UUID: UUID] = [:]
   @ObservationIgnored private var listSessions: [UUID: Session] = [:]
 
   public init(
@@ -103,9 +103,9 @@ public final class DeveloperExamplesFeature {
   private var session: Session {
     .init(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
-  public func pageSnapshot(route: UUID) -> PageSnapshot { self.pages[route] ?? PageSnapshot() }
+  public func pageSnapshot(route: UUID) -> PageSnapshot { self.paginationSnapshotsByRoute[route] ?? PageSnapshot() }
   public func richTextSnapshot(route: UUID) -> RichTextSnapshot {
-    self.lists[route] ?? RichTextSnapshot()
+    self.richTextSnapshotsByRoute[route] ?? RichTextSnapshot()
   }
 
   public func loadFirstPage(route: UUID, refreshing: Bool = false) async {
@@ -119,15 +119,15 @@ public final class DeveloperExamplesFeature {
   public func loadNextPage(route: UUID) async {
     // A repeated gesture joins the existing load; a terminal page returns now.
     // Neither case waits for a publisher event that may never arrive.
-    if let work = self.pageWork[route], work.session == self.session {
+    if let work = self.pendingPageLoads[route], work.session == self.session {
       await work.task.value
-    } else if let cursor = self.pages[route]?.cursor {
+    } else if let cursor = self.paginationSnapshotsByRoute[route]?.cursor {
       await self.requestPage(.next(cursor), route: route).value
     }
   }
   private func requestPage(_ request: PageRequest, route: UUID) -> Task<Void, Never> {
     let session = self.session
-    if let work = self.pageWork[route], work.request == request, work.session == session {
+    if let work = self.pendingPageLoads[route], work.request == request, work.session == session {
       return work.task
     }
     self.cancelPage(route: route)
@@ -135,11 +135,11 @@ public final class DeveloperExamplesFeature {
     var loading = previous
     loading.isLoading = true
     loading.statusText = "Loading"
-    self.pages[route] = loading
+    self.paginationSnapshotsByRoute[route] = loading
     let id = UUID()
     let provider = self.makeProvider()
     let task = Task { [self] in
-      defer { if self.pageWork[route]?.id == id { self.pageWork[route] = nil } }
+      defer { if self.pendingPageLoads[route]?.id == id { self.pendingPageLoads[route] = nil } }
       do {
         try Task.checkCancellation()
         guard self.session == session else { throw CancellationError() }
@@ -154,68 +154,68 @@ public final class DeveloperExamplesFeature {
           values = previous.projects
         }
         try Task.checkCancellation()
-        guard self.session == session, self.pageWork[route]?.id == id else { return }
+        guard self.session == session, self.pendingPageLoads[route]?.id == id else { return }
         // Preserve the example's append behavior, including duplicate IDs.
         values += envelope.projects.map { .init(id: $0.id, title: $0.name) }
         let cursor = envelope.projects.isEmpty ? nil : envelope.urls.api.moreProjects
-        self.pages[route] = PageSnapshot(
+        self.paginationSnapshotsByRoute[route] = PageSnapshot(
           projects: values, cursor: values.isEmpty ? nil : cursor,
           statusText: values.isEmpty
             ? "No results"
             : cursor == nil
               ? "Loaded all results" : "Got \(values.count) results; more are available")
       } catch {
-        guard self.pageWork[route]?.id == id else { return }
+        guard self.pendingPageLoads[route]?.id == id else { return }
         if Task.isCancelled || error is CancellationError || self.session != session {
-          self.pages[route] = previous
+          self.paginationSnapshotsByRoute[route] = previous
         } else {
           // Original paginator clears displayed values and cursor on failure.
           let message = (error as? ErrorEnvelope)?.errorMessages.first ?? "Unknown error"
-          self.pages[route] = PageSnapshot(statusText: "Error: \(message)")
+          self.paginationSnapshotsByRoute[route] = PageSnapshot(statusText: "Error: \(message)")
         }
       }
     }
-    self.pageWork[route] = PageWork(
+    self.pendingPageLoads[route] = PageWork(
       id: id, session: session, request: request, previous: previous, task: task)
     return task
   }
 
   public func loadRichTextProjects(route: UUID) async {
     let session = self.session
-    if let work = self.listWork[route], work.session == session {
+    if let work = self.pendingRichTextLoads[route], work.session == session {
       await work.task.value
       return
     }
-    if self.listSessions[route] == session, let state = self.lists[route], !state.projects.isEmpty {
+    if self.listSessions[route] == session, let state = self.richTextSnapshotsByRoute[route], !state.projects.isEmpty {
       return
     }
-    self.listWork.removeValue(forKey: route)?.task.cancel()
-    self.lists[route] = RichTextSnapshot()
+    self.pendingRichTextLoads.removeValue(forKey: route)?.task.cancel()
+    self.richTextSnapshotsByRoute[route] = RichTextSnapshot()
     self.listSessions[route] = session
     let id = UUID()
     let provider = self.makeProvider()
     let task = Task { [self] in
-      defer { if self.listWork[route]?.id == id { self.listWork[route] = nil } }
+      defer { if self.pendingRichTextLoads[route]?.id == id { self.pendingRichTextLoads[route] = nil } }
       do {
         try Task.checkCancellation()
         guard self.session == session else { throw CancellationError() }
         let projects = try await provider.projects()
         try Task.checkCancellation()
-        guard self.session == session, self.listWork[route]?.id == id else { return }
-        self.lists[route] = RichTextSnapshot(projects: projects, isLoading: false)
+        guard self.session == session, self.pendingRichTextLoads[route]?.id == id else { return }
+        self.richTextSnapshotsByRoute[route] = RichTextSnapshot(projects: projects, isLoading: false)
       } catch {
-        guard self.listWork[route]?.id == id else { return }
+        guard self.pendingRichTextLoads[route]?.id == id else { return }
         let cancelled = Task.isCancelled || error is CancellationError || self.session != session
-        self.lists[route] = RichTextSnapshot(
+        self.richTextSnapshotsByRoute[route] = RichTextSnapshot(
           isLoading: false,
           errorMessage: cancelled ? nil : error.localizedDescription)
       }
     }
-    self.listWork[route] = ListWork(id: id, session: session, task: task)
+    self.pendingRichTextLoads[route] = ListWork(id: id, session: session, task: task)
     await task.value
   }
 
-  public func loadProject(input: String, route: UUID) async throws -> ProjectItem? {
+  public func lookupProject(input: String, route: UUID) async throws -> ProjectItem? {
     guard let slug = Self.extractSlug(from: input) else {
       self.cancelLookup(route: route)
       return nil
@@ -229,7 +229,7 @@ public final class DeveloperExamplesFeature {
       let provider = self.makeProvider()
       work = LookupWork(session: session, slug: slug)
       self.lookupWork[route] = work
-      self.lookupVersions[route] = work.id
+      self.latestLookupIDsByRoute[route] = work.id
       work.task = Task { [self] in
         defer { work.task = nil }
         do {
@@ -237,7 +237,7 @@ public final class DeveloperExamplesFeature {
           guard self.session == session else { throw CancellationError() }
           let project = try await provider.project(slug: slug)
           try Task.checkCancellation()
-          guard self.session == session, self.lookupVersions[route] == work.id else {
+          guard self.session == session, self.latestLookupIDsByRoute[route] == work.id else {
             throw CancellationError()
           }
           work.result = .success(project)
@@ -247,7 +247,7 @@ public final class DeveloperExamplesFeature {
     defer { if self.lookupWork[route]?.id == work.id { self.lookupWork[route] = nil } }
     await work.task?.value
     try Task.checkCancellation()
-    guard self.session == session, self.lookupVersions[route] == work.id else {
+    guard self.session == session, self.latestLookupIDsByRoute[route] == work.id else {
       throw CancellationError()
     }
     guard let result = work.result else { throw CancellationError() }
@@ -255,29 +255,29 @@ public final class DeveloperExamplesFeature {
   }
   public func cancelLookup(route: UUID) {
     self.lookupWork.removeValue(forKey: route)?.task?.cancel()
-    self.lookupVersions[route] = nil
+    self.latestLookupIDsByRoute[route] = nil
   }
   private func cancelPage(route: UUID) {
-    guard let work = self.pageWork.removeValue(forKey: route) else { return }
+    guard let work = self.pendingPageLoads.removeValue(forKey: route) else { return }
     work.task.cancel()
-    self.pages[route] = work.previous
+    self.paginationSnapshotsByRoute[route] = work.previous
   }
   public func suspend(route: UUID) {
     self.cancelPage(route: route)
-    if let work = self.listWork.removeValue(forKey: route) {
+    if let work = self.pendingRichTextLoads.removeValue(forKey: route) {
       work.task.cancel()
-      self.lists[route] = RichTextSnapshot(isLoading: false)
+      self.richTextSnapshotsByRoute[route] = RichTextSnapshot(isLoading: false)
     }
     self.cancelLookup(route: route)
   }
   public func release(route: UUID) {
     self.suspend(route: route)
-    self.pages[route] = nil
-    self.lists[route] = nil
+    self.paginationSnapshotsByRoute[route] = nil
+    self.richTextSnapshotsByRoute[route] = nil
     self.listSessions[route] = nil
   }
   public func reset() {
-    let routes = Set(self.pages.keys).union(self.lists.keys).union(self.lookupVersions.keys)
+    let routes = Set(self.paginationSnapshotsByRoute.keys).union(self.richTextSnapshotsByRoute.keys).union(self.latestLookupIDsByRoute.keys)
     for route in routes { self.release(route: route) }
   }
   private static func extractSlug(from input: String) -> String? {

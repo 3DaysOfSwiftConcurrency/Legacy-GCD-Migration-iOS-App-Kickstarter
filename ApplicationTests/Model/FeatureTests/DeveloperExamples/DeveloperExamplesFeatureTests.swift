@@ -210,13 +210,13 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
 
   func testSlugAndURLSharePendingLookup() async throws {
     let first = Task {
-      try await self.feature.loadProject(input: "owner/project", route: self.route)
+      try await self.feature.lookupProject(input: "owner/project", route: self.route)
     }
     await self.provider.lookups.waitFor(1)
     let admitted = expectation(description: "URL caller entered")
     let second = Task {
       admitted.fulfill()
-      return try await self.feature.loadProject(
+      return try await self.feature.lookupProject(
         input: "https://www.kickstarter.com/projects/owner/project/rewards", route: self.route)
     }
     await fulfillment(of: [admitted], timeout: 2)
@@ -229,9 +229,9 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   }
 
   func testClearingInputCancelsOldLookupWithoutReportingNotFound() async throws {
-    let old = Task { try await self.feature.loadProject(input: "owner/old", route: self.route) }
+    let old = Task { try await self.feature.lookupProject(input: "owner/old", route: self.route) }
     await self.provider.lookups.waitFor(1)
-    let invalid = try await self.feature.loadProject(input: "", route: self.route)
+    let invalid = try await self.feature.lookupProject(input: "", route: self.route)
     XCTAssertNil(invalid)
     try self.provider.lookups.finish(0, .success(self.item))
     await self.cancelled(old)
@@ -239,9 +239,9 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   }
 
   func testChangedSlugAndReleaseRejectLateLookups() async throws {
-    let old = Task { try await self.feature.loadProject(input: "owner/old", route: self.route) }
+    let old = Task { try await self.feature.lookupProject(input: "owner/old", route: self.route) }
     await self.provider.lookups.waitFor(1)
-    let new = Task { try await self.feature.loadProject(input: "owner/new", route: self.route) }
+    let new = Task { try await self.feature.lookupProject(input: "owner/new", route: self.route) }
     await self.provider.lookups.waitFor(2)
     try self.provider.lookups.finish(0, .success(self.item))
     await self.cancelled(old)
@@ -254,7 +254,7 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
     let page = Task { await self.feature.loadFirstPage(route: self.route) }
     let list = Task { await self.feature.loadRichTextProjects(route: self.route) }
     let lookup = Task {
-      try await self.feature.loadProject(input: "owner/project", route: self.route)
+      try await self.feature.lookupProject(input: "owner/project", route: self.route)
     }
     await self.provider.pages.waitFor(1)
     await self.provider.lists.waitFor(1)
