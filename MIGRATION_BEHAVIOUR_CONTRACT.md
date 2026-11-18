@@ -2404,3 +2404,12 @@ safe for arbitrary concurrent environment mutation.
 - Focused display-model and AppModel coverage passes 41 tests, while focused card-dequeue
   and Curated Projects composition coverage passes 2 tests. Reference snapshots, live card
   interaction and whole target suites remain unverified.
+
+## Project Creator destination composition — 18 November 2026
+
+- Project Page and Video Feed pass their existing ProjectPageComposition into Project
+  Creator rather than giving it one independently selected collaborator.
+- Project Creator builds its model from the graph's ProjectDetailsFeature, uses the nested
+  MessagingFeature for message dialogs and uses its UIKit traits for presentation style.
+- Focused Project Creator and AppModel graph coverage passes 8 tests. Destination snapshots,
+  live navigation and whole target suites remain unverified.

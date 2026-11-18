@@ -6,24 +6,25 @@ import WebKit
 
 internal final class ProjectCreatorViewController: WebViewController {
   private let messagingFeature: MessagingFeature
-  fileprivate let viewModel = ProjectCreatorViewModel(
-    projectDetailsFeature: AppModel.shared.projectDetailsFeature
-  )
+  fileprivate let viewModel: ProjectCreatorViewModel
 
   var isPresentedFromVideoFeed = false
 
   internal static func configuredWith(
     project: any ProjectCreatorConfiguration,
-    messagingFeature: MessagingFeature
+    composition: ProjectPageComposition
   )
     -> ProjectCreatorViewController {
-    let vc = ProjectCreatorViewController(messagingFeature: messagingFeature)
+    let vc = ProjectCreatorViewController(composition: composition)
     vc.viewModel.configureWith(project: project)
     return vc
   }
 
-  private init(messagingFeature: MessagingFeature) {
-    self.messagingFeature = messagingFeature
+  private init(composition: ProjectPageComposition) {
+    self.messagingFeature = composition.managePledge.messagingFeature
+    self.viewModel = ProjectCreatorViewModel(
+      projectDetailsFeature: composition.projectDetailsFeature
+    )
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -95,7 +96,7 @@ internal final class ProjectCreatorViewController: WebViewController {
 
   fileprivate func goToLoginTout(_ loginIntent: LoginIntent) {
     let vc = LoginToutViewController.configuredWith(loginIntent: loginIntent)
-    let isIpad = AppEnvironment.current.device.userInterfaceIdiom == .pad
+    let isIpad = self.traitCollection.userInterfaceIdiom == .pad
     let nav = UINavigationController(rootViewController: vc)
       |> \.modalPresentationStyle .~ (isIpad ? .formSheet : .fullScreen)
 

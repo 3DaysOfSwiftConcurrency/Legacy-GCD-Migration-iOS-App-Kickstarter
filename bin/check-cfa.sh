@@ -273,8 +273,9 @@ reject_matches 'Messaging controllers receive their feature graph from compositi
 reject_matches 'Messages forwards its composition graph to project and pledge destinations.' \
   'ManagePledgeViewController[.]controller[(][[:space:]]*with:[[:space:]]*params[[:space:]]*[)]|PledgeManagerWebViewController[.]configuredWith[(][[:space:]]*url:[[:space:]]*url[[:space:]]*[)]' \
   "$messages_controller"
-reject_matches 'Project Creator receives MessagingFeature from its presenting graph.' \
-  'AppModel[.]shared[.]messagingFeature' "$project_creator_controller"
+reject_matches 'Project Creator receives its Project Page graph from its presenter.' \
+  'AppModel[.]shared|AppEnvironment[.]current|messagingFeature:[[:space:]]*MessagingFeature' \
+  "$project_creator_controller"
 reject_matches 'Video Feed receives its feature and destination graph from composition.' \
   'AppModel[.]shared|AppEnvironment[.]current' "$video_feed_view"
 reject_matches 'Features must receive their application dependencies explicitly.' \

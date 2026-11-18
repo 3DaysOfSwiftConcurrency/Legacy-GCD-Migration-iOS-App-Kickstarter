@@ -5899,3 +5899,25 @@ Reference snapshots, live card interaction and the whole Library and Presentatio
 remain unverified. The CFA gate rejects restored global environment access in either card
 display model. This is not full CFA compliance. Swift packages, target identifiers and
 existing history are unchanged. No push.
+
+### Project Creator destination composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+ProjectCreatorViewController now requires ProjectPageComposition and constructs its model
+from that graph's ProjectDetailsFeature. It derives MessagingFeature from the same graph's
+Manage Pledge composition for the message-dialog destination. Project Page forwards its
+own graph, while Video Feed forwards its nested Project Page graph. The controller no
+longer selects AppModel.shared or reads AppEnvironment; its UIKit trait collection decides
+the login presentation style.
+
+Focused ProjectCreatorViewModel and AppModel graph-isolation validation passed all 8 tests
+with zero failures and skips on iPhone 17 Pro Max, iOS 26.2. The selection compiled both
+updated presenters and the destination controller. Evidence:
+`/private/tmp/kickstarter-project-creator-composition-library.xcresult`.
+
+Project Creator snapshots, live Project Page and Video Feed navigation, and the whole
+Library and Presentation suites remain unverified. The CFA gate rejects restored global
+selection in Project Creator and legacy feature-only construction from either presenter.
+This is not full CFA compliance. Swift packages, target identifiers and existing history
+are unchanged. No push.

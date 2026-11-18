@@ -372,7 +372,7 @@ final class VideoFeedViewController: UIViewController {
   private func goToCreatorProfile(for item: VideoFeedItem) {
     let vc = ProjectCreatorViewController.configuredWith(
       project: item,
-      messagingFeature: self.composition.messagingFeature
+      composition: self.composition.projectPage
     )
     vc.isPresentedFromVideoFeed = true
 

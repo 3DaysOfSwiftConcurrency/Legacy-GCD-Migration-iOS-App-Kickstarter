@@ -923,7 +923,7 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   private func goToCreatorProfile(forProject project: any ProjectCreatorConfiguration) {
     let vc = ProjectCreatorViewController.configuredWith(
       project: project,
-      messagingFeature: self.composition.managePledge.messagingFeature
+      composition: self.composition
     )
 
     if self.traitCollection.userInterfaceIdiom == .pad {
