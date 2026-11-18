@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Semantically review 64 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "nextAction": "Semantically review 63 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6254,6 +6254,20 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "cfa-engine-audit",
       "outcome": "observed",
       "summary": "Fingerprint a03766d87e109bdff297c17e17b10d18a467eaa137c39e7d3bb4e2fafe224d8e; 2184 Swift files; 64 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":22,\"view-model-ownership\":1,\"view-model-test-placement\":1}."
+    },
+    {
+      "id": "change-email-test-placement-verification",
+      "revision": "3535ef68b with verified test relocation working tree",
+      "kind": "test",
+      "outcome": "passed",
+      "summary": "Moved ChangeEmailViewModelTests from the legacy Library/ViewModels catch-all into the canonical Model/ViewModelTests folder and Xcode group without changing target membership. Focused Library-iOS run: 4 passed, 0 failed on iPhone 17 Pro (iOS Simulator 26.2)."
+    },
+    {
+      "id": "change-email-test-placement-post-audit",
+      "revision": "3535ef68b9b33ce5558b0da6cb68e9e767c03f1e",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint ea65adc55f7b6f9558da78b160b7b7e91c30fdb9c80eb139a6d6fc15291ca6e4; 2184 Swift files; 63 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":22,\"view-model-ownership\":1}."
     }
   ],
   "attempts": [
@@ -6304,6 +6318,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Completed the remaining Feature coordination review.",
       "result": "All remaining coordination candidates preserve a single Feature owner with generation-safe asynchronous work; 207 focused tests passed."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     },
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",
