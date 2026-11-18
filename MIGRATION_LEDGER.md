@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Semantically review 72 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "nextAction": "Semantically review 75 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6219,6 +6219,13 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "cfa-engine-audit",
       "outcome": "observed",
       "summary": "Fingerprint b5cd0df3bb4cbeff0c42115ee92499c29c04dc85f31c1184ecae45eaebb52030; 2184 Swift files; 72 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-missing\":23,\"view-model-ownership\":5}."
+    },
+    {
+      "id": "state-object-ownership-post-audit",
+      "revision": "b611b4e50d7df2cc96ce4462ba7fdfc9ab186996",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint b5cd0df3bb4cbeff0c42115ee92499c29c04dc85f31c1184ecae45eaebb52030; 2184 Swift files; 75 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":4,\"view-model-missing\":23,\"view-model-ownership\":4}."
     }
   ],
   "attempts": [
@@ -6269,6 +6276,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Completed the remaining Feature coordination review.",
       "result": "All remaining coordination candidates preserve a single Feature owner with generation-safe asynchronous work; 207 focused tests passed."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     },
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",
