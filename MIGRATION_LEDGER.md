@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "hybrid-review",
-  "nextAction": "Review the remaining SessionFeature coordination group, beginning with Activity, Authentication, Discovery and Discussion, then run their focused tests.",
+  "nextAction": "Review the remaining coordination group: Friends, Messaging, Payments, Pledge, Profile, ProjectMedia, ProjectReporting, Recommendations and Rewards; run focused tests for reviewed slices.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6163,6 +6163,13 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "source-and-test-review",
       "outcome": "passed",
       "summary": "All direct URLSession leads were reviewed: two are KsApiTests hermetic URLProtocol tests that reject real-network routes, verified by 16 passing DemoCatalogTests; the only production lead is the separately-built RichPush notification extension delivery boundary."
+    },
+    {
+      "id": "activity-auth-discovery-discussion-coordination-verification",
+      "revision": "1cd85e07f",
+      "kind": "source-and-test-review",
+      "outcome": "passed",
+      "summary": "Activity, Authentication, Discovery and Discussion each keep their own Feature state, use session generation/identity checks around async work, and cancel/release stale route work. Their focused LibraryTests passed on iPhone 17 Pro simulator: 93 passed, 0 failed."
     }
   ],
   "attempts": [
@@ -6205,6 +6212,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Completed direct URLSession lead review.",
       "result": "No application Feature bypass remains in the three scanner leads; test-only and system-extension boundaries were verified independently."
+    },
+    {
+      "action": "Completed Activity, Authentication, Discovery and Discussion coordination review.",
+      "result": "One Feature owns each workflow; session checks and route/task cancellation are independently covered by 93 passing focused tests."
     }
   ],
   "blocker": null,
