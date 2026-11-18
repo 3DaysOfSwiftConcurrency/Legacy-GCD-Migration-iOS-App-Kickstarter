@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Semantically review 91 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "nextAction": "Semantically review 82 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6100,16 +6100,61 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "cfa-engine-audit",
       "outcome": "observed",
       "summary": "Fingerprint 0c3094458baa6521e3508b3e2a1931eea99806398e6c83574f4a187a92d53e40; 2183 Swift files; 91 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":8,\"feature-tests-missing\":1,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"scheduled-app-model-launch\":1,\"screen-initializer-inputs\":6,\"view-feature-access\":2,\"view-model-initializer-construction\":1,\"view-model-missing\":23,\"view-model-ownership\":7,\"view-model-test-placement\":7,\"view-model-test-suite-unresolved\":1,\"view-model-tests-missing\":1}."
+    },
+    {
+      "id": "post-lifecycle-onboarding-audit",
+      "revision": "2ad512720e7aad2971dfbceb03b31db25646889a",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 6a335419b75924051181e23141a352cefc0d9efc68223469a4d55ee1f9225305; 2183 Swift files; 88 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":7,\"feature-tests-missing\":1,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-feature-access\":2,\"view-model-missing\":23,\"view-model-ownership\":7,\"view-model-test-placement\":7,\"view-model-test-suite-unresolved\":1,\"view-model-tests-missing\":1}."
+    },
+    {
+      "id": "lifecycle-and-example-ownership-verification",
+      "revision": "2ad512720e7aad2971dfbceb03b31db25646889a with verified working tree",
+      "kind": "build-and-test",
+      "outcome": "passed",
+      "summary": "Library-iOS iphonesimulator build succeeded with CODE_SIGNING_ALLOWED=NO. Focused AppModel launch test passed: 1/1. Focused PaginationExampleViewModelTests and RichTextExampleProjectsViewModelTests passed: 7/7. These verify synchronous launch signalling and ViewModel-owned access to the developer-examples feature."
+    },
+    {
+      "id": "post-example-ownership-audit",
+      "revision": "2ad512720e7aad2971dfbceb03b31db25646889a",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint ddb27d255e499ebe7f30bdd60d3a84ebb42c50b9017960e86c364d6952cd5f7b; 2183 Swift files; 82 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"feature-tests-missing\":1,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-missing\":23,\"view-model-ownership\":5,\"view-model-test-placement\":7,\"view-model-test-suite-unresolved\":1,\"view-model-tests-missing\":1}."
     }
   ],
   "attempts": [
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",
       "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Replaced the AppDelegate launch Task with a synchronous AppModel call and moved the Settings refresh lifetime to SettingsFeature.",
+      "result": "Source review confirms the launch-boundary correction. Simulator service is unavailable; generic-device build reached the project but failed because private Kickstarter provisioning profiles are not installed."
+    },
+    {
+      "action": "Enabled Codex continuation.",
+      "result": "Nonterminal checkpoints queue thread 01a1ec8a-2227-7471-91d6-276b0a781c47 to continue."
+    },
+    {
+      "action": "Activated the configured Codex continuation host.",
+      "result": "This non-terminal checkpoint must queue the same Codex thread for the next migration action."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     }
   ],
   "blocker": null,
-  "completionGate": null
+  "completionGate": null,
+  "continuation": {
+    "host": "codex",
+    "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47"
+  }
 }
 ```
 

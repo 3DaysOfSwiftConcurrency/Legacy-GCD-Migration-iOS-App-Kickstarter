@@ -2,9 +2,7 @@ import KDS
 import SwiftUI
 
 internal struct RichTextExampleProjectsView: View {
-  @State private var viewModel = RichTextExampleProjectsViewModel(
-    developerExamplesFeature: AppModel.shared.developerExamplesFeature
-  )
+  @State private var viewModel = RichTextExampleProjectsViewModel()
   private var onSelectProject: (RichTextExampleProjectsViewModel.ProjectItem) -> Void
   @State private var slug: String = ""
 

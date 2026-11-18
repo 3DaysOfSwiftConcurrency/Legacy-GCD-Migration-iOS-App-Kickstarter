@@ -16,7 +16,7 @@ internal final class RichTextExampleProjectsViewModel {
   var isLoading: Bool { self.developerExamplesFeature.richTextSnapshot(route: self.route).isLoading }
   var errorMessage: String? { self.developerExamplesFeature.richTextSnapshot(route: self.route).errorMessage }
 
-  init(developerExamplesFeature: DeveloperExamplesFeature) {
+  init(developerExamplesFeature: DeveloperExamplesFeature = AppModel.shared.developerExamplesFeature) {
     self.developerExamplesFeature = developerExamplesFeature
   }
   deinit {

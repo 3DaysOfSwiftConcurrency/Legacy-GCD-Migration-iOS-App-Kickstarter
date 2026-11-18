@@ -143,7 +143,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         guard let rootTabBarController = self?.rootTabBarController else { return }
 
         let onboardingVC = UIHostingController(
-          rootView: OnboardingView(onboardingFeature: AppModel.shared.onboardingFeature) { [weak self] in
+          rootView: OnboardingView { [weak self] in
             self?.presentLogin(with: .onboarding)
           }
         )
@@ -188,9 +188,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     self.window?.tintColor = LegacyColors.ksr_create_700.uiColor()
 
-    Task { @MainActor in
-      await AppModel.shared.applicationDidFinishLaunching()
-    }
+    AppModel.shared.applicationDidFinishLaunching()
 
     let shouldContinueLaunch = self.deepLinkRouter.routeLaunchShortcut(
       launchOptions?[.shortcutItem], route: self.navigationRoute, perform: self.navigationActionHandler

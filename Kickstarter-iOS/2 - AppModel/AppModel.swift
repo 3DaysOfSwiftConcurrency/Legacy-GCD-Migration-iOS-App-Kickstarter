@@ -654,10 +654,11 @@ public final class AppModel {
   }
 
   /// Starts shared launch work once without making UI construction wait for it.
-  public func applicationDidFinishLaunching() async {
-    guard !self.hasLaunched else { return }
+  @discardableResult
+  public func applicationDidFinishLaunching() -> Task<Config, Error>? {
+    guard !self.hasLaunched else { return nil }
     self.hasLaunched = true
-    _ = try? await self.settingsFeature.requestApplicationSettingsRefresh().value
+    return self.settingsFeature.requestApplicationSettingsRefresh()
   }
 
   /// Synchronous permission preparation preserves the delegate's SDK setup order.

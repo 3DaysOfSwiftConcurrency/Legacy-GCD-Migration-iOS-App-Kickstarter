@@ -182,8 +182,12 @@ final class AppModelTests: XCTestCase {
     }
 
     try await verifyRefresh(country: "US", preserveExistingCookie: false) {
-      await model.applicationDidFinishLaunching()
-      await model.applicationDidFinishLaunching()
+      guard let refresh = model.applicationDidFinishLaunching() else {
+        XCTFail("Launching the app should schedule the initial settings refresh")
+        return
+      }
+      _ = await refresh.result
+      XCTAssertNil(model.applicationDidFinishLaunching())
     }
     XCTAssertEqual(publishedCountries, ["US"])
 

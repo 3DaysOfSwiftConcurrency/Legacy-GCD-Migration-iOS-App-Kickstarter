@@ -19,7 +19,7 @@ private enum Constants {
 
 public struct OnboardingView: View {
   @SwiftUI.Environment(\.dismiss) private var dismiss
-  @State private var viewModel: OnboardingViewModel
+  @State private var viewModel = OnboardingViewModel()
   @Namespace private var animation
   @State private var currentIndex: Int = 0
   @State private var onboardingItems: [OnboardingItem] = []
@@ -30,8 +30,7 @@ public struct OnboardingView: View {
     return Double(self.currentIndex + 1) / onboardingItemsCount
   }
 
-  public init(onboardingFeature: OnboardingFeature, onLogin: @escaping @MainActor () -> Void) {
-    self._viewModel = State(initialValue: OnboardingViewModel(onboardingFeature: onboardingFeature))
+  public init(onLogin: @escaping @MainActor () -> Void) {
     self.onLogin = onLogin
   }
 
