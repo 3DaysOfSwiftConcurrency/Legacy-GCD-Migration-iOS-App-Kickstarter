@@ -4,45 +4,45 @@ import Foundation
 
 public class RemoteConfigClient: RemoteConfigClientType {
   @MainActor static func reportActivationFailure(_ error: Error) {
-    let value = error as NSError
-    if value.domain != RemoteConfigErrorDomain || value.code != RemoteConfigError.internalError.rawValue {
+    let activationError = error as NSError
+    if activationError.domain != RemoteConfigErrorDomain || activationError.code != RemoteConfigError.internalError.rawValue {
       Crashlytics.crashlytics().record(error: error)
     }
   }
 
   @MainActor public func fetchAndActivateAsync() async throws {
-    _ = try await self.sharedClient.fetchAndActivate()
+    _ = try await self.firebaseRemoteConfig.fetchAndActivate()
   }
   public func fetchAndActivate(completionHandler: (@Sendable (RemoteConfigFetchAndActivateStatus, Error?) -> Void)?) {
-    self.sharedClient.fetchAndActivate(completionHandler: completionHandler)
+    self.firebaseRemoteConfig.fetchAndActivate(completionHandler: completionHandler)
   }
 
-  private var sharedClient: RemoteConfig
+  private var firebaseRemoteConfig: RemoteConfig
 
   public init(with client: RemoteConfig) {
-    self.sharedClient = client
+    self.firebaseRemoteConfig = client
   }
 
   public func activate(completion: (@Sendable (Bool, Error?) -> Void)?) {
-    self.sharedClient.activate(completion: completion)
+    self.firebaseRemoteConfig.activate(completion: completion)
   }
 
   public func fetch(completionHandler: (@Sendable (RemoteConfigFetchStatus, Error?) -> Void)?) {
-    self.sharedClient.fetch(completionHandler: completionHandler)
+    self.firebaseRemoteConfig.fetch(completionHandler: completionHandler)
   }
 
   public func setDefaults(_ defaults: [String: NSObject]?) {
-    self.sharedClient.setDefaults(defaults)
+    self.firebaseRemoteConfig.setDefaults(defaults)
   }
 
   public func addOnConfigUpdateListener(remoteConfigUpdateCompletion listener: @escaping @Sendable (
     RemoteConfigUpdate?,
     Error?
   ) -> Void) -> ConfigUpdateListenerRegistration {
-    self.sharedClient.addOnConfigUpdateListener(remoteConfigUpdateCompletion: listener)
+    self.firebaseRemoteConfig.addOnConfigUpdateListener(remoteConfigUpdateCompletion: listener)
   }
 
   public func configValue(forKey key: String?) -> RemoteConfigValue {
-    self.sharedClient.configValue(forKey: key)
+    self.firebaseRemoteConfig.configValue(forKey: key)
   }
 }

@@ -161,7 +161,14 @@ reopen or replace the completed CFA migration ledger.
   disabled generic Library-iOS simulator build was blocked during Swift package
   resolution. RecommendationsFeatureTests and recommendation ViewModel tests could not
   run because CoreSimulator refused connections.
+- RemoteConfiguration: named the injected Firebase Remote Config client and the NSError
+  used to filter activation failures. Reviewed the Settings integration, flag tools
+  ViewModel, and remote configuration tests. Swift parsing and git diff --check passed.
+  The signing-disabled generic Library-iOS simulator build was blocked during Swift
+  package resolution. RemoteConfigurationServiceTests and
+  RemoteConfigFeatureFlagToolsViewModelTests could not run because CoreSimulator
+  refused connections.
 
 ## Current slice
 
-- RemoteConfiguration definitions and Settings integration.
+- Rewards Feature and reward collection and shipping location screens.
