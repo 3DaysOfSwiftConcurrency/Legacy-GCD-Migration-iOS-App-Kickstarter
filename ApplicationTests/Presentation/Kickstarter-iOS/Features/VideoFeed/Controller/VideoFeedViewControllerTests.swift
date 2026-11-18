@@ -7,6 +7,15 @@ import SwiftUI
 import UIKit
 
 @MainActor
+private func makeVideoFeedShareSheet(_ item: VideoFeedItem) -> VideoFeedShareSheetView {
+  VideoFeedShareSheetView(
+    item: item,
+    webBaseURL: { URL(string: "https://www.kickstarter.com")! },
+    onDestinationTapped: { _ in }
+  )
+}
+
+@MainActor
 final class VideoFeedViewControllerTests: TestCase {
   override func setUp() async throws {
     try await super.setUp()
@@ -69,7 +78,7 @@ final class VideoFeedViewControllerTests: TestCase {
           )),
           isSaved: .constant(false),
           isMuted: .constant(false),
-          makeShareSheet: VideoFeedViewController.makeShareSheet
+          makeShareSheet: makeVideoFeedShareSheet
         )
 
         assertSnapshot(
@@ -132,7 +141,7 @@ final class VideoFeedViewControllerTests: TestCase {
           )),
           isSaved: .constant(true),
           isMuted: .constant(false),
-          makeShareSheet: VideoFeedViewController.makeShareSheet
+          makeShareSheet: makeVideoFeedShareSheet
         )
 
         assertSnapshot(
@@ -196,7 +205,7 @@ final class VideoFeedViewControllerTests: TestCase {
           )),
           isSaved: .constant(false),
           isMuted: .constant(false),
-          makeShareSheet: VideoFeedViewController.makeShareSheet
+          makeShareSheet: makeVideoFeedShareSheet
         )
 
         player.simulateVideoFailure()
@@ -261,7 +270,7 @@ final class VideoFeedViewControllerTests: TestCase {
           )),
           isSaved: .constant(false),
           isMuted: .constant(false),
-          makeShareSheet: VideoFeedViewController.makeShareSheet
+          makeShareSheet: makeVideoFeedShareSheet
         )
 
         cell.showSaveErrorToast()
@@ -327,7 +336,7 @@ final class VideoFeedViewControllerTests: TestCase {
           )),
           isSaved: .constant(false),
           isMuted: .constant(false),
-          makeShareSheet: VideoFeedViewController.makeShareSheet
+          makeShareSheet: makeVideoFeedShareSheet
         )
 
         player.simulateVideoFailure()
@@ -395,7 +404,7 @@ final class VideoFeedViewControllerTests: TestCase {
           )),
           isSaved: .constant(false),
           isMuted: .constant(false),
-          makeShareSheet: VideoFeedViewController.makeShareSheet
+          makeShareSheet: makeVideoFeedShareSheet
         )
 
         player.simulateVideoReady()
@@ -463,7 +472,7 @@ final class VideoFeedViewControllerTests: TestCase {
           )),
           isSaved: .constant(false),
           isMuted: .constant(true),
-          makeShareSheet: VideoFeedViewController.makeShareSheet
+          makeShareSheet: makeVideoFeedShareSheet
         )
 
         player.simulateVideoReady()

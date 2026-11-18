@@ -34,6 +34,7 @@ internal final class SearchViewController: UITableViewController,
   internal var messageBannerViewController: MessageBannerViewController?
 
   var videoFeedVC: VideoFeedViewController?
+  var videoFeedComposition: VideoFeedComposition { AppModel.shared.videoFeedComposition }
 
   private var searchBarWidth: CGFloat {
     return self.view.bounds.width * Constants.searchBarWidthFactor

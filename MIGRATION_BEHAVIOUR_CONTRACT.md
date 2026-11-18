@@ -2327,3 +2327,16 @@ safe for arbitrary concurrent environment mutation.
 - Focused Messaging/AppModel coverage passes 38 tests and focused Pledged Projects/root
   navigation coverage passes 12 tests. Messaging snapshots, live navigation and whole
   target suites remain unverified. Video Feed composition remains later migration work.
+
+## Video Feed feature graph — 18 November 2026
+
+- VideoFeedViewController now requires one AppModel-owned VideoFeedComposition containing
+  ProjectMediaFeature, MessagingFeature, the Project Page destination graph, analytics and
+  device presentation policy.
+- Fetching, saving, sharing, creator messaging and Project Page presentation preserve their
+  established behavior while no longer selecting process-global dependencies inside the
+  Video Feed vertical slice.
+- Focused AppModel/Video Feed model coverage passes 27 tests and focused observation,
+  playback-state and player coverage passes 21 tests. Snapshots and live navigation remain
+  unverified. Search and Discovery still select the graph at their legacy controller
+  boundaries and remain follow-up composition work.

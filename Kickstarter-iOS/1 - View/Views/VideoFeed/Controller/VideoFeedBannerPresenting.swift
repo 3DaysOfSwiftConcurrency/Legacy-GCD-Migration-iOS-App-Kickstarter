@@ -5,6 +5,7 @@ import UIKit
 protocol VideoFeedBannerPresenting: UIViewController, MessageBannerViewControllerPresenting {
   /// Retained across opens so VM state persists. Also prevents double-tapping while loading.
   var videoFeedVC: VideoFeedViewController? { get set }
+  var videoFeedComposition: VideoFeedComposition { get }
 }
 
 extension VideoFeedBannerPresenting {
@@ -21,7 +22,7 @@ extension VideoFeedBannerPresenting {
 
     cell.setLoading(true)
 
-    let feedVC = VideoFeedViewController()
+    let feedVC = VideoFeedViewController(composition: self.videoFeedComposition)
 
     self.videoFeedVC = feedVC
 

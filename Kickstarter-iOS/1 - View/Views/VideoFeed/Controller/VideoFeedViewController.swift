@@ -19,10 +19,8 @@ final class VideoFeedViewController: UIViewController {
     static let backgroundColor = KDS.Colors.Icon.dark.uiColor()
   }
 
-  private let viewModel = VideoFeedViewModel(
-    projectMediaFeature: AppModel.shared.projectMediaFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics }
-  )
+  private let composition: VideoFeedComposition
+  private let viewModel: VideoFeedViewModel
   private let dataSource = VideoFeedDataSource()
   private let audioController = VideoFeedAudioController()
 
@@ -48,6 +46,20 @@ final class VideoFeedViewController: UIViewController {
   private var isScrolling = false
   private var currentPageIndex: Int = 0
   private var isShareSheetPresented = false
+
+  init(composition: VideoFeedComposition) {
+    self.composition = composition
+    self.viewModel = VideoFeedViewModel(
+      projectMediaFeature: composition.projectMediaFeature,
+      analytics: composition.analytics
+    )
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
 
   /// Called once the first batch of items has loaded and the feed is ready to present.
   var onReadyToPresent: (@MainActor () -> Void)?
@@ -224,16 +236,16 @@ final class VideoFeedViewController: UIViewController {
       ),
       isSaved: self.viewModel.isSaved(projectId: item.id),
       isMuted: self.muteBinding,
-      makeShareSheet: Self.makeShareSheet
+      makeShareSheet: self.makeShareSheet
     )
   }
 
-  static func makeShareSheet(_ item: VideoFeedItem) -> VideoFeedShareSheetView {
+  func makeShareSheet(_ item: VideoFeedItem) -> VideoFeedShareSheetView {
     VideoFeedShareSheetView(
       item: item,
-      webBaseURL: { AppModel.shared.projectMediaFeature.webBaseURL },
-      onDestinationTapped: { destination in
-        AppEnvironment.current.ksrAnalytics.trackVideoFeedShareDestinationClicked(
+      webBaseURL: { self.composition.projectMediaFeature.webBaseURL },
+      onDestinationTapped: { [composition = self.composition] destination in
+        composition.analytics().trackVideoFeedShareDestinationClicked(
           destination: destination.analyticsContext,
           videoId: item.id,
           projectId: item.projectId
@@ -344,7 +356,7 @@ final class VideoFeedViewController: UIViewController {
   /// Its worth pulling into a `UIViewController` extension, with the background color fix keyed off the videoFeed intent.
   private func goToLoginTout(intent: LoginIntent) {
     let loginTout = LoginToutViewController.configuredWith(loginIntent: intent)
-    let isIpad = AppEnvironment.current.device.userInterfaceIdiom == .pad
+    let isIpad = self.composition.isPad()
     let nav = UINavigationController(rootViewController: loginTout)
     nav.modalPresentationStyle = isIpad ? .formSheet : .fullScreen
 
@@ -360,13 +372,13 @@ final class VideoFeedViewController: UIViewController {
   private func goToCreatorProfile(for item: VideoFeedItem) {
     let vc = ProjectCreatorViewController.configuredWith(
       project: item,
-      messagingFeature: AppModel.shared.messagingFeature
+      messagingFeature: self.composition.messagingFeature
     )
     vc.isPresentedFromVideoFeed = true
 
     let nav = UINavigationController(rootViewController: vc)
 
-    if AppEnvironment.current.device.userInterfaceIdiom == .pad {
+    if self.composition.isPad() {
       nav.modalPresentationStyle = .formSheet
     } else {
       nav.modalPresentationStyle = .fullScreen
@@ -378,7 +390,8 @@ final class VideoFeedViewController: UIViewController {
   private func goToProjectPage(for item: VideoFeedItem) {
     let vc = ProjectPageViewController.navigationController(
       withProjectOrParam: .right(Param.slug(item.slug)),
-      refInfo: RefInfo(.videoFeed)
+      refInfo: RefInfo(.videoFeed),
+      composition: self.composition.projectPage
     )
     vc.modalPresentationStyle = .fullScreen
 
@@ -419,7 +432,7 @@ extension VideoFeedViewController: UICollectionViewDelegateFlowLayout {
       ),
       isSaved: self.viewModel.isSaved(projectId: item.id),
       isMuted: self.muteBinding,
-      makeShareSheet: Self.makeShareSheet
+      makeShareSheet: self.makeShareSheet
     )
 
     if let url = item.videoURL {

@@ -35,6 +35,7 @@ internal final class DiscoveryPageViewController: UITableViewController,
   internal var messageBannerViewController: MessageBannerViewController?
 
   var videoFeedVC: VideoFeedViewController?
+  var videoFeedComposition: VideoFeedComposition { AppModel.shared.videoFeedComposition }
 
   internal static func configuredWith(sort: DiscoveryParams.Sort) -> DiscoveryPageViewController {
     let vc = Storyboard.DiscoveryPage.instantiate(DiscoveryPageViewController.self)

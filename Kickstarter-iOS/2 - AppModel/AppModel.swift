@@ -187,6 +187,28 @@ public struct MessagingComposition {
   }
 }
 
+public struct VideoFeedComposition {
+  public let projectMediaFeature: ProjectMediaFeature
+  public let messagingFeature: MessagingFeature
+  public let projectPage: ProjectPageComposition
+  public let analytics: () -> KSRAnalytics
+  public let isPad: () -> Bool
+
+  public init(
+    projectMediaFeature: ProjectMediaFeature,
+    messagingFeature: MessagingFeature,
+    projectPage: ProjectPageComposition,
+    analytics: @escaping () -> KSRAnalytics,
+    isPad: @escaping () -> Bool
+  ) {
+    self.projectMediaFeature = projectMediaFeature
+    self.messagingFeature = messagingFeature
+    self.projectPage = projectPage
+    self.analytics = analytics
+    self.isPad = isPad
+  }
+}
+
 public struct RootTabComposition {
   public let sessionFeature: SessionFeature
   public let profileFeature: ProfileFeature
@@ -306,6 +328,16 @@ public final class AppModel {
       messagingFeature: self.messagingFeature,
       discussionFeature: self.discussionFeature,
       projectPage: self.projectPageComposition
+    )
+  }
+
+  public var videoFeedComposition: VideoFeedComposition {
+    VideoFeedComposition(
+      projectMediaFeature: self.projectMediaFeature,
+      messagingFeature: self.messagingFeature,
+      projectPage: self.projectPageComposition,
+      analytics: { AppEnvironment.current.ksrAnalytics },
+      isPad: { AppEnvironment.current.device.userInterfaceIdiom == .pad }
     )
   }
 

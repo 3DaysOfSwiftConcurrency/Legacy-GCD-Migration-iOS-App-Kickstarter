@@ -4712,6 +4712,30 @@ Profile, Search and other classified global seams remain for later checkpoints. 
 is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
 
+### Video Feed feature graph — 18 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes VideoFeedComposition with the AppModel-owned ProjectMediaFeature and
+MessagingFeature, the established ProjectPageComposition destination graph, analytics and
+device presentation policy. VideoFeedViewController requires that graph at construction
+and uses it for its model, share sheet, creator messaging, Project Page navigation and
+iPad presentation. The reusable banner presenter also requires the graph instead of
+constructing a globally configured controller.
+
+Focused AppModelTests and VideoFeedViewModelTests passed all 27 tests. Focused
+VideoFeedObservationTests, VideoFeedPlaybackStateTests and VideoFeedVideoPlayerTests
+passed all 21 tests. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2.
+Evidence: `/private/tmp/kickstarter-video-feed-composition-library-v2.xcresult` and
+`/private/tmp/kickstarter-video-feed-composition-presentation.xcresult`.
+
+Video Feed snapshots and live navigation remain unverified. Search and Discovery still
+select the AppModel-owned VideoFeedComposition at their legacy controller boundaries;
+moving those parent graphs outward remains follow-up migration work. The whole Library
+and Presentation suites remain unverified. The CFA gate rejects restored global selection
+anywhere in Video Feed. This is not full CFA compliance. Swift packages, target
+identifiers and existing history are unchanged. No push.
+
 ### Friends receives response policy from AppModel — 17 November 2026
 
 Author: Matthew Thomas.
