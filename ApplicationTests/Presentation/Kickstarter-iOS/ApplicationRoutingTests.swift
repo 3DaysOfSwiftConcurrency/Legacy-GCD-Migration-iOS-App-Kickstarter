@@ -109,12 +109,12 @@ final class ApplicationRoutingTests: TestCase {
     )
   )
   private lazy var deepLinkRouter = DeepLinkRouter(
-    currentSession: { [model = self.model] in model.deepLinkSession },
+    currentSession: { [model = self.model] in model.currentDeepLinkSession },
     resolveDestination: { [model = self.model] in
-      try await model.resolveDeepLink($0, discoveryResponseDelay: $1)
+      try await model.resolveDeepLinkDestination(for: $0, discoveryResponseDelay: $1)
     },
-    firstRedirect: { [model = self.model] in try await model.resolveEmailLink($0, route: $1) },
-    releaseRedirect: { [model = self.model] in model.releaseEmailLink(route: $0) },
+    firstRedirect: { [model = self.model] in try await model.resolveEmailLinkDestination(for: $0, route: $1) },
+    releaseRedirect: { [model = self.model] in model.releaseEmailLinkResolution(for: $0) },
     settingsLinks: self.settingsLinks,
     projectPageComposition: self.model.projectPageComposition,
     serverConfig: { AppEnvironment.current.apiService.serverConfig },

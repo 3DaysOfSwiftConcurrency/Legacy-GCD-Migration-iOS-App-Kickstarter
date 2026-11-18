@@ -53,10 +53,10 @@ final class DeepLinkRouterTests: XCTestCase {
     )
     let model = try XCTUnwrap(self.model)
     self.router = DeepLinkRouter(
-      currentSession: { model.deepLinkSession },
-      resolveDestination: { try await model.resolveDeepLink($0, discoveryResponseDelay: $1) },
-      firstRedirect: { try await model.resolveEmailLink($0, route: $1) },
-      releaseRedirect: { model.releaseEmailLink(route: $0) },
+      currentSession: { model.currentDeepLinkSession },
+      resolveDestination: { try await model.resolveDeepLinkDestination(for: $0, discoveryResponseDelay: $1) },
+      firstRedirect: { try await model.resolveEmailLinkDestination(for: $0, route: $1) },
+      releaseRedirect: { model.releaseEmailLinkResolution(for: $0) },
       settingsLinks: self.settingsLinks,
       projectPageComposition: model.projectPageComposition,
       serverConfig: { ServerConfig.local },

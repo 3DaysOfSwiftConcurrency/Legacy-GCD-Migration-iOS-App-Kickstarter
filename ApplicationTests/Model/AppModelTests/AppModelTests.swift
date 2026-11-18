@@ -69,7 +69,7 @@ final class AppModelTests: XCTestCase {
         loadSurvey: { _ in try await surveys.request() }
       )
     )
-    let first = Task { try await model.resolveDeepLink(.user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    let first = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
     await surveys.waitFor(1)
     session.sessionChanged()
     try surveys.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -77,7 +77,7 @@ final class AppModelTests: XCTestCase {
       return XCTFail("An obsolete survey result escaped the AppModel boundary")
     }
 
-    let current = Task { try await model.resolveDeepLink(.user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    let current = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
     await surveys.waitFor(2)
     try surveys.finish(1, .success(.template))
     guard case let .survey(url)? = try await current.value else { return XCTFail("Expected the survey URL") }
@@ -94,7 +94,7 @@ final class AppModelTests: XCTestCase {
         loadSurvey: { _ in surveyRequests += 1; return .template }
       )
     )
-    let task = Task { try await model.resolveDeepLink(.user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    let task = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
     task.cancel()
     guard case .failure(is CancellationError) = await task.result else {
       return XCTFail("Cancelled link resolution must throw cancellation")

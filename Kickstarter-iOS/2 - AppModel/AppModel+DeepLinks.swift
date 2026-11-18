@@ -15,16 +15,16 @@ public enum DeepLinkDestination: Sendable {
 }
 
 extension AppModel {
-  var deepLinkSession: DeepLinkSession {
+  var currentDeepLinkSession: DeepLinkSession {
     DeepLinkSession(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
 
   /// Coordinates existing product Features without retaining navigation or presentation tasks.
-  func resolveDeepLink(
-    _ navigation: Navigation, discoveryResponseDelay: TimeInterval
+  func resolveDeepLinkDestination(
+    for navigation: Navigation, discoveryResponseDelay: TimeInterval
   ) async throws -> DeepLinkDestination? {
-    let session = self.deepLinkSession
-    try self.requireDeepLinkSession(session)
+    let startingSession = self.currentDeepLinkSession
+    try self.ensureDeepLinkSessionIsCurrent(startingSession)
     let destination: DeepLinkDestination?
     do {
       switch navigation {
@@ -46,32 +46,32 @@ extension AppModel {
         destination = nil
       }
     } catch {
-      try self.requireDeepLinkSession(session)
+      try self.ensureDeepLinkSessionIsCurrent(startingSession)
       throw error
     }
-    try self.requireDeepLinkSession(session)
+    try self.ensureDeepLinkSessionIsCurrent(startingSession)
     return destination
   }
 
-  func resolveEmailLink(_ url: URL, route: UUID) async throws -> URL? {
-    let session = self.deepLinkSession
-    try self.requireDeepLinkSession(session)
+  func resolveEmailLinkDestination(for url: URL, route: UUID) async throws -> URL? {
+    let startingSession = self.currentDeepLinkSession
+    try self.ensureDeepLinkSessionIsCurrent(startingSession)
     do {
       let destination = try await self.authenticationFeature.firstRedirect(url, route: route)
-      try self.requireDeepLinkSession(session)
+      try self.ensureDeepLinkSessionIsCurrent(startingSession)
       return destination
     } catch {
-      try self.requireDeepLinkSession(session)
+      try self.ensureDeepLinkSessionIsCurrent(startingSession)
       throw error
     }
   }
 
-  func releaseEmailLink(route: UUID) {
+  func releaseEmailLinkResolution(for route: UUID) {
     self.authenticationFeature.releaseEmailRedirect(route: route)
   }
 
-  private func requireDeepLinkSession(_ session: DeepLinkSession) throws {
+  private func ensureDeepLinkSessionIsCurrent(_ session: DeepLinkSession) throws {
     try Task.checkCancellation()
-    guard self.deepLinkSession == session else { throw CancellationError() }
+    guard self.currentDeepLinkSession == session else { throw CancellationError() }
   }
 }
