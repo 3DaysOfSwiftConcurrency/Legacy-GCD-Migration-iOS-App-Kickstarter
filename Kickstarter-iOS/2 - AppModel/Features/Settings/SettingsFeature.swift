@@ -132,13 +132,13 @@ public final class SettingsFeature {
   private let identifyUser: @MainActor (User) -> Void
   private let responseDeliverySleep: (TimeInterval) async throws -> Void
   private let refreshDebounce: @MainActor () async throws -> Void
-  private var scheduledRefresh: Task<Void, Never>?
-  private var lifecycleRefresh: Task<Void, Never>?
+  private var accountRefreshDebounceTask: Task<Void, Never>?
+  private var activeAccountRefreshTask: Task<Void, Never>?
   private var account: Account?
-  private var tail: Pending?
-  private var writes: [UUID: Task<User, Error>] = [:]
-  private var reads: [UUID: Task<User, Error>] = [:]
-  private var setupRefresh: (id: UUID, task: Task<Void, Never>)?
+  private var latestQueuedAccountWrite: Pending?
+  private var accountWriteTasks: [UUID: Task<User, Error>] = [:]
+  private var accountRefreshTasks: [UUID: Task<User, Error>] = [:]
+  private var accountSetupRefreshRequest: (id: UUID, task: Task<Void, Never>)?
   private var emailRead: (
     id: UUID,
     userID: Int?,
@@ -199,10 +199,10 @@ public final class SettingsFeature {
   }
 
   func scheduleAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
-    self.scheduledRefresh?.cancel()
+    self.accountRefreshDebounceTask?.cancel()
     let debounce = self.refreshDebounce
     let generation = self.session.generation
-    self.scheduledRefresh = Task { [weak self] in
+    self.accountRefreshDebounceTask = Task { [weak self] in
       do {
         try await debounce()
         try Task.checkCancellation()
@@ -213,7 +213,7 @@ public final class SettingsFeature {
   }
 
   private func beginAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
-    self.lifecycleRefresh?.cancel()
+    self.activeAccountRefreshTask?.cancel()
     let authenticated = self.hasStoredCredentials()
     let userID = self.session.currentUser?.id
     guard authenticated || userID != nil else {
@@ -221,7 +221,7 @@ public final class SettingsFeature {
       return
     }
     let generation = self.session.generation
-    self.lifecycleRefresh = Task { [weak self] in
+    self.activeAccountRefreshTask = Task { [weak self] in
       guard let self else { return }
       do {
         let user = try await self.refresh(
@@ -239,13 +239,13 @@ public final class SettingsFeature {
   }
 
   func cancelScheduledAccountRefresh() {
-    self.scheduledRefresh?.cancel()
-    self.lifecycleRefresh?.cancel()
+    self.accountRefreshDebounceTask?.cancel()
+    self.activeAccountRefreshTask?.cancel()
   }
 
   func waitForScheduledAccountRefresh() async {
-    await self.scheduledRefresh?.value
-    await self.lifecycleRefresh?.value
+    await self.accountRefreshDebounceTask?.value
+    await self.activeAccountRefreshTask?.value
   }
 
   public func save(_ changes: [Change], from user: User) async throws -> User {
@@ -320,12 +320,12 @@ public final class SettingsFeature {
     let valid = self.isCurrent(account)
     if valid, self.account != account {
       self.account = account
-      self.tail = nil
+      self.latestQueuedAccountWrite = nil
       self.lastError = nil
     }
     // Share only the equivalent tail: on/off/on must still execute in order.
-    if valid, let tail = self.tail, tail.account == account, tail.edit == edit { return tail }
-    let previous = valid ? self.tail?.task : nil
+    if valid, let tail = self.latestQueuedAccountWrite, tail.account == account, tail.edit == edit { return tail }
+    let previous = valid ? self.latestQueuedAccountWrite?.task : nil
     let provider = self.makeProvider()
     let id = UUID()
     if valid {
@@ -367,13 +367,13 @@ public final class SettingsFeature {
         if self.isCurrent(account), !(error is CancellationError) { self.lastError = error }
         result = .failure(self.isCurrent(account) ? error : CancellationError())
       }
-      self.writes[id] = nil
-      if self.tail?.id == id { self.tail = nil }
+      self.accountWriteTasks[id] = nil
+      if self.latestQueuedAccountWrite?.id == id { self.latestQueuedAccountWrite = nil }
       return try result.get()
     }
     let pending = Pending(id: id, account: account, edit: edit, task: task)
-    if valid { self.tail = pending }
-    self.writes[id] = task
+    if valid { self.latestQueuedAccountWrite = pending }
+    self.accountWriteTasks[id] = task
     return pending
   }
 
@@ -450,10 +450,10 @@ public final class SettingsFeature {
     let task = Task { [weak self] in
       guard let self else { return }
       defer {
-        if self.setupRefresh?.id == id { self.setupRefresh = nil }
+        if self.accountSetupRefreshRequest?.id == id { self.accountSetupRefreshRequest = nil }
       }
       do {
-        while let previous = self.tail?.task { _ = await previous.result }
+        while let previous = self.latestQueuedAccountWrite?.task { _ = await previous.result }
         try Task.checkCancellation()
         guard self.session.isCurrent(userID: userID, generation: generation) else { return }
         let setup = try await self.session.refreshSetup()
@@ -461,11 +461,11 @@ public final class SettingsFeature {
         if setup.email != nil { onEmailAvailable() }
       } catch { /* Setup failures remain silent. */ }
     }
-    self.setupRefresh = (id, task)
+    self.accountSetupRefreshRequest = (id, task)
   }
 
   func cancelAccountSetupRefresh() {
-    self.setupRefresh?.task.cancel()
+    self.accountSetupRefreshRequest?.task.cancel()
   }
 
   public func emailUser() async throws -> GraphUser {
@@ -477,7 +477,7 @@ public final class SettingsFeature {
   ) async throws -> GraphUser {
     let generation = self.session.generation
     let userID = self.session.currentUser?.id
-    while let previous = self.tail?.task { _ = await previous.result }
+    while let previous = self.latestQueuedAccountWrite?.task { _ = await previous.result }
     let revision = self.session.readGeneration
     try Task.checkCancellation()
     guard self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
@@ -527,10 +527,10 @@ public final class SettingsFeature {
     let generation = self.session.generation
     let userID = self.session.currentUser?.id
     let task = Task { [self] in
-      defer { self.reads[id] = nil }
+      defer { self.accountRefreshTasks[id] = nil }
       return try await self.refresh(userID: userID, generation: generation, allowSessionRestore: allowSessionRestore)
     }
-    self.reads[id] = task
+    self.accountRefreshTasks[id] = task
     return task
   }
 
@@ -543,7 +543,7 @@ public final class SettingsFeature {
     generation: Int,
     allowSessionRestore: Bool = false
   ) async throws -> User {
-    while let previous = self.tail?.task { _ = await previous.result }
+    while let previous = self.latestQueuedAccountWrite?.task { _ = await previous.result }
     let revision = self.editRevision
     try Task.checkCancellation()
     guard self.session.isCurrent(userID: userID, generation: generation)
@@ -671,12 +671,12 @@ public final class SettingsFeature {
 
   /// Waits for owned executions, not presentation scheduler delays.
   func waitForOperations() async {
-    while !self.reads.isEmpty || self.setupRefresh != nil || !self.writes.isEmpty || !self.verificationWrites.isEmpty || self
+    while !self.accountRefreshTasks.isEmpty || self.accountSetupRefreshRequest != nil || !self.accountWriteTasks.isEmpty || !self.verificationWrites.isEmpty || self
       .emailRead != nil || !self.notificationWrites.isEmpty {
       for task in Array(self.notificationWrites.values) { _ = await task.result }
-      await self.setupRefresh?.task.value
-      let reads = Array(self.reads.values)
-      let writes = Array(self.writes.values)
+      await self.accountSetupRefreshRequest?.task.value
+      let reads = Array(self.accountRefreshTasks.values)
+      let writes = Array(self.accountWriteTasks.values)
       let verifications = Array(self.verificationWrites.values)
       for verification in verifications { _ = await verification.result }
       if let task = self.emailRead?.task { _ = await task.result }

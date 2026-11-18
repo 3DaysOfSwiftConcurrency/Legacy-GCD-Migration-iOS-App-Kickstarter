@@ -186,7 +186,14 @@ reopen or replace the completed CFA migration ledger.
   signing-disabled generic Library-iOS simulator build was blocked during Swift package
   resolution. SessionFeatureTests and session-related AppModel tests could not run
   because CoreSimulator refused connections.
+- Settings: distinguished the refresh debounce, active account refresh and account
+  setup tasks. Named the latest queued account write and its read and write tasks.
+  Reviewed AppModel, account screens, and focused settings tests. Swift parsing and git
+  diff --check passed. The signing-disabled generic Library-iOS simulator build was
+  blocked during Swift package resolution. SettingsFeatureTests and
+  SettingsProjectNotificationsTests could not run because CoreSimulator refused
+  connections.
 
 ## Current slice
 
-- Settings Feature, lifecycle refresh, and account and preference screens.
+- Final source, protected-contract, and Git verification.
