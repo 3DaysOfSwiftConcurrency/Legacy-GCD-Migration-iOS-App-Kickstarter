@@ -49,7 +49,7 @@ public final class ProjectNotificationCellViewModel {
     let userID = session.currentUser?.id
     let generation = session.generation
     guard let command = try? settingsFeature.requestProjectNotificationSave(edited) else { return }
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let delay = settingsFeature.responseDelaySeconds
     let sleep = self.sleep
     self.presentation = Task { [weak self] in
       let result = await command.result

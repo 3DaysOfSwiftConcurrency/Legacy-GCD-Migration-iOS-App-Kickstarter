@@ -11,9 +11,7 @@ internal protocol ProjectNotificationCellDelegate: AnyObject {
 }
 
 internal final class ProjectNotificationCell: UITableViewCell, ValueCell {
-  fileprivate let viewModel = ProjectNotificationCellViewModel(
-    settingsFeature: AppModel.shared.settingsFeature
-  )
+  fileprivate var viewModel: ProjectNotificationCellViewModel?
   internal weak var delegate: ProjectNotificationCellDelegate?
 
   @IBOutlet fileprivate var nameLabel: UILabel!
@@ -44,25 +42,29 @@ internal final class ProjectNotificationCell: UITableViewCell, ValueCell {
     _ = self.notificationSwitch |> settingsSwitchStyle
   }
 
-  internal override func bindViewModel() {
-    super.bindViewModel()
-
-    self.viewModel.onName = { [weak self] name in
+  internal func configure(settingsFeature: SettingsFeature) {
+    guard self.viewModel == nil else { return }
+    let viewModel = ProjectNotificationCellViewModel(settingsFeature: settingsFeature)
+    self.viewModel = viewModel
+    viewModel.onName = { [weak self] name in
       self?.nameLabel.text = name
       self?.notificationSwitch.accessibilityLabel = name
     }
-    self.viewModel.onSwitch = { [weak self] in self?.notificationSwitch.isOn = $0 }
-    self.viewModel.onError = { [weak self] message in
+    viewModel.onSwitch = { [weak self] in self?.notificationSwitch.isOn = $0 }
+    viewModel.onError = { [weak self] message in
       guard let self else { return }
       self.delegate?.projectNotificationCell(self, notificationSaveError: message)
     }
   }
 
   internal func configureWith(value: ProjectNotification) {
-    self.viewModel.configureWith(notification: value)
+    guard let viewModel else {
+      preconditionFailure("ProjectNotificationCell requires SettingsFeature composition.")
+    }
+    viewModel.configureWith(notification: value)
   }
 
   @objc fileprivate func notificationTapped(_: UISwitch) {
-    self.viewModel.notificationTapped(on: self.notificationSwitch.isOn)
+    self.viewModel?.notificationTapped(on: self.notificationSwitch.isOn)
   }
 }

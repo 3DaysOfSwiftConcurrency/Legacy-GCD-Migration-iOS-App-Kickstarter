@@ -5,13 +5,14 @@ import Prelude
 import UIKit
 
 internal final class ProjectNotificationsViewController: UITableViewController {
-  fileprivate let viewModel = ProjectNotificationsViewModel(
-    settingsFeature: AppModel.shared.settingsFeature
-  )
-  fileprivate let dataSource = ProjectNotificationsDataSource()
+  private var settingsFeature: SettingsFeature!
+  fileprivate lazy var viewModel = ProjectNotificationsViewModel(settingsFeature: self.settingsFeature)
+  fileprivate lazy var dataSource = ProjectNotificationsDataSource(settingsFeature: self.settingsFeature)
 
-  internal static func instantiate() -> ProjectNotificationsViewController {
-    return Storyboard.Settings.instantiate(ProjectNotificationsViewController.self)
+  internal static func instantiate(settingsFeature: SettingsFeature) -> ProjectNotificationsViewController {
+    let viewController = Storyboard.Settings.instantiate(ProjectNotificationsViewController.self)
+    viewController.settingsFeature = settingsFeature
+    return viewController
   }
 
   internal override func viewDidLoad() {

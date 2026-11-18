@@ -9,6 +9,15 @@ import SnapshotTesting
 import XCTest
 
 internal final class ProjectNotificationsViewControllerTests: TestCase {
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var settingsFeature = SettingsFeature(
+    sessionFeature: self.sessionFeature,
+    responseDeliverySleep: { _ in },
+    makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+  )
+
   override func setUp() async throws {
     try await super.setUp()
     UIView.setAnimationsEnabled(false)
@@ -38,7 +47,7 @@ internal final class ProjectNotificationsViewControllerTests: TestCase {
         apiService: service,
         language: language
       ) {
-        let vc = ProjectNotificationsViewController.instantiate()
+        let vc = ProjectNotificationsViewController.instantiate(settingsFeature: self.settingsFeature)
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
 
 

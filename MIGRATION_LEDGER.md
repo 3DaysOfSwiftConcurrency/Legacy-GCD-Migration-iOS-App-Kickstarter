@@ -5980,6 +5980,27 @@ unverified, as do the whole Library and Presentation suites. The CFA gate reject
 global selection or legacy factory calls across the migrated route. This is not full CFA
 compliance. Swift packages, target identifiers and existing history are unchanged. No push.
 
+### Project Notifications composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+SettingsNotificationsViewController now passes its parent-owned SettingsFeature into
+ProjectNotificationsViewController. That controller constructs its model and data source from
+the supplied feature, and the data source composes every reusable cell before delivering its
+value. ProjectNotificationCellViewModel now uses SettingsFeature response timing instead of
+reading AppEnvironment.current.
+
+Focused project-notification feature, screen-model, cell reuse, ordering and session-safety
+coverage passed all 11 selected main-module tests. Parent Settings Notifications data-source,
+Settings and Root Tabs coverage passed all 17 selected Presentation tests. Evidence:
+`/private/tmp/kickstarter-project-notifications-composition-library.xcresult` and
+`/private/tmp/kickstarter-project-notifications-composition-presentation.xcresult`.
+
+Reference snapshots and live switch interaction remain unverified because the required iPad
+mini (A17 Pro), iOS 18.6 simulator is unavailable. The CFA gate rejects restored global
+selection across the route and its parameterless factory. This is not full CFA compliance.
+Swift packages, target identifiers and existing history are unchanged. No push.
+
 ### Settings Account screen composition — 18 November 2026
 
 Author: Matthew Thomas.

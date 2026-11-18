@@ -2475,3 +2475,12 @@ safe for arbitrary concurrent environment mutation.
 - Focused main-module coverage passes 7 tests and focused Notifications data-source, parent
   Settings and Root Tabs presentation coverage passes 17 tests. Reference snapshots, live
   VoiceOver interaction and the Project Notifications child route remain unverified.
+
+## Project Notifications composition — 18 November 2026
+
+- Settings Notifications passes its existing SettingsFeature through the Project Notifications
+  controller and data source to every project-notification cell model.
+- Ordered saves, cache confirmation, cell reuse, session replacement and delayed error
+  presentation preserve their established behavior while response timing belongs to SettingsFeature.
+- Focused main-module coverage passes 11 tests and parent Presentation coverage passes 17 tests.
+  Reference snapshots and live switch interaction remain unverified.

@@ -75,7 +75,9 @@ internal final class SettingsNotificationsViewController: UIViewController {
   }
 
   fileprivate func goToManageProjectNotifications() {
-    let vc = ProjectNotificationsViewController.instantiate()
+    let vc = ProjectNotificationsViewController.instantiate(
+      settingsFeature: self.composition.settingsFeature
+    )
     self.navigationController?.pushViewController(vc, animated: true)
   }
 
