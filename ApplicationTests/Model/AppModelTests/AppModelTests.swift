@@ -452,11 +452,15 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(first.rootTabComposition.sessionFeature === first.sessionFeature)
     XCTAssertTrue(first.rootTabComposition.profileFeature === first.profileFeature)
     XCTAssertTrue(first.activityComposition.activityFeature === first.activityFeature)
+    XCTAssertTrue(first.activityComposition.friendsFeature === first.friendsFeature)
     XCTAssertTrue(
       first.activityComposition.projectPage.managePledge.pledgeFeature === first.pledgeFeature
     )
     XCTAssertTrue(
       first.rootTabComposition.activities.activityFeature === first.activityFeature
+    )
+    XCTAssertTrue(
+      first.rootTabComposition.activities.friendsFeature === first.friendsFeature
     )
     XCTAssertTrue(
       first.rootTabComposition.messaging.messagingFeature === first.messagingFeature

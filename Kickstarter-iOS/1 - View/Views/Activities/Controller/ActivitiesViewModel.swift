@@ -126,7 +126,7 @@ final class ActivitiesViewModel {
   private func goToProject(_ project: Project?) {
     guard let project else { return }
     self.onEvent?(.goToProject(project, .activity))
-    AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(page: .activities, project: project)
+    self.activityFeature.projectCardClicked(project)
   }
   func tappedRespondNow(forSurveyResponse response: SurveyResponse) { self.onEvent?(.goToSurveyResponse(response)) }
 

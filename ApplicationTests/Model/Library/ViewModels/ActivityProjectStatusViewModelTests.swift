@@ -8,7 +8,14 @@ import XCTest
 @MainActor
 internal final class ActivityProjectStatusViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  fileprivate let vm = ActivityProjectStatusViewModel(currentUser: { AppEnvironment.current.currentUser })
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: MockService()) }
+  )
+  private lazy var activityFeature = ActivityFeature(
+    sessionFeature: self.sessionFeature,
+    makeProvider: { AsyncActivityProvider(service: MockService()) }
+  )
+  fileprivate lazy var vm = ActivityProjectStatusViewModel(activityFeature: self.activityFeature)
   func testProject_Launched() {
     let project = .cosmicSurgery
       |> Project.lens.name .~ "A Very Important Project About Kittens and Puppies"

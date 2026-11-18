@@ -416,6 +416,14 @@ reject_matches 'Pledged Projects receives one composed feature graph.' \
 reject_matches 'Activities receives one composed feature graph.' \
   'AppModel[.]shared|AppEnvironment[.]current' \
   "$app_view/Views/Activities/Controller/ActivitiesViewController.swift"
+reject_matches 'Activities screen models and cells receive their Features from composition.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/Activities/Controller/ActivitiesViewModel.swift" \
+  "$app_view/Views/Activities/Datasource/ActivitiesDataSource.swift" \
+  "$app_view/Views/Activities/Views/Cells/ActivityFriendFollowCell.swift" \
+  "$app_view/Views/Activities/Views/Cells/ActivityFriendFollowCellViewModel.swift" \
+  "$app_view/Views/Activities/Views/Cells/ActivityProjectStatusCell.swift" \
+  "$app_view/Views/Activities/Views/Cells/ActivityProjectStatusViewModel.swift"
 reject_matches 'Activities forwards its composed destination graph.' \
   'PledgeManagerWebViewController[.]configuredWith[(]url: url[)]|ManagePledgeViewController[.]controller[(]with: params, delegate: self[)]' \
   "$app_view/Views/Activities/Controller/ActivitiesViewController.swift"

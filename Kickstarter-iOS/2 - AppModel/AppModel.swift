@@ -160,13 +160,16 @@ public struct PledgeCheckoutComposition {
 
 public struct ActivityComposition {
   public let activityFeature: ActivityFeature
+  public let friendsFeature: FriendsFeature
   public let projectPage: ProjectPageComposition
 
   public init(
     activityFeature: ActivityFeature,
+    friendsFeature: FriendsFeature,
     projectPage: ProjectPageComposition
   ) {
     self.activityFeature = activityFeature
+    self.friendsFeature = friendsFeature
     self.projectPage = projectPage
   }
 }
@@ -392,6 +395,7 @@ public final class AppModel {
   public var activityComposition: ActivityComposition {
     ActivityComposition(
       activityFeature: self.activityFeature,
+      friendsFeature: self.friendsFeature,
       projectPage: self.projectPageComposition
     )
   }
@@ -638,7 +642,10 @@ public final class AppModel {
       platform: .init(
         loadSurvey: { try await AppEnvironment.current.apiService.applicationSurvey(id: $0) },
         applicationBadgeNumber: { AppEnvironment.current.application.applicationIconBadgeNumber },
-        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+        projectCardClicked: {
+          AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(page: .activities, project: $0)
+        }
       ),
       sessionFeature: sessionFeature,
       makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) }

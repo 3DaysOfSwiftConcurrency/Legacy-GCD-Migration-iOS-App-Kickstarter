@@ -5,7 +5,7 @@ import Prelude
 import UIKit
 
 internal final class ActivityFriendFollowCell: UITableViewCell, ValueCell {
-  fileprivate let viewModel: ActivityFriendFollowCellViewModel = ActivityFriendFollowCellViewModel(friendsFeature: AppModel.shared.friendsFeature)
+  fileprivate var viewModel: ActivityFriendFollowCellViewModel?
 
   @IBOutlet fileprivate var cardView: UIView!
   @IBOutlet fileprivate var containerView: UIView!
@@ -14,19 +14,24 @@ internal final class ActivityFriendFollowCell: UITableViewCell, ValueCell {
   @IBOutlet fileprivate var followButton: UIButton!
 
   func configureWith(value: Activity) {
-    self.viewModel.configureWith(activity: value)
+    guard let viewModel else {
+      preconditionFailure("ActivityFriendFollowCell requires FriendsFeature composition.")
+    }
+    viewModel.configureWith(activity: value)
     guard value.user != nil else { return }
-    self.followButton.isHidden = self.viewModel.hideFollowButton ?? false
-    self.friendLabel.attributedText = self.viewModel.title
+    self.followButton.isHidden = viewModel.hideFollowButton ?? false
+    self.friendLabel.attributedText = viewModel.title
     self.friendImageView.af.cancelImageRequest()
     self.friendImageView.image = nil
-    if let url = self.viewModel.friendImageURL { self.friendImageView.ksr_setImageWithURL(url) }
+    if let url = viewModel.friendImageURL { self.friendImageView.ksr_setImageWithURL(url) }
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
-    self.viewModel.onChange = { [weak self] in
-      guard let self, let hidden = self.viewModel.hideFollowButton else { return }
+  func configure(friendsFeature: FriendsFeature) {
+    guard self.viewModel == nil else { return }
+    let viewModel = ActivityFriendFollowCellViewModel(friendsFeature: friendsFeature)
+    self.viewModel = viewModel
+    viewModel.onChange = { [weak self, weak viewModel] in
+      guard let self, let hidden = viewModel?.hideFollowButton else { return }
       self.followButton.isHidden = hidden
     }
   }
@@ -59,6 +64,6 @@ internal final class ActivityFriendFollowCell: UITableViewCell, ValueCell {
   }
 
   @objc fileprivate func followButtonTapped() {
-    self.viewModel.followButtonTapped()
+    self.viewModel?.followButtonTapped()
   }
 }

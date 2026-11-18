@@ -18,7 +18,10 @@ internal final class ActivitiesViewController: UITableViewController {
     }
     return configuredViewModel
   }
-  fileprivate let dataSource = ActivitiesDataSource()
+  fileprivate lazy var dataSource = ActivitiesDataSource(
+    activityFeature: self.composition.activityFeature,
+    friendsFeature: self.composition.friendsFeature
+  )
   private var sessionEndedObserver: MainActorNotificationObservation?
   private var sessionStartedObserver: MainActorNotificationObservation?
   private var userUpdatedObserver: MainActorNotificationObservation?

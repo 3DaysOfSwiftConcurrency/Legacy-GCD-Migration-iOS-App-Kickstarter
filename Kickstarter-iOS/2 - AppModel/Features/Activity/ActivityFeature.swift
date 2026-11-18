@@ -28,15 +28,18 @@ public final class ActivityFeature {
     public let loadSurvey: @MainActor (Int) async throws -> SurveyResponse
     public let applicationBadgeNumber: @MainActor () -> Int
     public let responseDelaySeconds: @MainActor () -> TimeInterval
+    public let projectCardClicked: @MainActor (Project) -> Void
 
     public init(
       loadSurvey: @escaping @MainActor (Int) async throws -> SurveyResponse,
       applicationBadgeNumber: @escaping @MainActor () -> Int,
-      responseDelaySeconds: @escaping @MainActor () -> TimeInterval
+      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
+      projectCardClicked: @escaping @MainActor (Project) -> Void
     ) {
       self.loadSurvey = loadSurvey
       self.applicationBadgeNumber = applicationBadgeNumber
       self.responseDelaySeconds = responseDelaySeconds
+      self.projectCardClicked = projectCardClicked
     }
   }
 
@@ -87,6 +90,14 @@ public final class ActivityFeature {
   /// The Activity tab owns the presentation value for its unread badge.
   public var currentApplicationBadgeNumber: Int { self.platform.applicationBadgeNumber() }
   var unseenActivityCount: Int? { self.sessionFeature.currentUser?.unseenActivityCount }
+
+  public func isCurrentUser(_ user: User?) -> Bool {
+    self.sessionFeature.currentUser == user
+  }
+
+  public func projectCardClicked(_ project: Project) {
+    self.platform.projectCardClicked(project)
+  }
 
   func surveyURL(id: Int) async throws -> String {
     try await self.platform.loadSurvey(id).urls.web.survey

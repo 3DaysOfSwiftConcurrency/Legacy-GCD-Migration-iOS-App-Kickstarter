@@ -2413,3 +2413,16 @@ safe for arbitrary concurrent environment mutation.
   MessagingFeature for message dialogs and uses its UIKit traits for presentation style.
 - Focused Project Creator and AppModel graph coverage passes 8 tests. Destination snapshots,
   live navigation and whole target suites remain unverified.
+
+## Activities cell and analytics composition — 18 November 2026
+
+- Activities passes its AppModel-owned ActivityFeature and FriendsFeature through the data
+  source into project-status and friend-follow cells; those cells no longer select global
+  collaborators.
+- ActivityFeature owns the semantic project-card-clicked analytics command and current-user
+  decision. FriendsFeature owns the existing response-delivery delay used after follow writes.
+  Analytics timing, follow-button behavior and cell presentation remain unchanged.
+- Focused main-module coverage passes 56 tests and focused Activities data-source coverage
+  passes 3 tests. The controller and Presentation target compile, but the controller smoke
+  cannot execute without the test harness's required iPad mini (A17 Pro), iOS 18.6 simulator.
+  Snapshots, live interaction and whole target suites remain unverified.

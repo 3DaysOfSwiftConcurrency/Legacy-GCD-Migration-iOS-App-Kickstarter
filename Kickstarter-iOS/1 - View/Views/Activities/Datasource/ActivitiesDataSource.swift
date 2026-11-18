@@ -4,6 +4,15 @@ import Prelude
 import UIKit
 
 internal final class ActivitiesDataSource: ValueCellDataSource {
+  private let activityFeature: ActivityFeature
+  private let friendsFeature: FriendsFeature
+
+  init(activityFeature: ActivityFeature, friendsFeature: FriendsFeature) {
+    self.activityFeature = activityFeature
+    self.friendsFeature = friendsFeature
+    super.init()
+  }
+
   internal enum Section: Int {
     case erroredBackings
     case surveys
@@ -75,8 +84,10 @@ internal final class ActivitiesDataSource: ValueCellDataSource {
     case let (cell as ActivityFriendBackingCell, activity as Activity):
       cell.configureWith(value: activity)
     case let (cell as ActivityFriendFollowCell, activity as Activity):
+      cell.configure(friendsFeature: self.friendsFeature)
       cell.configureWith(value: activity)
     case let (cell as ActivityProjectStatusCell, activity as Activity):
+      cell.configure(activityFeature: self.activityFeature)
       cell.configureWith(value: activity)
     case let (cell as ActivitySurveyResponseCell, value as (SurveyResponse, Int, Int)):
       cell.configureWith(value: value)

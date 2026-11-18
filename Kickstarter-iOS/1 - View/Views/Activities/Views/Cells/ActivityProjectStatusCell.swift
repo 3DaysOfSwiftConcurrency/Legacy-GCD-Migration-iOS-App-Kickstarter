@@ -7,9 +7,7 @@ import Prelude
 import UIKit
 
 internal final class ActivityProjectStatusCell: UITableViewCell, ValueCell {
-  fileprivate let viewModel = ActivityProjectStatusViewModel(
-    currentUser: { AppModel.shared.sessionFeature.currentUser }
-  )
+  fileprivate var viewModel: ActivityProjectStatusViewModel?
 
   @IBOutlet fileprivate var cardView: UIView!
   @IBOutlet fileprivate var containerView: UIView!
@@ -23,8 +21,10 @@ internal final class ActivityProjectStatusCell: UITableViewCell, ValueCell {
   @IBOutlet fileprivate var textBackgroundView: UIView!
 
   internal func configureWith(value: Activity) {
-    self.viewModel.configureWith(activity: value)
-    let model = self.viewModel
+    guard let model = self.viewModel else {
+      preconditionFailure("ActivityProjectStatusCell requires ActivityFeature composition.")
+    }
+    model.configureWith(activity: value)
     if let name = model.projectName { self.projectNameLabel.text = name }
     self.metadataBackgroundView.backgroundColor = model.metadataBackgroundColor
     self.metadataLabel.text = model.metadataText
@@ -40,6 +40,11 @@ internal final class ActivityProjectStatusCell: UITableViewCell, ValueCell {
       self.fundingProgressBarView.layer.anchorPoint = CGPoint(x: CGFloat(anchorX), y: 0.5)
       self.fundingProgressBarView.transform = CGAffineTransform(scaleX: CGFloat(progress), y: 1)
     }
+  }
+
+  internal func configure(activityFeature: ActivityFeature) {
+    guard self.viewModel == nil else { return }
+    self.viewModel = ActivityProjectStatusViewModel(activityFeature: activityFeature)
   }
 
   internal override func bindStyles() {

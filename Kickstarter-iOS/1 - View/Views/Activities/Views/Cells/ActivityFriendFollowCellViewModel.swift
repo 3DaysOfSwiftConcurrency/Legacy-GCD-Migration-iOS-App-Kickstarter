@@ -10,17 +10,11 @@ public final class ActivityFriendFollowCellViewModel {
   public private(set) var title: NSAttributedString?
   @ObservationIgnored var onChange: (@MainActor () -> Void)?
   @ObservationIgnored private let friendsFeature: FriendsFeature
-  @ObservationIgnored private let delay: @MainActor () async throws -> Void
   @ObservationIgnored private var observation: Task<Void, Never>?
   private var friend: User?
 
-  public init(friendsFeature: FriendsFeature, delay: (@MainActor () async throws -> Void)? = nil) {
+  public init(friendsFeature: FriendsFeature) {
     self.friendsFeature = friendsFeature
-    self.delay = delay ?? {
-      let seconds = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
   }
 
   public func configureWith(activity: Activity) {
@@ -46,7 +40,7 @@ public final class ActivityFriendFollowCellViewModel {
       do {
         let result = try await task.value
         guard let self else { return }
-        try await self.delay()
+        try await friendsFeature.waitForResponseDelivery()
         try Task.checkCancellation()
         guard self.friend?.id == result.id, friendsFeature.sessionFeature.generation == generation,
               friendsFeature.sessionFeature.currentUser?.id == userID else { return }

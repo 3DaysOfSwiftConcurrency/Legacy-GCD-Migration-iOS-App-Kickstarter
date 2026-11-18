@@ -5921,3 +5921,30 @@ Library and Presentation suites remain unverified. The CFA gate rejects restored
 selection in Project Creator and legacy feature-only construction from either presenter.
 This is not full CFA compliance. Swift packages, target identifiers and existing history
 are unchanged. No push.
+
+### Activities cell and analytics composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+ActivityComposition now includes the AppModel-owned FriendsFeature used by activity friend
+follow cells. ActivitiesViewController passes its ActivityFeature and FriendsFeature into
+ActivitiesDataSource, which composes the affected cells before supplying their values.
+ActivityFriendFollowCellViewModel now delegates response-delivery timing to FriendsFeature,
+while ActivityProjectStatusViewModel asks ActivityFeature for the current-user decision.
+ActivityFeature also owns the semantic project-card-clicked analytics command, with AppModel
+providing the live analytics implementation. The migrated screen models and cells no longer
+select AppModel.shared or AppEnvironment.current.
+
+Focused Activity, Friends, cell-view-model, analytics and AppModel graph coverage passed all
+56 tests with zero failures and skips on iPhone 17 Pro Max, iOS 26.2. The focused Activities
+data-source coverage passed all 3 tests. Evidence:
+`/private/tmp/kickstarter-activities-cell-composition-isolated.xcresult` and
+`/private/tmp/kickstarter-activities-cell-composition-presentation.xcresult`.
+
+The ActivitiesViewController smoke test could not run on the installed simulator because
+the shared Presentation test base requires an iPad mini (A17 Pro) running iOS 18.6; only
+iOS 26.2 iPhone simulators are installed. The controller and Presentation test target did
+compile. Activity snapshots, live interaction and the whole Library and Presentation suites
+remain unverified. The CFA gate rejects restored global dependency selection across the
+migrated Activities models, data source and cells. This is not full CFA compliance. Swift
+packages, target identifiers and existing history are unchanged. No push.

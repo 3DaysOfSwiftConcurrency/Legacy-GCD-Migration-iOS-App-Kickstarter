@@ -274,6 +274,11 @@ public final class FriendsFeature {
     value.isFriend = following
     return value
   }
+
+  public func waitForResponseDelivery() async throws {
+    try await self.sleep(self.responseDelaySeconds())
+  }
+
   public func followAll() async throws { try await self.execute(.all) }
 
   /// Admits Follow All immediately, preserving its position among account writes.

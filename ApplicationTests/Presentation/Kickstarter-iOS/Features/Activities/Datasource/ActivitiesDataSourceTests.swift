@@ -8,7 +8,19 @@ import XCTest
 
 @MainActor
 final class ActivitiesDataSourceTests: XCTestCase {
-  let dataSource = ActivitiesDataSource()
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: MockService()) }
+  )
+  private lazy var dataSource = ActivitiesDataSource(
+    activityFeature: ActivityFeature(
+      sessionFeature: self.sessionFeature,
+      makeProvider: { AsyncActivityProvider(service: MockService()) }
+    ),
+    friendsFeature: FriendsFeature(
+      sessionFeature: self.sessionFeature,
+      makeProvider: { AsyncFriendsProvider(service: MockService()) }
+    )
+  )
   let tableView = UITableView()
 
   func testSurvey() {

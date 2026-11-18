@@ -13,6 +13,9 @@ final class ActivitiesViewModelTests: TestCase {
   private lazy var feature = ActivityFeature(
     sessionFeature: self.sessionFeature,
     makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) },
+    projectCardClicked: {
+      AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(page: .activities, project: $0)
+    },
     sleep: { _ in }
   )
   private lazy var vm = ActivitiesViewModel(activityFeature: self.feature)
