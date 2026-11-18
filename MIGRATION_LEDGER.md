@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "verify",
-  "nextAction": "Run the full Library-iOS test suite on a fresh Xcode service, then record the result before any completion decision.",
+  "nextAction": "Complete a fresh static CFA audit while monitoring the full Library-iOS run; if Xcode does not launch a worker or write a usable result, preserve it as infrastructure-limited and continue independent verification.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6345,6 +6345,13 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "test",
       "outcome": "limited",
       "summary": "Retried the full Library-iOS suite on the booted iPhone 17 Pro with a fresh result bundle. Xcode rebuilt the target successfully but did not launch a test worker or produce a usable result for ten minutes; the idle xcodebuild process was then terminated and reported BUILD INTERRUPTED. This is a reproducible local Xcode execution limitation, not a passing or failing suite result. The migration remains in verify."
+    },
+    {
+      "id": "full-library-suite-second-simulator-limited",
+      "revision": "b8f0f68a4",
+      "kind": "test",
+      "outcome": "limited",
+      "summary": "A full Library-iOS suite was retried on the separately booted iPhone 17 Pro Max with a fresh result bundle. After ten minutes, xcodebuild had only SWBBuildService and DTServiceHub children, launched no test worker, and the bundle still lacked Info.plist. The exact stalled process was terminated. This reproduces a local Xcode build/test-service limitation across two simulators, not an application test result."
     }
   ],
   "attempts": [
@@ -6447,6 +6454,14 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Claimed Codex continuation.",
       "result": "The host signal matches the current ledger state."
+    },
+    {
+      "action": "Claimed Codex continuation.",
+      "result": "The host signal matches the current ledger state."
+    },
+    {
+      "action": "Started a full-suite verification on a second booted iPhone simulator.",
+      "result": "The process is alive in Xcode build services but has no test worker and the result bundle lacks Info.plist. This is not a test result; a static audit can proceed independently."
     }
   ],
   "blocker": null,
@@ -6455,7 +6470,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "host": "codex",
     "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47",
     "pending": {
-      "token": "ac9e5974-a32d-4b72-acef-bceebb4f4188"
+      "token": "a4e99a2f-e879-4a2e-9164-fb6c05e0b1b1"
     }
   }
 }
