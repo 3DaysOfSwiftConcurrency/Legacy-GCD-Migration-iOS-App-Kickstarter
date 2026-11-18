@@ -15,11 +15,8 @@ private enum Constants {
 internal final class SearchViewController: UITableViewController,
   MessageBannerViewControllerPresenting,
   VideoFeedBannerPresenting {
-  internal let viewModel: SearchViewModelType = SearchViewModel(
-    searchFeature: AppModel.shared.searchFeature,
-    sessionFeature: AppModel.shared.sessionFeature,
-    projectMediaFeature: AppModel.shared.projectMediaFeature
-  )
+  private var composition: SearchComposition?
+  internal private(set) var viewModel: SearchViewModelType!
   internal let dataSource = SearchDataSource()
 
   @IBOutlet fileprivate var searchBarContainerView: UIView!
@@ -34,14 +31,24 @@ internal final class SearchViewController: UITableViewController,
   internal var messageBannerViewController: MessageBannerViewController?
 
   var videoFeedVC: VideoFeedViewController?
-  var videoFeedComposition: VideoFeedComposition { AppModel.shared.videoFeedComposition }
+  var videoFeedComposition: VideoFeedComposition {
+    guard let composition else { preconditionFailure("SearchViewController requires SearchComposition") }
+    return composition.videoFeed
+  }
 
   private var searchBarWidth: CGFloat {
     return self.view.bounds.width * Constants.searchBarWidthFactor
   }
 
-  internal static func instantiate() -> SearchViewController {
-    return Storyboard.Search.instantiate(SearchViewController.self)
+  internal static func instantiate(composition: SearchComposition) -> SearchViewController {
+    let controller = Storyboard.Search.instantiate(SearchViewController.self)
+    controller.composition = composition
+    controller.viewModel = SearchViewModel(
+      searchFeature: composition.searchFeature,
+      sessionFeature: composition.sessionFeature,
+      projectMediaFeature: composition.videoFeed.projectMediaFeature
+    )
+    return controller
   }
 
   internal override func viewDidLoad() {

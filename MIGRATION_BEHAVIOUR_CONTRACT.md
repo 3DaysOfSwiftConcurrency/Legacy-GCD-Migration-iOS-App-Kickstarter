@@ -2340,3 +2340,14 @@ safe for arbitrary concurrent environment mutation.
   playback-state and player coverage passes 21 tests. Snapshots and live navigation remain
   unverified. Search and Discovery still select the graph at their legacy controller
   boundaries and remain follow-up composition work.
+
+## Search feature graph and analytics ownership — 18 November 2026
+
+- Root Tabs now opens Search with one AppModel-owned SearchComposition containing
+  SearchFeature, SessionFeature and the established Video Feed destination graph.
+- SearchFeature owns the semantic search-view and project-card analytics commands.
+  SearchViewModel preserves the characterized event timing while no longer resolving the
+  analytics environment.
+- Focused AppModel/Search model coverage passes 46 tests and focused Root Tabs navigation
+  coverage passes 5 tests. Search snapshots, live filter/navigation interaction and whole
+  target suites remain unverified.

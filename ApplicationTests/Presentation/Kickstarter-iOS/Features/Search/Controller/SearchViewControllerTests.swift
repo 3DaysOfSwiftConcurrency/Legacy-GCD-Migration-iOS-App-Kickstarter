@@ -12,6 +12,10 @@ import XCTest
 
 @MainActor
 internal final class SearchViewContollerTests: TestCase {
+  private func makeController() -> SearchViewController {
+    SearchViewController.instantiate(composition: AppModel.shared.searchComposition)
+  }
+
   override func setUp() async throws {
     try await super.setUp()
     UIView.setAnimationsEnabled(false)
@@ -28,7 +32,7 @@ internal final class SearchViewContollerTests: TestCase {
 
     [Device.phone4_7inch, Device.phone5_8inch, Device.pad].forEach { device in
       withEnvironment(language: Language.en) {
-        let controller = Storyboard.Search.instantiate(SearchViewController.self)
+        let controller = self.makeController()
         controller.viewWillAppear(true)
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 
@@ -52,7 +56,7 @@ internal final class SearchViewContollerTests: TestCase {
         GraphAPI.SearchQuery.Data.activeResults
       )]
 
-      let controller = Storyboard.Search.instantiate(SearchViewController.self)
+      let controller = self.makeController()
       let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 
       // Load the first set of results
@@ -114,7 +118,7 @@ internal final class SearchViewContollerTests: TestCase {
         withEnvironment(
           apiService: MockService(fetchGraphQLResponses: searchResponse), language: language
         ) {
-          let controller = Storyboard.Search.instantiate(SearchViewController.self)
+          let controller = self.makeController()
           controller.viewWillAppear(true)
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 
@@ -148,7 +152,7 @@ internal final class SearchViewContollerTests: TestCase {
         apiService: MockService(fetchGraphQLResponses: emptyResponse),
         language: language
       ) {
-        let controller = Storyboard.Search.instantiate(SearchViewController.self)
+        let controller = self.makeController()
         controller.overrideUserInterfaceStyle = style
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
 
@@ -188,7 +192,7 @@ internal final class SearchViewContollerTests: TestCase {
         apiService: MockService(fetchGraphQLResponses: searchResponse),
         language: language
       ) {
-        let controller = Storyboard.Search.instantiate(SearchViewController.self)
+        let controller = self.makeController()
         controller.overrideUserInterfaceStyle = style
         _ = controller.view
         controller.viewWillAppear(true)
@@ -219,7 +223,7 @@ internal final class SearchViewContollerTests: TestCase {
         withEnvironment(
           apiService: MockService(fetchGraphQLResponses: searchResponse), language: language
         ) {
-          let controller = Storyboard.Search.instantiate(SearchViewController.self)
+          let controller = self.makeController()
           _ = controller.view
           controller.viewWillAppear(true)
 
@@ -256,7 +260,7 @@ internal final class SearchViewContollerTests: TestCase {
         apiService: MockService(fetchGraphQLResponses: searchResponse), language: language,
         statsigClient: mockStatsigClient
       ) {
-        let controller = Storyboard.Search.instantiate(SearchViewController.self)
+        let controller = self.makeController()
         _ = controller.view
         controller.viewWillAppear(true)
 

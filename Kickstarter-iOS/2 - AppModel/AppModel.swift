@@ -209,11 +209,28 @@ public struct VideoFeedComposition {
   }
 }
 
+public struct SearchComposition {
+  public let searchFeature: SearchFeature
+  public let sessionFeature: SessionFeature
+  public let videoFeed: VideoFeedComposition
+
+  public init(
+    searchFeature: SearchFeature,
+    sessionFeature: SessionFeature,
+    videoFeed: VideoFeedComposition
+  ) {
+    self.searchFeature = searchFeature
+    self.sessionFeature = sessionFeature
+    self.videoFeed = videoFeed
+  }
+}
+
 public struct RootTabComposition {
   public let sessionFeature: SessionFeature
   public let profileFeature: ProfileFeature
   public let activities: ActivityComposition
   public let messaging: MessagingComposition
+  public let search: SearchComposition
   public let settingsFeature: SettingsFeature
   public let analytics: () -> KSRAnalytics
   public let badgePresentationDelay: () -> TimeInterval
@@ -225,6 +242,7 @@ public struct RootTabComposition {
     profileFeature: ProfileFeature,
     activities: ActivityComposition,
     messaging: MessagingComposition,
+    search: SearchComposition,
     settingsFeature: SettingsFeature,
     analytics: @escaping () -> KSRAnalytics,
     badgePresentationDelay: @escaping () -> TimeInterval,
@@ -235,6 +253,7 @@ public struct RootTabComposition {
     self.profileFeature = profileFeature
     self.activities = activities
     self.messaging = messaging
+    self.search = search
     self.settingsFeature = settingsFeature
     self.analytics = analytics
     self.badgePresentationDelay = badgePresentationDelay
@@ -341,6 +360,14 @@ public final class AppModel {
     )
   }
 
+  public var searchComposition: SearchComposition {
+    SearchComposition(
+      searchFeature: self.searchFeature,
+      sessionFeature: self.sessionFeature,
+      videoFeed: self.videoFeedComposition
+    )
+  }
+
   public var pledgeCheckoutComposition: PledgeCheckoutComposition {
     PledgeCheckoutComposition(
       pledgeFeature: self.pledgeFeature,
@@ -363,6 +390,7 @@ public final class AppModel {
       profileFeature: self.profileFeature,
       activities: self.activityComposition,
       messaging: self.messagingComposition,
+      search: self.searchComposition,
       settingsFeature: self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
@@ -714,6 +742,20 @@ public final class AppModel {
         lookupProvider: AsyncSearchLookupProvider(
           service: AppEnvironment.current.apiService,
           cache: AppEnvironment.current.cache
+        ),
+        analytics: .init(
+          projectCardClicked: {
+            AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(
+              page: .search,
+              project: $0,
+              typeContext: .results,
+              location: .searchResults,
+              params: $1
+            )
+          },
+          searchViewed: {
+            AppEnvironment.current.ksrAnalytics.trackProjectSearchView(params: $0, results: $1)
+          }
         )
       ),
       discoveryFeature: discoveryFeature,

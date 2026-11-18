@@ -224,7 +224,11 @@ reject_matches 'Rewards view models must receive their dependencies explicitly.'
 reject_matches 'Pledged Projects view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/PledgedProjectsOverview/*ViewModel.swift"
 reject_matches 'Search view models must receive their dependencies explicitly.' \
-  'AppModel[.]shared' "$app_view/Views/Search/*ViewModel.swift"
+  'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Views/Search/*ViewModel.swift"
+reject_matches 'Search controller receives its feature graph from Root Tabs.' \
+  'AppModel[.]shared|AppEnvironment[.]current' "$app_view/Views/Search/Controller/SearchViewController.swift"
+reject_matches 'Root Tabs must supply SearchComposition.' \
+  'SearchViewController[.]instantiate[(][[:space:]]*[)]' "$root_tabs"
 reject_matches 'Messaging view models must receive their dependencies explicitly.' \
   'AppModel[.]shared' "$app_view/Views/MessageDialog/*ViewModel.swift" "$app_view/Views/MessageThreads/*ViewModel.swift" \
   "$app_view/Views/Messages/*ViewModel.swift" "$app_view/Views/SearchMessages/*ViewModel.swift"

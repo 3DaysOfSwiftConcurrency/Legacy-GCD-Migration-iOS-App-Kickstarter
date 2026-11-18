@@ -10,6 +10,24 @@ public typealias SearchResult = SearchProjectResponse
 /// Explicit main-actor notifications report state transitions to presentation.
 @MainActor
 public final class SearchFeature {
+  public struct Analytics {
+    public let projectCardClicked: (any ProjectAnalyticsProperties, DiscoveryParams) -> Void
+    public let searchViewed: (DiscoveryParams, Int) -> Void
+
+    public init(
+      projectCardClicked: @escaping (any ProjectAnalyticsProperties, DiscoveryParams) -> Void,
+      searchViewed: @escaping (DiscoveryParams, Int) -> Void
+    ) {
+      self.projectCardClicked = projectCardClicked
+      self.searchViewed = searchViewed
+    }
+
+    public static let noop = Self(
+      projectCardClicked: { _, _ in },
+      searchViewed: { _, _ in }
+    )
+  }
+
   public struct Platform {
     public let responseDelaySeconds: @MainActor () -> TimeInterval
     public let debounceSeconds: @MainActor () -> TimeInterval
@@ -89,6 +107,7 @@ public final class SearchFeature {
   private var suggestionsRequest: (id: UUID, task: Task<Void, Never>)?
 
   private let provider: any SearchProjectsProvider
+  private let analytics: Analytics
   private let platform: Platform
   private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var nextCursor: String?
@@ -100,6 +119,7 @@ public final class SearchFeature {
     platform: Platform,
     provider: any SearchProjectsProvider,
     lookupProvider: any SearchLookupProvider,
+    analytics: Analytics = .noop,
     lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
       else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
@@ -116,10 +136,22 @@ public final class SearchFeature {
   ) {
     self.platform = platform
     self.provider = provider
+    self.analytics = analytics
     self.sleep = sleep
     self.lookupSleep = lookupSleep
     self.filterSelection = SearchFilterSelection()
     self.lookupProvider = lookupProvider
+  }
+
+  public func projectCardClicked(
+    project: any ProjectAnalyticsProperties,
+    parameters: DiscoveryParams
+  ) {
+    self.analytics.projectCardClicked(project, parameters)
+  }
+
+  public func searchViewed(parameters: DiscoveryParams, results: Int) {
+    self.analytics.searchViewed(parameters, results)
   }
 
   /// Default choices and lookup data are loaded only on explicit screen demand.

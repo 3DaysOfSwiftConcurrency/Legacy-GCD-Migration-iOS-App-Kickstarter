@@ -22,6 +22,20 @@ internal final class SearchViewModelTests: TestCase {
       let query = GraphAPI.SearchQuery.from(discoveryParams: parameters, withCursor: cursor)
       return try await AppEnvironment.current.apiService.fetchSearchPage(query: query)
     },
+    analytics: .init(
+      projectCardClicked: {
+        AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(
+          page: .search,
+          project: $0,
+          typeContext: .results,
+          location: .searchResults,
+          params: $1
+        )
+      },
+      searchViewed: {
+        AppEnvironment.current.ksrAnalytics.trackProjectSearchView(params: $0, results: $1)
+      }
+    ),
     lookupSleep: { _ in },
     sleep: { [delay] in try await delay.sleep($0) }
   )

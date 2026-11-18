@@ -241,12 +241,9 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
 
     // A malformed navigation ID did not suppress legacy click analytics.
     if let parameters = self.latestQueryParameters {
-      AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(
-        page: .search,
+      self.searchFeature.projectCardClicked(
         project: project.analytics,
-        typeContext: .results,
-        location: .searchResults,
-        params: parameters
+        parameters: parameters
       )
     }
   }
@@ -279,15 +276,13 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
     guard let query = self.queryText,
           let parameters = self.latestQueryParameters,
           let count = self.appearanceResultsCount else { return }
-    AppEnvironment.current.ksrAnalytics.trackProjectSearchView(
-      params: parameters, results: query.isEmpty ? 0 : count
-    )
+    self.searchFeature.searchViewed(parameters: parameters, results: query.isEmpty ? 0 : count)
   }
 
   private func trackResultCompletion(count: Int) {
     guard let query = self.queryText, !query.isEmpty,
           let parameters = self.latestQueryParameters else { return }
-    AppEnvironment.current.ksrAnalytics.trackProjectSearchView(params: parameters, results: count)
+    self.searchFeature.searchViewed(parameters: parameters, results: count)
   }
 
   public func willDisplayProjectAtRow(_ row: Int, outOf totalRows: Int) {

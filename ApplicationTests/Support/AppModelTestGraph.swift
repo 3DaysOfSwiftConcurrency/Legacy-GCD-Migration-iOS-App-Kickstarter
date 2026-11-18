@@ -386,11 +386,13 @@ extension SearchFeature {
   convenience init(
     platform: Platform,
     provider: any SearchProjectsProvider,
+    analytics: Analytics = .noop,
     lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { _ in },
     sleep: @escaping @MainActor (TimeInterval) async throws -> Void
   ) {
     self.init(
       platform: platform, provider: provider, lookupProvider: EnvironmentSearchLookupProvider(),
+      analytics: analytics,
       lookupSleep: lookupSleep, sleep: sleep
     )
   }

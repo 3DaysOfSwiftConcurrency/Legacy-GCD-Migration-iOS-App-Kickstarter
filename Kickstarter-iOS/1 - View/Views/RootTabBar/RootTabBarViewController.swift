@@ -371,7 +371,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     case .pledgedProjectsAndActivities:
       return PPOContainerViewController(composition: self.composition.pledgedProjects)
     case .search:
-      return SearchViewController.instantiate()
+      return SearchViewController.instantiate(composition: self.composition.search)
     case let .profile(isLoggedIn):
       return isLoggedIn
         ? BackerDashboardViewController.instantiate(

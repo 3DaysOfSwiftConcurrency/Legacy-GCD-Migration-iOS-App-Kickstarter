@@ -4534,6 +4534,29 @@ closures remain for subsequent checkpoints. Keychain bootstrap remains deliberat
 independent of AppModel. This is not full CFA compliance. Swift packages, target
 identifiers and existing history are unchanged. No push.
 
+### Search feature graph and analytics ownership — 18 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes SearchComposition with the AppModel-owned SearchFeature and
+SessionFeature plus the nested VideoFeedComposition. Root Tabs supplies that graph when
+constructing SearchViewController. The controller builds its model from the supplied
+Features and forwards the same Video Feed graph, eliminating its process-global feature
+selection. SearchFeature now owns semantic search-view and project-card analytics
+commands; SearchViewModel no longer sends analytics through AppEnvironment.
+
+Focused AppModelTests and SearchViewModelTests passed all 46 tests, including the existing
+search analytics characterization coverage. Focused RootTabsNavigationTests passed all 5
+tests. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-search-composition-library-v2.xcresult` and
+`/private/tmp/kickstarter-search-composition-presentation.xcresult`.
+
+Search snapshots and live filter/navigation interaction remain unverified. The whole
+Library and Presentation suites remain unverified. The CFA gate rejects restored globals
+in the Search controller or view model and parameterless Search construction from Root
+Tabs. This is not full CFA compliance. Swift packages, target identifiers and existing
+history are unchanged. No push.
+
 ### Root Tabs reads floating policy through Settings — 17 November 2026
 
 Author: Matthew Thomas.
