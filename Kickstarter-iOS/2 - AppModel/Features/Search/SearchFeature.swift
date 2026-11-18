@@ -110,10 +110,10 @@ public final class SearchFeature {
   private let analytics: Analytics
   private let platform: Platform
   private let sleep: @MainActor (TimeInterval) async throws -> Void
-  private var nextCursor: String?
+  private var nextSearchPageCursor: String?
   private var completedPageCount = 0
-  private var hasRequested = false
-  private var request: (id: UUID, cursor: String?, task: Task<Void, Never>)?
+  private var hasRequestedSearchResults = false
+  private var pendingSearchResultRequest: (id: UUID, cursor: String?, task: Task<Void, Never>)?
 
   public init(
     platform: Platform,
@@ -377,17 +377,17 @@ public final class SearchFeature {
   @discardableResult
   internal func requestSearch(parameters: DiscoveryParams) -> Task<Void, Never> {
     if self.parameters?.hasSameSearchInputs(as: parameters) == true,
-       let request = self.request, request.cursor == nil {
+       let request = self.pendingSearchResultRequest, request.cursor == nil {
       return request.task
     }
     self.cancelSearch()
     self.parameters = parameters
-    self.nextCursor = nil
+    self.nextSearchPageCursor = nil
     self.completedPageCount = 0
     self.projects = []
     self.emit(.results([]))
-    let debounce = self.hasRequested ? self.platform.debounceSeconds() : 0
-    self.hasRequested = true
+    let debounce = self.hasRequestedSearchResults ? self.platform.debounceSeconds() : 0
+    self.hasRequestedSearchResults = true
     return self.requestPage(parameters: parameters, cursor: nil, debounce: debounce)
   }
 
@@ -395,15 +395,15 @@ public final class SearchFeature {
   internal func requestNextPage() -> Task<Void, Never>? {
     // While the first page is loading, join it: an old query's cursor must
     // never escape into the replacement query. Repeated pages also join.
-    if let request = self.request { return request.task }
-    guard let parameters = self.parameters, let cursor = self.nextCursor else { return nil }
+    if let request = self.pendingSearchResultRequest { return request.task }
+    guard let parameters = self.parameters, let cursor = self.nextSearchPageCursor else { return nil }
     return self.requestPage(parameters: parameters, cursor: cursor, debounce: 0)
   }
 
   /// Explicit owner cancellation, not a side effect of a single waiter leaving.
   public func cancelSearch() {
-    let previous = self.request
-    self.request = nil
+    let previous = self.pendingSearchResultRequest
+    self.pendingSearchResultRequest = nil
     previous?.task.cancel()
     if self.isLoading { self.setLoading(false) }
   }
@@ -416,7 +416,7 @@ public final class SearchFeature {
     self.searchError = nil
     self.setLoading(true)
     let task = Task { @MainActor [weak self, provider, sleep] in
-      defer { self?.finishRequest(id: id) }
+      defer { self?.finishSearchResultRequest(id: id) }
       do {
         try Task.checkCancellation()
         let response: Result<SearchPageResponse, Error>
@@ -436,7 +436,7 @@ public final class SearchFeature {
         }
         try await sleep(resultDelay)
         try Task.checkCancellation()
-        guard let self, self.request?.id == id else { return }
+        guard let self, self.pendingSearchResultRequest?.id == id else { return }
         switch response {
         case let .success(data):
           self.publish(data, firstPage: cursor == nil)
@@ -446,17 +446,17 @@ public final class SearchFeature {
       } catch is CancellationError {
         // Superseded/explicitly cancelled operations never publish a failure.
       } catch {
-        guard let self, self.request?.id == id else { return }
+        guard let self, self.pendingSearchResultRequest?.id == id else { return }
         self.searchError = (error as? ErrorEnvelope) ?? .couldNotParseJSON
       }
     }
-    self.request = (id, cursor, task)
+    self.pendingSearchResultRequest = (id, cursor, task)
     return task
   }
 
   private func publish(_ data: SearchPageResponse, firstPage: Bool) {
     let incoming = data.projects
-    self.nextCursor = !incoming.isEmpty && data.hasNextPage ? data.endCursor : nil
+    self.nextSearchPageCursor = !incoming.isEmpty && data.hasNextPage ? data.endCursor : nil
     self.totalCount = data.totalCount
     self.emit(.count(self.totalCount))
     self.projects = firstPage ? incoming : self.projects + incoming
@@ -470,9 +470,9 @@ public final class SearchFeature {
     self.emit(.results(self.projects))
   }
 
-  private func finishRequest(id: UUID) {
-    guard self.request?.id == id else { return }
-    self.request = nil
+  private func finishSearchResultRequest(id: UUID) {
+    guard self.pendingSearchResultRequest?.id == id else { return }
+    self.pendingSearchResultRequest = nil
     self.setLoading(false)
   }
 
@@ -482,7 +482,7 @@ public final class SearchFeature {
   }
 
   deinit {
-    self.request?.task.cancel()
+    self.pendingSearchResultRequest?.task.cancel()
     self.filterOptionsRequest?.task.cancel()
     self.categoryRequest?.task.cancel()
     self.defaultLocationsRequest?.task.cancel()

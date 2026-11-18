@@ -174,7 +174,13 @@ reopen or replace the completed CFA migration ledger.
   passed. The signing-disabled generic Library-iOS simulator build was blocked during
   Swift package resolution. RewardsFeatureTests and rewards collection ViewModel tests
   could not run because CoreSimulator refused connections.
+- Search: named the pending results request, next page cursor, and first-query flag
+  that controls debouncing. Reviewed search and filter presentation callers and the
+  debounce and pagination tests. Swift parsing and git diff --check passed. The
+  signing-disabled generic Library-iOS simulator build was blocked during Swift package
+  resolution. SearchFeatureTests and SearchLookupTests could not run because
+  CoreSimulator refused connections.
 
 ## Current slice
 
-- Search Feature and the search screen and filter lookups.
+- Session Feature, session-owned reads, and device registration.
