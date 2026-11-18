@@ -71,10 +71,10 @@ public final class RecommendationsFeature {
   private let platform: Platform
   private let makeProvider: () -> any RecommendationsProvider
   private let sleep: @MainActor @Sendable (TimeInterval) async throws -> Void
-  private var pending: [UUID: Pending] = [:]
+  private var pendingLoadsByRoute: [UUID: Pending] = [:]
   private var latestSelections: [UUID: Selection] = [:]
   public func selection(route: UUID) -> Selection? { self.latestSelections[route] }
-  private var operations: [UUID: Task<Void, Never>] = [:]
+  private var recommendationLoadTasks: [UUID: Task<Void, Never>] = [:]
 
   public init(
     platform: Platform,
@@ -120,23 +120,23 @@ public final class RecommendationsFeature {
   }
 
   public func release(route: UUID) {
-    self.pending.removeValue(forKey: route)?.task.cancel()
+    self.pendingLoadsByRoute.removeValue(forKey: route)?.task.cancel()
     self.latestSelections.removeValue(forKey: route)
   }
   public func reset() {
-    for route in Array(self.pending.keys) { self.release(route: route) }
+    for route in Array(self.pendingLoadsByRoute.keys) { self.release(route: route) }
     self.latestSelections.removeAll()
   }
   public func load(_ request: Request, route: UUID) async {
-    await self.request(request, route: route).value
+    await self.requestRecommendations(request, route: route).value
   }
 
   /// Equivalent pending work on one screen shares a task. A different input
   /// cancels that screen's previous read, without affecting another screen.
   @discardableResult
-  public func request(_ request: Request, route: UUID) -> Task<Void, Never> {
+  public func requestRecommendations(_ request: Request, route: UUID) -> Task<Void, Never> {
     let session = self.session
-    if let pending = self.pending[route], pending.request == request, pending.session == session {
+    if let pending = self.pendingLoadsByRoute[route], pending.request == request, pending.session == session {
       return pending.task
     }
     self.release(route: route)
@@ -145,8 +145,8 @@ public final class RecommendationsFeature {
     let delay = self.platform.responseDelaySeconds()
     let task = Task { [self] in
       defer {
-        self.operations[id] = nil
-        if self.pending[route]?.id == id { self.pending[route] = nil }
+        self.recommendationLoadTasks[id] = nil
+        if self.pendingLoadsByRoute[route]?.id == id { self.pendingLoadsByRoute[route] = nil }
       }
       do {
         try Task.checkCancellation()
@@ -159,15 +159,15 @@ public final class RecommendationsFeature {
           selection = try await self.alternatives(project, provider: provider, delay: delay, session: session)
         }
         try Task.checkCancellation()
-        guard self.session == session, self.pending[route]?.id == id, let selection else { return }
+        guard self.session == session, self.pendingLoadsByRoute[route]?.id == id, let selection else { return }
         self.latestSelections[route] = selection
       } catch {
         // These screens historically suppress category lookup errors. Individual
         // discovery failures are handled below so successful fallbacks survive.
       }
     }
-    self.pending[route] = Pending(id: id, request: request, session: session, task: task)
-    self.operations[id] = task
+    self.pendingLoadsByRoute[route] = Pending(id: id, request: request, session: session, task: task)
+    self.recommendationLoadTasks[id] = task
     return task
   }
 
@@ -254,8 +254,8 @@ public final class RecommendationsFeature {
   }
 
   public func waitForOperations() async {
-    while !self.operations.isEmpty {
-      for task in Array(self.operations.values) { await task.value }
+    while !self.recommendationLoadTasks.isEmpty {
+      for task in Array(self.recommendationLoadTasks.values) { await task.value }
     }
   }
 }

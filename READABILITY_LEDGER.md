@@ -155,7 +155,13 @@ reopen or replace the completed CFA migration ledger.
   signing-disabled generic Library-iOS simulator build was blocked during Swift package
   resolution. ProjectReportingFeatureTests and reporting ViewModel tests could not run
   because CoreSimulator refused connections.
+- Recommendations: named the recommendation request shared by Curated Projects and
+  Thanks, and the tracked route and load tasks. Updated both ViewModels and focused
+  route and replacement tests. Swift parsing and git diff --check passed. The signing-
+  disabled generic Library-iOS simulator build was blocked during Swift package
+  resolution. RecommendationsFeatureTests and recommendation ViewModel tests could not
+  run because CoreSimulator refused connections.
 
 ## Current slice
 
-- Recommendations Feature and curated and post-backing recommendations.
+- RemoteConfiguration definitions and Settings integration.

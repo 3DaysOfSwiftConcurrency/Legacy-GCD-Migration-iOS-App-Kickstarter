@@ -47,7 +47,7 @@ public final class CuratedProjectsViewModel {
     let session = recommendationsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let command = recommendationsFeature.request(.curated(categories), route: route)
+    let command = recommendationsFeature.requestRecommendations(.curated(categories), route: route)
     self.presentation = Task { [weak self] in
       await command.value
       guard !Task.isCancelled, let self, self.revision == revision,
