@@ -245,3 +245,8 @@ callers or tests affected by a rename.
   their actions. Reviewed focused feed, queued edit, pagination, comment, follow,
   mailbox and permission tests. Swift parsing, Swift token comparison and git diff
   --check passed.
+
+- Payments and Pledge. Named the initial card-selection snapshot, selected payment
+  source, pledge presentation inputs, setup-intent secret, current plan request ID and
+  scheduled collection date. Reviewed card-selection, payment-method and Pledge Over
+  Time tests. Swift parsing, Swift token comparison and git diff --check passed.

@@ -10,7 +10,7 @@ extension UpdateBackingInput {
     // we skip amount, rewards, and shipping info.
     if updateBackingData.pledgeContext == .changePaymentMethod
       || updateBackingData.pledgeContext == .fixPaymentMethod {
-      return self.baseInput(
+      return self.makeBackingUpdateInput(
         from: updateBackingData,
         isApplePay: isApplePay,
         amount: nil,
@@ -35,7 +35,7 @@ extension UpdateBackingInput {
       shippingRule: updateBackingData.shippingRule
     )
 
-    return self.baseInput(
+    return self.makeBackingUpdateInput(
       from: updateBackingData,
       isApplePay: isApplePay,
       amount: pledgeTotal,
@@ -44,7 +44,7 @@ extension UpdateBackingInput {
     )
   }
 
-  private static func baseInput(
+  private static func makeBackingUpdateInput(
     from updateBackingData: UpdateBackingData,
     isApplePay: Bool,
     amount: String?,

@@ -2,9 +2,9 @@ import KsApi
 
 extension CreatePaymentSourceSetupIntentInput {
   internal static func input(
-    fromIntentClientSecret token: String,
+    fromIntentClientSecret clientSecret: String,
     reuseable: Bool
   ) -> CreatePaymentSourceSetupIntentInput {
-    return CreatePaymentSourceSetupIntentInput(intentClientSecret: token, reuseable: reuseable)
+    return CreatePaymentSourceSetupIntentInput(intentClientSecret: clientSecret, reuseable: reuseable)
   }
 }

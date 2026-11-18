@@ -11,53 +11,53 @@ public final class PaymentMethodsUseCase {
   var onConfiguration: ((PledgePaymentMethodsValue) -> Void)?
   var onSelected: ((PaymentSourceSelected?) -> Void)?
   var onValidity: ((Bool) -> Void)?
-  private var data: PledgeViewData?
-  private var lastLogin: Bool?
-  private var lastSelectedCard: PaymentSourceSelected?
+  private var pledgeViewData: PledgeViewData?
+  private var lastKnownLoginState: Bool?
+  private var lastSelectedPaymentSource: PaymentSourceSelected?
   private let currentUser: @MainActor () -> User?
 
   public init(currentUser: @escaping @MainActor () -> User?) {
     self.currentUser = currentUser
   }
 
-  public func configure(_ data: PledgeViewData) {
-    self.data = data
-    self.lastLogin = self.currentUser() != nil
+  public func configure(_ pledgeViewData: PledgeViewData) {
+    self.pledgeViewData = pledgeViewData
+    self.lastKnownLoginState = self.currentUser() != nil
     self.sendConfigurationIfAvailable()
-    self.publishHidden()
+    self.publishPaymentMethodsVisibility()
     self.selectedPaymentSource = nil
     self.onSelected?(nil)
-    let context = data.context
+    let context = pledgeViewData.context
     self.publishValidity(context.isUpdating && (context == .updateReward || context == .editPledgeOverTime))
-    if let source = self.lastSelectedCard, let reward = data.rewards.first {
-      self.publishValidity(paymentMethodValid(project: data.project, reward: reward, paymentSource: source, context: context))
+    if let source = self.lastSelectedPaymentSource, let reward = pledgeViewData.rewards.first {
+      self.publishValidity(paymentMethodValid(project: pledgeViewData.project, reward: reward, paymentSource: source, context: context))
     }
   }
 
   public func loginChanged(_ loggedIn: Bool) {
-    guard self.lastLogin != loggedIn else { return }
-    self.lastLogin = loggedIn
+    guard self.lastKnownLoginState != loggedIn else { return }
+    self.lastKnownLoginState = loggedIn
     if loggedIn { self.sendConfigurationIfAvailable() }
-    self.publishHidden()
+    self.publishPaymentMethodsVisibility()
   }
 
   public func creditCardSelected(with source: PaymentSourceSelected) {
-    self.lastSelectedCard = source
+    self.lastSelectedPaymentSource = source
     self.selectedPaymentSource = source
     self.onSelected?(source)
-    guard let data = self.data, let reward = data.rewards.first else { return }
-    self.publishValidity(paymentMethodValid(project: data.project, reward: reward, paymentSource: source, context: data.context))
+    guard let pledgeViewData = self.pledgeViewData, let reward = pledgeViewData.rewards.first else { return }
+    self.publishValidity(paymentMethodValid(project: pledgeViewData.project, reward: reward, paymentSource: source, context: pledgeViewData.context))
   }
 
   private func sendConfigurationIfAvailable() {
-    guard let data = self.data, !data.context.paymentMethodsViewHidden,
-          let reward = data.rewards.first, let user = self.currentUser() else { return }
-    self.onConfiguration?((user, data.project, "", reward, data.context, data.refTag))
+    guard let pledgeViewData = self.pledgeViewData, !pledgeViewData.context.paymentMethodsViewHidden,
+          let reward = pledgeViewData.rewards.first, let user = self.currentUser() else { return }
+    self.onConfiguration?((user, pledgeViewData.project, "", reward, pledgeViewData.context, pledgeViewData.refTag))
   }
 
-  private func publishHidden() {
-    guard let data = self.data, let loggedIn = self.lastLogin else { return }
-    let hidden = !loggedIn || data.context.paymentMethodsViewHidden
+  private func publishPaymentMethodsVisibility() {
+    guard let pledgeViewData = self.pledgeViewData, let loggedIn = self.lastKnownLoginState else { return }
+    let hidden = !loggedIn || pledgeViewData.context.paymentMethodsViewHidden
     self.paymentMethodsViewHidden = hidden
     self.onHidden?(hidden)
   }

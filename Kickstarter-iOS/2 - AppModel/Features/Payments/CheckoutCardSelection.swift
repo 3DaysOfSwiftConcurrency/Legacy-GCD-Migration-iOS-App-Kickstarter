@@ -15,7 +15,7 @@ struct CheckoutCardSelection {
     var selected: PaymentSourceSelected?
   }
 
-  private var initial: Snapshot?
+  private var initialCardSelection: Snapshot?
   private var addedCards: [UserCreditCards.CreditCard] = []
   private(set) var snapshot: Snapshot?
 
@@ -27,8 +27,8 @@ struct CheckoutCardSelection {
     guard let allowedTypes = project.availableCardTypes else { return nil }
     let backing = project.personalization.backing
     let backedCardID = backing?.paymentSource?.id
-    let ordered = cards.filter { $0.id == backedCardID } + cards.filter { $0.id != backedCardID }
-    let rows = Self.rankedCards(ordered, for: project, allowedTypes: allowedTypes)
+    let cardsWithBackedCardFirst = cards.filter { $0.id == backedCardID } + cards.filter { $0.id != backedCardID }
+    let rows = Self.rankedCards(cardsWithBackedCardFirst, for: project, allowedTypes: allowedTypes)
     let selectedCard: UserCreditCards.CreditCard?
     if let backing {
       selectedCard = backing.status == .errored ? nil : rows.first { $0.card.id == backedCardID }?.card
@@ -37,9 +37,9 @@ struct CheckoutCardSelection {
     }
     let result = Snapshot(
       existing: Self.markSelection(rows, selectedCard),
-      selected: selectedCard.map(Self.paymentSource)
+      selected: selectedCard.map(Self.paymentSourceForCard)
     )
-    self.initial = result
+    self.initialCardSelection = result
     self.snapshot = result
     return result
   }
@@ -51,17 +51,17 @@ struct CheckoutCardSelection {
     var card = savedCard
     if card.stripeCardId == nil { card.stripeCardId = stripePaymentMethodID }
     self.addedCards.insert(card, at: 0)
-    guard var result = self.initial else { return nil }
+    guard var result = self.initialCardSelection else { return nil }
     let rows = Self.rankedCards(self.addedCards, for: project, allowedTypes: allowedTypes)
     result.added = rows
     if let first = rows.first, first.isEnabled {
       result.existing = Self.markSelection(result.existing, nil)
       result.added = Self.markSelection(rows, first.card)
-      result.selected = Self.paymentSource(first.card)
+      result.selected = Self.paymentSourceForCard(first.card)
     } else if let first = rows.first, project.personalization.backing != nil {
       // Retain the legacy default for a backing when none of the added cards is supported.
       result.added = Self.markSelection(rows, first.card)
-      result.selected = Self.paymentSource(first.card)
+      result.selected = Self.paymentSourceForCard(first.card)
     }
     self.snapshot = result
     return result
@@ -75,10 +75,10 @@ struct CheckoutCardSelection {
   mutating func select(row: Int) -> Snapshot? {
     guard var snapshot = self.snapshot, let entry = self.card(at: row, in: snapshot),
           entry.isEnabled else { return nil }
-    let fromAdded = row < snapshot.added.count
-    snapshot.added = Self.markSelection(snapshot.added, fromAdded ? entry.card : nil)
-    snapshot.existing = Self.markSelection(snapshot.existing, fromAdded ? nil : entry.card)
-    snapshot.selected = Self.paymentSource(entry.card)
+    let isAddedCardRow = row < snapshot.added.count
+    snapshot.added = Self.markSelection(snapshot.added, isAddedCardRow ? entry.card : nil)
+    snapshot.existing = Self.markSelection(snapshot.existing, isAddedCardRow ? nil : entry.card)
+    snapshot.selected = Self.paymentSourceForCard(entry.card)
     self.snapshot = snapshot
     return snapshot
   }
@@ -115,7 +115,7 @@ struct CheckoutCardSelection {
     }
   }
 
-  private static func paymentSource(_ card: UserCreditCards.CreditCard) -> PaymentSourceSelected {
+  private static func paymentSourceForCard(_ card: UserCreditCards.CreditCard) -> PaymentSourceSelected {
     guard let stripeCardID = card.stripeCardId, !stripeCardID.isEmpty else {
       assert(false, "Expected stripeCardId to be set. Late pledges may fail if this value is missing.")
       return .savedCreditCard(card.id, nil)

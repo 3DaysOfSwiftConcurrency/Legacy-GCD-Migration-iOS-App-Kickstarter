@@ -11,14 +11,14 @@ public struct PledgePaymentIncrementFormatted: Equatable {
     let chargeNumber = String(index + 1)
     self.incrementChargeNumber = Strings.Charge_number(number: chargeNumber)
     self.amount = increment.amount.amountFormattedInProjectNativeCurrency
-    self.scheduledCollection = getDateFormatted(increment.scheduledCollection)
+    self.scheduledCollection = formatScheduledCollectionDate(increment.scheduledCollection)
   }
 }
 
 @MainActor
-private func getDateFormatted(_ timeStamp: TimeInterval) -> String {
+private func formatScheduledCollectionDate(_ collectionTimestamp: TimeInterval) -> String {
   Format.date(
-    secondsInUTC: timeStamp,
+    secondsInUTC: collectionTimestamp,
     dateStyle: .medium,
     timeStyle: .none
   )

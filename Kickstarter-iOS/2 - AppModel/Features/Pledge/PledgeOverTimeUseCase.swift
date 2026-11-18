@@ -20,10 +20,10 @@ public final class PledgeOverTimeUseCase {
   private var context: PledgeViewContext?
   private var selectedPlan: PledgePaymentPlansType?
   private var latestPlan: PledgePaymentPlansAndSelectionData?
-  private var emittedConfig = false
-  private var lastConfigWasNil = false
-  private var lastLoading: Bool?
-  private var planRevision = UUID()
+  private var hasPublishedPlanConfiguration = false
+  private var lastPublishedPlanWasNil = false
+  private var lastPublishedLoadingState: Bool?
+  private var paymentPlanRequestID = UUID()
   @ObservationIgnored private var planTask: Task<Void, Never>?
 
   init(pledgeFeature: PledgeFeature) {
@@ -48,7 +48,7 @@ public final class PledgeOverTimeUseCase {
     self.selectedPlan = plan
     if var latest = self.latestPlan {
       latest.selectedPlan = plan
-      self.publishConfig(latest)
+      self.publishPlanConfiguration(latest)
     }
   }
 
@@ -58,7 +58,7 @@ public final class PledgeOverTimeUseCase {
     self.showPledgeOverTimeUI = enabled
     self.onShow?(enabled)
     self.publishLoading(enabled)
-    if !enabled { self.publishConfig(nil) }
+    if !enabled { self.publishPlanConfiguration(nil) }
   }
 
   private func requestPlan() {
@@ -70,15 +70,15 @@ public final class PledgeOverTimeUseCase {
     self.onRequest?(project.slug, amount)
     self.planTask?.cancel()
     let revision = UUID()
-    self.planRevision = revision
+    self.paymentPlanRequestID = revision
     let command = self.pledgeFeature.requestPaymentPlan(route: self.route, slug: project.slug, amount: amount)
     self.planTask = Task { [weak self] in
       do {
         let plan = try await command.value
         try Task.checkCancellation()
-        guard let self, self.planRevision == revision else { return }
+        guard let self, self.paymentPlanRequestID == revision else { return }
         self.publishLoading(false)
-        guard let plan else { self.publishConfig(nil); return }
+        guard let plan else { self.publishPlanConfiguration(nil); return }
         let preselected = project.personalization.backing?.paymentIncrements.isEmpty == false
         let defaultPlan: PledgePaymentPlansType = preselected && plan.amountIsPledgeOverTimeEligible
           ? .pledgeOverTime : .pledgeInFull
@@ -87,17 +87,17 @@ public final class PledgeOverTimeUseCase {
           ineligible: !plan.amountIsPledgeOverTimeEligible, project: project
         )
         self.latestPlan = data
-        self.publishConfig(data)
+        self.publishPlanConfiguration(data)
         if let selected = self.selectedPlan {
           var changed = data
           changed.selectedPlan = selected
-          self.publishConfig(changed)
+          self.publishPlanConfiguration(changed)
         }
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), let self, self.planRevision == revision else { return }
+        guard !Task.isCancelled, !(error is CancellationError), let self, self.paymentPlanRequestID == revision else { return }
         self.showPledgeOverTimeUI = false
         self.onShow?(false)
-        self.publishConfig(nil)
+        self.publishPlanConfiguration(nil)
         self.publishLoading(false)
       }
     }
@@ -105,14 +105,14 @@ public final class PledgeOverTimeUseCase {
 
   private func publishLoading(_ loading: Bool) {
     self.pledgeOverTimeIsLoading = loading
-    guard self.lastLoading != loading else { return }
-    self.lastLoading = loading
+    guard self.lastPublishedLoadingState != loading else { return }
+    self.lastPublishedLoadingState = loading
     self.onLoading?(loading)
   }
-  private func publishConfig(_ data: PledgePaymentPlansAndSelectionData?) {
-    guard !(self.emittedConfig && self.lastConfigWasNil && data == nil) else { return }
-    self.emittedConfig = true
-    self.lastConfigWasNil = data == nil
+  private func publishPlanConfiguration(_ data: PledgePaymentPlansAndSelectionData?) {
+    guard !(self.hasPublishedPlanConfiguration && self.lastPublishedPlanWasNil && data == nil) else { return }
+    self.hasPublishedPlanConfiguration = true
+    self.lastPublishedPlanWasNil = data == nil
     self.pledgeOverTimeConfigData = data
     self.onConfig?(data)
   }
