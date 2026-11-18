@@ -118,9 +118,9 @@ public final class SettingsFeature {
     let task: Task<ProjectNotification, Error>
   }
 
-  private var notificationTails: [Int: NotificationWrite] = [:]
+  private var latestNotificationWriteByID: [Int: NotificationWrite] = [:]
   private var notificationWrites: [UUID: Task<ProjectNotification, Error>] = [:]
-  private var notificationRevision = 0
+  private var notificationWriteRevision = 0
   private let confirmedProjectNotifications = NSCache<NSNumber, NSNumber>()
   private var projectNotificationCacheSession: (userID: Int, generation: Int)?
 
@@ -139,7 +139,7 @@ public final class SettingsFeature {
   private var accountWriteTasks: [UUID: Task<User, Error>] = [:]
   private var accountRefreshTasks: [UUID: Task<User, Error>] = [:]
   private var accountSetupRefreshRequest: (id: UUID, task: Task<Void, Never>)?
-  private var emailRead: (
+  private var pendingEmailUserRead: (
     id: UUID,
     userID: Int?,
     generation: Int,
@@ -482,18 +482,18 @@ public final class SettingsFeature {
     try Task.checkCancellation()
     guard self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
     let task: Task<GraphUser, Error>
-    if let existing = self.emailRead, existing.userID == userID,
+    if let existing = self.pendingEmailUserRead, existing.userID == userID,
        existing.generation == generation, existing.revision == revision {
       task = existing.task
     } else {
-      self.emailRead?.task.cancel()
+      self.pendingEmailUserRead?.task.cancel()
       let id = UUID()
       let provider = self.makeProvider()
       task = Task { [self] in
-        defer { if self.emailRead?.id == id { self.emailRead = nil } }
+        defer { if self.pendingEmailUserRead?.id == id { self.pendingEmailUserRead = nil } }
         return try await provider.emailUser()
       }
-      self.emailRead = (id, userID, generation, revision, task)
+      self.pendingEmailUserRead = (id, userID, generation, revision, task)
     }
     func requireCurrentRead() throws {
       try Task.checkCancellation()
@@ -582,18 +582,18 @@ public final class SettingsFeature {
     while !self.notificationWrites.isEmpty {
       for task in Array(self.notificationWrites.values) { _ = await task.result }
     }
-    let revision = self.notificationRevision
+    let revision = self.notificationWriteRevision
     try Task.checkCancellation()
     guard self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
     let provider = self.makeProvider()
     do {
       let values = try await provider.projectNotifications()
       try Task.checkCancellation()
-      guard revision == self.notificationRevision,
+      guard revision == self.notificationWriteRevision,
             self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
       return values
     } catch {
-      guard !Task.isCancelled, revision == self.notificationRevision,
+      guard !Task.isCancelled, revision == self.notificationWriteRevision,
             self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
       throw error
     }
@@ -612,7 +612,7 @@ public final class SettingsFeature {
   private func notificationRequest(_ notification: ProjectNotification) throws -> NotificationWrite {
     guard let userID = self.session.currentUser?.id else { throw CancellationError() }
     let generation = self.session.generation
-    let tail = self.notificationTails[notification.id]
+    let tail = self.latestNotificationWriteByID[notification.id]
     let sameSession = tail?.userID == userID && tail?.generation == generation
     if sameSession, let tail, tail.email == notification.email, tail.mobile == notification.mobile {
       return tail
@@ -620,7 +620,7 @@ public final class SettingsFeature {
     let previous = sameSession ? tail?.task : nil
     let id = UUID()
     let provider = self.makeProvider()
-    self.notificationRevision += 1
+    self.notificationWriteRevision += 1
     let task = Task { [self] in
       if let previous { _ = await previous.result }
       let result: Result<ProjectNotification, Error>
@@ -643,14 +643,14 @@ public final class SettingsFeature {
           ? error : CancellationError())
       }
       self.notificationWrites[id] = nil
-      if self.notificationTails[notification.id]?.id == id { self.notificationTails[notification.id] = nil }
+      if self.latestNotificationWriteByID[notification.id]?.id == id { self.latestNotificationWriteByID[notification.id] = nil }
       return try result.get()
     }
     let pending = NotificationWrite(
       id: id, userID: userID, generation: generation,
       email: notification.email, mobile: notification.mobile, task: task
     )
-    self.notificationTails[notification.id] = pending
+    self.latestNotificationWriteByID[notification.id] = pending
     self.notificationWrites[id] = task
     return pending
   }
@@ -672,14 +672,14 @@ public final class SettingsFeature {
   /// Waits for owned executions, not presentation scheduler delays.
   func waitForOperations() async {
     while !self.accountRefreshTasks.isEmpty || self.accountSetupRefreshRequest != nil || !self.accountWriteTasks.isEmpty || !self.verificationWrites.isEmpty || self
-      .emailRead != nil || !self.notificationWrites.isEmpty {
+      .pendingEmailUserRead != nil || !self.notificationWrites.isEmpty {
       for task in Array(self.notificationWrites.values) { _ = await task.result }
       await self.accountSetupRefreshRequest?.task.value
       let reads = Array(self.accountRefreshTasks.values)
       let writes = Array(self.accountWriteTasks.values)
       let verifications = Array(self.verificationWrites.values)
       for verification in verifications { _ = await verification.result }
-      if let task = self.emailRead?.task { _ = await task.result }
+      if let task = self.pendingEmailUserRead?.task { _ = await task.result }
       for read in reads { _ = await read.result }
       for write in writes { _ = await write.result }
     }

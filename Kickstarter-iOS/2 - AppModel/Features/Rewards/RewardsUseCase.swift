@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 public final class RewardsUseCase {
-  private var hasTokenValue = false
+  private var hasConfiguredSecretRewardToken = false
   private var secretRewardToken: String?
   private let isLoggedIn: @MainActor () -> Bool
   var onLogin: ((LoginIntent) -> Void)?
@@ -13,12 +13,12 @@ public final class RewardsUseCase {
   }
 
   func configure(secretRewardToken: String?) {
-    self.hasTokenValue = true
+    self.hasConfiguredSecretRewardToken = true
     self.secretRewardToken = secretRewardToken
   }
 
   func goToRewardsTapped() {
-    guard self.hasTokenValue else { return }
+    guard self.hasConfiguredSecretRewardToken else { return }
     if let token = self.secretRewardToken, !token.isEmpty, !self.isLoggedIn() {
       self.onLogin?(.backProject)
     } else {

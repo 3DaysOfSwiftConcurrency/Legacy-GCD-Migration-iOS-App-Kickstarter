@@ -256,3 +256,9 @@ callers or tests affected by a rename.
   referral cookie parts, playback readiness values, and the recommendations freshness
   guard. Traced focused cache, project card, attribution, reporting and media tests.
   Swift parsing, Swift token comparison and git diff --check passed.
+
+- RemoteConfiguration, Rewards, Search, Session and Settings. Named mock flag values,
+  configured reward token state, the shared category load, filter toggle
+  initialization, device registration delivery, and notification and email requests.
+  Reviewed focused category, reward, flag, session and settings tests. Swift parsing,
+  Swift token comparison and git diff --check passed.

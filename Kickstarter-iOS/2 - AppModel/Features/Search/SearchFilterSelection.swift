@@ -35,10 +35,10 @@ internal final class SearchFilterSelection {
   private func emit(_ change: Change) {
     for observer in self.observers { observer.callback(change) }
   }
-  private var togglesSeen = Set<Int>()
-  private func emitToggle(_ index: Int) {
-    self.togglesSeen.insert(index)
-    if self.togglesSeen.count == 4 { self.emit(.toggles(self.toggles)) }
+  private var initializedToggleIndexes = Set<Int>()
+  private func publishTogglesWhenInitialized(_ index: Int) {
+    self.initializedToggleIndexes.insert(index)
+    if self.initializedToggleIndexes.count == 4 { self.emit(.toggles(self.toggles)) }
   }
   internal private(set) var selectedSortValue: DiscoveryParams.Sort = defaultSortOption { didSet { self.emit(.sort(self.selectedSortValue)) } }
   internal private(set) var selectedCategoryValue: SearchFiltersCategory = .none { didSet { self.emit(.category(self.selectedCategoryValue)) } }
@@ -47,10 +47,10 @@ internal final class SearchFilterSelection {
   internal private(set) var selectedLocationValue: Location? { didSet { self.emit(.location(self.selectedLocationValue)) } }
   internal private(set) var selectedAmountRaisedBucketValue: DiscoveryParams.AmountRaisedBucket? { didSet { self.emit(.amount(self.selectedAmountRaisedBucketValue)) } }
   internal private(set) var selectedGoalBucketValue: DiscoveryParams.GoalBucket? { didSet { self.emit(.goal(self.selectedGoalBucketValue)) } }
-  internal private(set) var recommendedValue = false { didSet { self.emitToggle(0) } }
-  internal private(set) var savedProjectsValue = false { didSet { self.emitToggle(1) } }
-  internal private(set) var projectsWeLoveValue = false { didSet { self.emitToggle(2) } }
-  internal private(set) var followingValue = false { didSet { self.emitToggle(3) } }
+  internal private(set) var recommendedValue = false { didSet { self.publishTogglesWhenInitialized(0) } }
+  internal private(set) var savedProjectsValue = false { didSet { self.publishTogglesWhenInitialized(1) } }
+  internal private(set) var projectsWeLoveValue = false { didSet { self.publishTogglesWhenInitialized(2) } }
+  internal private(set) var followingValue = false { didSet { self.publishTogglesWhenInitialized(3) } }
 
   internal var toggles: SearchFilterToggles {
     SearchFilterToggles(recommended: self.recommendedValue, savedProjects: self.savedProjectsValue,
@@ -65,7 +65,7 @@ internal final class SearchFilterSelection {
     self.emit(.location(self.selectedLocationValue))
     self.emit(.amount(self.selectedAmountRaisedBucketValue))
     self.emit(.goal(self.selectedGoalBucketValue))
-    self.emitToggle(0); self.emitToggle(1); self.emitToggle(2); self.emitToggle(3)
+    self.publishTogglesWhenInitialized(0); self.publishTogglesWhenInitialized(1); self.publishTogglesWhenInitialized(2); self.publishTogglesWhenInitialized(3)
   }
 
   internal func clearedQueryText() {

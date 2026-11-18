@@ -54,10 +54,10 @@ extension SettingsFeature {
   @discardableResult
   public func setConfigurationFlag(_ feature: Feature, enabled: Bool) -> Bool {
     guard let settings = self.applicationSettings, let config = settings.readConfiguration(),
-          let current = config.features[feature.rawValue], current != enabled else { return false }
-    var features = config.features
-    features[feature.rawValue] = enabled
-    settings.saveConfigurationOverride(config |> Config.lens.features .~ features)
+          let currentFlagValue = config.features[feature.rawValue], currentFlagValue != enabled else { return false }
+    var updatedFeatureFlags = config.features
+    updatedFeatureFlags[feature.rawValue] = enabled
+    settings.saveConfigurationOverride(config |> Config.lens.features .~ updatedFeatureFlags)
     settings.notificationCenter.post(name: .ksr_configUpdated, object: nil)
     return true
   }

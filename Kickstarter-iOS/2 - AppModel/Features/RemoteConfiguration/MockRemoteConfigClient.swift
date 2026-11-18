@@ -2,9 +2,9 @@ import FirebaseRemoteConfig
 import Foundation
 
 private class MockRemoteConfigValue: RemoteConfigValue {
-  var bool = false
+  var isEnabled = false
 
-  override var boolValue: Bool { self.bool }
+  override var boolValue: Bool { self.isEnabled }
 }
 
 public class MockRemoteConfigClient: RemoteConfigClientType {
@@ -25,15 +25,15 @@ public class MockRemoteConfigClient: RemoteConfigClientType {
   public func activate(completion _: (@Sendable (Bool, Error?) -> Void)?) {}
 
   public func configValue(forKey key: String?) -> RemoteConfigValue {
-    let value = MockRemoteConfigValue()
+    let mockConfigValue = MockRemoteConfigValue()
 
-    guard let keyValue = key else {
-      return value
+    guard let flagKey = key else {
+      return mockConfigValue
     }
 
-    value.bool = self.features[keyValue] == true
+    mockConfigValue.isEnabled = self.features[flagKey] == true
 
-    return value
+    return mockConfigValue
   }
 
   public func fetch(completionHandler _: (@Sendable (RemoteConfigFetchStatus, Error?) -> Void)?) {}

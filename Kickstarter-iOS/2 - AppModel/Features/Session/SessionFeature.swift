@@ -48,7 +48,7 @@ public final class SessionFeature {
   private let makeProvider: () -> any SessionProvider
   private let deviceRegistrationDebounce: @MainActor () async throws -> Void
   private var deviceRegistrationDebounceTask: (id: UUID, task: Task<Void, Never>)?
-  private var deviceRegistrationDelivery: (id: UUID, task: Task<Void, Never>)?
+  private var deviceRegistrationDeliveryTask: (id: UUID, task: Task<Void, Never>)?
   private var latestQueuedDeviceRegistration: (
     token: String, userID: Int?, generation: Int, id: UUID, task: Task<String, Error>
   )?
@@ -79,7 +79,7 @@ public final class SessionFeature {
   public func sessionChanged() {
     self.sessionGeneration += 1
     self.deviceRegistrationDebounceTask?.task.cancel()
-    self.deviceRegistrationDelivery?.task.cancel()
+    self.deviceRegistrationDeliveryTask?.task.cancel()
     for task in self.pendingSetupReads.values { task.cancel() }
     for (identity, task) in self.pendingUserOperations where identity.operation != .clearActivity { task.cancel() }
   }
@@ -101,12 +101,12 @@ public final class SessionFeature {
         try await debounce()
         try Task.checkCancellation()
         guard let self, self.isCurrentDeviceRegistration(userID: userID, generation: generation) else { return }
-        self.deviceRegistrationDelivery?.task.cancel()
+        self.deviceRegistrationDeliveryTask?.task.cancel()
         let request = self.requestDeviceRegistration(token: token)
         let deliveryID = UUID()
         let delivery = Task { [weak self] in
           defer {
-            if self?.deviceRegistrationDelivery?.id == deliveryID { self?.deviceRegistrationDelivery = nil }
+            if self?.deviceRegistrationDeliveryTask?.id == deliveryID { self?.deviceRegistrationDeliveryTask = nil }
           }
           do {
             let registeredToken = try await request.value
@@ -115,7 +115,7 @@ public final class SessionFeature {
             onRegistered(registeredToken)
           } catch { /* Keep registration failures silent at the application boundary. */ }
         }
-        self.deviceRegistrationDelivery = (deliveryID, delivery)
+        self.deviceRegistrationDeliveryTask = (deliveryID, delivery)
       } catch { /* A newer token or session superseded this debounce. */ }
     }
     self.deviceRegistrationDebounceTask = (id, task)
@@ -123,7 +123,7 @@ public final class SessionFeature {
 
   func waitForDeviceRegistration() async {
     await self.deviceRegistrationDebounceTask?.task.value
-    await self.deviceRegistrationDelivery?.task.value
+    await self.deviceRegistrationDeliveryTask?.task.value
   }
 
   /// Equal pending tokens share a request. Changed tokens serialize so the most

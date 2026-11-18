@@ -6,7 +6,7 @@ import KsApi
 public final class FetchCategoriesUseCase {
   var onCategories: (([KsApi.Category]) -> Void)?
   var onLoading: ((Bool) -> Void)?
-  private var request: Task<Void, Never>?
+  private var categoryLoadTask: Task<Void, Never>?
 
   private let cache: @MainActor () -> KSCache
   private let fetch: @MainActor () async throws -> [KsApi.Category]
@@ -25,7 +25,7 @@ public final class FetchCategoriesUseCase {
     self.sleep = sleep
   }
 
-  deinit { self.request?.cancel() }
+  deinit { self.categoryLoadTask?.cancel() }
 
   public func load() async {
     await self.start().value
@@ -33,11 +33,11 @@ public final class FetchCategoriesUseCase {
 
   @discardableResult
   public func start() -> Task<Void, Never> {
-    if let request = self.request { return request }
+    if let categoryLoadTask = self.categoryLoadTask { return categoryLoadTask }
     let cache = self.cache()
-    if let cached = cache[KSCache.ksr_discoveryFiltersCategories] as? [KsApi.Category] {
-      self.onCategories?(cached)
-      if !cached.isEmpty { return Task {} }
+    if let cachedCategories = cache[KSCache.ksr_discoveryFiltersCategories] as? [KsApi.Category] {
+      self.onCategories?(cachedCategories)
+      if !cachedCategories.isEmpty { return Task {} }
     }
     let fetch = self.fetch
     let delay = self.responseDelaySeconds()
@@ -45,7 +45,7 @@ public final class FetchCategoriesUseCase {
     self.onLoading?(true)
     let task = Task { @MainActor [weak self] in
       defer {
-        self?.request = nil
+        self?.categoryLoadTask = nil
         self?.onLoading?(false)
       }
       do {
@@ -67,7 +67,7 @@ public final class FetchCategoriesUseCase {
         // Preserve the existing silent-error UI; a later load can retry.
       }
     }
-    self.request = task
+    self.categoryLoadTask = task
     return task
   }
 }
