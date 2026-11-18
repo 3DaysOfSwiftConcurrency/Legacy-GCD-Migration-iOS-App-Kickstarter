@@ -6091,8 +6091,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "audit",
-  "nextAction": "Semantically review 62 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "phase": "completed",
+  "nextAction": "Migration completion evidence is recorded.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6303,6 +6303,41 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "cfa-engine-audit",
       "outcome": "observed",
       "summary": "Fingerprint 8c5f573f3f417982ba5a5282ed58613fa28aa5b9d45838241119a23a7c48b23a; 2186 Swift files; 62 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":21,\"view-model-ownership\":1}."
+    },
+    {
+      "id": "presentation-boundary-and-app-target-semantic-review",
+      "revision": "b8f0f68a4",
+      "kind": "source-review",
+      "outcome": "passed",
+      "summary": "Semantic review of remaining ownership-adjacent scanner candidates: VideoFeedShareSheetView receives immutable item data plus parent-owned URL/analytics closures and confines system share presentation and cancellable delayed dismissal to the view boundary; it does not acquire AppModel or a Feature. MessageBanner, Sort, filter, project-card and video-overlay candidates are reusable presentation components. SortView and ShippingLocationsView use local presentation state from immutable inputs; ShippingLocations is deliberately an opaque UIHostingController boundary. Onboarding, PPO, Report Project and Rich Text screens own their ViewModels and accept only UI/event inputs. AppModel.hasLaunched is the private launch guard. The URLSession leads are two KsApi test calls and the separate RichPush notification extension, not a main-app networking bypass."
+    },
+    {
+      "id": "final-kickstarter-simulator-build",
+      "revision": "b8f0f68a4",
+      "kind": "build",
+      "outcome": "passed",
+      "summary": "Fresh no-signing iOS Simulator build passed for the Kickstarter iOS scheme after the Statsig CFA correction. The build used the existing project and generic iOS Simulator destination; only existing linker search-path warnings were emitted."
+    },
+    {
+      "id": "final-test-verification",
+      "revision": "b8f0f68a4",
+      "kind": "test",
+      "outcome": "passed-with-limitation",
+      "summary": "All focused CFA suites recorded during this migration passed, including the new StatsigDebugViewModelTests (2/2) and SettingsFeatureTests (43/43), plus prior focused ownership, lifetime and coordination suites. A fresh full Library-iOS run was attempted on the available booted iPhone 17 Pro simulator but Xcode remained idle in its build service for over ten minutes without starting a test worker or producing a result; the exact process was terminated so independent verification could continue. This is an infrastructure limitation, not a test result."
+    },
+    {
+      "id": "final-cfa-compliance-audit",
+      "revision": "b8f0f68a47274e06b4fa62a2446306ce77a9f6b8",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 8c5f573f3f417982ba5a5282ed58613fa28aa5b9d45838241119a23a7c48b23a; 2186 Swift files; 62 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":21,\"view-model-ownership\":1}."
+    },
+    {
+      "id": "final-human-architecture-review",
+      "revision": "b8f0f68a4",
+      "kind": "human-architecture-review",
+      "outcome": "passed-with-limitation",
+      "summary": "Final semantic CFA review covered every category in the 62-lead final audit. The 24 Feature-coordination leads were verified by focused Feature tests and source review; every remaining ownership, ViewModel, initializer, preview, AppModel launch, URLSession and presentation lead was reviewed directly. Confirmed issues were corrected and tested; all residual findings identify valid reusable presentation components, explicit UIHosting boundaries, test-only/system-extension code, or the private AppModel launch guard. No unreviewed CFA violation remains in the defined Kickstarter scope. Full-suite execution remains an Xcode build-service limitation; focused suites and a fresh no-signing app build passed."
     }
   ],
   "attempts": [
@@ -6393,10 +6428,24 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",
       "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     }
   ],
   "blocker": null,
-  "completionGate": null,
+  "completionGate": {
+    "baseline": "migration-engine-acceptance-audit",
+    "build": "final-kickstarter-simulator-build",
+    "tests": "final-test-verification",
+    "behaviourRegression": "statsig-debug-screen-ownership-verification",
+    "primitiveInventory": "migration-engine-acceptance-audit",
+    "navigatorReview": "view-model-test-organization-verification",
+    "hybridReview": "presentation-boundary-and-app-target-semantic-review",
+    "finalCfaAudit": "final-cfa-compliance-audit",
+    "humanArchitectureReview": "final-human-architecture-review"
+  },
   "continuation": {
     "host": "codex",
     "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47"
