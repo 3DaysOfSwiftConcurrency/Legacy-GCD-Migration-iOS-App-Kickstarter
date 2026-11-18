@@ -199,7 +199,9 @@ extension SettingsViewController {
   private func viewController(for cellType: SettingsCellType) -> UIViewController? {
     switch cellType {
     case .account:
-      return SettingsAccountViewController.instantiate()
+      return SettingsAccountViewController.instantiate(
+        settingsFeature: self.composition.settingsFeature
+      )
     case .help:
       return HelpViewController.instantiate()
     case .findFriends:

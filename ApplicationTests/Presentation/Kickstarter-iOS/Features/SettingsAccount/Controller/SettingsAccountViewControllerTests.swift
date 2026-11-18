@@ -9,6 +9,15 @@ import SnapshotTesting
 import XCTest
 
 internal final class SettingsAccountViewControllerTests: TestCase {
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var settingsFeature = SettingsFeature(
+    sessionFeature: self.sessionFeature,
+    responseDeliverySleep: { _ in },
+    makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+  )
+
   override func setUp() async throws {
     try await super.setUp()
     UIView.setAnimationsEnabled(false)
@@ -30,7 +39,7 @@ internal final class SettingsAccountViewControllerTests: TestCase {
     combos(Language.allLanguages, [Device.phone4_7inch, Device.phone5_8inch, Device.pad])
       .forEach { language, device in
         withEnvironment(apiService: mockService, language: language) {
-          let vc = SettingsAccountViewController.instantiate()
+          let vc = SettingsAccountViewController.instantiate(settingsFeature: self.settingsFeature)
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
 
 
@@ -49,7 +58,7 @@ internal final class SettingsAccountViewControllerTests: TestCase {
     Device.allCases.forEach { device in
 
       withEnvironment(apiService: mockService) {
-        let vc = SettingsAccountViewController.instantiate()
+        let vc = SettingsAccountViewController.instantiate(settingsFeature: self.settingsFeature)
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
 
 
@@ -65,7 +74,7 @@ internal final class SettingsAccountViewControllerTests: TestCase {
       let response = UserEnvelope(me: fields)
 
       withEnvironment(apiService: MockService(fetchGraphUserResult: .success(response))) {
-        let vc = SettingsAccountViewController.instantiate()
+        let vc = SettingsAccountViewController.instantiate(settingsFeature: self.settingsFeature)
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
 
 
@@ -77,7 +86,7 @@ internal final class SettingsAccountViewControllerTests: TestCase {
   func testAccountView_FetchUserAccountFieldsFailure() {
     Device.allCases.forEach { device in
       withEnvironment(apiService: MockService(fetchGraphUserResult: .failure(.couldNotParseJSON))) {
-        let vc = SettingsAccountViewController.instantiate()
+        let vc = SettingsAccountViewController.instantiate(settingsFeature: self.settingsFeature)
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
 
 

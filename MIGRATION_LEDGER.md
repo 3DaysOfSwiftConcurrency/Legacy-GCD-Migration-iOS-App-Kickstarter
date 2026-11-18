@@ -5979,3 +5979,27 @@ iOS 18.6 runtime. Live Facebook login, follow interaction and navigation remain
 unverified, as do the whole Library and Presentation suites. The CFA gate rejects restored
 global selection or legacy factory calls across the migrated route. This is not full CFA
 compliance. Swift packages, target identifiers and existing history are unchanged. No push.
+
+### Settings Account screen composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+SettingsViewController now passes its existing SettingsFeature into
+SettingsAccountViewController. The account controller constructs its dedicated
+SettingsAccountViewModel from that supplied feature rather than selecting AppModel.shared.
+Storyboard construction, account loading, section presentation, error banners and row
+selection behavior remain unchanged.
+
+Focused AppModel and SettingsFeature coverage passed both selected tests. Focused Settings
+Account view-model, parent Settings view-model and Root Tabs navigation coverage passed all
+12 tests with zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-settings-account-composition-library.xcresult` and
+`/private/tmp/kickstarter-settings-account-composition-presentation.xcresult`.
+
+Settings Account reference snapshots compiled but were not executed because the required
+iPad mini (A17 Pro), iOS 18.6 reference simulator is unavailable. Its Create Password,
+Change Email, Change Password, Privacy and Currency destinations still select legacy
+dependencies and remain follow-up migration work. Live account navigation and the whole
+target suites remain unverified. The CFA gate rejects restored global selection in the
+account controller and its legacy parameterless factory. This is not full CFA compliance.
+Swift packages, target identifiers and existing history are unchanged. No push.

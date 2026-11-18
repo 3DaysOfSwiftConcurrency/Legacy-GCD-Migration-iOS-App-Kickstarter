@@ -11,10 +11,13 @@ final class SettingsAccountViewController: UIViewController, MessageBannerViewCo
   private let dataSource = SettingsAccountDataSource()
   internal var messageBannerViewController: MessageBannerViewController?
 
-  fileprivate let viewModel = SettingsAccountViewModel(settingsFeature: AppModel.shared.settingsFeature)
+  private var settingsFeature: SettingsFeature!
+  fileprivate lazy var viewModel = SettingsAccountViewModel(settingsFeature: self.settingsFeature)
 
-  internal static func instantiate() -> SettingsAccountViewController {
-    return Storyboard.Settings.instantiate(SettingsAccountViewController.self)
+  internal static func instantiate(settingsFeature: SettingsFeature) -> SettingsAccountViewController {
+    let viewController = Storyboard.Settings.instantiate(SettingsAccountViewController.self)
+    viewController.settingsFeature = settingsFeature
+    return viewController
   }
 
   override func viewDidLoad() {

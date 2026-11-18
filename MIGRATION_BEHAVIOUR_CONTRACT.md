@@ -2441,3 +2441,14 @@ safe for arbitrary concurrent environment mutation.
   but reference snapshots cannot run without the required iPad mini (A17 Pro), iOS 18.6
   simulator. Live Facebook login, follow interaction and whole target suites remain
   unverified.
+
+## Settings Account screen composition — 18 November 2026
+
+- Settings passes its AppModel-owned SettingsFeature into Settings Account, whose dedicated
+  view model uses that exact instance for account fields and selection state.
+- Account loading, Apple/password presentation, email warnings, failure banners and row
+  navigation preserve their established behavior.
+- Focused main-module graph coverage passes 2 tests and focused Settings Account, parent
+  Settings and Root Tabs presentation coverage passes 12 tests. Reference snapshots and
+  live account navigation remain unverified; the account screen's child destinations remain
+  later composition work.
