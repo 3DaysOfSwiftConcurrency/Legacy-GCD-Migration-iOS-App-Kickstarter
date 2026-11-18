@@ -541,7 +541,7 @@
 			"fileRef" = "006C12B191B20B75D4FB6995";
 		};
 		"C7ACF066C1E4C5A24E8CF931" = {
-			"path" = "ApplicationTests/Presentation/Kickstarter-iOS/Features/SortFilter/SortView/SortViewModelTest.swift";
+			"path" = "ApplicationTests/Presentation/ViewModelTests/SortFilter/SortViewModelTests.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -2699,9 +2699,20 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "CFA041700000000000000001";
 		};
+		"CFA041800000000000000002" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "CFA041800000000000000001";
+		};
 		"CFA041700000000000000001" = {
 			"name" = "HelpFeature.swift";
 			"path" = "Kickstarter-iOS/2 - AppModel/Features/Help/HelpFeature.swift";
+			"isa" = "PBXFileReference";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"CFA041800000000000000001" = {
+			"name" = "HelpFeatureTests.swift";
+			"path" = "ApplicationTests/Model/FeatureTests/Help/HelpFeatureTests.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -2712,6 +2723,38 @@
 			"sourceTree" = "<group>";
 			"children" = (
 				"CFA041700000000000000001",
+			);
+		};
+		"CFA041800000000000000003" = {
+			"isa" = "PBXGroup";
+			"name" = "Help";
+			"sourceTree" = "<group>";
+			"children" = (
+				"CFA041800000000000000001",
+			);
+		};
+		"CFA041900000000000000001" = {
+			"isa" = "PBXGroup";
+			"name" = "ViewModelTests";
+			"path" = "ViewModelTests";
+			"sourceTree" = "<group>";
+			"children" = (
+				"AAF548B82F2445C0001DB5AC",
+				"AAF5487A2F2445C0001DB5AC",
+				"60A776A73020EFD80063D0A3",
+			);
+		};
+		"CFA041900000000000000002" = {
+			"isa" = "PBXGroup";
+			"name" = "ViewModelTests";
+			"path" = "ApplicationTests/Presentation/ViewModelTests";
+			"sourceTree" = "SOURCE_ROOT";
+			"children" = (
+				"CE0D536A4EF1B0E48D57D97F",
+				"313C98EBC29763E30977F92B",
+				"5257079D971DC5C548118971",
+				"2C4381183F2B2C98E8A9476C",
+				"C7ACF066C1E4C5A24E8CF931",
 			);
 		};
 		"53A1E41AD9B0380BFBFC5726" = {
@@ -4387,7 +4430,7 @@
 			"lastKnownFileType" = "sourcecode.swift";
 		};
 		"2C4381183F2B2C98E8A9476C" = {
-			"path" = "ApplicationTests/Presentation/Kickstarter-iOS/Features/ShippingRules/ShippingLocationsViewModelTests.swift";
+			"path" = "ApplicationTests/Presentation/ViewModelTests/ShippingRules/ShippingLocationsViewModelTests.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -5023,6 +5066,7 @@
 				"CFA030800000000000000001",
 				"CFA030600000000000000001",
 				"CFA030400000000000000001",
+				"CFA041800000000000000002",
 				"CFA027900000000000000001",
 				"CFA026100000000000000010",
 				"7E9EEBCD5381DBDF4D986CC3",
@@ -9394,7 +9438,7 @@
 			"fileRef" = "72A206A126233D784C919336";
 		};
 		"313C98EBC29763E30977F92B" = {
-			"path" = "ApplicationTests/Presentation/ViewModels/DeveloperExamples/RichTextExampleProjectsViewModelTests.swift";
+			"path" = "ApplicationTests/Presentation/ViewModelTests/DeveloperExamples/RichTextExampleProjectsViewModelTests.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -9725,6 +9769,7 @@
 			"children" = (
 				"5A493C71F6034CD3DB9ED7E6",
 				"01849C283E24D82E43AAF3C7",
+				"CFA041900000000000000002",
 				"AAF548D62F2445C0001DB5AC",
 				"E113BD822B7D255000D3A809",
 				"7A164700884919CBABCB1451",
@@ -12562,6 +12607,7 @@
 			"path" = "FeatureTests";
 			"isa" = "PBXGroup";
 			"children" = (
+				"CFA041800000000000000003",
 				"9698C4E67510EEE372A58AAE",
 				"CFA031300000000000000003",
 				"CFA031100000000000000003",
@@ -14872,8 +14918,6 @@
 			"children" = (
 				"599E1BFDFEB820569C5C98DE",
 				"7B01652850E772FB867064FE",
-				"CE0D536A4EF1B0E48D57D97F",
-				"313C98EBC29763E30977F92B",
 				"405E5D8B836C1F9749272BD2",
 				"72B2A1A4890BD02AFD501DA2",
 				"BD658E790DEBA3AE8873A110",
@@ -14894,13 +14938,11 @@
 				"7021168A2BDA589C0FC08B8C",
 				"649AF35866B17D34F9261947",
 				"ECAA2157E547B40552D251E0",
-				"C7ACF066C1E4C5A24E8CF931",
 				"78104D106EAFB6F5355A5DB2",
 				"E62E66A91A835204B52199B7",
 				"D504C3B7250D28F717C43C29",
 				"8E2804326A94B1BEF2E61189",
 				"9B214FEFB692439205C029D3",
-				"5257079D971DC5C548118971",
 				"CCE7CABF1EC881D5530C69AE",
 				"459929900F0D69DE8B5811C9",
 				"0FCAFBD432BD06EEFE672D07",
@@ -14965,7 +15007,6 @@
 				"A845A30631B949225EE8517B",
 				"C34E5EA96A29EF199BC005C5",
 				"79497878E097EEADBF5D0AD4",
-				"2C4381183F2B2C98E8A9476C",
 				"82080114E5DE6D92EB701EF3",
 				"F33D7300210C468654B5A8FC",
 				"FA66B976A0E77E9B5F3FCC19",
@@ -16300,7 +16341,7 @@
 			"package" = "19BF225F28D10497007F4197";
 		};
 		"5257079D971DC5C548118971" = {
-			"path" = "ApplicationTests/Presentation/Kickstarter-iOS/Features/PledgedProjectsOverview/PPOViewModelTests.swift";
+			"path" = "ApplicationTests/Presentation/ViewModelTests/PledgedProjectsOverview/PPOViewModelTests.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -17696,7 +17737,6 @@
 				"AAF548772F2445C0001DB5AC",
 				"AAF548782F2445C0001DB5AC",
 				"AAF548792F2445C0001DB5AC",
-				"AAF5487A2F2445C0001DB5AC",
 				"AAF5487B2F2445C0001DB5AC",
 				"AAF5487C2F2445C0001DB5AC",
 				"AAF5487D2F2445C0001DB5AC",
@@ -19214,7 +19254,6 @@
 				"AAF548B52F2445C0001DB5AC",
 				"AAF548B62F2445C0001DB5AC",
 				"AAF548B72F2445C0001DB5AC",
-				"AAF548B82F2445C0001DB5AC",
 				"AAF548BA2F2445C0001DB5AC",
 				"AAF548BB2F2445C0001DB5AC",
 				"AAF548BC2F2445C0001DB5AC",
@@ -19239,7 +19278,6 @@
 				"AAF548CF2F2445C0001DB5AC",
 				"AAF548D02F2445C0001DB5AC",
 				"6049E67C303C9B48004A9B79",
-				"60A776A73020EFD80063D0A3",
 			);
 			"sourceTree" = "<group>";
 		};
@@ -21780,7 +21818,7 @@
 			"sourceTree" = "SOURCE_ROOT";
 		};
 		"CE0D536A4EF1B0E48D57D97F" = {
-			"path" = "ApplicationTests/Presentation/ViewModels/DeveloperExamples/PaginationExampleViewModelTests.swift";
+			"path" = "ApplicationTests/Presentation/ViewModelTests/DeveloperExamples/PaginationExampleViewModelTests.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -21997,6 +22035,7 @@
 			"name" = "ViewModel and Feature tests";
 			"children" = (
 				"3A2CD00E0A88359AAC5D915E",
+				"CFA041900000000000000001",
 				"AAF548D12F2445C0001DB5AC",
 				"CFA026100000000000000004",
 				"CFA031200000000000000003",

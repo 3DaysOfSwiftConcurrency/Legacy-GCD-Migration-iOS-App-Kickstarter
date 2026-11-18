@@ -3,7 +3,7 @@ import Combine
 
 import XCTest
 
-final class SortViewModelTest: XCTestCase {
+final class SortViewModelTests: XCTestCase {
   private let sortOptions = ConcreteSortOption.allCases
   private var viewModel: SortViewModel<ConcreteSortOption>!
 
@@ -20,20 +20,33 @@ final class SortViewModelTest: XCTestCase {
     XCTAssertEqual(self.viewModel.sortOptions, self.sortOptions)
   }
 
+  func testIsSortOptionSelectedReflectsTheInitialSelection() throws {
+    XCTAssertTrue(self.viewModel.isSortOptionSelected(.sortOne))
+    XCTAssertFalse(self.viewModel.isSortOptionSelected(.sortTwo))
+  }
+
   func testSortOptionSelected() throws {
     var cancellables: [AnyCancellable] = []
 
     var optionSelected: ConcreteSortOption?
-    let expectation = expectation(description: "Waiting for a sort option selected")
+    let selectionReceived = expectation(description: "Waiting for a sort option selected")
+    let selectionApplied = expectation(description: "Waiting for the selected option to update")
     self.viewModel.selectedSortOption.sink { option in
       optionSelected = option
-      expectation.fulfill()
+      selectionReceived.fulfill()
+
+      DispatchQueue.main.async {
+        if self.viewModel.isSortOptionSelected(option) {
+          selectionApplied.fulfill()
+        }
+      }
     }
     .store(in: &cancellables)
 
     self.viewModel.selectSortOption(.sortThree)
     waitForExpectations(timeout: 0.1)
     XCTAssertEqual(optionSelected, .sortThree)
+    XCTAssertTrue(self.viewModel.isSortOptionSelected(.sortThree))
   }
 
   func testCloseTapped() throws {

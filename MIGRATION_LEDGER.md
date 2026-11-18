@@ -6091,8 +6091,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "final-audit",
-  "nextAction": "Perform a semantic final pass on residual inspector leads: ViewModel test placement, Help coverage, generic Sort coverage, previews, and reusable component ViewModel exceptions. Then run a fresh audit.",
+  "phase": "audit",
+  "nextAction": "Semantically review 72 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6177,6 +6177,48 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "source-and-test-review",
       "outcome": "passed",
       "summary": "Friends, Messaging, Payments, Pledge, Profile, ProjectMedia, ProjectReporting, Recommendations and Rewards keep workflow state/task lifetimes in their own Features, coordinate through SessionFeature or SettingsFeature, and reject stale results. Their focused LibraryTests passed on iPhone 17 Pro simulator: 207 passed, 0 failed."
+    },
+    {
+      "id": "help-feature-coverage-verification",
+      "revision": "492478e8c with verified working tree",
+      "kind": "test",
+      "outcome": "passed",
+      "summary": "Added HelpFeatureTests in the FeatureTests target. The focused simulator run passed: 2 passed, 0 failed, covering prepared web help requests and the non-web contact case."
+    },
+    {
+      "id": "help-feature-post-coverage-audit",
+      "revision": "492478e8c3a1bb8cf60872656d369a81255937e9",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 71f110464565f1ae09adf4e14f8833eff8bd9ee3753321b3cde5f8e1b5929969; 2184 Swift files; 80 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-missing\":23,\"view-model-ownership\":5,\"view-model-test-placement\":7,\"view-model-tests-missing\":1}."
+    },
+    {
+      "id": "sort-view-model-test-placement-verification",
+      "revision": "492478e8c",
+      "kind": "test",
+      "outcome": "passed",
+      "summary": "PresentationTests/SortViewModelTests ran on iPhone 17 Pro (iOS Simulator 26.2): 4 passed, 0 failed, 0 skipped. The existing dedicated SortViewModel suite was renamed from singular Test to plural Tests, and now verifies initial selection plus the published selection followed by the main-run-loop state transition."
+    },
+    {
+      "id": "sort-view-model-post-coverage-audit",
+      "revision": "492478e8c3a1bb8cf60872656d369a81255937e9",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 18384e400bb62b28c55a7ea75578ee46ddbb71be6f90e02ee3645352e32c7d3f; 2184 Swift files; 80 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-missing\":23,\"view-model-ownership\":5,\"view-model-test-placement\":8}."
+    },
+    {
+      "id": "view-model-test-organization-verification",
+      "revision": "492478e8c with verified working tree",
+      "kind": "source-build-and-test",
+      "outcome": "passed-with-limitation",
+      "summary": "Moved the eight named ViewModel suites into CFA ViewModelTests folders and updated Xcode navigator references without changing build-file target membership. Library-iOS focused run: 21 passed, 0 failed, 0 skipped (Help plus Onboarding, Report Project Form and Report Project Info). PresentationTests focused run: 26 passed; the three ShippingLocationsViewModelTests trap in the pre-existing TestCase preferred-simulator guard, which requires iPad mini (A17 Pro), iOS 18.6; iPhone 17 Pro, iOS 26.2 is the available simulator. The project and both test targets compile successfully."
+    },
+    {
+      "id": "view-model-test-organization-post-audit",
+      "revision": "492478e8c3a1bb8cf60872656d369a81255937e9",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint b5cd0df3bb4cbeff0c42115ee92499c29c04dc85f31c1184ecae45eaebb52030; 2184 Swift files; 72 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-missing\":23,\"view-model-ownership\":5}."
     }
   ],
   "attempts": [
@@ -6227,6 +6269,18 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Completed the remaining Feature coordination review.",
       "result": "All remaining coordination candidates preserve a single Feature owner with generation-safe asynchronous work; 207 focused tests passed."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     }
   ],
   "blocker": null,
