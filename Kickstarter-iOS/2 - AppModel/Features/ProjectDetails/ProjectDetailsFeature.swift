@@ -297,7 +297,7 @@ public final class ProjectDetailsFeature {
     case extras(ProjectPageExtraProperties)
   }
 
-  private var pages: [UUID: Page] = [:]
+  private var projectPagesByRoute: [UUID: Page] = [:]
   private let makeProvider: @MainActor () -> any ProjectDetailsProvider
   private let settingsFeature: SettingsFeature
   private let useFastLoading: @MainActor () -> Bool
@@ -383,7 +383,7 @@ public final class ProjectDetailsFeature {
   }
 
   public func snapshot(for route: UUID) -> Snapshot {
-    guard let page = self.pages[route], page.session.isCurrent(in: self.sessionFeature) else {
+    guard let page = self.projectPagesByRoute[route], page.session.isCurrent(in: self.sessionFeature) else {
       return Snapshot()
     }
     return page.snapshot
@@ -403,12 +403,12 @@ public final class ProjectDetailsFeature {
       param: param, token: secretRewardToken, session: RequestSession(self.sessionFeature),
       fast: self.useFastLoading(), richText: self.includesRichTextStory
     )
-    if let old = self.pages[route], old.session != identity.session {
+    if let old = self.projectPagesByRoute[route], old.session != identity.session {
       old.request?.task.cancel()
-      self.pages[route] = nil
+      self.projectPagesByRoute[route] = nil
     }
-    let page = self.pages[route] ?? Page(session: identity.session)
-    self.pages[route] = page
+    let page = self.projectPagesByRoute[route] ?? Page(session: identity.session)
+    self.projectPagesByRoute[route] = page
     if !force, let request = page.request, request.identity == identity { return request.task }
     page.request?.task.cancel()
     let requestID = UUID()
@@ -420,7 +420,7 @@ public final class ProjectDetailsFeature {
     page.snapshot.error = nil
     let task = Task { [weak self] in
       defer {
-        if let self, self.pages[route]?.request?.id == requestID {
+        if let self, self.projectPagesByRoute[route]?.request?.id == requestID {
           page.request = nil
           page.snapshot.isLoading = false
           self.emit(.loading(route, false))
@@ -470,14 +470,14 @@ public final class ProjectDetailsFeature {
         }
         try await sleep(delay)
         try Self.checkSession(identity.session, sessionFeature: sessionFeature)
-        guard let self, self.pages[route]?.request?.id == requestID else { return }
+        guard let self, self.projectPagesByRoute[route]?.request?.id == requestID else { return }
         page.snapshot.project = project
         self.emit(.completion(route, .success(project)))
       } catch is CancellationError {
         // Cancellation is not a product failure and never publishes stale data.
       } catch {
         guard !Task.isCancelled, identity.session.isCurrent(in: sessionFeature),
-              let self, self.pages[route]?.request?.id == requestID else { return }
+              let self, self.projectPagesByRoute[route]?.request?.id == requestID else { return }
         let failure = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
         page.snapshot.error = failure
         self.emit(.completion(route, .failure(failure)))
@@ -489,7 +489,7 @@ public final class ProjectDetailsFeature {
   }
 
   public func cancel(route: UUID) {
-    guard let page = self.pages[route] else { return }
+    guard let page = self.projectPagesByRoute[route] else { return }
     let task = page.request?.task
     page.request = nil
     page.snapshot.isLoading = false
@@ -501,7 +501,7 @@ public final class ProjectDetailsFeature {
     self.releaseRelated(route: route)
     self.attributionTasksByRoute[route] = nil
     self.cancel(route: route)
-    self.pages.removeValue(forKey: route)
+    self.projectPagesByRoute.removeValue(forKey: route)
   }
 
   private static func checkSession(_ session: RequestSession, sessionFeature: SessionFeature) throws {

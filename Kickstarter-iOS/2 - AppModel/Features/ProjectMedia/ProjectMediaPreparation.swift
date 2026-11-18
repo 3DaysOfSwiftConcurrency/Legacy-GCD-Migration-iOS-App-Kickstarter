@@ -19,14 +19,14 @@ public struct PreparedProjectMedia {
 @MainActor
 final class ProjectMediaPreparation {
   private var thumbnail: UIImage?
-  private var thumbnailTask: Task<Void, Never>?
+  private var thumbnailLoadTask: Task<Void, Never>?
 
   static func loadImage(url: URL) async throws -> UIImage {
-    let result = try await KingfisherManager.shared.retrieveImage(
+    let imageResponse = try await KingfisherManager.shared.retrieveImage(
       with: url, options: [.processor(WebPProcessor.default), .cacheSerializer(WebPSerializer.default)]
     )
     try Task.checkCancellation()
-    return result.image
+    return imageResponse.image
   }
 
   static func load(url: URL, thumbnailURL: URL?) async throws -> PreparedProjectMedia {
@@ -35,14 +35,14 @@ final class ProjectMediaPreparation {
 
   private func load(url: URL, thumbnailURL: URL?) async throws -> PreparedProjectMedia {
     if let thumbnailURL {
-      self.thumbnailTask = Task { [weak self] in
+      self.thumbnailLoadTask = Task { [weak self] in
         // Same cache, WebP processor and serializer as the existing image helper.
         let image = try? await Self.loadImage(url: thumbnailURL)
         guard !Task.isCancelled else { return }
         self?.thumbnail = image
       }
     }
-    defer { self.thumbnailTask?.cancel() }
+    defer { self.thumbnailLoadTask?.cancel() }
     let asset = AVURLAsset(url: url)
     return try await withTaskCancellationHandler {
       _ = try await asset.load(.duration, .tracks)
@@ -67,9 +67,9 @@ final class ProjectMediaPreparation {
       continuation.yield(item.status.rawValue)
     }
     defer { observation.invalidate(); continuation.finish() }
-    for await value in statuses {
+    for await statusCode in statuses {
       try Task.checkCancellation()
-      switch AVPlayerItem.Status(rawValue: value) {
+      switch AVPlayerItem.Status(rawValue: statusCode) {
       case .readyToPlay: return
       case .failed: throw item.error ?? URLError(.cannotDecodeContentData)
       default: continue

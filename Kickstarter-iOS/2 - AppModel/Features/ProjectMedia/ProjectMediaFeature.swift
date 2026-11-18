@@ -72,12 +72,12 @@ public final class ProjectMediaFeature {
   private let watchResponseDelaySeconds: @MainActor () -> TimeInterval
   private let savePrompts: SavePrompts?
   private struct ImageKey: Hashable { let route: UUID; let url: URL }
-  private var images: [ImageKey: (id: UUID, task: Task<UIImage, Error>)] = [:]
+  private var pendingImageLoads: [ImageKey: (id: UUID, task: Task<UIImage, Error>)] = [:]
   private let loadImage: @MainActor (URL) async throws -> UIImage
 
   public func requestImage(route: UUID, url: URL) -> Task<UIImage, Error> {
     let key = ImageKey(route: route, url: url)
-    if let pending = self.images[key] { return pending.task }
+    if let pending = self.pendingImageLoads[key] { return pending.task }
     let id = UUID()
     let load = self.loadImage
     let task = Task { [weak self] in
@@ -88,17 +88,17 @@ public final class ProjectMediaFeature {
       guard self?.images[key]?.id == id else { throw CancellationError() }
       return image
     }
-    self.images[key] = (id, task)
+    self.pendingImageLoads[key] = (id, task)
     return task
   }
 
   public func cancelImages(route: UUID) {
-    for key in self.images.keys.filter({ $0.route == route }) {
-      self.images.removeValue(forKey: key)?.task.cancel()
+    for key in self.pendingImageLoads.keys.filter({ $0.route == route }) {
+      self.pendingImageLoads.removeValue(forKey: key)?.task.cancel()
     }
   }
 
-  deinit { self.images.values.forEach { $0.task.cancel() } }
+  deinit { self.pendingImageLoads.values.forEach { $0.task.cancel() } }
 
   private struct PreparationKey: Hashable { let route: UUID; let slot: String }
   private struct Preparation {
@@ -153,7 +153,7 @@ public final class ProjectMediaFeature {
   }
 
   public enum FeedError: Error { case empty }
-  private var feeds: [UUID: FeedState] = [:]
+  private var videoFeedStatesByRoute: [UUID: FeedState] = [:]
   private var feedRequests: [UUID: (userID: Int?, generation: Int, token: UUID, task: Task<Void, Never>)] = [:]
   private var feedSaveTasksByRoute: [UUID: [String: (token: UUID, task: Task<Void, Never>)]] = [:]
 
@@ -166,9 +166,9 @@ public final class ProjectMediaFeature {
   private var watchWrites: [WatchIdentity: (watched: Bool, token: UUID, task: Task<WatchProjectResponseEnvelope, Error>)] = [:]
 
   public func feedState(route: UUID) -> FeedState {
-    if let feed = self.feeds[route] { return feed }
+    if let feed = self.videoFeedStatesByRoute[route] { return feed }
     let feed = FeedState()
-    self.feeds[route] = feed
+    self.videoFeedStatesByRoute[route] = feed
     return feed
   }
 
@@ -372,7 +372,7 @@ public final class ProjectMediaFeature {
 
   @discardableResult
   public func toggleSaved(route: UUID, projectID: String) -> Task<Void, Never>? {
-    guard let feed = self.feeds[route],
+    guard let feed = self.videoFeedStatesByRoute[route],
           let index = feed.items.firstIndex(where: { $0.id == projectID }) else { return nil }
     let item = feed.items[index]
     let wasSaved = item.isSaved
@@ -394,7 +394,7 @@ public final class ProjectMediaFeature {
       do {
         _ = try await mutation.value
       } catch {
-        guard !(error is CancellationError), self.feeds[route] === feed,
+        guard !(error is CancellationError), self.videoFeedStatesByRoute[route] === feed,
               self.feedSaveTasksByRoute[route]?[projectID]?.token == token,
               userID == self.sessionFeature.currentUser?.id, self.isCurrentIntent(intent),
               let index = feed.items.firstIndex(where: { $0.id == projectID }) else { return }
@@ -409,7 +409,7 @@ public final class ProjectMediaFeature {
   }
 
   public func clearSaveFailure(route: UUID) {
-    self.feeds[route]?.saveFailedItemID = nil
+    self.videoFeedStatesByRoute[route]?.saveFailedItemID = nil
   }
 
   public func waitForSaves(route: UUID) async {
@@ -419,7 +419,7 @@ public final class ProjectMediaFeature {
 
   public func reconcileSavedProjects(route: UUID) {
     self.prepareCache()
-    guard let feed = self.feeds[route] else { return }
+    guard let feed = self.videoFeedStatesByRoute[route] else { return }
     for index in feed.items.indices {
       if let id = decompose(id: feed.items[index].projectId),
          let saved = self.savedProjects.object(forKey: NSNumber(value: id))?.boolValue {
@@ -438,7 +438,7 @@ public final class ProjectMediaFeature {
     let generation: Int
   }
 
-  private var requests: [Event: (id: UUID, task: Task<VoidEnvelope?, Never>)] = [:]
+  private var playbackReportTasksByEvent: [Event: (id: UUID, task: Task<VoidEnvelope?, Never>)] = [:]
   private let makeProvider: () -> any ProjectMediaProvider
 
   public let sessionFeature: SessionFeature
@@ -502,7 +502,7 @@ public final class ProjectMediaFeature {
       userID: self.sessionFeature.currentUser?.id,
       generation: self.sessionFeature.generation
     )
-    if let request = self.requests[event] { return request.task }
+    if let request = self.playbackReportTasksByEvent[event] { return request.task }
     let token = UUID()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
@@ -513,7 +513,7 @@ public final class ProjectMediaFeature {
         guard sessionFeature.isCurrent(userID: event.userID, generation: event.generation) else { return nil }
         let value = try await provider.report(project: project, completed: completed)
         try Task.checkCancellation()
-        guard let self, self.requests[event]?.id == token,
+        guard let self, self.playbackReportTasksByEvent[event]?.id == token,
               sessionFeature.isCurrent(userID: event.userID, generation: event.generation) else { return nil }
         return value
       } catch {
@@ -522,7 +522,7 @@ public final class ProjectMediaFeature {
         return nil
       }
     }
-    self.requests[event] = (token, task)
+    self.playbackReportTasksByEvent[event] = (token, task)
     return task
   }
 
@@ -530,11 +530,11 @@ public final class ProjectMediaFeature {
     self.cancelImages(route: route)
     self.cancelPlaybackPreparations(route: route)
     self.feedRequests.removeValue(forKey: route)?.task.cancel()
-    self.feeds[route] = nil
+    self.videoFeedStatesByRoute[route] = nil
     self.feedSaveTasksByRoute[route] = nil
     // Watch writes deliberately continue after their presenting route closes.
-    for event in self.requests.keys.filter({ $0.route == route }) {
-      self.requests.removeValue(forKey: event)?.task.cancel()
+    for event in self.playbackReportTasksByEvent.keys.filter({ $0.route == route }) {
+      self.playbackReportTasksByEvent.removeValue(forKey: event)?.task.cancel()
     }
   }
 }

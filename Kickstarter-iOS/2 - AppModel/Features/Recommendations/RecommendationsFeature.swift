@@ -72,8 +72,8 @@ public final class RecommendationsFeature {
   private let makeProvider: () -> any RecommendationsProvider
   private let sleep: @MainActor @Sendable (TimeInterval) async throws -> Void
   private var pendingLoadsByRoute: [UUID: Pending] = [:]
-  private var latestSelections: [UUID: Selection] = [:]
-  public func selection(route: UUID) -> Selection? { self.latestSelections[route] }
+  private var loadedSelectionsByRoute: [UUID: Selection] = [:]
+  public func selection(route: UUID) -> Selection? { self.loadedSelectionsByRoute[route] }
   private var recommendationLoadTasks: [UUID: Task<Void, Never>] = [:]
 
   public init(
@@ -94,7 +94,7 @@ public final class RecommendationsFeature {
   private var session: Session {
     Session(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
-  private func requireCurrent(_ session: Session) throws {
+  private func ensureRecommendationSessionIsCurrent(_ session: Session) throws {
     try Task.checkCancellation()
     guard self.session == session else { throw CancellationError() }
   }
@@ -121,11 +121,11 @@ public final class RecommendationsFeature {
 
   public func release(route: UUID) {
     self.pendingLoadsByRoute.removeValue(forKey: route)?.task.cancel()
-    self.latestSelections.removeValue(forKey: route)
+    self.loadedSelectionsByRoute.removeValue(forKey: route)
   }
   public func reset() {
     for route in Array(self.pendingLoadsByRoute.keys) { self.release(route: route) }
-    self.latestSelections.removeAll()
+    self.loadedSelectionsByRoute.removeAll()
   }
   public func load(_ request: Request, route: UUID) async {
     await self.requestRecommendations(request, route: route).value
@@ -160,7 +160,7 @@ public final class RecommendationsFeature {
         }
         try Task.checkCancellation()
         guard self.session == session, self.pendingLoadsByRoute[route]?.id == id, let selection else { return }
-        self.latestSelections[route] = selection
+        self.loadedSelectionsByRoute[route] = selection
       } catch {
         // These screens historically suppress category lookup errors. Individual
         // discovery failures are handled below so successful fallbacks survive.
@@ -211,7 +211,7 @@ public final class RecommendationsFeature {
     let id = Category.decode(id: "\(projectCategory.parentId ?? projectCategory.id)").toBase64()
     let fetched = try await provider.category(id: id)
     try await self.sleep(delay)
-    try self.requireCurrent(session)
+    try self.ensureRecommendationSessionIsCurrent(session)
     let category = fetched.parent ?? fetched
     let base = DiscoveryParams.lens.perPage .~ 3 <> DiscoveryParams.lens.backed .~ false
     let similar = DiscoveryParams.defaults |> base |> DiscoveryParams.lens.similarTo .~ project
@@ -220,15 +220,15 @@ public final class RecommendationsFeature {
     var projects: [Project] = []
     var seen = Set<Int>()
     for (index, parameters) in [Self.recommendedParameters, similar, staff].enumerated() {
-      try self.requireCurrent(session)
+      try self.ensureRecommendationSessionIsCurrent(session)
       let page: [Project]
       do { page = try await provider.projects(parameters: parameters) }
       catch {
-        try self.requireCurrent(session)
+        try self.ensureRecommendationSessionIsCurrent(session)
         if error is CancellationError { throw error }
         continue
       }
-      try self.requireCurrent(session)
+      try self.ensureRecommendationSessionIsCurrent(session)
       for candidate in index == 0 ? Self.shuffleRecommendations(page) : page {
         guard candidate.id != project.id, seen.insert(candidate.id).inserted else { continue }
         projects.append(candidate)

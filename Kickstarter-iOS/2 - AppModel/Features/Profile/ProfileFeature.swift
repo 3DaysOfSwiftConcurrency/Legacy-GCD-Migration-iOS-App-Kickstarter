@@ -57,7 +57,7 @@ public final class ProfileFeature {
   private let makeProvider: () -> any ProfileProvider
   private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
-  private var pages: [ProfileProjectsType: Route] = [:]
+  private var projectCollectionsByType: [ProfileProjectsType: Route] = [:]
   private var headerRequest: (
     userID: Int?,
     generation: Int,
@@ -162,14 +162,14 @@ public final class ProfileFeature {
     self.cancelAvatarLoad()
     self.headerRequest?.task.cancel()
     self.headerRequest = nil
-    for page in self.pages.values { page.request?.task.cancel() }
-    self.pages.removeAll()
+    for page in self.projectCollectionsByType.values { page.request?.task.cancel() }
+    self.projectCollectionsByType.removeAll()
     self.userError = nil
     self.graphUserError = nil
   }
 
   public func snapshot(for type: ProfileProjectsType) -> Snapshot {
-    guard let page = self.pages[type],
+    guard let page = self.projectCollectionsByType[type],
           self.sessionFeature.isCurrent(userID: page.userID, generation: page.generation)
     else { return Snapshot() }
     return page.snapshot
@@ -272,12 +272,12 @@ public final class ProfileFeature {
     guard userID != nil else { self.reset(); return nil }
     let generation = self.sessionFeature.generation
     let page: Route
-    if let existing = self.pages[type], existing.userID == userID, existing.generation == generation {
+    if let existing = self.projectCollectionsByType[type], existing.userID == userID, existing.generation == generation {
       page = existing
     } else {
-      self.pages[type]?.request?.task.cancel()
+      self.projectCollectionsByType[type]?.request?.task.cancel()
       page = Route(userID: userID, generation: generation)
-      self.pages[type] = page
+      self.projectCollectionsByType[type] = page
     }
     if let request = page.request, next || request.cursor == nil { return request.task }
     guard !next || page.cursor != nil else { return nil }
@@ -294,7 +294,7 @@ public final class ProfileFeature {
         if page.request?.token == token {
           page.request = nil
           page.snapshot.isLoading = false
-          if self.pages[type] === page { self.publish(.loading(type, false)) }
+          if self.projectCollectionsByType[type] === page { self.publish(.loading(type, false)) }
         }
       }
       do {
@@ -303,13 +303,13 @@ public final class ProfileFeature {
         let result = try await provider.page(type: type, cursor: cursor)
         try await sleep(delay)
         try Task.checkCancellation()
-        guard self.pages[type] === page, page.request?.token == token,
+        guard self.projectCollectionsByType[type] === page, page.request?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         page.cursor = result.projects.isEmpty ? nil : result.cursor
         page.snapshot.projects = cursor == nil ? result.projects : page.snapshot.projects + result.projects
         self.publish(.projects(type, page.snapshot.projects))
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), self.pages[type] === page,
+        guard !Task.isCancelled, !(error is CancellationError), self.projectCollectionsByType[type] === page,
               page.request?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         page.snapshot.error = error

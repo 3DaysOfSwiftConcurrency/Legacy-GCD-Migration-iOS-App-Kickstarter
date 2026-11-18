@@ -8,14 +8,14 @@ private let escapedCookieSeparator = "%3F"
 // been previously set.
 public func cookieRefTagFor(project: Project, cookies: [HTTPCookie]?) -> RefTag? {
   return cookies?
-    .filter { cookie in cookie.name == cookieName(project) }
+    .filter { cookie in cookie.name == referralCookieName(project) }
     .first
     .map(refTagName(fromCookie:))
     .flatMap(RefTag.init(code:))
 }
 
 // Derives the name of the ref cookie from the project.
-private func cookieName(_ project: Project) -> String {
+private func referralCookieName(_ project: Project) -> String {
   return "ref_\(project.id)"
 }
 
@@ -32,13 +32,13 @@ public func cleanUp(refTag: RefTag) -> RefTag {
 
 // Tries to remove cruft from a ref tag string.
 private func cleanUp(refTagString: String) -> String {
-  let secondPass = refTagString.components(separatedBy: escapedCookieSeparator)
-  if let name = secondPass.first, secondPass.count == 2 {
+  let escapedCookieParts = refTagString.components(separatedBy: escapedCookieSeparator)
+  if let name = escapedCookieParts.first, escapedCookieParts.count == 2 {
     return String(name)
   }
 
-  let firstPass = refTagString.components(separatedBy: cookieSeparator)
-  if let name = firstPass.first, firstPass.count == 2 {
+  let unescapedCookieParts = refTagString.components(separatedBy: cookieSeparator)
+  if let name = unescapedCookieParts.first, unescapedCookieParts.count == 2 {
     return String(name)
   }
 
@@ -50,7 +50,7 @@ public func cookieFrom(refTag: RefTag, project: Project, dateType: DateProtocol.
   let timestamp = Int(dateType.init().timeIntervalSince1970)
 
   var properties: [HTTPCookiePropertyKey: Any] = [:]
-  properties[.name] = cookieName(project)
+  properties[.name] = referralCookieName(project)
   properties[.value] = "\(refTag.stringTag)\(cookieSeparator)\(timestamp)"
   properties[.domain] = URL(string: project.urls.web.project)?.host
   properties[.path] = URL(string: project.urls.web.project)?.path

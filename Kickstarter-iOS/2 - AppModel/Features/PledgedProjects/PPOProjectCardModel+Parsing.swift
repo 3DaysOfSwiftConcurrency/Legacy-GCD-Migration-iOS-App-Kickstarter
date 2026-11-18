@@ -27,8 +27,8 @@ extension PPOProjectCardModel {
     let projectId = card.projectId
     let formattedPledge: String?
     if let amount = card.amount, let currency = card.currency,
-       let decimal = try? Decimal(amount, format: .number) {
-      formattedPledge = decimal.formatted(.currency(code: currency).locale(locale))
+       let pledgeAmount = try? Decimal(amount, format: .number) {
+      formattedPledge = pledgeAmount.formatted(.currency(code: currency).locale(locale))
     } else {
       formattedPledge = nil
     }
@@ -53,7 +53,7 @@ extension PPOProjectCardModel {
     else {
       return nil
     }
-    let action = Self.actionForTierType(
+    let parsedAction = Self.actionForTierType(
       tierType: tierType,
       showShippingAddress: card.showShippingAddress,
       addressWithoutName: addressWithoutName,
@@ -77,7 +77,7 @@ extension PPOProjectCardModel {
     let backingId = card.backingId.flatMap { decompose(id: $0) }
     let backingGraphId = card.backingId
 
-    if let image, let projectName, let projectId, let formattedPledge, let creatorName, let action,
+    if let image, let projectName, let projectId, let formattedPledge, let creatorName, let parsedAction,
        let projectAnalytics, let backingId, let backingGraphId {
       self.init(
         isUnread: true,
@@ -89,8 +89,8 @@ extension PPOProjectCardModel {
         creatorName: creatorName,
         address: displayAddress,
         rewardReceivedToggleState: toggleState,
-        action: action.action,
-        tierType: action.tierType,
+        action: parsedAction.action,
+        tierType: parsedAction.tierType,
         backingId: backingId,
         backingGraphId: backingGraphId,
         projectAnalytics: projectAnalytics,

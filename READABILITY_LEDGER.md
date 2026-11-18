@@ -250,3 +250,9 @@ callers or tests affected by a rename.
   source, pledge presentation inputs, setup-intent secret, current plan request ID and
   scheduled collection date. Reviewed card-selection, payment-method and Pledge Over
   Time tests. Swift parsing, Swift token comparison and git diff --check passed.
+
+- PledgedProjects, Profile, ProjectDetails, ProjectMedia, ProjectReporting and
+  Recommendations. Named the parsed card action, project and profile route state,
+  referral cookie parts, playback readiness values, and the recommendations freshness
+  guard. Traced focused cache, project card, attribution, reporting and media tests.
+  Swift parsing, Swift token comparison and git diff --check passed.
