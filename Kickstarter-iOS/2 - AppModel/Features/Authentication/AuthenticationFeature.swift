@@ -175,7 +175,7 @@ public final class AuthenticationFeature {
     sessionFeature: SessionFeature,
     platform: Platform,
     makeProvider: @escaping () -> any AuthenticationProvider,
-    resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) }
+    resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.fetchRedirectDestination($0) }
   ) {
     self.resolveRedirect = resolveRedirect
     self.session = sessionFeature

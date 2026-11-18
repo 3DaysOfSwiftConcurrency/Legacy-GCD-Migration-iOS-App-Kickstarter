@@ -9,11 +9,11 @@ import Prelude
 /// it is not a product feature. A session reset replaces any in-flight read.
 @MainActor
 public final class ApplicationConfigurationService {
-  private let load: @MainActor () async throws -> Config
+  private let fetchConfiguration: @MainActor () async throws -> Config
   private let installVisitorCookies: @MainActor () -> Void
   private let debugFeatureFlags: @MainActor () -> [String: Bool]
   private let applyConfiguration: @MainActor (Config) -> Void
-  private var request: (id: UUID, task: Task<Config, Error>, appliesResult: Bool)?
+  private var pendingConfigurationRequest: (id: UUID, task: Task<Config, Error>, appliesResult: Bool)?
 
   public init(
     load: @escaping @MainActor () async throws -> Config,
@@ -21,7 +21,7 @@ public final class ApplicationConfigurationService {
     debugFeatureFlags: @escaping @MainActor () -> [String: Bool] = { [:] },
     applyConfiguration: @escaping @MainActor (Config) -> Void = { _ in }
   ) {
-    self.load = load
+    self.fetchConfiguration = load
     self.installVisitorCookies = installVisitorCookies
     self.debugFeatureFlags = debugFeatureFlags
     self.applyConfiguration = applyConfiguration
@@ -34,9 +34,9 @@ public final class ApplicationConfigurationService {
 
   public func configuration() async throws -> Config {
     try Task.checkCancellation()
-    let value = try await self.requestConfiguration().value
+    let configuration = try await self.requestConfiguration().value
     try Task.checkCancellation()
-    return value
+    return configuration
   }
 
   @discardableResult public func requestConfiguration() -> Task<Config, Error> {
@@ -44,29 +44,29 @@ public final class ApplicationConfigurationService {
   }
 
   private func requestConfiguration(applyResult: Bool) -> Task<Config, Error> {
-    if let request = self.request {
-      if applyResult { self.request?.appliesResult = true }
+    if let request = self.pendingConfigurationRequest {
+      if applyResult { self.pendingConfigurationRequest?.appliesResult = true }
       return request.task
     }
     let id = UUID()
-    let load = self.load
+    let fetchConfiguration = self.fetchConfiguration
     let task = Task { [self] in
-      defer { if self.request?.id == id { self.request = nil } }
+      defer { if self.pendingConfigurationRequest?.id == id { self.pendingConfigurationRequest = nil } }
       try Task.checkCancellation()
-      let value = try await load()
+      let fetchedConfiguration = try await fetchConfiguration()
       try Task.checkCancellation()
-      guard let request = self.request, request.id == id else { throw CancellationError() }
-      let config = self.retainingDebugFeatureFlags(value)
+      guard let request = self.pendingConfigurationRequest, request.id == id else { throw CancellationError() }
+      let config = self.retainingDebugFeatureFlags(fetchedConfiguration)
       if request.appliesResult { self.applyConfiguration(config) }
       return config
     }
-    self.request = (id, task, applyResult)
+    self.pendingConfigurationRequest = (id, task, applyResult)
     return task
   }
 
   public func reset() {
-    self.request?.task.cancel()
-    self.request = nil
+    self.pendingConfigurationRequest?.task.cancel()
+    self.pendingConfigurationRequest = nil
   }
 
   private func retainingDebugFeatureFlags(_ config: Config) -> Config {

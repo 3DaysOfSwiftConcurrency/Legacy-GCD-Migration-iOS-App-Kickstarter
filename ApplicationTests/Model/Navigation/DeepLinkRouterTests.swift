@@ -209,9 +209,9 @@ final class DeepLinkRouterTests: XCTestCase {
   func testRedirectResponsePreservesRelativeLocationAndIgnoresNonRedirect() throws {
     let url = try XCTUnwrap(URL(string: "https://example.test/click/original"))
     let redirect = try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 302, httpVersion: nil, headerFields: ["Location": "../target"]))
-    XCTAssertEqual(FirstRedirectResolver.destination(in: redirect)?.absoluteString, "https://example.test/target")
+    XCTAssertEqual(FirstRedirectResolver.redirectDestination(in: redirect)?.absoluteString, "https://example.test/target")
     let success = try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: ["Location": "/ignored"]))
-    XCTAssertNil(FirstRedirectResolver.destination(in: success))
+    XCTAssertNil(FirstRedirectResolver.redirectDestination(in: success))
   }
 
   func testEquivalentDestinationSharesCompleteChain() async throws {

@@ -8,7 +8,7 @@ import Foundation
 public final class MainActorNotificationObservation: NSObject {
   private let center: NotificationCenter
   private let handler: @MainActor (Notification) -> Void
-  private var active = true
+  private var isObserving = true
 
   public init(
     center: NotificationCenter = .default,
@@ -23,12 +23,12 @@ public final class MainActorNotificationObservation: NSObject {
 
   @objc private func receive(_ notification: Notification) {
     MainActor.assertIsolated()
-    guard self.active else { return }
+    guard self.isObserving else { return }
     self.handler(notification)
   }
 
   public func cancel() {
-    self.active = false
+    self.isObserving = false
     self.center.removeObserver(self)
   }
 
@@ -36,13 +36,13 @@ public final class MainActorNotificationObservation: NSObject {
 }
 
 /// A payload-free notification from an arbitrary publisher, delivered on MainActor.
-/// The callback only yields a Sendable signal. The owner cancels queued delivery on
+/// The callback only yields a Sendable signal. The owner cancels queued signalDeliveryTask on
 /// release; neither the Notification nor its SDK-owned payload crosses actors.
 @MainActor
 public final class MainActorNotificationSignalObservation: NSObject {
   private let center: NotificationCenter
   nonisolated private let continuation: AsyncStream<Void>.Continuation
-  private var delivery: Task<Void, Never>?
+  private var signalDeliveryTask: Task<Void, Never>?
 
   public init(
     center: NotificationCenter = .default,
@@ -54,7 +54,7 @@ public final class MainActorNotificationSignalObservation: NSObject {
     self.continuation = continuation
     super.init()
     center.addObserver(self, selector: #selector(self.receive(_:)), name: name, object: nil)
-    self.delivery = Task { @MainActor in
+    self.signalDeliveryTask = Task { @MainActor in
       for await _ in stream {
         guard !Task.isCancelled else { break }
         handler()
@@ -68,13 +68,13 @@ public final class MainActorNotificationSignalObservation: NSObject {
 
   public func cancel() {
     self.center.removeObserver(self)
-    self.delivery?.cancel()
-    self.delivery = nil
+    self.signalDeliveryTask?.cancel()
+    self.signalDeliveryTask = nil
     self.continuation.finish()
   }
 
   deinit {
-    self.delivery?.cancel()
+    self.signalDeliveryTask?.cancel()
     self.continuation.finish()
     self.center.removeObserver(self)
   }

@@ -116,7 +116,7 @@ public final class ProfileFeature {
     self.makeProvider = makeProvider
     self.responseDelaySeconds = responseDelaySeconds
     self.sleep = sleep
-    self.loadAvatar = loadAvatar ?? { try await ProfileAvatarStore.shared.data(for: $0) }
+    self.loadAvatar = loadAvatar ?? { try await ProfileAvatarStore.shared.loadAvatarBytes(for: $0) }
   }
 
   public func cancelAvatarLoad() {

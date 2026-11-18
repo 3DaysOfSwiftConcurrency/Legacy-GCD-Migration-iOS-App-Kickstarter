@@ -114,8 +114,8 @@ public final class MainActorObservation {
 public final class ConnectivityService {
   private let makeMonitor: () -> (any ReachabilityMonitoring)?
   private var monitor: (any ReachabilityMonitoring)?
-  private var task: Task<Void, Never>?
-  private var started = false
+  private var reachabilityUpdatesTask: Task<Void, Never>?
+  private var hasAttemptedToStartMonitoring = false
   private let state: ConnectivityState
 
   public init(
@@ -127,23 +127,23 @@ public final class ConnectivityService {
   }
 
   public var connectivity: Reachability {
-    self.start()
+    self.startMonitoringIfNeeded()
     return self.state.value
   }
 
   public var source: ConnectivityState {
-    self.start()
+    self.startMonitoringIfNeeded()
     return self.state
   }
 
-  private func start() {
-    guard !self.started else { return }
-    self.started = true
+  private func startMonitoringIfNeeded() {
+    guard !self.hasAttemptedToStartMonitoring else { return }
+    self.hasAttemptedToStartMonitoring = true
     guard let monitor = self.makeMonitor() else { return }
     self.monitor = monitor
     self.state.value = monitor.initial
     let updates = monitor.updates
-    self.task = Task { [weak self] in
+    self.reachabilityUpdatesTask = Task { [weak self] in
       for await value in updates {
         guard !Task.isCancelled, let self else { return }
         self.state.value = value
@@ -151,5 +151,5 @@ public final class ConnectivityService {
     }
   }
 
-  deinit { self.task?.cancel() }
+  deinit { self.reachabilityUpdatesTask?.cancel() }
 }

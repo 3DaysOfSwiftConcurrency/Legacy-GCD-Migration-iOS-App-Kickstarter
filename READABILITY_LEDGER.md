@@ -223,3 +223,9 @@ callers or tests affected by a rename.
   environment, allowed route keys, and the publisher that maps output to Void. Traced
   its PPOContainer caller and reviewed environment and navigation tests. Swift
   parsing, Swift token comparison and git diff --check passed.
+
+- Configuration, networking and platform storage. Distinguished pending config fetches
+  from SDK activation, cached avatar bytes from downloaded bytes, and reachability
+  monitoring from its consumer state. Updated Authentication, Profile and focused
+  redirect and avatar tests. Swift parsing, Swift token comparison and git diff
+  --check passed.

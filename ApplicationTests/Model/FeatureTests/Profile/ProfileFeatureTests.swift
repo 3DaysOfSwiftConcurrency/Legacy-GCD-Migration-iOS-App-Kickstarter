@@ -76,7 +76,7 @@ final class ProfileFeatureTests: TestCase {
     let file = directory.appendingPathComponent("tabbar-avatar-image-\(url.absoluteString.hashValue).dat")
     try Data([1, 2, 3]).write(to: file)
     let store = ProfileAvatarStore(directory: directory, download: { _ in throw URLError(.notConnectedToInternet) })
-    let value = try await store.data(for: url)
+    let value = try await store.loadAvatarBytes(for: url)
     XCTAssertEqual(value, Data([1, 2, 3]))
   }
   func testAvatarStoreWritesDownloadedBytesToExistingCacheKey() async throws {
@@ -85,7 +85,7 @@ final class ProfileFeatureTests: TestCase {
     defer { try? FileManager.default.removeItem(at: directory) }
     let url = try XCTUnwrap(URL(string: "https://example.test/avatar.png"))
     let store = ProfileAvatarStore(directory: directory, download: { _ in Data([4, 5]) })
-    _ = try await store.data(for: url)
+    _ = try await store.loadAvatarBytes(for: url)
     XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent("tabbar-avatar-image-\(url.absoluteString.hashValue).dat")), Data([4, 5]))
   }
 

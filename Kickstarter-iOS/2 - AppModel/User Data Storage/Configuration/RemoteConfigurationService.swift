@@ -8,7 +8,7 @@ import Foundation
 public final class RemoteConfigurationService {
   private let notificationCenter: NotificationCenter
   private let reportFailure: @MainActor (Error) -> Void
-  private var request: (client: ObjectIdentifier, id: UUID, task: Task<Void, Error>)?
+  private var pendingActivation: (client: ObjectIdentifier, activationID: UUID, task: Task<Void, Error>)?
 
   public init(
     notificationCenter: NotificationCenter,
@@ -20,26 +20,26 @@ public final class RemoteConfigurationService {
 
   @discardableResult public func activate(client: any RemoteConfigClientType) -> Task<Void, Error> {
     let clientID = ObjectIdentifier(client)
-    if let request = self.request, request.client == clientID { return request.task }
-    self.request?.task.cancel()
-    let id = UUID()
+    if let request = self.pendingActivation, request.client == clientID { return request.task }
+    self.pendingActivation?.task.cancel()
+    let activationID = UUID()
     let task = Task { [self] in
-      defer { if self.request?.id == id { self.request = nil } }
+      defer { if self.pendingActivation?.activationID == activationID { self.pendingActivation = nil } }
       do {
         try Task.checkCancellation()
         try await client.fetchAndActivateAsync()
       } catch {
         try Task.checkCancellation()
-        guard !(error is CancellationError), self.request?.id == id else { throw CancellationError() }
+        guard !(error is CancellationError), self.pendingActivation?.activationID == activationID else { throw CancellationError() }
         self.reportFailure(error)
         self.notificationCenter.post(name: .ksr_remoteConfigClientConfigurationFailed, object: nil)
         throw error
       }
       try Task.checkCancellation()
-      guard self.request?.id == id else { throw CancellationError() }
+      guard self.pendingActivation?.activationID == activationID else { throw CancellationError() }
       self.notificationCenter.post(name: .ksr_remoteConfigClientConfigured, object: nil)
     }
-    self.request = (clientID, id, task)
+    self.pendingActivation = (clientID, activationID, task)
     return task
   }
 }

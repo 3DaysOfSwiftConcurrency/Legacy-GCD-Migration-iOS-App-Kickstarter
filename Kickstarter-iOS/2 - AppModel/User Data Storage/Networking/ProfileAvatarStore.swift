@@ -13,15 +13,15 @@ public actor ProfileAvatarStore {
       try await NetworkingManager.data(from: url)
     }
   ) { self.directory = directory; self.download = download }
-  public func data(for url: URL) async throws -> Data {
+  public func loadAvatarBytes(for url: URL) async throws -> Data {
     try Task.checkCancellation()
     // Keep the existing cache name and cache-first/failure behavior.
     guard let directory else { throw URLError(.cannotOpenFile) }
-    let file = directory.appendingPathComponent("tabbar-avatar-image-\(url.absoluteString.hashValue).dat")
-    if let data = try? Data(contentsOf: file) { return data }
-    let data = try await self.download(url)
+    let cacheFileURL = directory.appendingPathComponent("tabbar-avatar-image-\(url.absoluteString.hashValue).dat")
+    if let cachedBytes = try? Data(contentsOf: cacheFileURL) { return cachedBytes }
+    let downloadedBytes = try await self.download(url)
     try Task.checkCancellation()
-    try? data.write(to: file, options: .atomic)
-    return data
+    try? downloadedBytes.write(to: cacheFileURL, options: .atomic)
+    return downloadedBytes
   }
 }

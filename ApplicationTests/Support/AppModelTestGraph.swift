@@ -283,7 +283,7 @@ extension AuthenticationFeature {
     trackOAuthLogin: @escaping @MainActor () -> Void = {
       AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
     },
-    resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.resolve($0) },
+    resolveRedirect: @escaping (URL) async throws -> URL? = { try await FirstRedirectResolver.fetchRedirectDestination($0) },
     appleAppID: @escaping @MainActor () -> String = { AppEnvironment.current.apiService.appId },
     webBaseURL: @escaping @MainActor () -> URL = {
       AppEnvironment.current.apiService.serverConfig.webBaseUrl
