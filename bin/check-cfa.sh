@@ -193,6 +193,15 @@ reject_matches 'DiscoveryFeature receives services, storage, metadata, timing, a
   'AppModel[.]shared|AppEnvironment' "$discovery_feature"
 reject_matches 'Discovery view models must receive feature dependencies from their controllers.' \
   'AppModel[.]shared' "$app_view/Views/Discovery/*ViewModel.swift" "$app_view/Views/DiscoveryFilters/*ViewModel.swift"
+reject_matches 'Discovery parent and page controllers receive their graph from Root Tabs.' \
+  'AppModel[.]shared|AppEnvironment[.]current' \
+  "$app_view/Views/Discovery/Controller/DiscoveryViewController.swift" \
+  "$app_view/Views/Discovery/Controller/DiscoveryPageViewController.swift"
+reject_matches 'Root Tabs must supply DiscoveryComposition.' \
+  'DiscoveryViewController[.]instantiate[(][[:space:]]*[)]' "$root_tabs"
+reject_matches 'Discovery pages must receive the parent composition graph.' \
+  'DiscoveryPageViewController[.]configuredWith[(][[:space:]]*sort:[^,)]*[)]' \
+  "$app_view/Views/Discovery/Datasource/DiscoveryPagesDataSource.swift"
 reject_matches 'Sign-in view models must receive Authentication from their controllers.' \
   'AppModel[.]shared' "$app_view/Views/Login/*ViewModel.swift" "$app_view/Views/LoginTout/*ViewModel.swift" \
   "$app_view/Views/FacebookConfirmation/*ViewModel.swift" "$app_view/Views/FacebookResetPasswordViewController/*ViewModel.swift"

@@ -5,9 +5,11 @@ internal final class DiscoveryPagesDataSource: NSObject, UIPageViewControllerDat
   fileprivate let viewControllers: [UIViewController]
   fileprivate let sorts: [DiscoveryParams.Sort]
 
-  internal init(sorts: [DiscoveryParams.Sort]) {
+  internal init(sorts: [DiscoveryParams.Sort], composition: DiscoveryComposition) {
     self.sorts = sorts
-    self.viewControllers = sorts.map(DiscoveryPageViewController.configuredWith(sort:))
+    self.viewControllers = sorts.map {
+      DiscoveryPageViewController.configuredWith(sort: $0, composition: composition)
+    }
   }
 
   internal func load(filter: DiscoveryParams) {

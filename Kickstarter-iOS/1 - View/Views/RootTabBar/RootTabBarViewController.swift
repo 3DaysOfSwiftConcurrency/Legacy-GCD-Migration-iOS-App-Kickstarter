@@ -365,7 +365,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
   func viewController(from data: RootViewControllerData) -> UIViewController? {
     switch data {
     case .discovery:
-      return DiscoveryViewController.instantiate()
+      return DiscoveryViewController.instantiate(composition: self.composition.discovery)
     case .activities:
       return ActivitiesViewController.instantiate(composition: self.composition.activities)
     case .pledgedProjectsAndActivities:

@@ -2351,3 +2351,13 @@ safe for arbitrary concurrent environment mutation.
 - Focused AppModel/Search model coverage passes 46 tests and focused Root Tabs navigation
   coverage passes 5 tests. Search snapshots, live filter/navigation interaction and whole
   target suites remain unverified.
+
+## Discovery parent and page graph — 18 November 2026
+
+- Root Tabs now opens Discovery with one AppModel-owned DiscoveryComposition containing
+  DiscoveryFeature, the established Video Feed graph and device presentation policy.
+- The parent passes that exact graph through its page data source to every generated
+  Discovery page, preserving sorting, filtering, Video Feed and modal presentation routes.
+- Focused Discovery/AppModel coverage passes 65 tests and focused page-data-source/root
+  navigation coverage passes 10 tests. Header construction, page analytics, save-cell
+  dependencies, snapshots and live navigation remain explicit follow-up work.

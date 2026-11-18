@@ -15,10 +15,8 @@ protocol DiscoveryPageViewControllerDelegate: AnyObject {
 internal final class DiscoveryPageViewController: UITableViewController,
   MessageBannerViewControllerPresenting,
   VideoFeedBannerPresenting {
-  fileprivate let viewModel: DiscoveryPageViewModelType = DiscoveryPageViewModel(
-    discoveryFeature: AppModel.shared.discoveryFeature,
-    projectMediaFeature: AppModel.shared.projectMediaFeature
-  )
+  private var composition: DiscoveryComposition!
+  fileprivate var viewModel: DiscoveryPageViewModelType!
   fileprivate let shareViewModel = ShareViewModel()
 
   // MARK: - Properties
@@ -35,10 +33,18 @@ internal final class DiscoveryPageViewController: UITableViewController,
   internal var messageBannerViewController: MessageBannerViewController?
 
   var videoFeedVC: VideoFeedViewController?
-  var videoFeedComposition: VideoFeedComposition { AppModel.shared.videoFeedComposition }
+  var videoFeedComposition: VideoFeedComposition { self.composition.videoFeed }
 
-  internal static func configuredWith(sort: DiscoveryParams.Sort) -> DiscoveryPageViewController {
+  internal static func configuredWith(
+    sort: DiscoveryParams.Sort,
+    composition: DiscoveryComposition
+  ) -> DiscoveryPageViewController {
     let vc = Storyboard.DiscoveryPage.instantiate(DiscoveryPageViewController.self)
+    vc.composition = composition
+    vc.viewModel = DiscoveryPageViewModel(
+      discoveryFeature: composition.discoveryFeature,
+      projectMediaFeature: composition.videoFeed.projectMediaFeature
+    )
     vc.viewModel.inputs.configureWith(sort: sort)
     return vc
   }
@@ -230,7 +236,7 @@ internal final class DiscoveryPageViewController: UITableViewController,
         let curatedProjectsVC = CuratedProjectsViewController.instantiate()
         curatedProjectsVC.configure(with: categories, context: .discovery)
 
-        let isIpad = AppEnvironment.current.device.userInterfaceIdiom == .pad
+        let isIpad = self?.composition.isPad() ?? false
 
         let navController = NavigationController(rootViewController: curatedProjectsVC)
           |> \.modalPresentationStyle .~ (isIpad ? .formSheet : .fullScreen)
@@ -268,7 +274,7 @@ internal final class DiscoveryPageViewController: UITableViewController,
     self.viewModel.outputs.onGoToLoginSignup = { [weak self] intent in
         let loginTout = LoginToutViewController.configuredWith(loginIntent: intent)
 
-        let isIpad = AppEnvironment.current.device.userInterfaceIdiom == .pad
+        let isIpad = self?.composition.isPad() ?? false
         let nav = UINavigationController(rootViewController: loginTout)
           |> \.modalPresentationStyle .~ (isIpad ? .formSheet : .fullScreen)
 
@@ -482,7 +488,7 @@ extension DiscoveryPageViewController: DiscoveryPostcardCellDelegate {
 
   internal func discoveryPostcardCellGoToLoginTout() {
     let vc = LoginToutViewController.configuredWith(loginIntent: .starProject)
-    let isIpad = AppEnvironment.current.device.userInterfaceIdiom == .pad
+    let isIpad = self.composition.isPad()
     let nav = UINavigationController(rootViewController: vc)
       |> \.modalPresentationStyle .~ (isIpad ? .formSheet : .fullScreen)
 

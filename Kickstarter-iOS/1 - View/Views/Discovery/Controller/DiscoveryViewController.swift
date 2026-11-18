@@ -5,9 +5,8 @@ import Prelude
 import UIKit
 
 internal final class DiscoveryViewController: UIViewController {
-  fileprivate let viewModel = DiscoveryViewModel(
-    discoveryFeature: AppModel.shared.discoveryFeature
-  )
+  private var composition: DiscoveryComposition!
+  fileprivate var viewModel: DiscoveryViewModel!
   fileprivate var dataSource: DiscoveryPagesDataSource?
 
   private var recommendationsChangedObserver: MainActorNotificationObservation?
@@ -22,8 +21,11 @@ internal final class DiscoveryViewController: UIViewController {
   /// Bottom constraint when using the floating tab bar (full-height)
   @IBOutlet var pagesBottomToSuperview: NSLayoutConstraint!
 
-  internal static func instantiate() -> DiscoveryViewController {
-    return Storyboard.Discovery.instantiate(DiscoveryViewController.self)
+  internal static func instantiate(composition: DiscoveryComposition) -> DiscoveryViewController {
+    let controller = Storyboard.Discovery.instantiate(DiscoveryViewController.self)
+    controller.composition = composition
+    controller.viewModel = DiscoveryViewModel(discoveryFeature: composition.discoveryFeature)
+    return controller
   }
 
   override func viewDidLoad() {
@@ -106,7 +108,7 @@ internal final class DiscoveryViewController: UIViewController {
   }
 
   fileprivate func configurePagerDataSource(_ sorts: [DiscoveryParams.Sort]) {
-    self.dataSource = DiscoveryPagesDataSource(sorts: sorts)
+    self.dataSource = DiscoveryPagesDataSource(sorts: sorts, composition: self.composition)
 
     self.pageViewController.dataSource = self.dataSource
 

@@ -4557,6 +4557,30 @@ in the Search controller or view model and parameterless Search construction fro
 Tabs. This is not full CFA compliance. Swift packages, target identifiers and existing
 history are unchanged. No push.
 
+### Discovery parent and page graph — 18 November 2026
+
+Author: Matthew Thomas.
+
+AppModel now exposes DiscoveryComposition with the AppModel-owned DiscoveryFeature, the
+nested VideoFeedComposition and device presentation policy. Root Tabs supplies that graph
+to DiscoveryViewController, which uses it for its model and passes the same graph through
+DiscoveryPagesDataSource to every generated DiscoveryPageViewController. Page models,
+Video Feed presentation and iPad modal policy no longer select process-global dependencies
+inside those controllers.
+
+Focused AppModelTests, DiscoveryViewModelTests and DiscoveryPageViewModelTests passed all
+65 tests. Focused DiscoveryPagesDataSourceTests and RootTabsNavigationTests passed all 10
+tests. Both runs had zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-discovery-composition-library-v2.xcresult` and
+`/private/tmp/kickstarter-discovery-composition-presentation.xcresult`.
+
+Discovery header construction, page-model analytics and project-card save cells retain
+explicit legacy global seams and remain follow-up migration work. Discovery snapshots and
+live navigation remain unverified, as do the whole Library and Presentation suites. The
+CFA gate rejects restored global selection in the parent/page controllers and default
+construction from Root Tabs or the page data source. This is not full CFA compliance.
+Swift packages, target identifiers and existing history are unchanged. No push.
+
 ### Root Tabs reads floating policy through Settings — 17 November 2026
 
 Author: Matthew Thomas.

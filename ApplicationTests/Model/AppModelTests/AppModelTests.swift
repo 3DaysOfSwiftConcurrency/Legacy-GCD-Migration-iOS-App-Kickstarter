@@ -417,6 +417,10 @@ final class AppModelTests: XCTestCase {
     XCTAssertTrue(
       first.searchComposition.videoFeed.projectMediaFeature === first.projectMediaFeature
     )
+    XCTAssertTrue(first.discoveryComposition.discoveryFeature === first.discoveryFeature)
+    XCTAssertTrue(
+      first.discoveryComposition.videoFeed.projectMediaFeature === first.projectMediaFeature
+    )
     XCTAssertTrue(
       first.projectPageComposition.projectReportingFeature === first.projectReportingFeature
     )

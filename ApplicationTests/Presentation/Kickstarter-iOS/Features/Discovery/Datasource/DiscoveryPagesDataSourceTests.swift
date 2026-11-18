@@ -9,7 +9,10 @@ private let sorts: [DiscoveryParams.Sort] = [.magic, .popular, .newest]
 
 @MainActor
 internal final class DiscoveryPagesDataSourceTests: XCTestCase {
-  fileprivate let dataSource = DiscoveryPagesDataSource(sorts: sorts)
+  fileprivate let dataSource = DiscoveryPagesDataSource(
+    sorts: sorts,
+    composition: AppModel.shared.discoveryComposition
+  )
   fileprivate let pageViewController = UIPageViewController()
 
   func testIndex() {

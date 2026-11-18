@@ -9,6 +9,13 @@ import SnapshotTesting
 import UIKit
 
 internal final class DiscoveryPageViewControllerTests: TestCase {
+  private func makeController(sort: DiscoveryParams.Sort = .magic) -> DiscoveryPageViewController {
+    DiscoveryPageViewController.configuredWith(
+      sort: sort,
+      composition: AppModel.shared.discoveryComposition
+    )
+  }
+
   override func setUp() async throws {
     try await super.setUp()
     UIView.setAnimationsEnabled(false)
@@ -55,7 +62,7 @@ internal final class DiscoveryPageViewControllerTests: TestCase {
         language: language,
         userDefaults: MockKeyValueStore()
       ) {
-        let controller = DiscoveryPageViewController.configuredWith(sort: .magic)
+        let controller = self.makeController()
         controller.overrideUserInterfaceStyle = style
         controller.tableView.refreshControl = nil
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
@@ -90,7 +97,7 @@ internal final class DiscoveryPageViewControllerTests: TestCase {
         currentUser: User.template,
         language: language
       ) {
-        let controller = DiscoveryPageViewController.configuredWith(sort: .magic)
+        let controller = self.makeController()
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
         parent.view.frame.size.height = device == .pad ? 700 : 550
 
@@ -126,7 +133,7 @@ internal final class DiscoveryPageViewControllerTests: TestCase {
           config: Config.template,
           currentUser: User.template, language: language
         ) {
-          let controller = DiscoveryPageViewController.configuredWith(sort: .magic)
+          let controller = self.makeController()
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
           parent.view.frame.size.height = device == .pad ? 500 : 450
 
@@ -156,7 +163,7 @@ internal final class DiscoveryPageViewControllerTests: TestCase {
         currentUser: User.template,
         language: language
       ) {
-        let controller = DiscoveryPageViewController.configuredWith(sort: .magic)
+        let controller = self.makeController()
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
         parent.view.frame.size.height = device == .pad ? 500 : 450
 
@@ -193,7 +200,7 @@ internal final class DiscoveryPageViewControllerTests: TestCase {
           dateType: MockDate.self,
           language: language
         ) {
-          let controller = DiscoveryPageViewController.configuredWith(sort: .magic)
+          let controller = self.makeController()
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
           parent.view.frame.size.height = device == .pad ? 500 : 450
 
@@ -233,7 +240,7 @@ internal final class DiscoveryPageViewControllerTests: TestCase {
           config: config,
           currentUser: User.template, language: language
         ) {
-          let controller = DiscoveryPageViewController.configuredWith(sort: .endingSoon)
+          let controller = self.makeController(sort: .endingSoon)
           let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
           parent.view.frame.size.height = device == .pad ? 500 : 450
 
@@ -263,7 +270,7 @@ internal final class DiscoveryPageViewControllerTests: TestCase {
       language, device in
 
       withEnvironment(currentUser: nil, language: language, statsigClient: mockStatsigClient) {
-        let controller = DiscoveryPageViewController.configuredWith(sort: .magic)
+        let controller = self.makeController()
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
         parent.view.frame.size.height = 210
 
@@ -286,7 +293,7 @@ internal final class DiscoveryPageViewControllerTests: TestCase {
       language, device in
 
       withEnvironment(currentUser: nil, language: language) {
-        let controller = DiscoveryPageViewController.configuredWith(sort: .magic)
+        let controller = self.makeController()
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
         parent.view.frame.size.height = 210
 

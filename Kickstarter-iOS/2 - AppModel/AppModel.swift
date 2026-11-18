@@ -225,12 +225,29 @@ public struct SearchComposition {
   }
 }
 
+public struct DiscoveryComposition {
+  public let discoveryFeature: DiscoveryFeature
+  public let videoFeed: VideoFeedComposition
+  public let isPad: () -> Bool
+
+  public init(
+    discoveryFeature: DiscoveryFeature,
+    videoFeed: VideoFeedComposition,
+    isPad: @escaping () -> Bool
+  ) {
+    self.discoveryFeature = discoveryFeature
+    self.videoFeed = videoFeed
+    self.isPad = isPad
+  }
+}
+
 public struct RootTabComposition {
   public let sessionFeature: SessionFeature
   public let profileFeature: ProfileFeature
   public let activities: ActivityComposition
   public let messaging: MessagingComposition
   public let search: SearchComposition
+  public let discovery: DiscoveryComposition
   public let settingsFeature: SettingsFeature
   public let analytics: () -> KSRAnalytics
   public let badgePresentationDelay: () -> TimeInterval
@@ -243,6 +260,7 @@ public struct RootTabComposition {
     activities: ActivityComposition,
     messaging: MessagingComposition,
     search: SearchComposition,
+    discovery: DiscoveryComposition,
     settingsFeature: SettingsFeature,
     analytics: @escaping () -> KSRAnalytics,
     badgePresentationDelay: @escaping () -> TimeInterval,
@@ -254,6 +272,7 @@ public struct RootTabComposition {
     self.activities = activities
     self.messaging = messaging
     self.search = search
+    self.discovery = discovery
     self.settingsFeature = settingsFeature
     self.analytics = analytics
     self.badgePresentationDelay = badgePresentationDelay
@@ -368,6 +387,14 @@ public final class AppModel {
     )
   }
 
+  public var discoveryComposition: DiscoveryComposition {
+    DiscoveryComposition(
+      discoveryFeature: self.discoveryFeature,
+      videoFeed: self.videoFeedComposition,
+      isPad: { AppEnvironment.current.device.userInterfaceIdiom == .pad }
+    )
+  }
+
   public var pledgeCheckoutComposition: PledgeCheckoutComposition {
     PledgeCheckoutComposition(
       pledgeFeature: self.pledgeFeature,
@@ -391,6 +418,7 @@ public final class AppModel {
       activities: self.activityComposition,
       messaging: self.messagingComposition,
       search: self.searchComposition,
+      discovery: self.discoveryComposition,
       settingsFeature: self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
       badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
