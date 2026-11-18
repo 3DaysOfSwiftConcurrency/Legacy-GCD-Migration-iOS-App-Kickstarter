@@ -7,7 +7,7 @@ import XCTest
 import UserNotifications
 
 @MainActor
-final class OnboardingViewModelTest: TestCase {
+final class OnboardingViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   // MARK: Properties
 

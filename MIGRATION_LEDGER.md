@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Semantically review 82 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "nextAction": "Semantically review 81 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6121,6 +6121,20 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "cfa-engine-audit",
       "outcome": "observed",
       "summary": "Fingerprint ddb27d255e499ebe7f30bdd60d3a84ebb42c50b9017960e86c364d6952cd5f7b; 2183 Swift files; 82 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"feature-tests-missing\":1,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-missing\":23,\"view-model-ownership\":5,\"view-model-test-placement\":7,\"view-model-test-suite-unresolved\":1,\"view-model-tests-missing\":1}."
+    },
+    {
+      "id": "onboarding-suite-name-audit",
+      "revision": "52b0377616219c51c760085e8c854c2c430dc3bc",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 8fcb75668801a722ca133ce21905d474a0d966f5109d7b61c197f9475e90c7c5; 2183 Swift files; 81 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"feature-tests-missing\":1,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-missing\":23,\"view-model-ownership\":5,\"view-model-test-placement\":7,\"view-model-tests-missing\":1}."
+    },
+    {
+      "id": "onboarding-suite-name-verification",
+      "revision": "52b037761 with verified working tree",
+      "kind": "test",
+      "outcome": "passed",
+      "summary": "LibraryTests/OnboardingViewModelTests ran on iPhone 17 Pro simulator: 11 passed, 0 failed. The suite name now matches the ViewModel it exercises."
     }
   ],
   "attempts": [
@@ -6139,6 +6153,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Activated the configured Codex continuation host.",
       "result": "This non-terminal checkpoint must queue the same Codex thread for the next migration action."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     },
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",

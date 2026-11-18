@@ -6,7 +6,7 @@ Library-iOS. The package test stub is not the migration regression suite.
 ## Latest checkpoint — onboarding and application permissions
 
 The final focused selection passed 28 LibraryTests: OnboardingFeatureTests,
-OnboardingViewModelTest and AppModelTests. The bounded permission/application-routing,
+OnboardingViewModelTests and AppModelTests. The bounded permission/application-routing,
 delegate analytics and Root Tabs selection passed 145 PresentationTests. Both used
 iPhone 17 Pro Max, iOS 26.2, with zero failures/skips. The pre-change focused baseline
 passed 23 tests; all existing scenarios remain covered after moving Feature tests
