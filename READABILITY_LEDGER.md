@@ -194,6 +194,22 @@ reopen or replace the completed CFA migration ledger.
   SettingsProjectNotificationsTests could not run because CoreSimulator refused
   connections.
 
-## Current slice
+## Programme status
 
-- Final source, protected-contract, and Git verification.
+The source review covers AppModel and all 23 tracked Feature areas, including
+the earlier Activity checkpoint. All 61 modified Swift files parse. The final
+Swift token comparison found identical string literal segments and
+identifier-only changes outside Authentication. Authentication additionally
+passes its existing login/resend operation explicitly and names the pending
+attempt before awaiting it. The migration ledger, behaviour contract and
+Xcode project match the baseline.
+
+Full Xcode verification remains pending. The project declares the requested
+`Library-iOS` scheme. Xcode's scheme discovery and generic simulator builds
+stopped during package manifest resolution under the session sandbox. The
+focused test dry run could not reach destination validation, and CoreSimulator
+still refused connections after routine recovery.
+
+The readability checkpoints are committed locally. Push attempts to
+`origin/migration/cfa-swift-concurrency` failed because this session could not
+resolve `github.com`.

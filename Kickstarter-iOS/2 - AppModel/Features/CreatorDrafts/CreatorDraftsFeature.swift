@@ -26,7 +26,7 @@ public struct AsyncCreatorDraftsProvider: CreatorDraftsProvider {
   }
 }
 
-/// The server remains the durable draft store. This Feature coordinates draftLoadTasks
+/// The server remains the durable draft store. This Feature coordinates draft reads
 /// and ordered edits; abandoning observation cannot undo an admitted edit.
 @MainActor
 public final class CreatorDraftsFeature {
