@@ -93,7 +93,7 @@ final class RewardsFeatureTests: TestCase {
     provider.rewards = [Reward.shipsToUSAReward, future, Reward.digitalReward]
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.load(route: route, project: .template, location: .usa)
+    await feature.loadProjectRewards(route: route, project: .template, location: .usa)
     XCTAssertEqual(provider.countries, ["US"])
     XCTAssertEqual(
       feature.snapshot(for: route).rewards.map(\.id),
@@ -113,13 +113,13 @@ final class RewardsFeatureTests: TestCase {
     provider.rewards = [Reward.shipsToUSAReward, Reward.digitalReward]
     let feature = self.feature(provider, move: true)
     let route = UUID()
-    await feature.load(route: route, project: .template, location: .australia)
+    await feature.loadProjectRewards(route: route, project: .template, location: .australia)
     XCTAssertEqual(
       feature.snapshot(for: route).rewards.map(\.id),
       [Reward.noReward.id, Reward.shipsToUSAReward.id, Reward.digitalReward.id]
     )
     provider.rewards = [Reward.digitalReward]
-    await feature.load(route: route, project: .template, location: nil)
+    await feature.loadProjectRewards(route: route, project: .template, location: nil)
     XCTAssertEqual(
       feature.snapshot(for: route).rewards.map(\.id),
       [Reward.digitalReward.id, Reward.noReward.id]
@@ -132,11 +132,11 @@ final class RewardsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.requestLoad(route: route, project: .template, location: .usa)
-    let duplicate = feature.requestLoad(route: route, project: .template, location: .usa)
+    let first = feature.requestProjectRewards(route: route, project: .template, location: .usa)
+    let duplicate = feature.requestProjectRewards(route: route, project: .template, location: .usa)
     await provider.waitForRequests(1)
     XCTAssertEqual(provider.countries, ["US"])
-    let second = feature.requestLoad(route: route, project: .template, location: .australia)
+    let second = feature.requestProjectRewards(route: route, project: .template, location: .australia)
     await provider.waitForRequests(2)
     XCTAssertTrue(first.isCancelled)
     try provider.finish(1, rewards: [Reward.digitalReward])
@@ -152,16 +152,16 @@ final class RewardsFeatureTests: TestCase {
     let provider = ControlledRewardsProvider()
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.load(route: route, project: .template, location: nil)
+    await feature.loadProjectRewards(route: route, project: .template, location: nil)
     let cached = feature.snapshot(for: route).rewards
     provider.fail = true
-    await feature.load(route: route, project: .template, location: .usa)
+    await feature.loadProjectRewards(route: route, project: .template, location: .usa)
     XCTAssertEqual(feature.snapshot(for: route).rewards, cached)
     XCTAssertNotNil(feature.snapshot(for: route).error)
     XCTAssertFalse(feature.snapshot(for: route).hasResult)
     XCTAssertFalse(feature.snapshot(for: route).isLoading)
     provider.fail = false
-    await feature.load(route: route, project: .template, location: .usa)
+    await feature.loadProjectRewards(route: route, project: .template, location: .usa)
     XCTAssertNil(feature.snapshot(for: route).error)
   }
 
@@ -172,8 +172,8 @@ final class RewardsFeatureTests: TestCase {
     let feature = self.feature(provider)
     let firstRoute = UUID()
     let secondRoute = UUID()
-    let first = feature.requestLoad(route: firstRoute, project: .template, location: nil)
-    let second = feature.requestLoad(route: secondRoute, project: .template, location: nil)
+    let first = feature.requestProjectRewards(route: firstRoute, project: .template, location: nil)
+    let second = feature.requestProjectRewards(route: secondRoute, project: .template, location: nil)
     await provider.waitForRequests(2)
     feature.release(route: firstRoute)
     XCTAssertTrue(first.isCancelled)
@@ -192,7 +192,7 @@ final class RewardsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.requestLoad(route: route, project: .template, location: nil)
+    let first = feature.requestProjectRewards(route: route, project: .template, location: nil)
     await provider.waitForRequests(1)
     AppEnvironment.pushEnvironment(currentUser: User.template)
     defer { AppEnvironment.popEnvironment() }
@@ -201,7 +201,7 @@ final class RewardsFeatureTests: TestCase {
       await first.value
       XCTAssertTrue(feature.snapshot(for: route).rewards.isEmpty)
       XCTAssertFalse(feature.snapshot(for: route).hasResult)
-      let signedIn = feature.requestLoad(route: route, project: .template, location: nil)
+      let signedIn = feature.requestProjectRewards(route: route, project: .template, location: nil)
       await provider.waitForRequests(2)
       try provider.finish(1, rewards: [Reward.digitalReward])
       await signedIn.value
@@ -215,15 +215,15 @@ final class RewardsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.load(route: route, project: .template, location: nil)
+    await feature.loadProjectRewards(route: route, project: .template, location: nil)
     XCTAssertTrue(feature.snapshot(for: route).hasResult)
 
     provider.pause = true
-    let old = feature.requestLoad(route: route, project: .template, location: nil)
+    let old = feature.requestProjectRewards(route: route, project: .template, location: nil)
     await provider.waitForRequests(2)
     feature.sessionFeature.sessionChanged()
     XCTAssertTrue(feature.snapshot(for: route).rewards.isEmpty)
-    let current = feature.requestLoad(route: route, project: .template, location: nil)
+    let current = feature.requestProjectRewards(route: route, project: .template, location: nil)
     await provider.waitForRequests(3)
     try provider.finish(0, rewards: [.shipsToUSAReward])
     await old.value
@@ -236,7 +236,7 @@ final class RewardsFeatureTests: TestCase {
   func testCancelledCallerDoesNotStartWork() async {
     let provider = ControlledRewardsProvider()
     let feature = self.feature(provider)
-    let task = Task { await feature.load(route: UUID(), project: .template, location: nil) }
+    let task = Task { await feature.loadProjectRewards(route: UUID(), project: .template, location: nil) }
     task.cancel()
     await task.value
     XCTAssertTrue(provider.countries.isEmpty)

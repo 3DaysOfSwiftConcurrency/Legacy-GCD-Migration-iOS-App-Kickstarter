@@ -121,9 +121,9 @@ public final class RewardsFeature {
     init(session: ReadSession) { self.session = session }
   }
 
-  private var shippingRoutes: [UUID: ShippingRoute] = [:]
+  private var shippingSelectionByRoute: [UUID: ShippingRoute] = [:]
   public func shippingSnapshot(for route: UUID) -> ShippingSnapshot {
-    guard let entry = self.shippingRoutes[route], entry.session == self.readSession else {
+    guard let entry = self.shippingSelectionByRoute[route], entry.session == self.readSession else {
       return ShippingSnapshot()
     }
     return entry.snapshot
@@ -150,12 +150,12 @@ public final class RewardsFeature {
       hasShippableRewards: hasShippableRewards
     )
     let session = self.readSession
-    let previous = self.shippingRoutes[route]
+    let previous = self.shippingSelectionByRoute[route]
     if let previous, previous.session == session,
        let request = previous.request, request.identity == identity { return request.task }
     previous?.request?.task.cancel()
     let entry = previous.flatMap { $0.session == session ? $0 : nil } ?? ShippingRoute(session: session)
-    self.shippingRoutes[route] = entry
+    self.shippingSelectionByRoute[route] = entry
     let requestID = UUID()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
@@ -181,7 +181,7 @@ public final class RewardsFeature {
         try await sleep(delay)
         try Task.checkCancellation()
         guard session.isCurrent(in: sessionFeature),
-          let self, self.shippingRoutes[route]?.request?.id == requestID
+          let self, self.shippingSelectionByRoute[route]?.request?.id == requestID
         else { return }
         entry.snapshot.hasResult = true
         entry.snapshot.locations = locations
@@ -194,7 +194,7 @@ public final class RewardsFeature {
         // Legacy materialization delayed errors as well as successful data.
         do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, session.isCurrent(in: sessionFeature),
-          let self, self.shippingRoutes[route]?.request?.id == requestID
+          let self, self.shippingSelectionByRoute[route]?.request?.id == requestID
         else { return }
         let failure = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
         entry.snapshot.error = failure
@@ -206,12 +206,12 @@ public final class RewardsFeature {
   }
 
   public func selectShippingLocation(_ location: Location, route: UUID) {
-    guard let entry = self.shippingRoutes[route], entry.session == self.readSession else { return }
+    guard let entry = self.shippingSelectionByRoute[route], entry.session == self.readSession else { return }
     entry.snapshot.selectedLocation = location
   }
 
   public func releaseShippingLocations(route: UUID) {
-    guard let entry = self.shippingRoutes.removeValue(forKey: route) else { return }
+    guard let entry = self.shippingSelectionByRoute.removeValue(forKey: route) else { return }
     let task = entry.request?.task
     entry.request = nil
     task?.cancel()
@@ -243,7 +243,7 @@ public final class RewardsFeature {
     init(session: ReadSession) { self.session = session }
   }
 
-  private var routes: [UUID: Route] = [:]
+  private var rewardCollectionByRoute: [UUID: Route] = [:]
   public let sessionFeature: SessionFeature
   private let makeProvider: @MainActor () -> any RewardsProvider
   private let platform: Platform
@@ -339,17 +339,17 @@ public final class RewardsFeature {
   }
 
   public func snapshot(for route: UUID) -> Snapshot {
-    guard let entry = self.routes[route], entry.session == self.readSession else { return Snapshot() }
+    guard let entry = self.rewardCollectionByRoute[route], entry.session == self.readSession else { return Snapshot() }
     return entry.snapshot
   }
 
-  public func load(route: UUID, project: Project, location: Location?) async {
+  public func loadProjectRewards(route: UUID, project: Project, location: Location?) async {
     guard !Task.isCancelled else { return }
-    await self.requestLoad(route: route, project: project, location: location).value
+    await self.requestProjectRewards(route: route, project: project, location: location).value
   }
 
   @discardableResult
-  public func requestLoad(route: UUID, project: Project, location: Location?) -> Task<Void, Never> {
+  public func requestProjectRewards(route: UUID, project: Project, location: Location?) -> Task<Void, Never> {
     let identity = Identity(
       projectID: project.id, country: location?.country, locationID: location?.id,
       moveNoReward: self.moveNoReward(),
@@ -357,12 +357,12 @@ public final class RewardsFeature {
       creatorID: project.creator.id, backedRewardID: project.personalization.backing?.rewardId
     )
     let session = self.readSession
-    let previous = self.routes[route]
+    let previous = self.rewardCollectionByRoute[route]
     if let previous, previous.session == session,
        let request = previous.request, request.identity == identity { return request.task }
     previous?.request?.task.cancel()
     let entry = previous.flatMap { $0.session == session ? $0 : nil } ?? Route(session: session)
-    self.routes[route] = entry
+    self.rewardCollectionByRoute[route] = entry
     let requestID = UUID()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
@@ -399,7 +399,7 @@ public final class RewardsFeature {
         try await sleep(delay)
         try Task.checkCancellation()
         guard session.isCurrent(in: sessionFeature),
-          let self, self.routes[route]?.request?.id == requestID
+          let self, self.rewardCollectionByRoute[route]?.request?.id == requestID
         else { return }
         let now = self.platform.now()
         let visibleRewards = rewards.filter { isStartDateBeforeToday(for: $0, now: now) }
@@ -409,7 +409,7 @@ public final class RewardsFeature {
         // Superseded reads do not produce product errors or empty success.
       } catch {
         guard !Task.isCancelled, session.isCurrent(in: sessionFeature),
-          let self, self.routes[route]?.request?.id == requestID
+          let self, self.rewardCollectionByRoute[route]?.request?.id == requestID
         else { return }
         entry.snapshot.error = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
       }
@@ -419,7 +419,7 @@ public final class RewardsFeature {
   }
 
   public func cancel(route: UUID) {
-    guard let entry = self.routes[route] else { return }
+    guard let entry = self.rewardCollectionByRoute[route] else { return }
     let task = entry.request?.task
     entry.request = nil
     entry.snapshot.isLoading = false
@@ -428,7 +428,7 @@ public final class RewardsFeature {
 
   public func release(route: UUID) {
     self.cancel(route: route)
-    self.routes.removeValue(forKey: route)
+    self.rewardCollectionByRoute.removeValue(forKey: route)
   }
 
   private enum AddOnsQuery: Equatable {

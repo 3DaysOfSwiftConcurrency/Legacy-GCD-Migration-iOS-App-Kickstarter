@@ -168,7 +168,13 @@ reopen or replace the completed CFA migration ledger.
   package resolution. RemoteConfigurationServiceTests and
   RemoteConfigFeatureFlagToolsViewModelTests could not run because CoreSimulator
   refused connections.
+- Rewards: named the project reward load and its task-returning request. Identified
+  shipping selectors separately from reward collections by route. Updated the
+  collection ViewModel and focused reward tests. Swift parsing and git diff --check
+  passed. The signing-disabled generic Library-iOS simulator build was blocked during
+  Swift package resolution. RewardsFeatureTests and rewards collection ViewModel tests
+  could not run because CoreSimulator refused connections.
 
 ## Current slice
 
-- Rewards Feature and reward collection and shipping location screens.
+- Search Feature and the search screen and filter lookups.
