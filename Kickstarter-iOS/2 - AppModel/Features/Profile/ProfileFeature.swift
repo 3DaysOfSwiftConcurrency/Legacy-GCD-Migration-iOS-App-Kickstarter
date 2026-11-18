@@ -53,7 +53,7 @@ public final class ProfileFeature {
   public let sessionFeature: SessionFeature
   private let loadAvatar: @MainActor (URL) async throws -> Data
   private var avatarRequest: (url: URL, userID: Int?, generation: Int, id: UUID, task: Task<Data, Error>)?
-  private var avatarVersion: UUID?
+  private var latestAvatarRequestID: UUID?
   private let makeProvider: () -> any ProfileProvider
   private let responseDelaySeconds: @MainActor () -> TimeInterval
   private let sleep: (TimeInterval) async throws -> Void
@@ -119,13 +119,13 @@ public final class ProfileFeature {
     self.loadAvatar = loadAvatar ?? { try await ProfileAvatarStore.shared.data(for: $0) }
   }
 
-  public func cancelAvatar() {
+  public func cancelAvatarLoad() {
     self.avatarRequest?.task.cancel()
     self.avatarRequest = nil
-    self.avatarVersion = nil
+    self.latestAvatarRequestID = nil
   }
 
-  public func avatar(url: URL) async throws -> Data {
+  public func loadAvatarData(url: URL) async throws -> Data {
     try Task.checkCancellation()
     let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
@@ -138,9 +138,9 @@ public final class ProfileFeature {
       pending.generation == generation {
       task = pending.task; id = pending.id
     } else {
-      self.cancelAvatar()
+      self.cancelAvatarLoad()
       id = UUID()
-      self.avatarVersion = id
+      self.latestAvatarRequestID = id
       task = Task { [loadAvatar] in
         try Task.checkCancellation()
         let data = try await loadAvatar(url)
@@ -152,14 +152,14 @@ public final class ProfileFeature {
     defer { if self.avatarRequest?.id == id { self.avatarRequest = nil } }
     let data = try await task.value
     try Task.checkCancellation()
-    guard self.avatarVersion == id,
+    guard self.latestAvatarRequestID == id,
       self.sessionFeature.isCurrent(userID: userID, generation: generation),
       self.sessionFeature.currentUser?.avatar.small == url.absoluteString else { throw CancellationError() }
     return data
   }
 
   public func reset() {
-    self.cancelAvatar()
+    self.cancelAvatarLoad()
     self.headerRequest?.task.cancel()
     self.headerRequest = nil
     for page in self.pages.values { page.request?.task.cancel() }

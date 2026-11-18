@@ -131,7 +131,13 @@ reopen or replace the completed CFA migration ledger.
   simulator build was blocked during Swift package resolution.
   PledgedProjectsFeatureTests and PPOViewModel tests could not run because
   CoreSimulator refused connections.
+- Profile: named the returned avatar bytes and the request cancelled when the profile
+  icon changes. Identified the current avatar request by ID. Updated RootViewModel and
+  focused avatar tests. Swift parsing and git diff --check passed. The signing-disabled
+  generic Library-iOS simulator build was blocked during Swift package resolution.
+  ProfileFeatureTests and RootViewModel avatar tests could not run because
+  CoreSimulator refused connections.
 
 ## Current slice
 
-- Profile Feature and its avatar and project collection callers.
+- ProjectDetails Feature and the project page and deep-link callers.

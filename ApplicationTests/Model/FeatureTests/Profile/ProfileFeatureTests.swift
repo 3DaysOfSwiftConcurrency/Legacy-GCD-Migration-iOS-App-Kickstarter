@@ -19,9 +19,9 @@ final class ProfileFeatureTests: TestCase {
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template })
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { ControlledProfileProvider() }, loadAvatar: { _ in try await gate.request() })
     let url = try XCTUnwrap(URL(string: User.template.avatar.small))
-    let first = _Concurrency.Task { try await feature.avatar(url: url) }
+    let first = _Concurrency.Task { try await feature.loadAvatarData(url: url) }
     await gate.waitFor(1)
-    let second = _Concurrency.Task { try await feature.avatar(url: url) }
+    let second = _Concurrency.Task { try await feature.loadAvatarData(url: url) }
     await _Concurrency.Task.yield()
     session.sessionChanged()
     try gate.finish(0, .success(Data([1])))
@@ -36,10 +36,10 @@ final class ProfileFeatureTests: TestCase {
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template })
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { ControlledProfileProvider() }, loadAvatar: { _ in try await gate.request() })
     let url = try XCTUnwrap(URL(string: User.template.avatar.small))
-    let first = _Concurrency.Task { try await feature.avatar(url: url) }
+    let first = _Concurrency.Task { try await feature.loadAvatarData(url: url) }
     await gate.waitFor(1); try gate.finish(0, .failure(URLError(.notConnectedToInternet)))
     if case .success = await first.result { XCTFail("Expected failure") }
-    let retry = _Concurrency.Task { try await feature.avatar(url: url) }
+    let retry = _Concurrency.Task { try await feature.loadAvatarData(url: url) }
     await gate.waitFor(2); try gate.finish(1, .success(Data([2])))
     let value = try await retry.value
     XCTAssertEqual(value, Data([2]))
@@ -51,7 +51,7 @@ final class ProfileFeatureTests: TestCase {
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { user })
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { ControlledProfileProvider() }, loadAvatar: { _ in try await gate.request() })
     let url = try XCTUnwrap(URL(string: user.avatar.small))
-    let old = _Concurrency.Task { try await feature.avatar(url: url) }
+    let old = _Concurrency.Task { try await feature.loadAvatarData(url: url) }
     await gate.waitFor(1)
     user.avatar.small = "https://example.test/new-avatar.png"
     try gate.finish(0, .success(Data([1])))
@@ -64,7 +64,7 @@ final class ProfileFeatureTests: TestCase {
     let session = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { .template })
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { ControlledProfileProvider() }, loadAvatar: { _ in try await gate.request() })
     let url = try XCTUnwrap(URL(string: User.template.avatar.small))
-    let request = _Concurrency.Task { try await feature.avatar(url: url) }
+    let request = _Concurrency.Task { try await feature.loadAvatarData(url: url) }
     await gate.waitFor(1); feature.reset(); try gate.finish(0, .success(Data([1])))
     if case .failure(is CancellationError) = await request.result {} else { XCTFail("Reset avatar escaped") }
   }

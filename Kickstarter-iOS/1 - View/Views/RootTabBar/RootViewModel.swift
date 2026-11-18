@@ -324,7 +324,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     self.avatarTask?.cancel()
     self.avatarID = nil
     self.avatarInput = nil
-    guard isLoggedIn, let url else { self.profileFeature.cancelAvatar(); self.avatarTask = nil; return nil }
+    guard isLoggedIn, let url else { self.profileFeature.cancelAvatarLoad(); self.avatarTask = nil; return nil }
     let id = UUID()
     self.avatarID = id
     self.avatarInput = (url, index, generation)
@@ -332,7 +332,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     self.avatarTask = Task { [weak self] in
       defer { if self?.avatarID == id { self?.avatarTask = nil } }
       do {
-        let data = try await feature.avatar(url: url)
+        let data = try await feature.loadAvatarData(url: url)
         try Task.checkCancellation()
         guard let self, self.avatarID == id else { return }
         self.onAvatarImage?(data, url, index)
