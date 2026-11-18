@@ -86,8 +86,8 @@ public final class SearchFiltersUseCase: SearchFiltersUseCaseType, SearchFilters
     }
     self.selectionObservation = selection.observe { [weak self, weak selection] change in
       guard let self, let selection else { return }
-      self.selectionFieldsSeen.insert(change.field)
-      guard self.selectionFieldsSeen.count == 8 else { return }
+      self.initializedFilterFieldIDs.insert(change.field)
+      guard self.initializedFilterFieldIDs.count == 8 else { return }
       self.searchFilters.update(
         withSort: selection.selectedSortValue,
         category: selection.selectedCategoryValue,
@@ -114,7 +114,7 @@ public final class SearchFiltersUseCase: SearchFiltersUseCaseType, SearchFilters
   private let searchFeature: SearchFeature
   private var lookupObservation: MainActorObservation?
   private var selectionObservation: MainActorObservation?
-  private var selectionFieldsSeen = Set<Int>()
+  private var initializedFilterFieldIDs = Set<Int>()
 
   nonisolated internal static let defaultSortOption = DiscoveryParams.Sort.magic
 

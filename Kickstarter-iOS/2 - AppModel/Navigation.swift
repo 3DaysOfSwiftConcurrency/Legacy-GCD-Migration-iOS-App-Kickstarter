@@ -108,10 +108,10 @@ extension Navigation {
   }
 
   public static func match(_ url: URL, apiBaseURL: URL, webBaseURL: URL) -> Navigation? {
-    return allRoutes(webBaseURL: webBaseURL).reduce(nil) { accum, templateAndRoute in
-      let (template, route) = templateAndRoute
-      return accum ?? parsedParams(url: url, fromTemplate: template,
-                                   apiBaseURL: apiBaseURL, webBaseURL: webBaseURL).flatMap(route)
+    return allRoutes(webBaseURL: webBaseURL).reduce(nil) { matchedDestination, routeEntry in
+      let (template, makeDestination) = routeEntry
+      return matchedDestination ?? decodeMatchingRouteParameters(url: url, fromTemplate: template,
+                                   apiBaseURL: apiBaseURL, webBaseURL: webBaseURL).flatMap(makeDestination)
     }
   }
 
@@ -122,10 +122,10 @@ extension Navigation {
   }
 
   public static func deepLinkMatch(_ url: URL, apiBaseURL: URL, webBaseURL: URL) -> Navigation? {
-    return deepLinkRoutes(webBaseURL: webBaseURL).reduce(nil) { accum, templateAndRoute in
-      let (template, route) = templateAndRoute
-      return accum ?? parsedParams(url: url, fromTemplate: template,
-                                   apiBaseURL: apiBaseURL, webBaseURL: webBaseURL).flatMap(route)
+    return deepLinkRoutes(webBaseURL: webBaseURL).reduce(nil) { matchedDestination, routeEntry in
+      let (template, makeDestination) = routeEntry
+      return matchedDestination ?? decodeMatchingRouteParameters(url: url, fromTemplate: template,
+                                   apiBaseURL: apiBaseURL, webBaseURL: webBaseURL).flatMap(makeDestination)
     }
   }
 
@@ -540,14 +540,14 @@ private func settingsNotifications(_ params: RouteParamsDecoded) -> Navigation? 
 
 // MARK: - Helpers
 
-private func parsedParams(url: URL, fromTemplate template: String, apiBaseURL: URL, webBaseURL: URL) -> RouteParamsDecoded? {
+private func decodeMatchingRouteParameters(url: URL, fromTemplate template: String, apiBaseURL: URL, webBaseURL: URL) -> RouteParamsDecoded? {
   let recognizedEmailHosts = [
     "clicks.kickstarter.com",
     "emails.kickstarter.com"
   ]
 
-  let hostRecognizer = { accum, host in
-    accum || url.host.map { $0.hasPrefix(host) } == .some(true)
+  let hostRecognizer = { matchedDestination, host in
+    matchedDestination || url.host.map { $0.hasPrefix(host) } == .some(true)
   }
 
   let isRecognizedEmailHost = recognizedEmailHosts.reduce(false, hostRecognizer)
@@ -597,18 +597,18 @@ private func parsedParams(url: URL, fromTemplate template: String, apiBaseURL: U
       params[item.name] = item.value
     }
 
-  var object: RouteParamsDecoded = [:]
+  var decodedRouteParameters: RouteParamsDecoded = [:]
   params.forEach { key, value in
-    object[key] = value
+    decodedRouteParameters[key] = value
   }
 
   // If the deeplink opens the project page, track the url.
   if urlComponents.first == "projects" {
-    object[RouteParamsDecoded.CodingKeys.deeplinkUrl.rawValue] = url.absoluteString
-    object[RouteParamsDecoded.CodingKeys.path.rawValue] = url.path
+    decodedRouteParameters[RouteParamsDecoded.CodingKeys.deeplinkUrl.rawValue] = url.absoluteString
+    decodedRouteParameters[RouteParamsDecoded.CodingKeys.path.rawValue] = url.path
   }
 
-  return object
+  return decodedRouteParameters
 }
 
 private func stringToInt(_ string: String) -> Int? {

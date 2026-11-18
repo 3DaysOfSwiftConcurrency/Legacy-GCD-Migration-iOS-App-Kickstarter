@@ -49,9 +49,9 @@ public final class VideoFeedAudioController {
   private enum AudioEvent: Sendable { case volumeUp, silentSwitch }
   private var eventContinuation: AsyncStream<AudioEvent>.Continuation?
   internal private(set) var observationTask: Task<Void, Never>?
-  private var observationVersion = UUID()
+  private var audioObservationID = UUID()
   internal private(set) var resetTask: Task<Void, Never>?
-  private var resetVersion = UUID()
+  private var audioResetID = UUID()
   private var volumeView: MPVolumeView?
   private var isDismissed = false
   private let nextTurn: @MainActor () async -> Void
@@ -100,7 +100,7 @@ public final class VideoFeedAudioController {
   public func setupObservers(in view: UIView) {
     self.stopObserving()
     self.isDismissed = false
-    let version = self.observationVersion
+    let version = self.audioObservationID
     let (events, continuation) = AsyncStream<AudioEvent>.makeStream()
     self.eventContinuation = continuation
     let volumeView = MPVolumeView(frame: .zero)
@@ -114,7 +114,7 @@ public final class VideoFeedAudioController {
     // stream; no controller/session state is touched from the callback.
     self.volumeObservation = AVAudioSession.sharedInstance()
       .observe(\.outputVolume, options: [.old, .new]) { _, change in
-        guard let old = change.oldValue, let new = change.newValue, new > old else { return }
+        guard let previousVolume = change.oldValue, let currentVolume = change.newValue, currentVolume > previousVolume else { return }
         continuation.yield(.volumeUp)
       }
     self.muteStateObserver = NotificationCenter.default.scopedObserver(
@@ -123,7 +123,7 @@ public final class VideoFeedAudioController {
     self.observationTask = Task { [weak self] in
       for await event in events {
         guard !Task.isCancelled, let self, !self.isDismissed,
-          self.observationVersion == version else { return }
+          self.audioObservationID == version else { return }
         switch event {
         case .volumeUp:
           self.handleVolumeUp()
@@ -136,7 +136,7 @@ public final class VideoFeedAudioController {
   }
 
   private func stopObserving() {
-    self.observationVersion = UUID()
+    self.audioObservationID = UUID()
     self.volumeObservation?.invalidate()
     self.volumeObservation = nil
     if let observer = self.muteStateObserver { observer.dispose() }
@@ -185,7 +185,7 @@ public final class VideoFeedAudioController {
   public func handleDismiss() {
     self.isDismissed = true
     self.stopObserving()
-    self.resetVersion = UUID()
+    self.audioResetID = UUID()
     self.resetTask?.cancel()
     self.isResettingAudioSession = false
     self.isPlaybackSessionActive = false
@@ -207,7 +207,7 @@ public final class VideoFeedAudioController {
   private func resetSession() {
     self.resetTask?.cancel()
     let version = UUID()
-    self.resetVersion = version
+    self.audioResetID = version
     self.isResettingAudioSession = true
     self.isPlaybackSessionActive = false
 
@@ -218,7 +218,7 @@ public final class VideoFeedAudioController {
     let nextTurn = self.nextTurn
     self.resetTask = Task { [weak self] in
       await nextTurn()
-      guard !Task.isCancelled, let self, !self.isDismissed, self.resetVersion == version else { return }
+      guard !Task.isCancelled, let self, !self.isDismissed, self.audioResetID == version else { return }
       self.isResettingAudioSession = false
       self.resetTask = nil
     }

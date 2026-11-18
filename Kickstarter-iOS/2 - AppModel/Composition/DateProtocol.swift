@@ -15,25 +15,25 @@ extension Date: DateProtocol {
 }
 
 internal struct MockDate: DateProtocol {
-  private let time: TimeInterval
+  private let timestamp: TimeInterval
 
   internal init() {
-    self.time = 1_475_361_315
+    self.timestamp = 1_475_361_315
   }
 
-  internal init(timeIntervalSince1970 time: TimeInterval) {
-    self.time = time
+  internal init(timeIntervalSince1970 timestamp: TimeInterval) {
+    self.timestamp = timestamp
   }
 
   internal var timeIntervalSince1970: TimeInterval {
-    return self.time
+    return self.timestamp
   }
 
   internal var date: Date {
-    return Date(timeIntervalSince1970: self.time)
+    return Date(timeIntervalSince1970: self.timestamp)
   }
 
   internal func addingTimeInterval(_ interval: TimeInterval) -> MockDate {
-    return MockDate(timeIntervalSince1970: self.time + interval)
+    return MockDate(timeIntervalSince1970: self.timestamp + interval)
   }
 }
