@@ -2642,8 +2642,8 @@
 			"fileRef" = "3877AB3EB76904D3FB48A585";
 		};
 		"EFE98DFF0B8A68154A03DA97" = {
-			"name" = "ChangeEmailViewModelSwiftUIIntegrationTest.swift";
-			"path" = "Kickstarter-iOS/1 - View/Views/ChangeEmail/Controller/ChangeEmailViewModelSwiftUIIntegrationTest.swift";
+			"name" = "ChangeEmailViewModel.swift";
+			"path" = "Kickstarter-iOS/1 - View/Views/ChangeEmail/Controller/ChangeEmailViewModel.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";

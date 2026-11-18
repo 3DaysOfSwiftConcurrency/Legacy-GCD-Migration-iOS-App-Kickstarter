@@ -4,13 +4,13 @@ import Prelude
 import XCTest
 
 @MainActor
-final class ChangeEmailScreenModelTests: TestCase {
+final class ChangeEmailViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = SettingsFeature(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var model = ChangeEmailScreenModel(settingsFeature: self.feature, sleep: { _ in })
+  private lazy var model = ChangeEmailViewModel(settingsFeature: self.feature, sleep: { _ in })
 
   override func setUp() async throws {
     try await super.setUp()

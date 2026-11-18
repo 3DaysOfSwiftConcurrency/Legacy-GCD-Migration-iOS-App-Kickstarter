@@ -6240,6 +6240,20 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "cfa-engine-audit",
       "outcome": "observed",
       "summary": "Fingerprint 1876872685c7529c7c55e52aaf12d4dad44fd684443c87e44cc67031ded5cc8e; 2184 Swift files; 64 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":23,\"view-model-ownership\":1}."
+    },
+    {
+      "id": "change-email-ownership-verification",
+      "revision": "5edbbc15d with verified Change Email working tree",
+      "kind": "source-and-test",
+      "outcome": "passed",
+      "summary": "Renamed the Change Email screen model and source file to ChangeEmailViewModel, retained its narrow SettingsFeature default from AppModel.shared and direct feature injection in tests, and made the screen cancel its owned load, save and verification tasks on disappearance. LibraryTests/ChangeEmailViewModelTests: 4 passed, 0 failed on iPhone 17 Pro (iOS Simulator 26.2)."
+    },
+    {
+      "id": "change-email-ownership-post-audit",
+      "revision": "5edbbc15d8e4c7cdf4324d069770692811109ab2",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint a03766d87e109bdff297c17e17b10d18a467eaa137c39e7d3bb4e2fafe224d8e; 2184 Swift files; 64 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":22,\"view-model-ownership\":1,\"view-model-test-placement\":1}."
     }
   ],
   "attempts": [
@@ -6290,6 +6304,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Completed the remaining Feature coordination review.",
       "result": "All remaining coordination candidates preserve a single Feature owner with generation-safe asynchronous work; 207 focused tests passed."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     },
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",

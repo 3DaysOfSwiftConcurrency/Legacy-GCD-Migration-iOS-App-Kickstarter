@@ -4,7 +4,7 @@ import Observation
 
 @MainActor
 @Observable
-final class ChangeEmailScreenModel {
+final class ChangeEmailViewModel {
   var currentEmail = ""
   var newEmail = ""
   var password = ""
@@ -31,11 +31,20 @@ final class ChangeEmailScreenModel {
   private var saveRevision = 0
   private var verifyRevision = 0
 
-  init(settingsFeature: SettingsFeature? = nil, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  init(settingsFeature: SettingsFeature = AppModel.shared.settingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) {
-    self.settingsFeature = settingsFeature ?? AppModel.shared.settingsFeature
+    self.settingsFeature = settingsFeature
     self.sleep = sleep
+  }
+
+  func stop() {
+    self.loadTask?.cancel()
+    self.saveTask?.cancel()
+    self.verifyTask?.cancel()
+    self.loadTask = nil
+    self.saveTask = nil
+    self.verifyTask = nil
   }
 
   func viewDidLoad() {
