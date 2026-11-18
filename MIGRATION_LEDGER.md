@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "hybrid-review",
-  "nextAction": "Review target-boundary exceptions and the remaining SessionFeature/SettingsFeature coordination, beginning with RichPushNotifications and DeveloperExamples.",
+  "nextAction": "Review the remaining SessionFeature coordination group, beginning with Activity, Authentication, Discovery and Discussion, then run their focused tests.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6142,6 +6142,27 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "source-and-test-review",
       "outcome": "passed",
       "summary": "Source review confirmed per-route request identity, cancellation and teardown release in PledgedProjectsFeature and ProjectDetailsFeature. Their focused LibraryTests suites passed on iPhone 17 Pro simulator: 39 passed, 0 failed."
+    },
+    {
+      "id": "rich-push-developer-examples-boundary-verification",
+      "revision": "d8318897b",
+      "kind": "source-build-and-test-review",
+      "outcome": "passed-with-limitation",
+      "summary": "RichPushNotifications Debug simulator build passed with code signing disabled. NotificationDelivery confines the direct URLSession to a system-owned notification-extension delivery, cancels it on expiry and invalidates it after download. DeveloperExamplesFeature route/session cancellation tests passed: 13 passed, 0 failed. The RichPush Internal Beta scheme remains blocked by an unrelated duplicate GoogleService-Info.plist output."
+    },
+    {
+      "id": "settings-session-coordination-verification",
+      "revision": "d8318897b",
+      "kind": "source-and-test-review",
+      "outcome": "passed",
+      "summary": "SettingsFeature source review confirmed it delegates user ownership to SessionFeature, serializes writes, cancels superseded lifecycle refreshes and rejects stale generation results. SettingsFeatureTests and SettingsProjectNotificationsTests passed on iPhone 17 Pro simulator: 52 passed, 0 failed."
+    },
+    {
+      "id": "direct-url-session-boundary-verification",
+      "revision": "d8318897b",
+      "kind": "source-and-test-review",
+      "outcome": "passed",
+      "summary": "All direct URLSession leads were reviewed: two are KsApiTests hermetic URLProtocol tests that reject real-network routes, verified by 16 passing DemoCatalogTests; the only production lead is the separately-built RichPush notification extension delivery boundary."
     }
   ],
   "attempts": [
@@ -6180,6 +6201,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Completed Pledged Projects and Project Details task-lifetime review.",
       "result": "Per-route cancellation, stale-publication guards and teardown release are covered by 39 passing focused tests. Continue with independent target-boundary and coordination review."
+    },
+    {
+      "action": "Completed direct URLSession lead review.",
+      "result": "No application Feature bypass remains in the three scanner leads; test-only and system-extension boundaries were verified independently."
     }
   ],
   "blocker": null,
