@@ -2743,6 +2743,7 @@
 				"AAF5487A2F2445C0001DB5AC",
 				"60A776A73020EFD80063D0A3",
 				"AAF5481B2F2445C0001DB5AC",
+				"CFA052000000000000000002",
 			);
 		};
 		"CFA041900000000000000002" = {
@@ -4493,6 +4494,7 @@
 			"sourceTree" = "<group>";
 			"children" = (
 				"FC8D50420B6D6389A9D4D607",
+				"CFA051000000000000000002",
 			);
 		};
 		"59D8EDFCB3E17084B6E6D42F" = {
@@ -4936,6 +4938,7 @@
 				"AAF548FB2F2445C0001DB5AC",
 				"AAF548FC2F2445C0001DB5AC",
 				"AAF548FD2F2445C0001DB5AC",
+				"CFA052000000000000000001",
 				"AAF548FE2F2445C0001DB5AC",
 				"AAF548FF2F2445C0001DB5AC",
 				"AAF549002F2445C0001DB5AC",
@@ -8384,6 +8387,7 @@
 				"95F772FFC88F0CD1AD84FABE",
 				"7CF122CAE9869F75554EF53C",
 				"E5044FB2EE5614B92A497993",
+				"CFA051000000000000000001",
 				"1AD1BC52B17CCBA114A2B15F",
 				"73937F0118D8B53642137263",
 				"485DD5334BF159C8C241B2D7",
@@ -20814,6 +20818,27 @@
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"CFA051000000000000000001" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "CFA051000000000000000002";
+		};
+		"CFA051000000000000000002" = {
+			"name" = "StatsigDebugViewModel.swift";
+			"path" = "Kickstarter-iOS/1 - View/Views/StatsigDebugger/StatsigDebugViewModel.swift";
+			"isa" = "PBXFileReference";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.swift";
+		};
+		"CFA052000000000000000001" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "CFA052000000000000000002";
+		};
+		"CFA052000000000000000002" = {
+			"path" = "StatsigDebugViewModelTests.swift";
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"sourceTree" = "<group>";
 		};
 		"B5898AAA2C8686804A0AACB0" = {
 			"isa" = "PBXBuildFile";

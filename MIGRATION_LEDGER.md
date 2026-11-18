@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Trace the Statsig debug and VideoFeed share-sheet routes, then continue lifecycle review of remaining screen candidates.",
+  "nextAction": "Semantically review 62 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6275,6 +6275,34 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "source-review",
       "outcome": "passed",
       "summary": "Semantic CFA review confirmed these scanner candidates are reusable presentation components rather than feature-owning screens: VideoFeedBannerView, OnboardingItemView, EstimatedShippingCheckoutView, PPOEmptyStateView, ReportProjectLabelView, FundedPercentageCircleView, VideoFeedBottomOverlayView, VideoFeedOverlayView, VideoFeedProgressBarView, VideoFeedRightRailView, VideoFeedToastContainerView and VideoFeedToastView. They receive immutable display data, bindings, player state or UI event closures from their owning screen and do not acquire AppModel or Feature dependencies. Their view-scoped tasks use task identity/cancellation checks."
+    },
+    {
+      "id": "statsig-debug-screen-ownership-verification",
+      "revision": "3b7ea7e27 with verified Statsig working tree",
+      "kind": "source-and-test",
+      "outcome": "passed",
+      "summary": "StatsigDebugView now owns a private StatsigDebugViewModel. The model defaults its SettingsFeature from AppModel.shared and routes enablement, reload and debugger access through that feature; the View retains only UIKit dismissal presentation. BetaTools no longer injects a Statsig client into the screen. LibraryTests/SettingsFeatureTests: 43 passed, 0 failed on iPhone 17 Pro (iOS Simulator 26.2)."
+    },
+    {
+      "id": "statsig-debug-screen-post-audit",
+      "revision": "3b7ea7e2768c69bd6b6f5c42d4e7639fa1c45b1b",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint a4ae8a30b2ac207b45a7c0af69854f8927d793dd248e1926532e1f18cd1ee7c5; 2185 Swift files; 63 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":21,\"view-model-ownership\":1,\"view-model-tests-missing\":1}."
+    },
+    {
+      "id": "statsig-debug-view-model-tests",
+      "revision": "3b7ea7e27 with verified Statsig test working tree",
+      "kind": "test",
+      "outcome": "passed",
+      "summary": "Added StatsigDebugViewModelTests in the canonical Model/ViewModelTests folder. The focused Library-iOS simulator run passed 2/2: a configured client exposes state and receives reload/debugger actions through SettingsFeature; no client disables the screen safely."
+    },
+    {
+      "id": "statsig-debug-view-model-post-audit",
+      "revision": "3b7ea7e2768c69bd6b6f5c42d4e7639fa1c45b1b",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 8c5f573f3f417982ba5a5282ed58613fa28aa5b9d45838241119a23a7c48b23a; 2186 Swift files; 62 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":21,\"view-model-ownership\":1}."
     }
   ],
   "attempts": [
@@ -6357,6 +6385,14 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Semantically reviewed reusable presentation scanner candidates.",
       "result": "The reviewed candidates are display components owned by parent screens; no feature boundary or dedicated ViewModel is required."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     }
   ],
   "blocker": null,

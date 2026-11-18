@@ -1,18 +1,13 @@
-import Experimentation
 import KDS
 
 import SwiftUI
 
 struct StatsigDebugView: View {
-  let client: StatsigClientType?
-
-  var isStatsigEnabled: Bool {
-    self.client.isSome
-  }
+  @State private var viewModel = StatsigDebugViewModel()
 
   @ViewBuilder
   private var status: some View {
-    if self.isStatsigEnabled {
+    if self.viewModel.isStatsigEnabled {
       HStack {
         Image(systemName: "checkmark.circle.fill")
           .accessibilityHidden(true)
@@ -42,7 +37,7 @@ struct StatsigDebugView: View {
       } label: {
         Text("Open debug view")
       }
-      .disabled(!self.isStatsigEnabled)
+      .disabled(!self.viewModel.isStatsigEnabled)
       Divider()
       Text("Reload the Statsig user, and all their experiments and flags.")
       Button {
@@ -54,7 +49,7 @@ struct StatsigDebugView: View {
           Text("Reload Statsig")
         }
       }
-      .disabled(!self.isStatsigEnabled)
+      .disabled(!self.viewModel.isStatsigEnabled)
       Spacer()
     }
     .font(InterFont.bodyMD.swiftUIFont())
@@ -67,16 +62,15 @@ struct StatsigDebugView: View {
     // Statsig doesn't expose a view controller, only this method to present from the root view.
     // We have to dismiss the beta controller first; then we can show the debugger.
     UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: true) {
-      self.client?.showDebugger()
+        self.viewModel.showDebugger()
     }
   }
 
   private func reload() {
-    let user = AppEnvironment.current.statsigUser()
-    self.client?.reload(withUser: user)
+    self.viewModel.reload()
   }
 }
 
 #Preview {
-  StatsigDebugView(client: nil)
+  StatsigDebugView()
 }

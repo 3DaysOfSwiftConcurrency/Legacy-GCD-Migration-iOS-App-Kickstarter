@@ -88,6 +88,18 @@ extension SettingsFeature {
     self.applicationSettings?.userDefaults().statsigFeatureFlags[feature.rawValue] = enabled
   }
 
+  public var hasStatsigClient: Bool {
+    self.applicationSettings?.statsigClient() != nil
+  }
+
+  public func reloadStatsig() {
+    self.applicationSettings?.statsigClient()?.reload(withUser: AppEnvironment.current.statsigUser())
+  }
+
+  public func showStatsigDebugger() {
+    self.applicationSettings?.statsigClient()?.showDebugger()
+  }
+
   public var appStoreURL: String? { self.applicationSettings?.readConfiguration()?.iTunesLink }
   public var canOfferAppStoreRating: Bool { self.appStoreURL != nil }
   public var requiresConfiguredCountryNewsletterOptIn: Bool {
