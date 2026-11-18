@@ -6091,8 +6091,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "completed",
-  "nextAction": "Migration completion evidence is recorded.",
+  "phase": "verify",
+  "nextAction": "Run the full Library-iOS test suite on a fresh Xcode service, then record the result before any completion decision.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6338,6 +6338,13 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "human-architecture-review",
       "outcome": "passed-with-limitation",
       "summary": "Final semantic CFA review covered every category in the 62-lead final audit. The 24 Feature-coordination leads were verified by focused Feature tests and source review; every remaining ownership, ViewModel, initializer, preview, AppModel launch, URLSession and presentation lead was reviewed directly. Confirmed issues were corrected and tested; all residual findings identify valid reusable presentation components, explicit UIHosting boundaries, test-only/system-extension code, or the private AppModel launch guard. No unreviewed CFA violation remains in the defined Kickstarter scope. Full-suite execution remains an Xcode build-service limitation; focused suites and a fresh no-signing app build passed."
+    },
+    {
+      "id": "full-library-suite-retry-limited",
+      "revision": "b8f0f68a4",
+      "kind": "test",
+      "outcome": "limited",
+      "summary": "Retried the full Library-iOS suite on the booted iPhone 17 Pro with a fresh result bundle. Xcode rebuilt the target successfully but did not launch a test worker or produce a usable result for ten minutes; the idle xcodebuild process was then terminated and reported BUILD INTERRUPTED. This is a reproducible local Xcode execution limitation, not a passing or failing suite result. The migration remains in verify."
     }
   ],
   "attempts": [
@@ -6432,23 +6439,24 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",
       "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Reopened completed migration.",
+      "result": "The former completion gate accepted a passed-with-limitation full-test record. The hardened runner now requires a passing test gate."
+    },
+    {
+      "action": "Claimed Codex continuation.",
+      "result": "The host signal matches the current ledger state."
     }
   ],
   "blocker": null,
-  "completionGate": {
-    "baseline": "migration-engine-acceptance-audit",
-    "build": "final-kickstarter-simulator-build",
-    "tests": "final-test-verification",
-    "behaviourRegression": "statsig-debug-screen-ownership-verification",
-    "primitiveInventory": "migration-engine-acceptance-audit",
-    "navigatorReview": "view-model-test-organization-verification",
-    "hybridReview": "presentation-boundary-and-app-target-semantic-review",
-    "finalCfaAudit": "final-cfa-compliance-audit",
-    "humanArchitectureReview": "final-human-architecture-review"
-  },
+  "completionGate": null,
   "continuation": {
     "host": "codex",
-    "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47"
+    "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47",
+    "pending": {
+      "token": "ac9e5974-a32d-4b72-acef-bceebb4f4188"
+    }
   }
 }
 ```
