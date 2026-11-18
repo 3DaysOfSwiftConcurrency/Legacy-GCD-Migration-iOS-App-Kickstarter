@@ -106,7 +106,14 @@ reopen or replace the completed CFA migration ledger.
   signing-disabled generic Library-iOS simulator build was blocked during Swift package
   resolution. MessagingFeatureTests and message search tests could not run because
   CoreSimulator refused connections.
+- Onboarding: named push authorization tasks and delayed tracking checks. Specified
+  that activation state belongs to the app and that scheduling compares it against the
+  last handled activation signal. Reviewed the onboarding screen and focused prompt-
+  sharing tests. Swift parsing and git diff --check passed. The signing-disabled
+  generic Library-iOS simulator build was blocked during Swift package resolution.
+  OnboardingFeatureTests and OnboardingViewModel tests could not run because
+  CoreSimulator refused connections.
 
 ## Current slice
 
-- Onboarding Feature and permission presentation.
+- Payments Feature and card setup presentation.

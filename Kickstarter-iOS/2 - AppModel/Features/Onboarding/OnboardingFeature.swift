@@ -46,12 +46,12 @@ public final class OnboardingFeature {
   private let tracking: () -> (any AppTrackingTransparencyType)?
   private let trackingDelay: @MainActor () async throws -> Void
   private let analytics: Analytics
-  private var pushOperations: [UUID: Task<Void, Never>] = [:]
-  private var trackingChecks: [UUID: Task<Void, Never>] = [:]
+  private var pushAuthorizationTasks: [UUID: Task<Void, Never>] = [:]
+  private var delayedTrackingCheckTasks: [UUID: Task<Void, Never>] = [:]
   private var hasDeniedPushAuthorization = false
   private var hasPreparedTracking = false
-  private var latestActiveState: Bool?
-  private var lastScheduledTrackingState: Bool?
+  private var latestApplicationActiveState: Bool?
+  private var lastActivationStateHandledForTracking: Bool?
   private var trackingObservation: (tracking: any AppTrackingTransparencyType, id: UUID)?
 
   var onBadgeReset: (@MainActor () -> Void)?
@@ -150,8 +150,8 @@ public final class OnboardingFeature {
   }
 
   deinit {
-    self.pushOperations.values.forEach { $0.cancel() }
-    self.trackingChecks.values.forEach { $0.cancel() }
+    self.pushAuthorizationTasks.values.forEach { $0.cancel() }
+    self.delayedTrackingCheckTasks.values.forEach { $0.cancel() }
     if let observation = self.trackingObservation {
       Task { @MainActor in observation.tracking.removeAuthorizationObserver(observation.id) }
     }
@@ -174,10 +174,10 @@ public final class OnboardingFeature {
     let state = OperationState()
     let task = start { [weak self] value in
       state.finished = true
-      self?.pushOperations[id] = nil
+      self?.pushAuthorizationTasks[id] = nil
       completion(value)
     }
-    if let task, !state.finished { self.pushOperations[id] = task }
+    if let task, !state.finished { self.pushAuthorizationTasks[id] = task }
   }
 
   private func checkPushAuthorizationForLaunch() {
@@ -228,21 +228,21 @@ public final class OnboardingFeature {
   }
 
   func setApplicationActive(_ state: Bool) {
-    self.latestActiveState = state
+    self.latestApplicationActiveState = state
     self.scheduleTrackingRequestIfNeeded()
     self.observeAuthorization()
   }
 
   private func scheduleTrackingRequestIfNeeded() {
-    guard self.hasPreparedTracking, let active = self.latestActiveState,
-          self.lastScheduledTrackingState != active else { return }
-    self.lastScheduledTrackingState = active
+    guard self.hasPreparedTracking, let active = self.latestApplicationActiveState,
+          self.lastActivationStateHandledForTracking != active else { return }
+    self.lastActivationStateHandledForTracking = active
     guard active else { return }
 
     let id = UUID()
     let delay = self.trackingDelay
-    self.trackingChecks[id] = Task { [weak self] in
-      defer { self?.trackingChecks[id] = nil }
+    self.delayedTrackingCheckTasks[id] = Task { [weak self] in
+      defer { self?.delayedTrackingCheckTasks[id] = nil }
       do {
         try await delay()
         try Task.checkCancellation()
@@ -270,6 +270,6 @@ public final class OnboardingFeature {
   }
 
   func waitForTrackingChecks() async {
-    for task in Array(self.trackingChecks.values) { await task.value }
+    for task in Array(self.delayedTrackingCheckTasks.values) { await task.value }
   }
 }
