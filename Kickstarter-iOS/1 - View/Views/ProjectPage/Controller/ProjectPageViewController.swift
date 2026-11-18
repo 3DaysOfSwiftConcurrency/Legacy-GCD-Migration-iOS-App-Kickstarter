@@ -814,12 +814,9 @@ public final class ProjectPageViewController: UIViewController, MessageBannerVie
   }
 
   private func goToReportProject(projectID: String, projectUrl: String) {
-    let reporting = self.composition.projectReportingFeature
     let reportProjectInfoView = ReportProjectInfoView(
       projectID: projectID,
       projectUrl: projectUrl,
-      viewModel: ReportProjectInfoViewModel(projectReportingFeature: reporting),
-      makeFormViewModel: { ReportProjectFormViewModel(projectReportingFeature: reporting) },
       onSuccessfulSubmit: { [weak self] in
         self?.viewModel.inputs.viewDidLoad()
       }

@@ -98,7 +98,7 @@ enum PPOPreparedEvent: Equatable {
 
 @MainActor
 final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutputs {
-  init(pledgedProjectsFeature: PledgedProjectsFeature) {
+  init(pledgedProjectsFeature: PledgedProjectsFeature = AppModel.shared.pledgedProjectsFeature) {
     self.pledgedProjectsFeature = pledgedProjectsFeature
     pledgedProjectsFeature.snapshots(route: self.route)
       .map(Self.present)

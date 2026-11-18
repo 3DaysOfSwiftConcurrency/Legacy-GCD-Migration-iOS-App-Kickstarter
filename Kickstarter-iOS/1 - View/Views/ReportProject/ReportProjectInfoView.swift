@@ -44,26 +44,21 @@ struct ReportProjectInfoView: View {
   let projectID: String
   let projectUrl: String
   let onSuccessfulSubmit: () -> Void
-  private let makeFormViewModel: @MainActor () -> ReportProjectFormViewModel
 
   @SwiftUI.Environment(\.dismiss) private var dismiss
   @State private var popToRoot = false
   /// Tracks which group rows are expanded. IDs are unique across the whole tree.
   @State private var expandedIDs: Set<ReportProjectInfoListItem.ID> = []
-  @StateObject private var viewModel: ReportProjectInfoViewModel
+  @StateObject private var viewModel = ReportProjectInfoViewModel()
 
   init(
     projectID: String,
     projectUrl: String,
-    viewModel: @autoclosure @escaping () -> ReportProjectInfoViewModel,
-    makeFormViewModel: @escaping @MainActor () -> ReportProjectFormViewModel,
     onSuccessfulSubmit: @escaping () -> Void
   ) {
     self.projectID = projectID
     self.projectUrl = projectUrl
-    self.makeFormViewModel = makeFormViewModel
     self.onSuccessfulSubmit = onSuccessfulSubmit
-    self._viewModel = StateObject(wrappedValue: viewModel())
   }
 
   var body: some View {
@@ -153,8 +148,7 @@ struct ReportProjectInfoView: View {
         projectID: self.projectID,
         projectURL: self.projectUrl,
         projectFlaggingKind: item.flaggingKind ?? GraphAPI.NonDeprecatedFlaggingKind.guidelinesViolation,
-        placeholder: item.placeholder,
-        viewModel: self.makeFormViewModel()
+        placeholder: item.placeholder
       )
     } label: {
       ChildRowLabel(item: item)

@@ -6,7 +6,7 @@ struct PPOView: View {
   // Defining this variable ensures the view responds to size category changes.
   @SwiftUI.Environment(\.sizeCategory) var sizeCategory
 
-  @StateObject private var viewModel: PPOViewModel
+  @StateObject private var viewModel = PPOViewModel()
   private let shouldRefresh: AnyPublisher<Void, Never>
   private let onCountChange: ((Int?) -> Void)?
   private let onHandleEvent: ((PPOPreparedEvent) -> Void)?
@@ -14,12 +14,10 @@ struct PPOView: View {
   @AccessibilityFocusState private var isBannerFocused: Bool
 
   init(
-    viewModel: @autoclosure @escaping () -> PPOViewModel,
     shouldRefresh: AnyPublisher<Void, Never>,
     onCountChange: ((Int?) -> Void)? = nil,
     onHandleEvent: ((PPOPreparedEvent) -> Void)? = nil
   ) {
-    self._viewModel = StateObject(wrappedValue: viewModel())
     self.shouldRefresh = shouldRefresh
     self.onCountChange = onCountChange
     self.onHandleEvent = onHandleEvent
@@ -155,7 +153,6 @@ struct PPOView: View {
 
 #Preview {
   PPOView(
-    viewModel: PPOViewModel(pledgedProjectsFeature: AppModel.shared.pledgedProjectsFeature),
     shouldRefresh: Empty().eraseToAnyPublisher()
   )
 }

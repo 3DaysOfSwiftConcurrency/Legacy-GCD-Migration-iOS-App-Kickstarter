@@ -37,7 +37,7 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
   private var emailID: UUID?
   private var submissionID: UUID?
 
-  public init(projectReportingFeature: ProjectReportingFeature) {
+  public init(projectReportingFeature: ProjectReportingFeature = AppModel.shared.projectReportingFeature) {
     self.projectReportingFeature = projectReportingFeature
   }
 

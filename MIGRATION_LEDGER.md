@@ -6092,7 +6092,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Semantically review 75 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
+  "nextAction": "Semantically review 64 scanner lead(s), starting with the applicable ownership, lifecycle and task-lifetime paths.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6226,6 +6226,20 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "cfa-engine-audit",
       "outcome": "observed",
       "summary": "Fingerprint b5cd0df3bb4cbeff0c42115ee92499c29c04dc85f31c1184ecae45eaebb52030; 2184 Swift files; 75 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":5,\"preview-feature-access\":1,\"preview-view-model-construction\":4,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":4,\"view-model-missing\":23,\"view-model-ownership\":4}."
+    },
+    {
+      "id": "screen-owned-view-model-verification",
+      "revision": "e512bfeab with verified ownership working tree",
+      "kind": "test",
+      "outcome": "passed",
+      "summary": "CFA ownership refactor: PPOView, ReportProjectInfoView, and ReportProjectFormView now construct private StateObject ViewModels; their ViewModels default the narrow AppModel.shared feature while tests retain explicit feature injection. Library-iOS result: 19 passed, 0 failed. PresentationTests PPOViewModelTests: 15 passed, 0 failed, on iPhone 17 Pro (iOS Simulator 26.2)."
+    },
+    {
+      "id": "screen-owned-view-model-post-audit",
+      "revision": "e512bfeab445bb6bdf5d9bd223f3a39ba327ddf6",
+      "kind": "cfa-engine-audit",
+      "outcome": "observed",
+      "summary": "Fingerprint 1876872685c7529c7c55e52aaf12d4dad44fd684443c87e44cc67031ded5cc8e; 2184 Swift files; 64 scanner leads; diff check passed; SwiftSyntax available; compiler index not-requested; codes {\"app-model-boolean-purpose\":1,\"direct-url-session\":3,\"feature-coordination\":24,\"feature-route-unresolved\":2,\"preview-view-model-construction\":3,\"screen-initializer-inputs\":6,\"view-model-initializer-construction\":1,\"view-model-missing\":23,\"view-model-ownership\":1}."
     }
   ],
   "attempts": [
@@ -6276,6 +6290,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Completed the remaining Feature coordination review.",
       "result": "All remaining coordination candidates preserve a single Feature owner with generation-safe asynchronous work; 207 focused tests passed."
+    },
+    {
+      "action": "Ran the CFA architecture inspector and migration project analysis.",
+      "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
     },
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",

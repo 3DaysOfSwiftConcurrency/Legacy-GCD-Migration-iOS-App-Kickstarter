@@ -10,7 +10,7 @@ public final class ReportProjectInfoViewModel: ObservableObject {
   private var loadTask: Task<Void, Never>?
   private var loadID: UUID?
 
-  public init(projectReportingFeature: ProjectReportingFeature) {
+  public init(projectReportingFeature: ProjectReportingFeature = AppModel.shared.projectReportingFeature) {
     self.projectReportingFeature = projectReportingFeature
   }
 

@@ -14,7 +14,6 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
   private let managePledgeComposition: ManagePledgeComposition
   private let paymentsFeature: PaymentsFeature
   private let projectPageComposition: ProjectPageComposition
-  private let pledgedProjectsFeature: PledgedProjectsFeature
   private let viewModel: PPOContainerViewModel
 
   public init(composition: PledgedProjectsComposition) {
@@ -22,7 +21,6 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
     self.managePledgeComposition = composition.activities.projectPage.managePledge
     self.paymentsFeature = composition.activities.projectPage.managePledge.paymentsFeature
     self.projectPageComposition = composition.activities.projectPage
-    self.pledgedProjectsFeature = composition.pledgedProjectsFeature
     self.viewModel = PPOContainerViewModel(
       pledgeFeature: composition.activities.projectPage.managePledge.pledgeFeature,
       activityFeature: composition.activities.activityFeature,
@@ -50,7 +48,6 @@ public class PPOContainerViewController: PagedContainerViewController<PPOContain
     self.title = Strings.tabbar_activity()
 
     let ppoView = PPOView(
-      viewModel: PPOViewModel(pledgedProjectsFeature: self.pledgedProjectsFeature),
       shouldRefresh: self.viewModel.shouldRefresh,
       onCountChange: { [weak self] count in
         self?.viewModel.projectAlertsCountChanged(count)
