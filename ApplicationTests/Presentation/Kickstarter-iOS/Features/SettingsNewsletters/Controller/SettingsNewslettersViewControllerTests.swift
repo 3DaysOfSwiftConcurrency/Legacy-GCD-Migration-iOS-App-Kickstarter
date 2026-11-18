@@ -9,6 +9,15 @@ import SnapshotTesting
 import XCTest
 
 internal final class SettingsNewslettersViewControllerTests: TestCase {
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var settingsFeature = SettingsFeature(
+    sessionFeature: self.sessionFeature,
+    responseDeliverySleep: { _ in },
+    makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+  )
+
   override func setUp() async throws {
     try await super.setUp()
     UIView.setAnimationsEnabled(false)
@@ -26,8 +35,8 @@ internal final class SettingsNewslettersViewControllerTests: TestCase {
       language, device in
 
       withEnvironment(currentUser: currentUser, language: language) {
-        let controller = Storyboard.SettingsNewsletters.instantiate(
-          SettingsNewslettersViewController.self
+        let controller = SettingsNewslettersViewController.instantiate(
+          settingsFeature: self.settingsFeature
         )
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: controller)
         parent.view.frame.size.height = 1_300

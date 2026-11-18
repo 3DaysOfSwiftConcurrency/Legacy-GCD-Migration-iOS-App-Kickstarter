@@ -3,6 +3,13 @@ import KsApi
 import UIKit
 
 internal final class SettingsNewslettersDataSource: ValueCellDataSource {
+  private let settingsFeature: SettingsFeature
+
+  internal init(settingsFeature: SettingsFeature) {
+    self.settingsFeature = settingsFeature
+    super.init()
+  }
+
   internal enum Section: Int {
     case newsletters
   }
@@ -22,8 +29,10 @@ internal final class SettingsNewslettersDataSource: ValueCellDataSource {
   override func configureCell(tableCell cell: UITableViewCell, withValue value: Any) {
     switch (cell, value) {
     case let (cell as SettingsNewslettersTopCell, value as User):
+      cell.configure(settingsFeature: self.settingsFeature)
       cell.configureWith(value: value)
     case let (cell as SettingsNewslettersCell, value as (newsletter: Newsletter, user: User)):
+      cell.configure(settingsFeature: self.settingsFeature)
       cell.configureWith(value: value)
     default:
       assertionFailure("Unrecognized (cell, viewModel) combo.")

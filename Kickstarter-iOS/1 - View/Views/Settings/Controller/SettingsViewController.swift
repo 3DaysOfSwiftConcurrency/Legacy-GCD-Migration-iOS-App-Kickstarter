@@ -210,7 +210,9 @@ extension SettingsViewController {
         composition: self.composition.findFriends
       )
     case .newsletters:
-      return SettingsNewslettersViewController.instantiate()
+      return SettingsNewslettersViewController.instantiate(
+        settingsFeature: self.composition.settingsFeature
+      )
     case .notifications:
       return SettingsNotificationsViewController.instantiate()
     default:

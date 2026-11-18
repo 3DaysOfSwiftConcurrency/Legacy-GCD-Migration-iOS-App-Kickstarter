@@ -6003,3 +6003,27 @@ dependencies and remain follow-up migration work. Live account navigation and th
 target suites remain unverified. The CFA gate rejects restored global selection in the
 account controller and its legacy parameterless factory. This is not full CFA compliance.
 Swift packages, target identifiers and existing history are unchanged. No push.
+
+### Settings Newsletters composition — 18 November 2026
+
+Author: Matthew Thomas.
+
+SettingsViewController now passes its existing SettingsFeature into
+SettingsNewslettersViewController. The controller constructs its view model and data source
+from that supplied feature, and the data source configures both newsletter cell types with the
+same instance before delivering their values. The cells no longer select AppModel.shared;
+each constructs its dedicated SettingsNewsletterCellViewModel only after receiving composition.
+
+Focused SettingsFeature, SettingsNewslettersViewModel and newsletter cell view-model coverage
+passed all 5 selected main-module tests. Focused Newsletter data-source, parent Settings
+view-model and Root Tabs navigation coverage passed all 12 selected Presentation tests with
+zero failures and skips on iPhone 17 Pro Max, iOS 26.2. Evidence:
+`/private/tmp/kickstarter-settings-newsletters-composition-library.xcresult` and
+`/private/tmp/kickstarter-settings-newsletters-composition-presentation.xcresult`.
+
+The Settings Newsletters reference snapshots compiled as part of PresentationTests but were
+not executed because the required iPad mini (A17 Pro), iOS 18.6 reference simulator remains
+unavailable. Live switch interaction and the whole Library and Presentation suites remain
+unverified. The CFA gate rejects restored global selection across the complete Newsletters
+view graph and rejects its legacy parameterless factory. This is not full CFA compliance.
+Swift packages, target identifiers and existing history are unchanged. No push.

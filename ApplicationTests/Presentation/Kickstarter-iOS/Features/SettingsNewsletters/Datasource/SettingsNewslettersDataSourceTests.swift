@@ -8,7 +8,15 @@ import XCTest
 
 @MainActor
 final class SettingsNewslettersDataSourceTests: XCTestCase {
-  let dataSource = SettingsNewslettersDataSource()
+  private let sessionFeature = SessionFeature(
+    makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var settingsFeature = SettingsFeature(
+    sessionFeature: self.sessionFeature,
+    responseDeliverySleep: { _ in },
+    makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
+  )
+  private lazy var dataSource = SettingsNewslettersDataSource(settingsFeature: self.settingsFeature)
   let tableView = UITableView()
 
   func testLoadData() {

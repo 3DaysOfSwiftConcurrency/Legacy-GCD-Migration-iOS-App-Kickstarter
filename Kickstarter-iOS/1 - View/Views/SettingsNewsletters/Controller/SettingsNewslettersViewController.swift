@@ -5,13 +5,16 @@ import Prelude
 import UIKit
 
 internal final class SettingsNewslettersViewController: UIViewController {
-  fileprivate let dataSource = SettingsNewslettersDataSource()
-  fileprivate let viewModel = SettingsNewslettersViewModel(settingsFeature: AppModel.shared.settingsFeature)
+  private var settingsFeature: SettingsFeature!
+  fileprivate lazy var dataSource = SettingsNewslettersDataSource(settingsFeature: self.settingsFeature)
+  fileprivate lazy var viewModel = SettingsNewslettersViewModel(settingsFeature: self.settingsFeature)
 
   @IBOutlet fileprivate var tableView: UITableView!
 
-  internal static func instantiate() -> SettingsNewslettersViewController {
-    return Storyboard.SettingsNewsletters.instantiate(SettingsNewslettersViewController.self)
+  internal static func instantiate(settingsFeature: SettingsFeature) -> SettingsNewslettersViewController {
+    let viewController = Storyboard.SettingsNewsletters.instantiate(SettingsNewslettersViewController.self)
+    viewController.settingsFeature = settingsFeature
+    return viewController
   }
 
   override func viewDidLoad() {

@@ -2452,3 +2452,14 @@ safe for arbitrary concurrent environment mutation.
   Settings and Root Tabs presentation coverage passes 12 tests. Reference snapshots and
   live account navigation remain unverified; the account screen's child destinations remain
   later composition work.
+
+## Settings Newsletters composition — 18 November 2026
+
+- Settings passes its AppModel-owned SettingsFeature through the Newsletters controller and
+  data source to both newsletter cell types. The screen and every cell view model therefore
+  cooperate through the same feature instance.
+- Cached and refreshed user presentation, individual and subscribe-all switches, German
+  opt-in messaging, save errors and update propagation preserve their established behavior.
+- Focused main-module coverage passes 5 tests and focused Newsletters data-source, parent
+  Settings and Root Tabs presentation coverage passes 12 tests. Reference snapshots and live
+  switch interaction remain unverified because the required reference simulator is unavailable.

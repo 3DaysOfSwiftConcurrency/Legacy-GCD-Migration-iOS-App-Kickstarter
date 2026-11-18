@@ -12,7 +12,7 @@ internal protocol SettingsNewslettersCellDelegate: AnyObject {
 }
 
 internal final class SettingsNewslettersCell: UITableViewCell, ValueCell {
-  private let viewModel = SettingsNewsletterCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
+  private var viewModel: SettingsNewsletterCellViewModel?
 
   @IBOutlet fileprivate var newslettersDescriptionLabel: UILabel!
   @IBOutlet fileprivate var newslettersLabel: UILabel!
@@ -31,8 +31,11 @@ internal final class SettingsNewslettersCell: UITableViewCell, ValueCell {
   }
 
   func configureWith(value: (newsletter: Newsletter, user: User)) {
-    self.viewModel.configureWith(value: value)
-    if let isOn = self.viewModel.switchIsOn { self.newslettersSwitch.isOn = isOn }
+    guard let viewModel else {
+      preconditionFailure("SettingsNewslettersCell requires SettingsFeature composition.")
+    }
+    viewModel.configureWith(value: value)
+    if let isOn = viewModel.switchIsOn { self.newslettersSwitch.isOn = isOn }
 
     _ = self.newslettersSwitch
       |> \.accessibilityLabel .~ value.newsletter.displayableName
@@ -62,15 +65,16 @@ internal final class SettingsNewslettersCell: UITableViewCell, ValueCell {
       |> settingsSwitchStyle
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
-
-    self.viewModel.onOptIn = { [weak self] in self?.delegate?.shouldShowOptInAlert($0) }
-    self.viewModel.onError = { [weak self] in self?.delegate?.failedToUpdateUser($0) }
-    self.viewModel.onUserUpdated = { [weak self] in self?.delegate?.didUpdate(user: $0) }
+  internal func configure(settingsFeature: SettingsFeature) {
+    guard self.viewModel == nil else { return }
+    let viewModel = SettingsNewsletterCellViewModel(settingsFeature: settingsFeature)
+    self.viewModel = viewModel
+    viewModel.onOptIn = { [weak self] in self?.delegate?.shouldShowOptInAlert($0) }
+    viewModel.onError = { [weak self] in self?.delegate?.failedToUpdateUser($0) }
+    viewModel.onUserUpdated = { [weak self] in self?.delegate?.didUpdate(user: $0) }
   }
 
   @IBAction func newslettersSwitchTapped(_ sender: UISwitch) {
-    self.viewModel.newslettersSwitchTapped(on: sender.isOn)
+    self.viewModel?.newslettersSwitchTapped(on: sender.isOn)
   }
 }

@@ -11,7 +11,7 @@ protocol SettingsNewslettersTopCellDelegate: AnyObject {
 }
 
 internal final class SettingsNewslettersTopCell: UITableViewCell, ValueCell {
-  private let viewModel = SettingsNewsletterCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
+  private var viewModel: SettingsNewsletterCellViewModel?
 
   @IBOutlet fileprivate var descriptionLabel: UILabel!
   @IBOutlet fileprivate var newsletterSwitch: UISwitch!
@@ -41,8 +41,11 @@ internal final class SettingsNewslettersTopCell: UITableViewCell, ValueCell {
   }
 
   func configureWith(value: User) {
-    self.viewModel.configureWith(value: value)
-    if let isOn = self.viewModel.subscribeToAllSwitchIsOn { self.newsletterSwitch.isOn = isOn }
+    guard let viewModel else {
+      preconditionFailure("SettingsNewslettersTopCell requires SettingsFeature composition.")
+    }
+    viewModel.configureWith(value: value)
+    if let isOn = viewModel.subscribeToAllSwitchIsOn { self.newsletterSwitch.isOn = isOn }
   }
 
   override func bindStyles() {
@@ -64,14 +67,15 @@ internal final class SettingsNewslettersTopCell: UITableViewCell, ValueCell {
       |> settingsTitleLabelStyle
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
-
-    self.viewModel.onUserUpdated = { [weak self] in self?.delegate?.didUpdateAllNewsletters(user: $0) }
-    self.viewModel.onError = { [weak self] in self?.delegate?.failedToUpdateAllNewsletters($0) }
+  internal func configure(settingsFeature: SettingsFeature) {
+    guard self.viewModel == nil else { return }
+    let viewModel = SettingsNewsletterCellViewModel(settingsFeature: settingsFeature)
+    self.viewModel = viewModel
+    viewModel.onUserUpdated = { [weak self] in self?.delegate?.didUpdateAllNewsletters(user: $0) }
+    viewModel.onError = { [weak self] in self?.delegate?.failedToUpdateAllNewsletters($0) }
   }
 
   @IBAction func newsletterSwitchTapped(_ sender: UISwitch) {
-    self.viewModel.allNewslettersSwitchTapped(on: sender.isOn)
+    self.viewModel?.allNewslettersSwitchTapped(on: sender.isOn)
   }
 }
