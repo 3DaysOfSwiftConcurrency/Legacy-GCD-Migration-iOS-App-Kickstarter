@@ -267,3 +267,18 @@ callers or tests affected by a rename.
   decoded routing parameters, mock timestamp, audio observer and audio reset IDs, and
   initialized search filter fields. Reviewed navigation and audio-controller test
   paths. Swift parsing, Swift token comparison and git diff --check passed.
+
+Reviewed names across 159 tracked AppModel Swift files. The pass changed
+identifiers in 49 model files and six caller or test files. The aggregate
+Swift token comparison matched every non-identifier token and string literal
+segment against the baseline. Source parsing, renamed caller scans and
+`git diff --check` passed. The migration ledger, behaviour contract and Xcode
+project match the baseline.
+
+A standalone Swift type check passed for nine sources using the simulator SDK
+and the project's `IsolatedDefaultValues` setting. It emitted the existing
+SystemConfiguration deprecation warnings. The signing-disabled generic
+`Library-iOS` build and focused test dry run stopped during package manifest
+resolution with a sandbox permission error. CoreSimulator still refused
+connections, so runtime tests remain unverified. Push remains pending because
+this session could not resolve `github.com`.
