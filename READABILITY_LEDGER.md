@@ -137,7 +137,13 @@ reopen or replace the completed CFA migration ledger.
   generic Library-iOS simulator build was blocked during Swift package resolution.
   ProfileFeatureTests and RootViewModel avatar tests could not run because
   CoreSimulator refused connections.
+- ProjectDetails: named the project link context resolver and distinguished attribution
+  tasks retained for a route from those still running. Updated AppModel's deep-link
+  caller and reviewed project page and attribution tests. Swift parsing and git diff
+  --check passed. The signing-disabled generic Library-iOS simulator build was blocked
+  during Swift package resolution. ProjectDetailsFeatureTests and deep-link tests could
+  not run because CoreSimulator refused connections.
 
 ## Current slice
 
-- ProjectDetails Feature and the project page and deep-link callers.
+- ProjectMedia Feature and the project page and video feed.

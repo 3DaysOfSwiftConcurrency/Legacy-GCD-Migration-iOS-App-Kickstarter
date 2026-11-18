@@ -13,7 +13,7 @@ extension ProjectDetailsFeature {
 
   /// A project link is usable only after all of its requested resources are available.
   /// Prelaunch projects expose their root and must not request private subresources.
-  func linkContext(
+  func resolveProjectLinkContext(
     param: Param, subpage: Navigation.Project, refInfo: RefInfo?, secretRewardToken: String?
   ) async throws -> LinkContext? {
     let userID = self.sessionFeature.currentUser?.id

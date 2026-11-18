@@ -123,8 +123,8 @@ public final class ProjectDetailsFeature {
   public let sessionFeature: SessionFeature
   private let analytics: Analytics
   private let projectViewContext: @MainActor () -> (advertisingID: String, platformVersion: String)?
-  private var attributionRoutes: [UUID: Task<Void, Error>] = [:]
-  private var attributionOperations: [UUID: Task<Void, Error>] = [:]
+  private var attributionTasksByRoute: [UUID: Task<Void, Error>] = [:]
+  private var inFlightAttributionTasks: [UUID: Task<Void, Error>] = [:]
 
   public func storeReferral(for project: Project, fallback: RefTag?) {
     let storage = self.platform.cookieStorage()
@@ -140,7 +140,7 @@ public final class ProjectDetailsFeature {
   public func recordAttribution(
     route: UUID, projectID: String, properties: String?
   ) -> Task<Void, Error> {
-    if let existing = self.attributionRoutes[route] { return existing }
+    if let existing = self.attributionTasksByRoute[route] { return existing }
     let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
     let provider = self.makeProvider()
@@ -150,20 +150,20 @@ public final class ProjectDetailsFeature {
       eventProperties: .someOrNil(properties), projectId: .someOrNil(projectID)
     )
     let task = Task { [self] in
-      defer { self.attributionOperations[id] = nil }
+      defer { self.inFlightAttributionTasks[id] = nil }
       guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else {
         throw CancellationError()
       }
       try await provider.recordAttribution(input: input)
     }
-    self.attributionRoutes[route] = task
-    self.attributionOperations[id] = task
+    self.attributionTasksByRoute[route] = task
+    self.inFlightAttributionTasks[id] = task
     return task
   }
 
   public func waitForAttribution() async {
-    while !self.attributionOperations.isEmpty {
-      for task in Array(self.attributionOperations.values) { _ = await task.result }
+    while !self.inFlightAttributionTasks.isEmpty {
+      for task in Array(self.inFlightAttributionTasks.values) { _ = await task.result }
     }
   }
 
@@ -499,7 +499,7 @@ public final class ProjectDetailsFeature {
 
   public func release(route: UUID) {
     self.releaseRelated(route: route)
-    self.attributionRoutes[route] = nil
+    self.attributionTasksByRoute[route] = nil
     self.cancel(route: route)
     self.pages.removeValue(forKey: route)
   }

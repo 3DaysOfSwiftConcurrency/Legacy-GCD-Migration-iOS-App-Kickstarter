@@ -39,7 +39,7 @@ extension AppModel {
       case let .project(_, .pledgeManagerWebview(url), _, _):
         destination = .survey(url)
       case let .project(param, subpage, refInfo, token):
-        destination = try await self.projectDetailsFeature.linkContext(
+        destination = try await self.projectDetailsFeature.resolveProjectLinkContext(
           param: param, subpage: subpage, refInfo: refInfo, secretRewardToken: token
         ).map { .project($0) }
       default:
