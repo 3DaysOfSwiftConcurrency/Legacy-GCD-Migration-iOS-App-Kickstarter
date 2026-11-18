@@ -6135,6 +6135,13 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "test",
       "outcome": "passed",
       "summary": "LibraryTests/OnboardingViewModelTests ran on iPhone 17 Pro simulator: 11 passed, 0 failed. The suite name now matches the ViewModel it exercises."
+    },
+    {
+      "id": "pledged-projects-project-details-task-verification",
+      "revision": "bbcafcb11",
+      "kind": "source-and-test-review",
+      "outcome": "passed",
+      "summary": "Source review confirmed per-route request identity, cancellation and teardown release in PledgedProjectsFeature and ProjectDetailsFeature. Their focused LibraryTests suites passed on iPhone 17 Pro simulator: 39 passed, 0 failed."
     }
   ],
   "attempts": [
