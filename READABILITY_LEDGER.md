@@ -82,7 +82,13 @@ reopen or replace the completed CFA migration ledger.
   simulator build was blocked during Swift package resolution. DiscoveryFeatureTests
   and Discovery page ViewModel tests could not run because CoreSimulator refused
   connections.
+- Discussion: named the occupied post request slots and queued continuations.
+  Distinguished comment-posting tasks from author-blocking tasks. Checked comment
+  presentation callers and the five-request limit tests. Swift parsing and git diff
+  --check passed. The signing-disabled generic Library-iOS simulator build was blocked
+  during Swift package resolution. DiscussionFeatureTests and comment ViewModel tests
+  could not run because CoreSimulator refused connections.
 
 ## Current slice
 
-- Discussion Feature and its comment and moderation callers.
+- Friends Feature and its follow and pagination callers.

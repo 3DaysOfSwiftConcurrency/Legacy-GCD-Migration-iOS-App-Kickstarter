@@ -136,26 +136,26 @@ public final class DiscussionFeature {
     let generation: Int
   }
 
-  private var posts: [PostIdentity: Task<Comment, Error>] = [:]
-  private var blocks: [BlockIdentity: Task<EmptyResponseEnvelope, Error>] = [:]
-  private var activePosts = 0
-  private var waitingPosts: [CheckedContinuation<Void, Never>] = []
+  private var commentPostTasks: [PostIdentity: Task<Comment, Error>] = [:]
+  private var authorBlockTasks: [BlockIdentity: Task<EmptyResponseEnvelope, Error>] = [:]
+  private var occupiedPostRequestSlots = 0
+  private var queuedPostRequestWaiters: [CheckedContinuation<Void, Never>] = []
 
   /// Preserve the existing five-request limit without blocking an executor.
   /// Distinct writes queue FIFO for admission, then may finish independently.
   private func acquirePostSlot() async {
-    if self.activePosts < 5 {
-      self.activePosts += 1
+    if self.occupiedPostRequestSlots < 5 {
+      self.occupiedPostRequestSlots += 1
     } else {
-      await withCheckedContinuation { self.waitingPosts.append($0) }
+      await withCheckedContinuation { self.queuedPostRequestWaiters.append($0) }
     }
   }
 
   private func releasePostSlot() {
-    if self.waitingPosts.isEmpty {
-      self.activePosts -= 1
+    if self.queuedPostRequestWaiters.isEmpty {
+      self.occupiedPostRequestSlots -= 1
     } else {
-      self.waitingPosts.removeFirst().resume()
+      self.queuedPostRequestWaiters.removeFirst().resume()
     }
   }
 
@@ -282,12 +282,12 @@ public final class DiscussionFeature {
   }
 
   private func requestPost(_ key: PostIdentity) -> Task<Comment, Error> {
-    if let task = self.posts[key] { return task }
+    if let task = self.commentPostTasks[key] { return task }
     let provider = self.makeProvider()
     let task = Task { [self] in
       await self.acquirePostSlot()
       defer {
-        self.posts[key] = nil
+        self.commentPostTasks[key] = nil
         self.releasePostSlot()
       }
       let result: Result<Comment, Error>
@@ -307,7 +307,7 @@ public final class DiscussionFeature {
       }
       return try result.get()
     }
-    self.posts[key] = task
+    self.commentPostTasks[key] = task
     return task
   }
 
@@ -324,11 +324,11 @@ public final class DiscussionFeature {
   }
 
   private func requestBlock(_ key: BlockIdentity) -> Task<EmptyResponseEnvelope, Error> {
-    if let task = self.blocks[key] { return task }
+    if let task = self.authorBlockTasks[key] { return task }
     let provider = self.makeProvider()
     // Different users are independent writes, not replaceable searches.
     let task = Task { [self] in
-      defer { self.blocks[key] = nil }
+      defer { self.authorBlockTasks[key] = nil }
       let result: Result<EmptyResponseEnvelope, Error>
       do {
         try Task.checkCancellation()
@@ -344,15 +344,15 @@ public final class DiscussionFeature {
       }
       return try result.get()
     }
-    self.blocks[key] = task
+    self.authorBlockTasks[key] = task
     return task
   }
 
   /// Test synchronization for the existing scheduler-driven presentation adapters.
   /// Awaiting writes does not advance or bypass their visible status delays.
   func waitForMutations() async {
-    let posts = Array(self.posts.values)
-    let blocks = Array(self.blocks.values)
+    let posts = Array(self.commentPostTasks.values)
+    let blocks = Array(self.authorBlockTasks.values)
     for task in posts { _ = await task.result }
     for task in blocks { _ = await task.result }
   }
