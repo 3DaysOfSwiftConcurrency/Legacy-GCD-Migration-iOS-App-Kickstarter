@@ -19,7 +19,7 @@ final class AppModelTests: XCTestCase {
     let model = makeTestAppModel(sessionFeature: session)
     model.receiveDeviceToken(Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
     await debounce.waitFor(1)
-    model.sessionChanged()
+    model.resetFeaturesForSessionChange()
     try debounce.finish(0, .success(()))
     await session.waitForDeviceRegistration()
   }
@@ -47,7 +47,7 @@ final class AppModelTests: XCTestCase {
       onboardingFeature: onboarding
     )
 
-    model.applicationActive(state: true)
+    model.setApplicationActive(true)
     await onboarding.waitForTrackingChecks()
     XCTAssertEqual(tracking.requestCount, 0)
     model.preparePermissions()
@@ -197,12 +197,12 @@ final class AppModelTests: XCTestCase {
     }
 
     try await verifyRefresh(country: "CA", user: .template) {
-      model.sessionChanged()
+      model.resetFeaturesForSessionChange()
       _ = await model.settingsFeature.requestApplicationSettings().result
     }
 
     try await verifyRefresh(country: "CZ") {
-      model.sessionChanged()
+      model.resetFeaturesForSessionChange()
       _ = await model.settingsFeature.requestApplicationSettings().result
     }
     XCTAssertEqual(publishedCountries, ["US", "GB", "CA", "CZ"])
@@ -502,7 +502,7 @@ final class AppModelTests: XCTestCase {
     XCTAssertNil(second.searchFeature.parameters)
     let secondPledgeSession = second.pledgeFeature.sessionIdentity
     let secondPaymentsSession = second.paymentsFeature.sessionIdentity
-    first.sessionChanged()
+    first.resetFeaturesForSessionChange()
     _ = await first.settingsFeature.requestApplicationSettings().result
     XCTAssertEqual(first.sessionFeature.generation, 1)
     XCTAssertEqual(second.sessionFeature.generation, 0)

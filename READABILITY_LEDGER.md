@@ -35,8 +35,13 @@ reopen or replace the completed CFA migration ledger.
   Updated AppDelegate and presentation-test callers. The same generic
   `Library-iOS` build passed with the existing project warnings; focused runtime
   tests remain pending on the unavailable CoreSimulator service.
+- AppModel lifecycle coordination: renamed the active-state signal, ubiquitous
+  preference synchronisation and session-change reset API to name their actual
+  effects. Updated AppDelegate and AppModel-test callers. The generic
+  `Library-iOS` build passed with the same existing project warnings; focused
+  runtime tests remain pending on the unavailable CoreSimulator service.
 
 ## Current slice
 
-- AppModel composition: review the public composition values and factory names,
-  beginning with the presentation boundaries that receive them.
+- Activity Feature: trace its public actions, asynchronous task ownership and
+  related presentation callers before making clarity-only changes.

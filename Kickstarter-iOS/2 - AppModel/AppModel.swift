@@ -667,8 +667,8 @@ public final class AppModel {
     self.onboardingFeature.prepareTrackingConsent()
   }
 
-  func applicationActive(state: Bool) {
-    self.onboardingFeature.setApplicationActive(state)
+  func setApplicationActive(_ isActive: Bool) {
+    self.onboardingFeature.setApplicationActive(isActive)
   }
 
   func refreshNotificationAuthorization() {
@@ -687,7 +687,7 @@ public final class AppModel {
     notificationCenter.post(name: .ksr_applicationDidEnterBackground, object: nil)
   }
 
-  public func synchronizePreferences() {
+  public func synchronizeUbiquitousPreferences() {
     _ = AppEnvironment.current.ubiquitousStore.synchronize()
   }
 
@@ -697,7 +697,7 @@ public final class AppModel {
     self.settingsFeature.activateRemoteSettings(client: client)
   }
 
-  public func sessionChanged() {
+  public func resetFeaturesForSessionChange() {
     self.sessionFeature.sessionChanged()
     self.paymentsFeature.sessionChanged()
     self.settingsFeature.cancelScheduledAccountRefresh()

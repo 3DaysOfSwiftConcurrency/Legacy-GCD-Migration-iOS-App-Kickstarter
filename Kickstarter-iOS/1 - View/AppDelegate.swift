@@ -162,7 +162,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     self.appNotificationObservers = [
       MainActorNotificationObservation(name: .ksr_sessionStarted) { [weak self] _ in
-        AppModel.shared.sessionChanged()
+        AppModel.shared.resetFeaturesForSessionChange()
         guard let self else { return }
         self.deepLinkRouter.release(route: self.navigationRoute)
         AppModel.shared.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
@@ -174,7 +174,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
         }
       },
       MainActorNotificationObservation(name: .ksr_sessionEnded) { [weak self] _ in
-        AppModel.shared.sessionChanged()
+        AppModel.shared.resetFeaturesForSessionChange()
         guard let self else { return }
         self.deepLinkRouter.release(route: self.navigationRoute)
         AppModel.shared.refreshAccount(delivering: self.accountRefreshUpdateHandler)
@@ -196,7 +196,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     AppModel.shared.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
 
     AppModel.shared.preparePermissions()
-    self.synchronizePreferences()
+    self.synchronizeUbiquitousPreferences()
     self.configureAnalytics()
 
     UNUserNotificationCenter.current().delegate = self
@@ -244,11 +244,11 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 
   func applicationDidBecomeActive(_: UIApplication) {
-    AppModel.shared.applicationActive(state: true)
+    AppModel.shared.setApplicationActive(true)
   }
 
   func applicationWillResignActive(_: UIApplication) {
-    AppModel.shared.applicationActive(state: false)
+    AppModel.shared.setApplicationActive(false)
   }
 
   func applicationWillEnterForeground(_: UIApplication) {
@@ -466,9 +466,9 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     ])
   }
 
-  private func synchronizePreferences() {
+  private func synchronizeUbiquitousPreferences() {
     guard !self.isPublicDemo else { return }
-    DispatchQueue.main.async { AppModel.shared.synchronizePreferences() }
+    DispatchQueue.main.async { AppModel.shared.synchronizeUbiquitousPreferences() }
   }
 
   private func configureAnalytics() {
