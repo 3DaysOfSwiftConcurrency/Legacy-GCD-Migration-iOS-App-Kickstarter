@@ -254,14 +254,14 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { gate.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), url = URL(fileURLWithPath: "/tmp/synthetic-video")
-    let first = feature.requestPreparation(route: route, slot: "row", url: url, thumbnail: nil)
-    let shared = feature.requestPreparation(route: route, slot: "row", url: url, thumbnail: nil)
+    let first = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
+    let shared = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(1)
     try gate.finish(0, .failure(URLError(.cannotDecodeContentData)))
     for request in [first, shared] {
       if case .success = await request.result { XCTFail("Preparation error was swallowed") }
     }
-    let retry = feature.requestPreparation(route: route, slot: "row", url: url, thumbnail: nil)
+    let retry = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(2)
     let player = AVPlayer()
     try gate.finish(1, .success(PreparedProjectMedia(player: player)))
@@ -275,13 +275,13 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { gate.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), other = UUID(), url = URL(fileURLWithPath: "/tmp/synthetic-video")
-    let old = feature.requestPreparation(route: route, slot: "row", url: url, thumbnail: nil)
+    let old = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(1)
-    let current = feature.requestPreparation(route: route, slot: "row", url: url, thumbnail: url)
+    let current = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: url)
     await gate.waitFor(2)
-    let independent = feature.requestPreparation(route: other, slot: "row", url: url, thumbnail: nil)
+    let independent = feature.requestPlaybackPreparation(route: other, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(3)
-    feature.cancelPreparations(route: route)
+    feature.cancelPlaybackPreparations(route: route)
     for index in 0...2 { try gate.finish(index, .success(PreparedProjectMedia(player: AVPlayer()))) }
     for request in [old, current] {
       if case .failure(is CancellationError) = await request.result {} else { XCTFail("Obsolete page received media") }

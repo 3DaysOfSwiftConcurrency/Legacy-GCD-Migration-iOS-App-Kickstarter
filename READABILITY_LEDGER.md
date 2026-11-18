@@ -143,7 +143,13 @@ reopen or replace the completed CFA migration ledger.
   --check passed. The signing-disabled generic Library-iOS simulator build was blocked
   during Swift package resolution. ProjectDetailsFeatureTests and deep-link tests could
   not run because CoreSimulator refused connections.
+- ProjectMedia: named the playback preparation requests and cancel action, plus the
+  video-feed save tasks. Updated the project page ViewModel and focused preparation
+  tests. Reviewed watch and feed callers. Swift parsing and git diff --check passed.
+  The signing-disabled generic Library-iOS simulator build was blocked during Swift
+  package resolution. ProjectMediaFeatureTests and video feed ViewModel tests could not
+  run because CoreSimulator refused connections.
 
 ## Current slice
 
-- ProjectMedia Feature and the project page and video feed.
+- ProjectReporting Feature, report form, and report information screen.

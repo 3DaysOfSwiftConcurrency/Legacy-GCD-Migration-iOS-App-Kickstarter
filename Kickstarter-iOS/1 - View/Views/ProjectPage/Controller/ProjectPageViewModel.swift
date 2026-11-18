@@ -272,7 +272,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     if let pending = self.mediaWaiters[slot], pending.url == url, pending.thumbnail == thumbnail { return pending.task }
     self.mediaWaiters[slot]?.task.cancel()
     let id = UUID()
-    let request = self.projectMediaFeature.requestPreparation(route: self.projectRoute, slot: slot, url: url, thumbnail: thumbnail)
+    let request = self.projectMediaFeature.requestPlaybackPreparation(route: self.projectRoute, slot: slot, url: url, thumbnail: thumbnail)
     let task = Task { [weak self] in
       defer { if self?.mediaWaiters[slot]?.id == id { self?.mediaWaiters[slot] = nil } }
       do {
@@ -290,7 +290,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   public func cancelMediaPreparation() {
     self.mediaWaiters.values.forEach { $0.task.cancel() }
     self.mediaWaiters.removeAll()
-    self.projectMediaFeature.cancelPreparations(route: self.projectRoute)
+    self.projectMediaFeature.cancelPlaybackPreparations(route: self.projectRoute)
   }
 
   private let projectDetailsFeature: ProjectDetailsFeature
@@ -454,7 +454,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     let route = self.projectRoute
     // Finite route cleanup, with no self capture or new network operation.
     Task { @MainActor in
-      media.cancelPreparations(route: route)
+      media.cancelPlaybackPreparations(route: route)
       media.cancelImages(route: route)
       details.release(route: route)
     }

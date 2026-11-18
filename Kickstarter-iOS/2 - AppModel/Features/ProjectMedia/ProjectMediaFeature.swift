@@ -107,36 +107,36 @@ public final class ProjectMediaFeature {
     let thumbnail: URL?
     let task: Task<PreparedProjectMedia, Error>
   }
-  private var preparations: [PreparationKey: Preparation] = [:]
+  private var pendingPlaybackPreparations: [PreparationKey: Preparation] = [:]
   private let preparePlayback: @MainActor (URL, URL?) async throws -> PreparedProjectMedia
 
   /// Each page/element owns an independent player. Equivalent requests for that
   /// slot share pending work; changed URLs replace it without affecting other rows.
-  public func requestPreparation(
+  public func requestPlaybackPreparation(
     route: UUID, slot: String, url: URL, thumbnail: URL?
   ) -> Task<PreparedProjectMedia, Error> {
     let key = PreparationKey(route: route, slot: slot)
-    if let pending = self.preparations[key], pending.url == url, pending.thumbnail == thumbnail {
+    if let pending = self.pendingPlaybackPreparations[key], pending.url == url, pending.thumbnail == thumbnail {
       return pending.task
     }
-    self.preparations[key]?.task.cancel()
+    self.pendingPlaybackPreparations[key]?.task.cancel()
     let id = UUID()
     let prepare = self.preparePlayback
     let task = Task { [self] in
-      defer { if self.preparations[key]?.id == id { self.preparations[key] = nil } }
+      defer { if self.pendingPlaybackPreparations[key]?.id == id { self.pendingPlaybackPreparations[key] = nil } }
       try Task.checkCancellation()
       let result = try await prepare(url, thumbnail)
       try Task.checkCancellation()
-      guard self.preparations[key]?.id == id else { throw CancellationError() }
+      guard self.pendingPlaybackPreparations[key]?.id == id else { throw CancellationError() }
       return result
     }
-    self.preparations[key] = Preparation(id: id, url: url, thumbnail: thumbnail, task: task)
+    self.pendingPlaybackPreparations[key] = Preparation(id: id, url: url, thumbnail: thumbnail, task: task)
     return task
   }
 
-  public func cancelPreparations(route: UUID) {
-    for key in Array(self.preparations.keys) where key.route == route {
-      self.preparations.removeValue(forKey: key)?.task.cancel()
+  public func cancelPlaybackPreparations(route: UUID) {
+    for key in Array(self.pendingPlaybackPreparations.keys) where key.route == route {
+      self.pendingPlaybackPreparations.removeValue(forKey: key)?.task.cancel()
     }
   }
 
@@ -155,7 +155,7 @@ public final class ProjectMediaFeature {
   public enum FeedError: Error { case empty }
   private var feeds: [UUID: FeedState] = [:]
   private var feedRequests: [UUID: (userID: Int?, generation: Int, token: UUID, task: Task<Void, Never>)] = [:]
-  private var feedSaves: [UUID: [String: (token: UUID, task: Task<Void, Never>)]] = [:]
+  private var feedSaveTasksByRoute: [UUID: [String: (token: UUID, task: Task<Void, Never>)]] = [:]
 
   fileprivate struct WatchIdentity: Hashable {
     let projectID: String
@@ -387,15 +387,15 @@ public final class ProjectMediaFeature {
     let token = UUID()
     let task = Task { [self] in
       defer {
-        if self.feedSaves[route]?[projectID]?.token == token {
-          self.feedSaves[route]?[projectID] = nil
+        if self.feedSaveTasksByRoute[route]?[projectID]?.token == token {
+          self.feedSaveTasksByRoute[route]?[projectID] = nil
         }
       }
       do {
         _ = try await mutation.value
       } catch {
         guard !(error is CancellationError), self.feeds[route] === feed,
-              self.feedSaves[route]?[projectID]?.token == token,
+              self.feedSaveTasksByRoute[route]?[projectID]?.token == token,
               userID == self.sessionFeature.currentUser?.id, self.isCurrentIntent(intent),
               let index = feed.items.firstIndex(where: { $0.id == projectID }) else { return }
         // Preserve rollback and toast for the latest visible intent only.
@@ -404,7 +404,7 @@ public final class ProjectMediaFeature {
         feed.saveFailedItemID = projectID
       }
     }
-    self.feedSaves[route, default: [:]][projectID] = (token, task)
+    self.feedSaveTasksByRoute[route, default: [:]][projectID] = (token, task)
     return task
   }
 
@@ -413,7 +413,7 @@ public final class ProjectMediaFeature {
   }
 
   public func waitForSaves(route: UUID) async {
-    let tasks = self.feedSaves[route]?.values.map(\.task) ?? []
+    let tasks = self.feedSaveTasksByRoute[route]?.values.map(\.task) ?? []
     for task in tasks { await task.value }
   }
 
@@ -528,10 +528,10 @@ public final class ProjectMediaFeature {
 
   public func release(route: UUID) {
     self.cancelImages(route: route)
-    self.cancelPreparations(route: route)
+    self.cancelPlaybackPreparations(route: route)
     self.feedRequests.removeValue(forKey: route)?.task.cancel()
     self.feeds[route] = nil
-    self.feedSaves[route] = nil
+    self.feedSaveTasksByRoute[route] = nil
     // Watch writes deliberately continue after their presenting route closes.
     for event in self.requests.keys.filter({ $0.route == route }) {
       self.requests.removeValue(forKey: event)?.task.cancel()
