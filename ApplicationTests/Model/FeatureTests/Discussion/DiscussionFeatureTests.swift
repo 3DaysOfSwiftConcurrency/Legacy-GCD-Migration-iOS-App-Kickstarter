@@ -179,8 +179,8 @@ final class DiscussionFeatureTests: TestCase {
       XCTAssertEqual(provider.postInputs.count, 2)
       provider.finishAllPosts()
       do {
-        _ = try await first.result.value
-        _ = try await second.result.value
+        _ = try await first.postTask.value
+        _ = try await second.postTask.value
       } catch { XCTFail("Unexpected post failure: \(error)") }
     }
   }

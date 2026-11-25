@@ -104,7 +104,7 @@ public final class FriendsFeature {
     snapshot.users = snapshot.users.map(self.userWithCachedFollowingStatus)
     return snapshot
   }
-  private func state(route: UUID) -> Route {
+  private func getOrCreateRouteState(for route: UUID) -> Route {
     if let state = self.routes[route], state.session == self.session { return state }
     self.release(route: route)
     let state = Route(session: self.session)
@@ -127,7 +127,7 @@ public final class FriendsFeature {
 
   @discardableResult
   public func requestPage(route: UUID, next: Bool = false) -> Task<Void, Never>? {
-    let state = self.state(route: route)
+    let state = self.getOrCreateRouteState(for: route)
     if let pending = state.page, next || pending.cursor == nil { return pending.task }
     guard !next || state.cursor != nil else { return nil }
     state.page?.task.cancel()
@@ -173,7 +173,7 @@ public final class FriendsFeature {
   public func refreshStatistics(route: UUID) async { await self.requestStatistics(route: route).value }
   @discardableResult
   public func requestStatistics(route: UUID) -> Task<Void, Never> {
-    let state = self.state(route: route)
+    let state = self.getOrCreateRouteState(for: route)
     if let pending = state.statistics { return pending.task }
     let id = UUID()
     let provider = self.makeProvider()

@@ -14006,8 +14006,8 @@
 			"runOnlyForDeploymentPostprocessing" = "0";
 		};
 		"9EAAB71B6E532D40A85F8DCF" = {
-			"name" = "RemoteConfligClient.swift";
-			"path" = "Kickstarter-iOS/2 - AppModel/Features/RemoteConfiguration/RemoteConfligClient.swift";
+			"name" = "RemoteConfigClient.swift";
+			"path" = "Kickstarter-iOS/2 - AppModel/Features/RemoteConfiguration/RemoteConfigClient.swift";
 			"isa" = "PBXFileReference";
 			"sourceTree" = "SOURCE_ROOT";
 			"lastKnownFileType" = "sourcecode.swift";

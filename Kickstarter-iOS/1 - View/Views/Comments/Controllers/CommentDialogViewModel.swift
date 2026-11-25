@@ -79,7 +79,7 @@ final class CommentDialogViewModel {
     self.postTask = Task { [weak self] in
       let result: Result<Comment, Error>
       do {
-        result = .success(try await submission.result.value)
+        result = .success(try await submission.postTask.value)
       } catch { result = .failure(error) }
       do { try await sleep() } catch { return }
       guard !Task.isCancelled, let self,

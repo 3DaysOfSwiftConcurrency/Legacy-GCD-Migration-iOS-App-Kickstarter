@@ -172,7 +172,7 @@ public final class DiscussionFeature {
 
   struct OptimisticPost {
     let comment: Comment
-    let result: Task<Comment, Error>
+    let postTask: Task<Comment, Error>
   }
 
   /// Admit the write before publishing an optimistic comment, so a dismissed
@@ -183,10 +183,10 @@ public final class DiscussionFeature {
       date: self.platform.now(),
       project: project, parentId: parentID, user: user, body: body
     )
-    let result = self.requestPost(
+    let postTask = self.requestPost(
       operationID: UUID().uuidString, body: body, commentableID: commentableID, parentID: parentID
     )
-    return OptimisticPost(comment: comment, result: result)
+    return OptimisticPost(comment: comment, postTask: postTask)
   }
 
   /// The write is admitted before the optimistic value is delivered. Cancelling
@@ -203,7 +203,7 @@ public final class DiscussionFeature {
     )
     receive(submission.comment, submission.comment.id)
     return Task { [self] in
-      let result = await submission.result.result
+      let result = await submission.postTask.result
       do {
         try await self.sleep(1)
         try Task.checkCancellation()
