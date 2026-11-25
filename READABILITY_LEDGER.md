@@ -692,3 +692,13 @@ caller sites (two internal calls, the Thanks screen and an account-fields
 test); each was repaired. `settings-api-4` Build For Testing exited zero
 with `TEST BUILD SUCCEEDED` for app and test targets. Runtime tests remain
 unverified. Remaining inventory decisions: 739.
+
+AppModel and Navigation checkpoint: reviewed all 215 declarations across
+AppModel composition, its account-refresh and deep-link extensions, and the
+Navigation route grammar. Renamed three AppModel delegate entry points to say
+they reset an authorized push badge, schedule device registration, and start
+remote configuration activation. Updated AppDelegate and AppModel tests. The
+`appmodel-entry-1` Build For Testing exited zero with `TEST BUILD SUCCEEDED`
+for app and test targets. Route constructors and parameter readers already
+name their scoped destination and decoded value. Runtime tests remain
+unverified. Remaining inventory decisions: 524.

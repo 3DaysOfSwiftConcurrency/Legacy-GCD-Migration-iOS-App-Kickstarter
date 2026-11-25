@@ -671,11 +671,11 @@ public final class AppModel {
     self.onboardingFeature.setApplicationActive(isActive)
   }
 
-  func refreshNotificationAuthorization() {
+  func resetBadgeIfPushAuthorized() {
     self.onboardingFeature.resetBadgeIfPushAuthorized()
   }
 
-  func receiveDeviceToken(_ deviceToken: Data, onRegistered: @escaping @MainActor (String) -> Void) {
+  func scheduleDeviceRegistration(_ deviceToken: Data, onRegistered: @escaping @MainActor (String) -> Void) {
     self.sessionFeature.scheduleDeviceRegistration(for: deviceToken, onRegistered: onRegistered)
   }
 
@@ -691,7 +691,7 @@ public final class AppModel {
     _ = AppEnvironment.current.ubiquitousStore.synchronize()
   }
 
-  @discardableResult public func requestRemoteConfiguration(
+  @discardableResult public func startRemoteConfigurationActivation(
     client: any RemoteConfigClientType
   ) -> Task<Void, Error> {
     self.settingsFeature.activateRemoteSettings(client: client)

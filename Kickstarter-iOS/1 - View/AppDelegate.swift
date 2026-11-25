@@ -252,7 +252,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 
   func applicationWillEnterForeground(_: UIApplication) {
-    AppModel.shared.refreshNotificationAuthorization()
+    AppModel.shared.resetBadgeIfPushAuthorized()
     AppModel.shared.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
     AppModel.shared.applicationWillEnterForeground()
   }
@@ -317,7 +317,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     onRegistered: @escaping @MainActor (String) -> Void
   ) {
     registerWithMessagingSDK(deviceToken)
-    model.receiveDeviceToken(deviceToken, onRegistered: onRegistered)
+    model.scheduleDeviceRegistration(deviceToken, onRegistered: onRegistered)
   }
 
   internal func application(
@@ -532,7 +532,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   private func configureRemoteConfig() {
     let remoteConfigClient = RemoteConfigClient(with: RemoteConfig.remoteConfig())
 
-    AppModel.shared.requestRemoteConfiguration(client: remoteConfigClient)
+    AppModel.shared.startRemoteConfigurationActivation(client: remoteConfigClient)
 
     self.remoteConfigListener?.remove()
     self.remoteConfigListener = remoteConfigClient.addOnConfigUpdateListener { configUpdate, error in

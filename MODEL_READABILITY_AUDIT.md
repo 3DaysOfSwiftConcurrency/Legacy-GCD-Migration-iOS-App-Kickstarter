@@ -14,9 +14,9 @@ extensions and conditional compilation branches. Session, Activity, Help,
 ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
 DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
 Discovery, Authentication, Payments, PledgedProjects, Pledge, Rewards and
-ProjectDetails, ProjectMedia, Search and Settings have 2,285 individual behavior, caller
-and naming decisions. The remaining 739 rows are pending; the whole Model has
-**not** been declared reviewed. The latest Settings closure passed Build For
+ProjectDetails, ProjectMedia, Search and Settings and AppModel/Navigation have 2,500 individual behavior, caller
+and naming decisions. The remaining 524 rows are pending; the whole Model has
+**not** been declared reviewed. The latest AppModel closure passed Build For
 Testing for app and test targets;
 runtime tests remain unverified.
 

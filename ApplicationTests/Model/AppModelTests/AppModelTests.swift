@@ -17,7 +17,7 @@ final class AppModelTests: XCTestCase {
       deviceRegistrationDebounce: { try await debounce.request() }, currentUser: { .template }
     )
     let model = makeTestAppModel(sessionFeature: session)
-    model.receiveDeviceToken(Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
+    model.scheduleDeviceRegistration(Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
     await debounce.waitFor(1)
     model.resetFeaturesForSessionChange()
     try debounce.finish(0, .success(()))
@@ -51,7 +51,7 @@ final class AppModelTests: XCTestCase {
     await onboarding.waitForDelayedTrackingChecks()
     XCTAssertEqual(tracking.requestCount, 0)
     model.prepareNotificationAndTrackingPermissions()
-    model.refreshNotificationAuthorization()
+    model.resetBadgeIfPushAuthorized()
     await onboarding.waitForDelayedTrackingChecks()
 
     XCTAssertEqual(tracking.requestCount, 1)
