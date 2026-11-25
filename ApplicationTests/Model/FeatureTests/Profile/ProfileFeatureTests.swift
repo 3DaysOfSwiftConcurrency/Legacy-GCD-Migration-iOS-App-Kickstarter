@@ -65,7 +65,7 @@ final class ProfileFeatureTests: TestCase {
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { ControlledProfileProvider() }, loadAvatar: { _ in try await gate.request() })
     let url = try XCTUnwrap(URL(string: User.template.avatar.small))
     let request = _Concurrency.Task { try await feature.loadAvatarData(url: url) }
-    await gate.waitFor(1); feature.reset(); try gate.finish(0, .success(Data([1])))
+    await gate.waitFor(1); feature.resetForSessionChange(); try gate.finish(0, .success(Data([1])))
     if case .failure(is CancellationError) = await request.result {} else { XCTFail("Reset avatar escaped") }
   }
   func testAvatarStoreUsesExistingCacheBeforeNetwork() async throws {
@@ -107,7 +107,7 @@ final class ProfileFeatureTests: TestCase {
     var combined = 0
     let observer = feature.observeHeader { if case .combinedUser = $0 { combined += 1 } }
     defer { observer.dispose() }
-    let request = feature.requestHeader()
+    let request = feature.startProfileHeaderLoad()
     await provider.users.waitFor(1)
     await provider.graphs.waitFor(1)
     try provider.users.finish(0, .success(.template))
@@ -145,13 +145,13 @@ final class ProfileFeatureTests: TestCase {
       sleep: { sleeps.append($0) }
     )
 
-    let header = feature.requestHeader()
+    let header = feature.startProfileHeaderLoad()
     await headerProvider.users.waitFor(1)
     await headerProvider.graphs.waitFor(1)
     try headerProvider.users.finish(0, .success(.template))
     try headerProvider.graphs.finish(0, .success(.template))
     await header.value
-    let page = feature.requestProfileProjectsPage(type: .backed)
+    let page = feature.startProfileProjectsPageLoad(type: .backed)
     await pageProvider.pages.waitFor(1)
     try pageProvider.pages.finish(0, .success(.init(projects: self.projects(1), cursor: nil)))
     await page?.value
@@ -168,9 +168,9 @@ final class ProfileFeatureTests: TestCase {
       currentUser: { .template }
     )
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
-    let backed = feature.requestProfileProjectsPage(type: .backed), duplicate = feature.requestProfileProjectsPage(type: .backed)
+    let backed = feature.startProfileProjectsPageLoad(type: .backed), duplicate = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(1)
-    let saved = feature.requestProfileProjectsPage(type: .saved)
+    let saved = feature.startProfileProjectsPageLoad(type: .saved)
     await provider.pages.waitFor(2)
     try provider.pages.finish(1, .success(.init(projects: self.projects(1), cursor: nil)))
     await saved?.value
@@ -178,20 +178,20 @@ final class ProfileFeatureTests: TestCase {
     XCTAssertTrue(feature.snapshot(for: .backed).isLoading)
     try provider.pages.finish(0, .success(.init(projects: self.projects(2), cursor: "next")))
     await backed?.value; await duplicate?.value
-    let next = feature.requestProfileProjectsPage(type: .backed, next: true)
+    let next = feature.startProfileProjectsPageLoad(type: .backed, next: true)
     await provider.pages.waitFor(3)
     try provider.pages.finish(2, .failure(ErrorEnvelope.couldNotParseJSON))
     await next?.value
     XCTAssertEqual(feature.snapshot(for: .backed).projects.count, 2)
     XCTAssertNotNil(feature.snapshot(for: .backed).error)
-    let retry = feature.requestProfileProjectsPage(type: .backed, next: true)
+    let retry = feature.startProfileProjectsPageLoad(type: .backed, next: true)
     await provider.pages.waitFor(4)
     try provider.pages.finish(3, .success(.init(projects: self.projects(1), cursor: nil)))
     await retry?.value
     XCTAssertEqual(feature.snapshot(for: .backed).projects.count, 3)
     XCTAssertNil(feature.snapshot(for: .backed).error)
     XCTAssertEqual(provider.requests.map(\.1), [nil, nil, "next", "next"])
-    XCTAssertNil(feature.requestProfileProjectsPage(type: .backed, next: true))
+    XCTAssertNil(feature.startProfileProjectsPageLoad(type: .backed, next: true))
   }
 
   func testRefreshSupersedesPageAndSessionChangeRejectsLateCompletion() async throws {
@@ -202,23 +202,23 @@ final class ProfileFeatureTests: TestCase {
       currentUser: { .template }
     )
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
-    let first = feature.requestProfileProjectsPage(type: .backed)
+    let first = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(.init(projects: self.projects(1), cursor: "next")))
     await first?.value
-    let next = feature.requestProfileProjectsPage(type: .backed, next: true)
+    let next = feature.startProfileProjectsPageLoad(type: .backed, next: true)
     await provider.pages.waitFor(2)
-    let refresh = feature.requestProfileProjectsPage(type: .backed)
+    let refresh = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(3)
     try provider.pages.finish(2, .success(.init(projects: self.projects(2), cursor: nil)))
     await refresh?.value
     try provider.pages.finish(1, .success(.init(projects: self.projects(3), cursor: nil)))
     await next?.value
     XCTAssertEqual(feature.snapshot(for: .backed).projects.count, 2)
-    let obsolete = feature.requestProfileProjectsPage(type: .backed)
+    let obsolete = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(4)
     session.sessionChanged()
-    let replacement = feature.requestProfileProjectsPage(type: .backed)
+    let replacement = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(5)
     try provider.pages.finish(3, .success(.init(projects: self.projects(3), cursor: nil)))
     await obsolete?.value
@@ -247,7 +247,7 @@ final class ProfileFeatureTests: TestCase {
       }
     }
     defer { observer.dispose() }
-    let first = feature.requestHeader(), duplicate = feature.requestHeader()
+    let first = feature.startProfileHeaderLoad(), duplicate = feature.startProfileHeaderLoad()
     await provider.users.waitFor(1); await provider.graphs.waitFor(1)
     var graph = User.template
     graph.stats.starredProjectsCount = 73
@@ -279,7 +279,7 @@ final class ProfileFeatureTests: TestCase {
       }
     }
     defer { observer.dispose() }
-    let request = feature.requestHeader()
+    let request = feature.startProfileHeaderLoad()
     await provider.users.waitFor(1); await provider.graphs.waitFor(1)
     try provider.users.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     try provider.graphs.finish(0, .success(.template))
@@ -298,13 +298,13 @@ final class ProfileFeatureTests: TestCase {
       currentUser: { .template }
     )
     let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
-    let first = feature.requestProfileProjectsPage(type: .backed)
+    let first = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(.init(projects: self.projects(2), cursor: "next")))
     await first?.value
-    let next = feature.requestProfileProjectsPage(type: .backed, next: true)
+    let next = feature.startProfileProjectsPageLoad(type: .backed, next: true)
     await provider.pages.waitFor(2)
-    feature.reset()
+    feature.resetForSessionChange()
     try provider.pages.finish(1, .failure(ErrorEnvelope.couldNotParseJSON))
     await next?.value
     XCTAssertTrue(feature.snapshot(for: .backed).projects.isEmpty)
@@ -335,10 +335,10 @@ final class ProfileFeatureTests: TestCase {
     var combined: [User] = []
     let observer = feature.observeHeader { if case let .combinedUser(user) = $0 { combined.append(user) } }
     defer { observer.dispose() }
-    let old = feature.requestHeader()
+    let old = feature.startProfileHeaderLoad()
     await provider.users.waitFor(1)
     await provider.graphs.waitFor(1)
-    let fresh = feature.requestHeader(replacing: true)
+    let fresh = feature.startProfileHeaderLoad(replacing: true)
     await provider.users.waitFor(2)
     await provider.graphs.waitFor(2)
     var newUser = User.template

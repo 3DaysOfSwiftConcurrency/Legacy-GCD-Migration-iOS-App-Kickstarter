@@ -123,18 +123,18 @@ public final class RecommendationsFeature {
     self.pendingLoadsByRoute.removeValue(forKey: route)?.task.cancel()
     self.loadedSelectionsByRoute.removeValue(forKey: route)
   }
-  public func reset() {
+  public func resetForSessionChange() {
     for route in Array(self.pendingLoadsByRoute.keys) { self.release(route: route) }
     self.loadedSelectionsByRoute.removeAll()
   }
   public func loadRecommendations(_ request: Request, route: UUID) async {
-    await self.requestRecommendations(request, route: route).value
+    await self.startRecommendationsLoad(request, route: route).value
   }
 
   /// Equivalent pending work on one screen shares a task. A different input
   /// cancels that screen's previous read, without affecting another screen.
   @discardableResult
-  public func requestRecommendations(_ request: Request, route: UUID) -> Task<Void, Never> {
+  public func startRecommendationsLoad(_ request: Request, route: UUID) -> Task<Void, Never> {
     let session = self.session
     if let pending = self.pendingLoadsByRoute[route], pending.request == request, pending.session == session {
       return pending.task

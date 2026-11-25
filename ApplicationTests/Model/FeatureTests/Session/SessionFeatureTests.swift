@@ -45,9 +45,9 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let first = feature.requestDeviceRegistration(token: "synthetic-a")
-    let duplicate = feature.requestDeviceRegistration(token: "synthetic-a")
-    let second = feature.requestDeviceRegistration(token: "synthetic-b")
+    let first = feature.startDeviceRegistration(token: "synthetic-a")
+    let duplicate = feature.startDeviceRegistration(token: "synthetic-a")
+    let second = feature.startDeviceRegistration(token: "synthetic-b")
     await provider.registrations.waitFor(1)
     XCTAssertEqual(provider.registeredTokens, ["synthetic-a"])
     try provider.registrations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -66,8 +66,8 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let first = feature.requestDeviceRegistration(token: "synthetic-a")
-    let duplicate = feature.requestDeviceRegistration(token: "synthetic-a")
+    let first = feature.startDeviceRegistration(token: "synthetic-a")
+    let duplicate = feature.startDeviceRegistration(token: "synthetic-a")
     await provider.registrations.waitFor(1)
     try provider.registrations.finish(0, .success(()))
     for request in [first, duplicate] {
@@ -81,7 +81,7 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let obsolete = feature.requestDeviceRegistration(token: "synthetic-a")
+    let obsolete = feature.startDeviceRegistration(token: "synthetic-a")
     feature.sessionChanged()
     guard case .failure(is CancellationError) = await obsolete.result else {
       return XCTFail("A previous session's device registration was admitted")
@@ -93,11 +93,11 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let admitted = feature.requestDeviceRegistration(token: "synthetic-a")
+    let admitted = feature.startDeviceRegistration(token: "synthetic-a")
     await provider.registrations.waitFor(1)
-    let queued = feature.requestDeviceRegistration(token: "synthetic-b")
+    let queued = feature.startDeviceRegistration(token: "synthetic-b")
     feature.sessionChanged()
-    let current = feature.requestDeviceRegistration(token: "synthetic-c")
+    let current = feature.startDeviceRegistration(token: "synthetic-c")
     XCTAssertEqual(provider.registeredTokens, ["synthetic-a"])
 
     try provider.registrations.finish(0, .success(()))
@@ -118,13 +118,13 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let failed = feature.requestDeviceRegistration(token: "synthetic-a")
+    let failed = feature.startDeviceRegistration(token: "synthetic-a")
     await provider.registrations.waitFor(1)
     try provider.registrations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { _ = try await failed.value; XCTFail("Expected registration failure") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
 
-    let retry = feature.requestDeviceRegistration(token: "synthetic-a")
+    let retry = feature.startDeviceRegistration(token: "synthetic-a")
     await provider.registrations.waitFor(2)
     try provider.registrations.finish(1, .success(()))
     let registered = try await retry.value
@@ -202,7 +202,7 @@ final class SessionFeatureTests: XCTestCase {
     feature.commitRefreshedUser(.template, userID: nil, generation: generation, allowSessionRestore: true)
     XCTAssertEqual(user?.id, User.template.id)
     XCTAssertEqual(feature.generation, generation)
-    let duplicate = feature.requestDeviceRegistration(token: "01")
+    let duplicate = feature.startDeviceRegistration(token: "01")
     let duplicateFinished = expectation(description: "Restored session shares device registration")
     var duplicateResult: Result<String, Error>?
     let observer = Task {
@@ -227,7 +227,7 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let obsolete = feature.requestDeviceRegistration(token: "synthetic-a")
+    let obsolete = feature.startDeviceRegistration(token: "synthetic-a")
     await provider.registrations.waitFor(1)
     feature.sessionChanged()
     try provider.registrations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -261,8 +261,8 @@ final class SessionFeatureTests: XCTestCase {
       makeProvider: { provider }, currentUser: { user },
       updateUser: { user = $0; commits += 1 }
     )
-    let first = feature.requestClearActivityIndicator()
-    let duplicate = feature.requestClearActivityIndicator()
+    let first = feature.startClearActivityIndicator()
+    let duplicate = feature.startClearActivityIndicator()
     await provider.badges.waitFor(1)
     user?.chosenCurrency = "GBP"
     let readRevision = feature.userReadGeneration
@@ -286,14 +286,14 @@ final class SessionFeatureTests: XCTestCase {
       makeProvider: { provider }, currentUser: { user },
       updateUser: { user = $0; commits += 1 }
     )
-    let failed = feature.requestClearActivityIndicator()
+    let failed = feature.startClearActivityIndicator()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { _ = try await failed.value; XCTFail("Expected failure") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
     XCTAssertEqual(user?.unseenActivityCount, 7)
     XCTAssertEqual(commits, 0)
-    let retry = feature.requestClearActivityIndicator()
+    let retry = feature.startClearActivityIndicator()
     await provider.badges.waitFor(2)
     try provider.badges.finish(1, .success(0))
     _ = try await retry.value
@@ -308,9 +308,9 @@ final class SessionFeatureTests: XCTestCase {
     let feature = SessionFeature(
       makeProvider: { provider }, currentUser: { user }, updateUser: { user = $0 }
     )
-    let read = feature.requestCurrentUser()
+    let read = feature.startCurrentUserFetch()
     await provider.users.waitFor(1)
-    let write = feature.requestClearActivityIndicator()
+    let write = feature.startClearActivityIndicator()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .success(0))
     _ = try await write.value
@@ -333,7 +333,7 @@ final class SessionFeatureTests: XCTestCase {
     )
     let setup = Task { try await feature.refreshGraphUserSetup() }
     await provider.setups.waitFor(1)
-    let badge = feature.requestClearActivityIndicator()
+    let badge = feature.startClearActivityIndicator()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .success(0))
     _ = try await badge.value
@@ -443,7 +443,7 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let old = feature.requestCurrentUser()
+    let old = feature.startCurrentUserFetch()
     await provider.users.waitFor(1)
     feature.sessionChanged()
     let unauthorized = ErrorEnvelope(
@@ -455,7 +455,7 @@ final class SessionFeatureTests: XCTestCase {
     try provider.users.finish(0, .failure(unauthorized))
     do { _ = try await old.value; XCTFail("Old error escaped") }
     catch { XCTAssertTrue(error is CancellationError) }
-    let current = feature.requestCurrentUser()
+    let current = feature.startCurrentUserFetch()
     await provider.users.waitFor(2)
     try provider.users.finish(1, .failure(unauthorized))
     do { _ = try await current.value; XCTFail("Current error was swallowed") }
@@ -488,15 +488,15 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let first = feature.requestCurrentUser()
-    let duplicate = feature.requestCurrentUser()
+    let first = feature.startCurrentUserFetch()
+    let duplicate = feature.startCurrentUserFetch()
     await provider.users.waitFor(1)
     try provider.users.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     for task in [first, duplicate] {
       do { _ = try await task.value; XCTFail("Expected error") } catch {}
     }
     XCTAssertEqual(provider.users.count, 1)
-    let retry = feature.requestCurrentUser()
+    let retry = feature.startCurrentUserFetch()
     await provider.users.waitFor(2)
     try provider.users.finish(1, .success(.template))
     let user = try await retry.value
@@ -507,10 +507,10 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let old = feature.requestCurrentUser()
+    let old = feature.startCurrentUserFetch()
     await provider.users.waitFor(1)
     feature.sessionChanged()
-    let new = feature.requestCurrentUser()
+    let new = feature.startCurrentUserFetch()
     await provider.users.waitFor(2)
     try provider.users.finish(0, .success(.template))
     do { _ = try await old.value; XCTFail("Obsolete read published") } catch is CancellationError {} catch {
@@ -525,8 +525,8 @@ final class SessionFeatureTests: XCTestCase {
     defer { provider.releaseAll() }
     var user: User? = .template
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { user })
-    let first = feature.requestClearActivityIndicator()
-    let duplicate = feature.requestClearActivityIndicator()
+    let first = feature.startClearActivityIndicator()
+    let duplicate = feature.startClearActivityIndicator()
     await provider.badges.waitFor(1)
     user = nil
     feature.sessionChanged()
@@ -536,7 +536,7 @@ final class SessionFeatureTests: XCTestCase {
         XCTFail("\(error)")
       }
     }
-    let denied = feature.requestClearActivityIndicator()
+    let denied = feature.startClearActivityIndicator()
     do { _ = try await denied.value; XCTFail("Logged-out mutation") } catch {}
     XCTAssertEqual(provider.badges.count, 1)
   }
@@ -545,13 +545,13 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let shared = feature.requestCurrentUser()
+    let shared = feature.startCurrentUserFetch()
     let joined = XCTestExpectation(description: "Waiter enters shared read")
     let waiter = Task {
       joined.fulfill()
       return try await feature.refreshCurrentUser()
     }
-    let graph = feature.requestGraphUser()
+    let graph = feature.startGraphUserFetch()
     await provider.users.waitFor(1)
     await provider.graphs.waitFor(1)
     await fulfillment(of: [joined], timeout: 2)

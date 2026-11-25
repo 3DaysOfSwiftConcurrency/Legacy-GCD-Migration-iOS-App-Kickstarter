@@ -45,7 +45,7 @@ public final class ProjectMediaFeature {
   public func observeVideoFeedAvailability(
     _ observer: @escaping @MainActor (Bool) -> Void
   ) -> MainActorObservation {
-    return self.connectivity.source.observe { [weak self] _ in
+    return self.connectivity.connectivityState.observe { [weak self] _ in
       guard let self else { return }
       observer(self.isVideoFeedAvailable)
     }

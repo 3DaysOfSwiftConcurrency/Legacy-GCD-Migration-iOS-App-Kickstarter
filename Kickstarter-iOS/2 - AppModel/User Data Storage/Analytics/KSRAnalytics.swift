@@ -749,7 +749,7 @@ public final class KSRAnalytics {
 
   // MARK: - Pledged Project Overview Events
 
-  public func trackPPODashboardOpens(properties: PledgedProjectOverviewProperties) {
+  public func trackPledgedProjectOverviewDashboardOpened(properties: PledgedProjectOverviewProperties) {
     let properties = contextProperties(page: .projectAlerts)
       .withAllValuesFrom(pledgedProjectOverviewProperties(from: properties))
     self.track(
@@ -758,7 +758,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOMessagingCreator(
+  public func trackPledgedProjectOverviewCreatorMessageStarted(
     from project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -772,7 +772,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOFixingPaymentFailure(
+  public func trackPledgedProjectOverviewPaymentRepairStarted(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -786,7 +786,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOOpeningSurvey(
+  public func trackPledgedProjectOverviewSurveyOpened(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -803,7 +803,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOOpenPledgeManager(
+  public func trackPledgedProjectOverviewPledgeManagerOpened(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -820,7 +820,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOInitiateConfirmingAddress(
+  public func trackPledgedProjectOverviewAddressConfirmationStarted(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -838,7 +838,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOSubmitAddressConfirmation(
+  public func trackPledgedProjectOverviewAddressConfirmationSubmitted(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -856,7 +856,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOEditAddress(
+  public func trackPledgedProjectOverviewAddressEditStarted(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -874,7 +874,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOAuthenticateCard(
+  public func trackPledgedProjectOverviewCardAuthenticationStarted(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -891,7 +891,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOManageLivePledge(
+  public func trackPledgedProjectOverviewLivePledgeManagementStarted(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -908,7 +908,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOViewProjectDetails(
+  public func trackPledgedProjectOverviewProjectDetailsButtonClicked(
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
   ) {
@@ -925,7 +925,7 @@ public final class KSRAnalytics {
     )
   }
 
-  public func trackPPOUpdateRewardReceived(
+  public func trackPledgedProjectOverviewRewardReceivedUpdated(
     toggleOn: Bool,
     project: any ProjectAnalyticsProperties,
     properties: PledgedProjectOverviewProperties
@@ -1433,7 +1433,7 @@ public final class KSRAnalytics {
     self.track(event: SegmentEvent.pageViewed.rawValue, properties: props)
   }
 
-  public func trackLoginTOutPageViewed() {
+  public func trackLoginSignupPageViewed() {
     let props = contextProperties(page: .loginTout)
     self.track(event: SegmentEvent.pageViewed.rawValue, properties: props)
   }

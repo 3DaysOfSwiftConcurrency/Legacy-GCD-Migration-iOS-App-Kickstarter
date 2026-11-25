@@ -19,7 +19,7 @@ final class PledgeFeatureTests: TestCase {
     sessionFeature: self.session, makeProvider: { self.provider })
   override func tearDown() async throws {
     self.session.sessionChanged()
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     self.provider.releaseAll()
     await self.feature.waitForOperations()
     try await super.tearDown()
@@ -588,7 +588,7 @@ final class PledgeFeatureTests: TestCase {
       .init(checkoutId: "c", paymentIntentClientSecret: "fixture"))
     await self.provider.checkouts.waitFor(1)
     self.session.sessionChanged()
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     try self.provider.checkouts.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do {
       _ = try await checkout.value
@@ -704,7 +704,7 @@ final class PledgeFeatureTests: TestCase {
     let next = Task { try await self.feature.fetchProjectWithPledgeRewards(route: route, param: .id(2)) }
     await self.provider.projects.waitFor(2)
     self.session.sessionChanged()
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     try self.provider.projects.finish(1, .success(.template))
     do {
       _ = try await next.value

@@ -276,7 +276,7 @@ public final class DeveloperExamplesFeature {
     self.richTextSnapshotsByRoute[route] = nil
     self.richTextListSessionsByRoute[route] = nil
   }
-  public func reset() {
+  public func resetForSessionChange() {
     let routes = Set(self.paginationSnapshotsByRoute.keys).union(self.richTextSnapshotsByRoute.keys).union(self.latestLookupIDsByRoute.keys)
     for route in routes { self.release(route: route) }
   }

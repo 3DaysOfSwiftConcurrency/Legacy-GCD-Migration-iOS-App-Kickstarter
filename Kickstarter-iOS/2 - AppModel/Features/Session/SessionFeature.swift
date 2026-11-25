@@ -102,7 +102,7 @@ public final class SessionFeature {
         try Task.checkCancellation()
         guard let self, self.isCurrentDeviceRegistration(userID: userID, generation: generation) else { return }
         self.deviceRegistrationDeliveryTask?.task.cancel()
-        let request = self.requestDeviceRegistration(token: token)
+        let request = self.startDeviceRegistration(token: token)
         let deliveryID = UUID()
         let delivery = Task { [weak self] in
           defer {
@@ -129,7 +129,7 @@ public final class SessionFeature {
   /// Equal pending tokens share a request. Changed tokens serialize so the most
   /// recent registration reaches the server last. Admitted writes finish across logout.
   @discardableResult
-  func requestDeviceRegistration(token: String) -> Task<String, Error> {
+  func startDeviceRegistration(token: String) -> Task<String, Error> {
     let generation = self.generation
     let userID = self.currentUser?.id
     if let tail = self.latestQueuedDeviceRegistration, tail.token == token,
@@ -292,7 +292,7 @@ public final class SessionFeature {
     let generation = self.sessionGeneration
     let userReadGeneration = self.userReadInvalidationVersion
     do {
-      let user = try await self.requestUserOperation(operation).value
+      let user = try await self.startUserOperation(operation).value
       try Task.checkCancellation()
       guard self.isCurrent(userID: userID, generation: generation),
             operation == .clearActivity || self.userReadInvalidationVersion == userReadGeneration
@@ -307,22 +307,22 @@ public final class SessionFeature {
   }
 
   @discardableResult
-  public func requestCurrentUser() -> Task<User, Error> {
-    self.requestUserOperation(.user)
+  public func startCurrentUserFetch() -> Task<User, Error> {
+    self.startUserOperation(.user)
   }
 
   @discardableResult
-  public func requestGraphUser() -> Task<User, Error> {
-    self.requestUserOperation(.graphUser)
+  public func startGraphUserFetch() -> Task<User, Error> {
+    self.startUserOperation(.graphUser)
   }
 
   /// Clears the server's activity indicator and returns the user with its updated count.
   @discardableResult
-  public func requestClearActivityIndicator() -> Task<User, Error> {
-    self.requestUserOperation(.clearActivity)
+  public func startClearActivityIndicator() -> Task<User, Error> {
+    self.startUserOperation(.clearActivity)
   }
 
-  private func requestUserOperation(_ operation: Operation) -> Task<User, Error> {
+  private func startUserOperation(_ operation: Operation) -> Task<User, Error> {
     let identity = Identity(
       operation: operation, userID: self.currentUser?.id, sessionGeneration: self.sessionGeneration,
       readInvalidationVersion: operation == .clearActivity ? 0 : self.userReadInvalidationVersion

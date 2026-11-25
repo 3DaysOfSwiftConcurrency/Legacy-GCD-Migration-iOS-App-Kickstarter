@@ -17,7 +17,7 @@ final class ActivityFriendFollowCellViewModelTests: TestCase {
     }, sleep: { _ in })
   private lazy var vm = ActivityFriendFollowCellViewModel(friendsFeature: self.feature)
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     await self.feature.waitForFriendsOperations()
     try await super.tearDown()
   }

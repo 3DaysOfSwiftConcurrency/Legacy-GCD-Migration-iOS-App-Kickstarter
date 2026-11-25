@@ -169,7 +169,7 @@ private func allRoutes(webBaseURL: URL) -> [String: (RouteParamsDecoded) -> Navi
     "/projects/:creator_param/:project_param/pledge/edit": pledgeEdit,
     "/projects/:creator_param/:project_param/pledge/new": pledgeNew,
     "/projects/:creator_param/:project_param/posts": posts,
-    "/projects/:creator_param/:project_param/posts/:update_param": update,
+    "/projects/:creator_param/:project_param/posts/:update_param": projectUpdateRoute,
     "/projects/:creator_param/:project_param/updates": updates,
     "/projects/:creator_param/:project_param/posts/:update_param/comments": updateComments,
     "/projects/:creator_param/:project_param/surveys/:survey_param": { pledgeManagerWebview($0, webBaseURL: webBaseURL) },
@@ -477,7 +477,7 @@ private func pledgeManagerWebview(_ params: RouteParamsDecoded, webBaseURL: URL)
   return nil
 }
 
-private func update(_ params: RouteParamsDecoded) -> Navigation? {
+private func projectUpdateRoute(_ params: RouteParamsDecoded) -> Navigation? {
   if let projectParam = params.projectParam(),
      let updateParam = params.updateParam() {
     let refInfo = refInfoFromParams(params)

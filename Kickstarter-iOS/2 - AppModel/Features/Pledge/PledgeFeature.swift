@@ -688,7 +688,7 @@ public final class PledgeFeature {
     self.pendingReadsByRoute.removeValue(forKey: route)?.task.cancel()
   }
 
-  public func reset() {
+  public func resetForSessionChange() {
     for pending in self.pendingReadsByRoute.values { pending.task.cancel() }
     self.pendingReadsByRoute.removeAll()
     self.latestReadRequestIDsByRoute.removeAll()

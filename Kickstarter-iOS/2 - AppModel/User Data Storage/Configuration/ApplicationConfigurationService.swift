@@ -27,23 +27,23 @@ public final class ApplicationConfigurationService {
     self.applyConfiguration = applyConfiguration
   }
 
-  @discardableResult func requestConfigurationRefresh() -> Task<Config, Error> {
+  @discardableResult func startConfigurationRefresh() -> Task<Config, Error> {
     self.installVisitorCookies()
-    return self.requestConfiguration(applyResult: true)
+    return self.startConfigurationFetch(applyResult: true)
   }
 
-  public func configuration() async throws -> Config {
+  public func loadConfiguration() async throws -> Config {
     try Task.checkCancellation()
-    let configuration = try await self.requestConfiguration().value
+    let configuration = try await self.startConfigurationLoad().value
     try Task.checkCancellation()
     return configuration
   }
 
-  @discardableResult public func requestConfiguration() -> Task<Config, Error> {
-    self.requestConfiguration(applyResult: false)
+  @discardableResult public func startConfigurationLoad() -> Task<Config, Error> {
+    self.startConfigurationFetch(applyResult: false)
   }
 
-  private func requestConfiguration(applyResult: Bool) -> Task<Config, Error> {
+  private func startConfigurationFetch(applyResult: Bool) -> Task<Config, Error> {
     if let request = self.pendingConfigurationRequest {
       if applyResult { self.pendingConfigurationRequest?.appliesResult = true }
       return request.task

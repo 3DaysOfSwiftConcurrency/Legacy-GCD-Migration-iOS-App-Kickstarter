@@ -131,7 +131,7 @@ public final class ConnectivityService {
     return self.state.value
   }
 
-  public var source: ConnectivityState {
+  public var connectivityState: ConnectivityState {
     self.startMonitoringIfNeeded()
     return self.state
   }

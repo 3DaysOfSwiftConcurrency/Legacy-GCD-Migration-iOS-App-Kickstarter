@@ -260,7 +260,7 @@ public final class PledgedProjectsFeature {
   public func release(route: UUID) {
     self.routes.removeValue(forKey: route)?.pending?.task.cancel()
   }
-  public func reset() {
+  public func resetForSessionChange() {
     for route in self.routes.values {
       route.pending?.task.cancel()
       route.pending = nil

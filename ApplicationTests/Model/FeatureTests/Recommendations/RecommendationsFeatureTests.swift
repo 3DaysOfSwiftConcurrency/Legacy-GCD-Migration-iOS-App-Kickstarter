@@ -33,7 +33,7 @@ final class RecommendationsFeatureTests: XCTestCase {
   }
 
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     self.provider.categories.releaseAll()
     self.provider.pages.releaseAll()
     await self.feature.waitForRecommendationLoads()
@@ -57,7 +57,7 @@ final class RecommendationsFeatureTests: XCTestCase {
   }
 
   func testCuratedCategoriesRunConcurrentlyPreserveDuplicatesAndBudget() async throws {
-    let task = self.feature.requestRecommendations(.curated([.art, .tabletopGames]), route: self.route)
+    let task = self.feature.startRecommendationsLoad(.curated([.art, .tabletopGames]), route: self.route)
     await self.provider.pages.waitFor(2)
     XCTAssertEqual(self.provider.parameters.map(\.perPage), [15, 15])
     XCTAssertEqual(Set(self.provider.parameters.compactMap { $0.category?.id }), Set([Category.art.id, Category.tabletopGames.id]))
@@ -69,7 +69,7 @@ final class RecommendationsFeatureTests: XCTestCase {
   }
 
   func testCuratedPartialFailureRetainsSuccessfulCategory() async throws {
-    let task = self.feature.requestRecommendations(.curated([.art, .tabletopGames]), route: self.route)
+    let task = self.feature.startRecommendationsLoad(.curated([.art, .tabletopGames]), route: self.route)
     await self.provider.pages.waitFor(2)
     try self.provider.pages.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     try self.provider.pages.finish(1, .success([self.project(2)]))
@@ -79,8 +79,8 @@ final class RecommendationsFeatureTests: XCTestCase {
 
   func testEquivalentPendingInputSharesRequest() async throws {
     let route = self.route
-    let first = self.feature.requestRecommendations(.curated([.art]), route: route)
-    let second = self.feature.requestRecommendations(.curated([.art]), route: route)
+    let first = self.feature.startRecommendationsLoad(.curated([.art]), route: route)
+    let second = self.feature.startRecommendationsLoad(.curated([.art]), route: route)
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success([]))
     await first.value
@@ -91,7 +91,7 @@ final class RecommendationsFeatureTests: XCTestCase {
 
   func testClearingCategoriesSuppressesLateSuccess() async throws {
     let route = self.route
-    let first = self.feature.requestRecommendations(.curated([.art]), route: route)
+    let first = self.feature.startRecommendationsLoad(.curated([.art]), route: route)
     await self.provider.pages.waitFor(1)
     await self.feature.loadRecommendations(.curated([]), route: route)
     try self.provider.pages.finish(0, .success([self.project(1)]))
@@ -102,9 +102,9 @@ final class RecommendationsFeatureTests: XCTestCase {
   func testSeparateScreensDoNotCancelEachOther() async throws {
     let firstRoute = UUID()
     let secondRoute = UUID()
-    let first = self.feature.requestRecommendations(.curated([.art]), route: firstRoute)
+    let first = self.feature.startRecommendationsLoad(.curated([.art]), route: firstRoute)
     await self.provider.pages.waitFor(1)
-    let second = self.feature.requestRecommendations(.curated([.tabletopGames]), route: secondRoute)
+    let second = self.feature.startRecommendationsLoad(.curated([.tabletopGames]), route: secondRoute)
     await self.provider.pages.waitFor(2)
     self.feature.release(route: firstRoute)
     try self.provider.pages.finish(0, .success([self.project(1)]))
@@ -116,7 +116,7 @@ final class RecommendationsFeatureTests: XCTestCase {
   }
 
   func testRecommendationsStopAfterThreeUniqueAlternatives() async throws {
-    let task = self.feature.requestRecommendations(.afterBacking(self.project(1)), route: self.route)
+    let task = self.feature.startRecommendationsLoad(.afterBacking(self.project(1)), route: self.route)
     await self.provider.categories.waitFor(1)
     try self.provider.categories.finish(0, .success(.art))
     await self.provider.pages.waitFor(1)
@@ -130,7 +130,7 @@ final class RecommendationsFeatureTests: XCTestCase {
 
   func testFallbackOrderAndFailuresPreserveAvailableAlternatives() async throws {
     let project = self.project(1)
-    let task = self.feature.requestRecommendations(.afterBacking(project), route: self.route)
+    let task = self.feature.startRecommendationsLoad(.afterBacking(project), route: self.route)
     await self.provider.categories.waitFor(1)
     try self.provider.categories.finish(0, .success(.art))
     await self.provider.pages.waitFor(1)
@@ -149,9 +149,9 @@ final class RecommendationsFeatureTests: XCTestCase {
 
   func testReconfiguredProjectKeepsCategoryPairedAndIgnoresOldLookup() async throws {
     let route = self.route
-    let first = self.feature.requestRecommendations(.afterBacking(self.project(1)), route: route)
+    let first = self.feature.startRecommendationsLoad(.afterBacking(self.project(1)), route: route)
     await self.provider.categories.waitFor(1)
-    let second = self.feature.requestRecommendations(.afterBacking(self.project(2)), route: route)
+    let second = self.feature.startRecommendationsLoad(.afterBacking(self.project(2)), route: route)
     await self.provider.categories.waitFor(2)
     try self.provider.categories.finish(1, .success(.tabletopGames))
     await self.provider.pages.waitFor(1)
@@ -164,7 +164,7 @@ final class RecommendationsFeatureTests: XCTestCase {
   }
 
   func testSessionReplacementStopsFallbackAndSuppressesOutput() async throws {
-    let task = self.feature.requestRecommendations(.afterBacking(self.project(1)), route: self.route)
+    let task = self.feature.startRecommendationsLoad(.afterBacking(self.project(1)), route: self.route)
     await self.provider.categories.waitFor(1)
     try self.provider.categories.finish(0, .success(.art))
     await self.provider.pages.waitFor(1)
@@ -176,7 +176,7 @@ final class RecommendationsFeatureTests: XCTestCase {
   }
 
   func testCategoryFailureDoesNotStartDiscovery() async throws {
-    let task = self.feature.requestRecommendations(.afterBacking(self.project(1)), route: self.route)
+    let task = self.feature.startRecommendationsLoad(.afterBacking(self.project(1)), route: self.route)
     await self.provider.categories.waitFor(1)
     try self.provider.categories.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await task.value

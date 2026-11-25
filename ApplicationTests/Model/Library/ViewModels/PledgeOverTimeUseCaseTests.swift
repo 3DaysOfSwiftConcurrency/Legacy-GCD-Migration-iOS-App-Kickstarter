@@ -15,7 +15,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
     makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) })
   override func tearDown() async throws {
     self.useCase = nil
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     await self.feature.waitForOperations()
     try await super.tearDown()
   }

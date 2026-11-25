@@ -33,7 +33,7 @@ final class PledgedProjectsFeatureTests: TestCase {
     }
   }
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     self.provider.gate.releaseAll()
     await self.feature.waitForOperations()
     self.subscription = nil
@@ -121,7 +121,7 @@ final class PledgedProjectsFeatureTests: TestCase {
     let old = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(1)
     self.session.sessionChanged()
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     let new = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(2)
     try self.provider.gate.finish(1, .success(try .fakeOverview(9...9)))

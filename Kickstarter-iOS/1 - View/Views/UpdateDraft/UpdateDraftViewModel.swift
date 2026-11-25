@@ -44,14 +44,14 @@ final class UpdateDraftViewModel {
   }
   func configureWith(project: Project) {
     self.project = project
-    if self.didLoad { self.creatorDraftsFeature.requestDraftLoad(project: project, route: self.route) }
+    if self.didLoad { self.creatorDraftsFeature.startDraftLoad(project: project, route: self.route) }
   }
   func viewDidLoad() {
     self.didLoad = true
     self.onEvent?(.isLoading(true))
     self.publishAttachmentHidden(true)
     self.publishPreviewEnabled(false)
-    if let project = self.project { self.creatorDraftsFeature.requestDraftLoad(project: project, route: self.route) }
+    if let project = self.project { self.creatorDraftsFeature.startDraftLoad(project: project, route: self.route) }
   }
   private func receive(_ event: CreatorDraftsFeature.Event) {
     switch event {

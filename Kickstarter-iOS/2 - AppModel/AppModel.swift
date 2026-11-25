@@ -704,15 +704,15 @@ public final class AppModel {
     self.authenticationFeature.cancelAllEmailRedirects()
     self.discoveryFeature.resetRecommendationAvailability()
     self.settingsFeature.resetApplicationSettings()
-    self.developerExamplesFeature.reset()
-    self.creatorDraftsFeature.reset()
-    self.recommendationsFeature.reset()
-    self.friendsFeature.reset()
-    self.activityFeature.reset()
-    self.profileFeature.reset()
+    self.developerExamplesFeature.resetForSessionChange()
+    self.creatorDraftsFeature.resetForSessionChange()
+    self.recommendationsFeature.resetForSessionChange()
+    self.friendsFeature.resetForSessionChange()
+    self.activityFeature.resetForSessionChange()
+    self.profileFeature.resetForSessionChange()
     self.messagingFeature.resetMailboxState()
-    self.pledgeFeature.reset()
-    self.pledgedProjectsFeature.reset()
+    self.pledgeFeature.resetForSessionChange()
+    self.pledgedProjectsFeature.resetForSessionChange()
     self.settingsFeature.startApplicationSettingsRefresh()
   }
 
@@ -833,54 +833,54 @@ public final class AppModel {
           AsyncPledgedProjectsProvider(service: AppEnvironment.current.apiService)
         }, locale: { AppEnvironment.current.locale }, analytics: .init(
           dashboardOpened: {
-            AppEnvironment.current.ksrAnalytics.trackPPODashboardOpens(properties: $0)
+            AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewDashboardOpened(properties: $0)
           },
           cardEvent: { event, project, properties in
             switch event {
             case .authenticateCard:
-              AppEnvironment.current.ksrAnalytics.trackPPOAuthenticateCard(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewCardAuthenticationStarted(
                 project: project, properties: properties
               )
             case .confirmAddress:
-              AppEnvironment.current.ksrAnalytics.trackPPOInitiateConfirmingAddress(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewAddressConfirmationStarted(
                 project: project, properties: properties
               )
             case .editAddress:
-              AppEnvironment.current.ksrAnalytics.trackPPOEditAddress(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewAddressEditStarted(
                 project: project, properties: properties
               )
             case .fixPayment:
-              AppEnvironment.current.ksrAnalytics.trackPPOFixingPaymentFailure(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewPaymentRepairStarted(
                 project: project, properties: properties
               )
             case .manageLivePledge:
-              AppEnvironment.current.ksrAnalytics.trackPPOManageLivePledge(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewLivePledgeManagementStarted(
                 project: project, properties: properties
               )
             case .openPledgeManager:
-              AppEnvironment.current.ksrAnalytics.trackPPOOpenPledgeManager(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewPledgeManagerOpened(
                 project: project, properties: properties
               )
             case .sendMessage:
-              AppEnvironment.current.ksrAnalytics.trackPPOMessagingCreator(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewCreatorMessageStarted(
                 from: project, properties: properties
               )
             case .updateRewardReceived(let isOn):
-              AppEnvironment.current.ksrAnalytics.trackPPOUpdateRewardReceived(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewRewardReceivedUpdated(
                 toggleOn: isOn, project: project, properties: properties
               )
             case .viewProjectDetails:
-              AppEnvironment.current.ksrAnalytics.trackPPOViewProjectDetails(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewProjectDetailsButtonClicked(
                 project: project, properties: properties
               )
             case .completeSurvey:
-              AppEnvironment.current.ksrAnalytics.trackPPOOpeningSurvey(
+              AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewSurveyOpened(
                 project: project, properties: properties
               )
             }
           },
           addressConfirmed: {
-            AppEnvironment.current.ksrAnalytics.trackPPOSubmitAddressConfirmation(
+            AppEnvironment.current.ksrAnalytics.trackPledgedProjectOverviewAddressConfirmationSubmitted(
               project: $0, properties: $1
             )
           }
@@ -934,7 +934,7 @@ public final class AppModel {
           trackLoginSubmitButtonClicked: {
             AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
           },
-          trackLoginToutPageViewed: { AppEnvironment.current.ksrAnalytics.trackLoginTOutPageViewed() },
+          trackLoginToutPageViewed: { AppEnvironment.current.ksrAnalytics.trackLoginSignupPageViewed() },
           trackLoginInitiateButtonClicked: {
             AppEnvironment.current.ksrAnalytics.trackLoginInitiateButtonClicked()
           }

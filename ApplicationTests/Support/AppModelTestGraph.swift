@@ -298,7 +298,7 @@ extension AuthenticationFeature {
       AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     },
     trackLoginToutPageViewed: @escaping @MainActor () -> Void = {
-      AppEnvironment.current.ksrAnalytics.trackLoginTOutPageViewed()
+      AppEnvironment.current.ksrAnalytics.trackLoginSignupPageViewed()
     },
     trackLoginInitiateButtonClicked: @escaping @MainActor () -> Void = {
       AppEnvironment.current.ksrAnalytics.trackLoginInitiateButtonClicked()

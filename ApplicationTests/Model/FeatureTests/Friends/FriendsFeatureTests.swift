@@ -19,7 +19,7 @@ final class FriendsFeatureTests: TestCase {
   private let route = UUID()
 
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     self.provider.pages.releaseAll()
     self.provider.statisticsGate.releaseAll()
     self.provider.writes.releaseAll()
@@ -42,11 +42,11 @@ final class FriendsFeatureTests: TestCase {
     )
     let route = UUID()
 
-    let page = feature.requestFriendsPage(route: route)
+    let page = feature.startFriendsPageLoad(route: route)
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(Self.page([1])))
     await page?.value
-    let statistics = feature.requestFriendStatistics(route: route)
+    let statistics = feature.startFriendStatisticsLoad(route: route)
     await provider.statisticsGate.waitFor(1)
     try provider.statisticsGate.finish(0, .success(.template))
     await statistics.value
@@ -57,10 +57,10 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testEquivalentPageAndStatsReadsShareWhileRemainingIndependent() async throws {
-    let page = self.feature.requestFriendsPage(route: self.route)
-    let duplicate = self.feature.requestFriendsPage(route: self.route)
-    let stats = self.feature.requestFriendStatistics(route: self.route)
-    let duplicateStats = self.feature.requestFriendStatistics(route: self.route)
+    let page = self.feature.startFriendsPageLoad(route: self.route)
+    let duplicate = self.feature.startFriendsPageLoad(route: self.route)
+    let stats = self.feature.startFriendStatisticsLoad(route: self.route)
+    let duplicateStats = self.feature.startFriendStatisticsLoad(route: self.route)
     await self.provider.pages.waitFor(1)
     await self.provider.statisticsGate.waitFor(1)
     try self.provider.statisticsGate.finish(0, .success(.template))
@@ -77,12 +77,12 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testPaginationAppendsIncludingDuplicatesAndStopsAtTerminalPage() async throws {
-    let first = self.feature.requestFriendsPage(route: self.route)
+    let first = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success(Self.page([1, 2], cursor: "next")))
     await first?.value
-    let next = self.feature.requestFriendsPage(route: self.route, next: true)
-    let duplicate = self.feature.requestFriendsPage(route: self.route, next: true)
+    let next = self.feature.startFriendsPageLoad(route: self.route, next: true)
+    let duplicate = self.feature.startFriendsPageLoad(route: self.route, next: true)
     await self.provider.pages.waitFor(2)
     XCTAssertEqual(self.provider.cursors, [nil, "next"])
     try self.provider.pages.finish(1, .success(Self.page([2, 3])))
@@ -94,17 +94,17 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testPageFailurePreservesUsersAndCursorForExplicitRetry() async throws {
-    let first = self.feature.requestFriendsPage(route: self.route)
+    let first = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success(Self.page([1], cursor: "next")))
     await first?.value
-    let next = self.feature.requestFriendsPage(route: self.route, next: true)
+    let next = self.feature.startFriendsPageLoad(route: self.route, next: true)
     await self.provider.pages.waitFor(2)
     try self.provider.pages.finish(1, .failure(ErrorEnvelope.couldNotParseJSON))
     await next?.value
     XCTAssertEqual(self.feature.snapshot(route: self.route).users.map(\.id), [1])
     XCTAssertNotNil(self.feature.snapshot(route: self.route).pageError)
-    let retry = self.feature.requestFriendsPage(route: self.route, next: true)
+    let retry = self.feature.startFriendsPageLoad(route: self.route, next: true)
     await self.provider.pages.waitFor(3)
     XCTAssertEqual(self.provider.cursors, [nil, "next", "next"])
     try self.provider.pages.finish(2, .success(Self.page([] , cursor: "ignored")))
@@ -115,8 +115,8 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testStatisticsFailureDoesNotFailFriendsList() async throws {
-    let page = self.feature.requestFriendsPage(route: self.route)
-    let stats = self.feature.requestFriendStatistics(route: self.route)
+    let page = self.feature.startFriendsPageLoad(route: self.route)
+    let stats = self.feature.startFriendStatisticsLoad(route: self.route)
     await self.provider.pages.waitFor(1)
     await self.provider.statisticsGate.waitFor(1)
     try self.provider.pages.finish(0, .success(Self.page([1])))
@@ -129,13 +129,13 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testRefreshRejectsLatePaginationEvenWhenProviderIgnoresCancellation() async throws {
-    let first = self.feature.requestFriendsPage(route: self.route)
+    let first = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success(Self.page([1], cursor: "next")))
     await first?.value
-    let next = self.feature.requestFriendsPage(route: self.route, next: true)
+    let next = self.feature.startFriendsPageLoad(route: self.route, next: true)
     await self.provider.pages.waitFor(2)
-    let refresh = self.feature.requestFriendsPage(route: self.route)
+    let refresh = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.pages.waitFor(3)
     try self.provider.pages.finish(2, .success(Self.page([3])))
     await refresh?.value
@@ -145,10 +145,10 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testReleasedRouteCannotPublishIntoReplacement() async throws {
-    let old = self.feature.requestFriendsPage(route: self.route)
+    let old = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.pages.waitFor(1)
     self.feature.release(route: self.route)
-    let replacement = self.feature.requestFriendsPage(route: self.route)
+    let replacement = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.pages.waitFor(2)
     try self.provider.pages.finish(1, .success(Self.page([2])))
     await replacement?.value
@@ -158,8 +158,8 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testSameUserNewSessionSuppressesPendingPagesAndStatistics() async throws {
-    let page = self.feature.requestFriendsPage(route: self.route)
-    let stats = self.feature.requestFriendStatistics(route: self.route)
+    let page = self.feature.startFriendsPageLoad(route: self.route)
+    let stats = self.feature.startFriendStatisticsLoad(route: self.route)
     await self.provider.pages.waitFor(1)
     await self.provider.statisticsGate.waitFor(1)
     self.session.sessionChanged()
@@ -235,7 +235,7 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testFollowAllIsOrderedAndInvalidatesOldPageBeforeRefresh() async throws {
-    let page = self.feature.requestFriendsPage(route: self.route)
+    let page = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.pages.waitFor(1)
     let follow = self.feature.startFollowing(user: Self.user(1), following: true)
     let all = self.feature.startFollowAll()
@@ -259,7 +259,7 @@ final class FriendsFeatureTests: TestCase {
   func testNewReadWaitsForAdmittedWriteAndUsesSharedFollowState() async throws {
     let follow = self.feature.startFollowing(user: Self.user(1), following: true)
     defer { follow.cancel() }
-    let page = self.feature.requestFriendsPage(route: self.route)
+    let page = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.writes.waitFor(1)
     XCTAssertEqual(self.provider.pages.count, 0)
     try self.provider.writes.finish(0, .success(()))

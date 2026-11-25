@@ -51,7 +51,7 @@ final class ThanksViewModel {
     let session = recommendationsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let command = recommendationsFeature.requestRecommendations(.afterBacking(data.project), route: route)
+    let command = recommendationsFeature.startRecommendationsLoad(.afterBacking(data.project), route: route)
     self.recommendationTask = Task { [weak self] in
       await command.value
       guard !Task.isCancelled, let self, self.recommendationRevision == revision,

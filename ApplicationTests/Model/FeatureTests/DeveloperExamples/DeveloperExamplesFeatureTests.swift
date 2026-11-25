@@ -21,7 +21,7 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
       makeProvider: { provider })
   }
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     self.provider.pages.releaseAll()
     self.provider.lists.releaseAll()
     self.provider.lookups.releaseAll()
@@ -260,7 +260,7 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
     await self.provider.lists.waitFor(1)
     await self.provider.lookups.waitFor(1)
     self.feature.sessionFeature.sessionChanged()
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     try self.provider.pages.finish(0, .success(self.page([1])))
     try self.provider.lists.finish(0, .success([self.item]))
     try self.provider.lookups.finish(0, .success(self.item))

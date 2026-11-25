@@ -21,7 +21,7 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     await self.feature.loadDraft(project: .template, route: self.route)
   }
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     self.provider.loads.releaseAll()
     self.provider.saves.releaseAll()
     self.provider.adds.releaseAll()
@@ -129,9 +129,9 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     self.feature.observe(route: self.route) { event in
       if case let .load(.success(draft)) = event { loaded.append(draft.update.title) }
     }
-    let first = self.feature.requestDraftLoad(project: .template, route: self.route)
+    let first = self.feature.startDraftLoad(project: .template, route: self.route)
     await self.provider.loads.waitFor(1)
-    let second = self.feature.requestDraftLoad(project: .template |> Project.lens.id .~ 2, route: self.route)
+    let second = self.feature.startDraftLoad(project: .template |> Project.lens.id .~ 2, route: self.route)
     await self.provider.loads.waitFor(2)
     try self.provider.loads.finish(1, .success(.template |> UpdateDraft.lens.update.title .~ "Current"))
     await second.value
@@ -145,7 +145,7 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     self.feature.observe(route: self.route) { event in
       if case .load(.success) = event { loadCount += 1 }
     }
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     await self.feature.loadDraft(project: .template, route: self.route)
     XCTAssertEqual(loadCount, 1)
   }

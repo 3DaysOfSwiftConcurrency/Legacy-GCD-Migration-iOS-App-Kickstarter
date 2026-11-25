@@ -13,7 +13,7 @@ final class FindFriendsViewModelTests: TestCase {
   private lazy var vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: {})
 
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     await self.feature.waitForFriendsOperations()
     try await super.tearDown()
   }

@@ -116,17 +116,17 @@ public final class FriendsFeature {
     self.routes[route]?.statistics?.task.cancel()
     self.routes[route] = nil
   }
-  public func reset() {
+  public func resetForSessionChange() {
     for route in Array(self.routes.keys) { self.release(route: route) }
     self.followingStatusByUserID.removeAll()
     self.followingCacheSession = self.session
   }
 
-  public func refreshFriendsPage(route: UUID) async { await self.requestFriendsPage(route: route)?.value }
-  public func loadNextFriendsPage(route: UUID) async { await self.requestFriendsPage(route: route, next: true)?.value }
+  public func refreshFriendsPage(route: UUID) async { await self.startFriendsPageLoad(route: route)?.value }
+  public func loadNextFriendsPage(route: UUID) async { await self.startFriendsPageLoad(route: route, next: true)?.value }
 
   @discardableResult
-  public func requestFriendsPage(route: UUID, next: Bool = false) -> Task<Void, Never>? {
+  public func startFriendsPageLoad(route: UUID, next: Bool = false) -> Task<Void, Never>? {
     let state = self.getOrCreateRouteState(for: route)
     if let pending = state.page, next || pending.cursor == nil { return pending.task }
     guard !next || state.cursor != nil else { return nil }
@@ -170,9 +170,9 @@ public final class FriendsFeature {
     return task
   }
 
-  public func refreshFriendStatistics(route: UUID) async { await self.requestFriendStatistics(route: route).value }
+  public func refreshFriendStatistics(route: UUID) async { await self.startFriendStatisticsLoad(route: route).value }
   @discardableResult
-  public func requestFriendStatistics(route: UUID) -> Task<Void, Never> {
+  public func startFriendStatisticsLoad(route: UUID) -> Task<Void, Never> {
     let state = self.getOrCreateRouteState(for: route)
     if let pending = state.statistics { return pending.task }
     let id = UUID()

@@ -107,12 +107,12 @@ public final class ActivityFeature {
     let id = self.sessionFeature.currentUser?.id
     let revision = self.sessionFeature.generation
     guard self.accountID != id || self.activitySessionGeneration != revision else { return }
-    self.reset()
+    self.resetForSessionChange()
     self.accountID = id
     self.activitySessionGeneration = revision
   }
 
-  public func reset() {
+  public func resetForSessionChange() {
     self.activityPageRequest?.task.cancel()
     self.unansweredSurveyRequest?.task.cancel()
     self.activityPageRequest = nil
@@ -126,13 +126,13 @@ public final class ActivityFeature {
     if self.isLoadingActivityPage { self.isLoadingActivityPage = false; self.publish(.loading(false)) }
   }
 
-  public func refreshActivityFeed() async { await self.requestActivityPage()?.value }
+  public func refreshActivityFeed() async { await self.startActivityPageLoad()?.value }
   public func loadNextActivityFeedPage() async {
-    await self.requestActivityPage(next: true)?.value
+    await self.startActivityPageLoad(next: true)?.value
   }
 
   @discardableResult
-  public func requestActivityPage(next: Bool = false) -> Task<Void, Never>? {
+  public func startActivityPageLoad(next: Bool = false) -> Task<Void, Never>? {
     self.resetActivityIfSessionChanged()
     guard self.accountID != nil else { return nil }
     if let activityPageRequest = self.activityPageRequest,
@@ -188,7 +188,7 @@ public final class ActivityFeature {
   }
 
   @discardableResult
-  public func requestUnansweredSurveys() -> Task<Void, Never>? {
+  public func startUnansweredSurveyLoad() -> Task<Void, Never>? {
     self.resetActivityIfSessionChanged()
     guard let userID = self.accountID else { return nil }
     if let unansweredSurveyRequest = self.unansweredSurveyRequest {

@@ -45,7 +45,7 @@ class PPOViewModelTests: XCTestCase {
 
   override func tearDown() async throws {
     MainActor.assumeIsolated {
-      self.feature.reset()
+      self.feature.resetForSessionChange()
       self.viewModel = nil
       self.cancellables = nil
     }

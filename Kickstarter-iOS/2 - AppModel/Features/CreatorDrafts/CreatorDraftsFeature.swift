@@ -98,16 +98,16 @@ public final class CreatorDraftsFeature {
     self.routes.removeValue(forKey: route)?.read?.task.cancel()
     self.draftEventListenersByRoute[route] = nil
   }
-  public func reset() {
+  public func resetForSessionChange() {
     for state in self.routes.values { state.read?.task.cancel() }
     self.routes.removeAll()
     self.cachedDraftsByKey.removeAll()
     self.editVersionsByDraft.removeAll()
   }
-  public func loadDraft(project: Project, route: UUID) async { await self.requestDraftLoad(project: project, route: route).value }
+  public func loadDraft(project: Project, route: UUID) async { await self.startDraftLoad(project: project, route: route).value }
 
   @discardableResult
-  public func requestDraftLoad(project: Project, route: UUID) -> Task<Void, Never> {
+  public func startDraftLoad(project: Project, route: UUID) -> Task<Void, Never> {
     let key = Key(projectID: project.id, userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
     let revision = self.editVersionsByDraft[key, default: 0]
     if let state = self.routes[route], state.key == key, let read = state.read, read.revision == revision {

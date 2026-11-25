@@ -109,7 +109,7 @@ public struct AppEnvironment: AppEnvironmentType {
     )
   }
 
-  public static func updatecurrentUserServerFeatures(_ features: Set<ServerFeature>) {
+  public static func updateCurrentUserServerFeatures(_ features: Set<ServerFeature>) {
     self.replaceCurrentEnvironment(
       currentUserServerFeatures: features
     )

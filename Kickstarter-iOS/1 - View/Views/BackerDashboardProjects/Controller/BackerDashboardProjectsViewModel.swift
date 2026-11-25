@@ -56,12 +56,12 @@ public final class BackerDashboardProjectsViewModel {
     if let previous = self.lastCounts, previous.0 == counts.0, previous.1 == counts.1, previous.2 == counts.2 { return }
     self.lastCounts = counts
     self.setMode(refresh: true)
-    self.pageTask = self.profileFeature.requestProfileProjectsPage(type: type)
+    self.pageTask = self.profileFeature.startProfileProjectsPageLoad(type: type)
   }
 
   public func refresh() {
     self.setMode(refresh: true)
-    if let type = self.projectsType { self.pageTask = self.profileFeature.requestProfileProjectsPage(type: type) }
+    if let type = self.projectsType { self.pageTask = self.profileFeature.startProfileProjectsPageLoad(type: type) }
   }
 
   public func willDisplayRow(_ row: Int, outOf totalRows: Int) {
@@ -70,7 +70,7 @@ public final class BackerDashboardProjectsViewModel {
     self.closeToBottom = close
     guard close else { return }
     self.setMode(refresh: false)
-    if let type = self.projectsType { self.pageTask = self.profileFeature.requestProfileProjectsPage(type: type, next: true) }
+    if let type = self.projectsType { self.pageTask = self.profileFeature.startProfileProjectsPageLoad(type: type, next: true) }
   }
 
   public func projectTapped(_ project: ProjectCardProperties) {

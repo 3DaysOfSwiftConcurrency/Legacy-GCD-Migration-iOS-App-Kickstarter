@@ -158,7 +158,7 @@ public final class ProfileFeature {
     return data
   }
 
-  public func reset() {
+  public func resetForSessionChange() {
     self.cancelAvatarLoad()
     self.headerRequest?.task.cancel()
     self.headerRequest = nil
@@ -182,11 +182,11 @@ public final class ProfileFeature {
     }
   }
 
-  public func refreshHeader() async { await self.requestHeader().value }
+  public func refreshHeader() async { await self.startProfileHeaderLoad().value }
   @discardableResult
-  public func requestHeader(replacing: Bool = false) -> Task<Void, Never> {
+  public func startProfileHeaderLoad(replacing: Bool = false) -> Task<Void, Never> {
     let userID = self.sessionFeature.currentUser?.id
-    guard userID != nil else { self.reset(); return Task {} }
+    guard userID != nil else { self.resetForSessionChange(); return Task {} }
     let generation = self.sessionFeature.generation
     if !replacing, let request = self.headerRequest, request.userID == userID,
        request.generation == generation,
@@ -195,8 +195,8 @@ public final class ProfileFeature {
     if replacing { self.sessionFeature.invalidateAccountReads() }
     let userReadGeneration = self.sessionFeature.userReadGeneration
     let token = UUID()
-    let userTask = self.sessionFeature.requestCurrentUser()
-    let graphTask = self.sessionFeature.requestGraphUser()
+    let userTask = self.sessionFeature.startCurrentUserFetch()
+    let graphTask = self.sessionFeature.startGraphUserFetch()
     let delay = self.responseDelaySeconds()
     self.userError = nil
     self.graphUserError = nil
@@ -261,15 +261,15 @@ public final class ProfileFeature {
     }
   }
 
-  public func refreshProfileProjects(type: ProfileProjectsType) async { await self.requestProfileProjectsPage(type: type)?.value }
+  public func refreshProfileProjects(type: ProfileProjectsType) async { await self.startProfileProjectsPageLoad(type: type)?.value }
   public func loadNextProfileProjectsPage(type: ProfileProjectsType) async {
-    await self.requestProfileProjectsPage(type: type, next: true)?.value
+    await self.startProfileProjectsPageLoad(type: type, next: true)?.value
   }
 
   @discardableResult
-  public func requestProfileProjectsPage(type: ProfileProjectsType, next: Bool = false) -> Task<Void, Never>? {
+  public func startProfileProjectsPageLoad(type: ProfileProjectsType, next: Bool = false) -> Task<Void, Never>? {
     let userID = self.sessionFeature.currentUser?.id
-    guard userID != nil else { self.reset(); return nil }
+    guard userID != nil else { self.resetForSessionChange(); return nil }
     let generation = self.sessionFeature.generation
     let page: Route
     if let existing = self.projectCollectionsByType[type], existing.userID == userID, existing.generation == generation {

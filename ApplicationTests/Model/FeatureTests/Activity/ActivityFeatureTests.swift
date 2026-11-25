@@ -46,7 +46,7 @@ final class ActivityFeatureTests: TestCase {
       sleep: { sleeps.append($0) }
     )
 
-    let page = feature.requestActivityPage()
+    let page = feature.startActivityPageLoad()
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(self.page([4])))
     await page?.value
@@ -65,7 +65,7 @@ final class ActivityFeatureTests: TestCase {
     let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
     let loadingChanged = expectation(description: "loading state changed")
     withObservationTracking { _ = feature.isLoadingActivityPage } onChange: { loadingChanged.fulfill() }
-    let request = feature.requestActivityPage()
+    let request = feature.startActivityPageLoad()
     await fulfillment(of: [loadingChanged], timeout: 2)
     XCTAssertTrue(feature.isLoadingActivityPage)
     let activitiesChanged = expectation(description: "activities changed")
@@ -82,30 +82,30 @@ final class ActivityFeatureTests: TestCase {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
     let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
-    let first = feature.requestActivityPage(), duplicate = feature.requestActivityPage()
+    let first = feature.startActivityPageLoad(), duplicate = feature.startActivityPageLoad()
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(self.page([1, 3])))
     await first?.value; await duplicate?.value
     XCTAssertEqual(feature.activities.map(\.id), [3, 1])
-    let next = feature.requestActivityPage(next: true)
+    let next = feature.startActivityPageLoad(next: true)
     await provider.pages.waitFor(2)
     try provider.pages.finish(1, .success(self.page([2, 3])))
     await next?.value
     XCTAssertEqual(feature.activities.map(\.id), [3, 2, 1])
     XCTAssertEqual(provider.cursors, [nil, "next"])
-    let failed = feature.requestActivityPage()
+    let failed = feature.startActivityPageLoad()
     await provider.pages.waitFor(3)
     try provider.pages.finish(2, .failure(ErrorEnvelope.couldNotParseJSON))
     await failed?.value
     XCTAssertNotNil(feature.activityPageError)
     XCTAssertEqual(feature.activities.count, 3)
-    let empty = feature.requestActivityPage()
+    let empty = feature.startActivityPageLoad()
     await provider.pages.waitFor(4)
     try provider.pages.finish(3, .success(self.page([])))
     await empty?.value
     XCTAssertTrue(feature.activities.isEmpty)
     XCTAssertNil(feature.activityPageError)
-    XCTAssertNil(feature.requestActivityPage(next: true))
+    XCTAssertNil(feature.startActivityPageLoad(next: true))
   }
 
   func testResetRejectsLatePagesAndSurveys() async throws {
@@ -113,10 +113,10 @@ final class ActivityFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let session = self.session()
     let feature = ActivityFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
-    let page = feature.requestActivityPage(), survey = feature.requestUnansweredSurveys()
+    let page = feature.startActivityPageLoad(), survey = feature.startUnansweredSurveyLoad()
     await provider.pages.waitFor(1); await provider.surveysGate.waitFor(1)
     session.sessionChanged()
-    feature.reset()
+    feature.resetForSessionChange()
     try provider.pages.finish(0, .success(self.page([1])))
     try provider.surveysGate.finish(0, .success([.template]))
     await page?.value; await survey?.value
@@ -129,13 +129,13 @@ final class ActivityFeatureTests: TestCase {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
     let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
-    let survey = feature.requestUnansweredSurveys(), duplicate = feature.requestUnansweredSurveys()
-    let page = feature.requestActivityPage()
+    let survey = feature.startUnansweredSurveyLoad(), duplicate = feature.startUnansweredSurveyLoad()
+    let page = feature.startActivityPageLoad()
     await provider.surveysGate.waitFor(1); await provider.pages.waitFor(1)
     try provider.surveysGate.finish(0, .success([.template]))
     try provider.pages.finish(0, .success(self.page([1])))
     await survey?.value; await duplicate?.value; await page?.value
-    let failed = feature.requestUnansweredSurveys()
+    let failed = feature.startUnansweredSurveyLoad()
     await provider.surveysGate.waitFor(2)
     try provider.surveysGate.finish(1, .failure(ErrorEnvelope.couldNotParseJSON))
     await failed?.value
@@ -152,7 +152,7 @@ final class ActivityFeatureTests: TestCase {
     )
     let feature = ActivityFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
     await feature.refreshActivityFeed()
-    XCTAssertNil(feature.requestUnansweredSurveys())
+    XCTAssertNil(feature.startUnansweredSurveyLoad())
     XCTAssertEqual(provider.pages.count, 0)
     XCTAssertEqual(provider.surveysGate.count, 0)
   }
@@ -161,10 +161,10 @@ final class ActivityFeatureTests: TestCase {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
     let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
-    let page = feature.requestActivityPage(), survey = feature.requestUnansweredSurveys()
+    let page = feature.startActivityPageLoad(), survey = feature.startUnansweredSurveyLoad()
     await provider.pages.waitFor(1)
     await provider.surveysGate.waitFor(1)
-    feature.reset()
+    feature.resetForSessionChange()
     try provider.pages.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     try provider.surveysGate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await page?.value

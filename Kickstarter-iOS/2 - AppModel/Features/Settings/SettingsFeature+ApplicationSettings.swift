@@ -112,13 +112,13 @@ extension SettingsFeature {
   /// A prefetch shares the pending read without publishing configuration changes.
   public func startApplicationSettingsLoad() -> Task<Config, Error> {
     guard let settings = self.applicationSettings else { return Task { throw CancellationError() } }
-    return settings.configuration.requestConfiguration()
+    return settings.configuration.startConfigurationLoad()
   }
 
   @discardableResult
   public func startApplicationSettingsRefresh() -> Task<Config, Error> {
     guard let settings = self.applicationSettings else { return Task { throw CancellationError() } }
-    return settings.configuration.requestConfigurationRefresh()
+    return settings.configuration.startConfigurationRefresh()
   }
 
   public func resetApplicationSettings() { self.applicationSettings?.configuration.reset() }

@@ -76,7 +76,7 @@ public final class BackerDashboardViewModel {
   func messagesButtonTapped() { self.onMessages?() }
   func settingsButtonTapped() { self.onSettings?() }
   func viewDidLoad() { self.onConfigurePages?(.backed) }
-  func viewWillAppear(_ animated: Bool) { self.headerTask = self.profileFeature.requestHeader() }
+  func viewWillAppear(_ animated: Bool) { self.headerTask = self.profileFeature.startProfileHeaderLoad() }
   func willTransition(toPage nextPage: Int) { self.pendingPage = nextPage }
   func pageTransition(completed: Bool) {
     guard completed, let page = self.pendingPage else { return }
@@ -87,7 +87,7 @@ public final class BackerDashboardViewModel {
     self.savedTask = Task { [weak self, sleep] in
       do { try await sleep(); try Task.checkCancellation() } catch { return }
       guard let self else { return }
-      self.headerTask = self.profileFeature.requestHeader(replacing: true)
+      self.headerTask = self.profileFeature.startProfileHeaderLoad(replacing: true)
     }
   }
   private func navigate(to tab: BackerDashboardTab) {

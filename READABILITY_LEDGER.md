@@ -702,3 +702,26 @@ remote configuration activation. Updated AppDelegate and AppModel tests. The
 for app and test targets. Route constructors and parameter readers already
 name their scoped destination and decoded value. Runtime tests remain
 unverified. Remaining inventory decisions: 524.
+
+Composition, analytics and storage checkpoint: reviewed the remaining 524
+AppModel declarations across environment composition, platform adapters,
+analytics and user-data storage. Corrected `updateCurrentUserServerFeatures`,
+expanded pledged-project overview analytics event methods and the login/signup
+screen event method, named configuration service Task starts/awaited reads,
+and renamed the connectivity state source. The originally 3,024-row inventory
+now has a decision on every row. Some intermediate builds overlapped later
+source edits; they do not verify the final tree.
+
+Final naming closure: the post-inventory pass found 13 Feature Task-returning
+`request...` APIs whose names still hid Task start semantics. Renamed them to
+`start...` with specific resources and updated their View and test callers.
+Eight public Feature `reset()` methods now say `resetForSessionChange()`;
+AppModel, internal Feature, View and test callers were reconciled. The
+Navigation update route constructor now identifies the destination. A fresh
+SwiftSyntax enumeration of the settled tree finds exactly 3,024 declarations
+(1,407 functions/initializers and 1,617 properties) in 156 files, plus
+three Swift files without declarations, with zero pending decisions. The
+`final-verification-3` Build For Testing exited zero with
+`TEST BUILD SUCCEEDED` for the `Library-iOS` app and `LibraryTests` targets.
+Warnings remain; runtime tests were not executed. The completed migration
+ledger was left unchanged. Remaining inventory decisions: 0.

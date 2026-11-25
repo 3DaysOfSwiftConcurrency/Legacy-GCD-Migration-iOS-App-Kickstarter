@@ -54,7 +54,7 @@ final class ThanksViewModelTests: TestCase {
   }
 
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     await self.feature.waitForRecommendationLoads()
       await self.vm.waitForRecommendations()
     await self.settingsFeature.waitForOperations()

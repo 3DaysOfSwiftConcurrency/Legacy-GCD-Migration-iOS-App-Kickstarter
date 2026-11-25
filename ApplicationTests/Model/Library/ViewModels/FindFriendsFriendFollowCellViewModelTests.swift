@@ -13,7 +13,7 @@ final class FindFriendsFriendFollowCellViewModelTests: TestCase {
   private lazy var vm = FindFriendsFriendFollowCellViewModel(friendsFeature: self.feature)
 
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetForSessionChange()
     await self.feature.waitForFriendsOperations()
     try await super.tearDown()
   }

@@ -7,30 +7,27 @@ not change the completed CFA migration record.
 
 ## Coverage and verification
 
-The existing SwiftSyntax inventory in `READABILITY_NAME_REVIEW.md` enumerates
-159 AppModel Swift files, 1,407 functions/initializers and 1,617 properties
-across 23 Feature areas and the rest of the Model. It includes declarations in
-extensions and conditional compilation branches. Session, Activity, Help,
-ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
-DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
-Discovery, Authentication, Payments, PledgedProjects, Pledge, Rewards and
-ProjectDetails, ProjectMedia, Search and Settings and AppModel/Navigation have 2,500 individual behavior, caller
-and naming decisions. The remaining 524 rows are pending; the whole Model has
-**not** been declared reviewed. The latest AppModel closure passed Build For
-Testing for app and test targets;
-runtime tests remain unverified.
+The refreshed SwiftSyntax inventory in `READABILITY_NAME_REVIEW.md` enumerates
+159 AppModel Swift files: 156 containing 1,407 functions/initializers and
+1,617 properties, plus three with no such declarations. Each of the 3,024
+rows now has a recorded naming and behavior decision, including the Feature
+boundary and the rest of AppModel. Source locations, signatures and owners
+were reconciled against the final SwiftSyntax scan; the declaration count
+remains 3,024. Conditional compilation branches are included. The final
+app/test target Build For Testing result is recorded in the ledger. Runtime
+tests remain unverified. This is a naming audit, not a guarantee that every
+reader will agree with each judgment; further naming issues can still be
+raised as concrete examples.
 
-The repaired `Library-iOS` app and `LibraryTests` compilation passed in Xcode
-on 25 November 2026, build log
-`3DD20365-5D61-405E-AFE7-354263638797`, with zero errors and 145 warnings.
-This verifies the source *before* any further audit-driven code edits. Runtime
-tests have not run. Each later rename needs a complete caller search and a new
-build for every affected target.
+The `Library-iOS` app and `LibraryTests` targets are compiled after each
+rename checkpoint. The final verification log is noted in `READABILITY_LEDGER.md`.
+Warnings remain in the project; runtime test execution and visual behavior are
+outside this compile verification.
 
 ## Findings from the first implementation review
 
-These are candidates for a naming decision, not instructions for a mechanical
-replacement. Proposed names need review against every overload and caller.
+These were candidates at the start of the audit. Their final decisions and
+current names are recorded in the reconciled declaration inventory.
 
 | Location | Current API | Observed behavior | Candidate direction |
 | --- | --- | --- | --- |

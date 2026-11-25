@@ -87,17 +87,17 @@ final class ActivitiesViewModel {
       self.hasAppeared = true
       if let activities = self.lastActivity { self.publishActivities(activities, pageResult: true) }
     }
-    if user != nil { self.surveyTask = self.activityFeature.requestUnansweredSurveys() }
-    if animated, user != nil { self.pageTask = self.activityFeature.requestActivityPage() }
+    if user != nil { self.surveyTask = self.activityFeature.startUnansweredSurveyLoad() }
+    if animated, user != nil { self.pageTask = self.activityFeature.startActivityPageLoad() }
   }
   func userSessionStarted() {
     if self.activityFeature.sessionFeature.currentUser != nil {
-      self.pageTask = self.activityFeature.requestActivityPage()
+      self.pageTask = self.activityFeature.startActivityPageLoad()
     }
   }
   func userSessionEnded() {
     self.lastActivity = nil
-    self.activityFeature.reset()
+    self.activityFeature.resetForSessionChange()
     self.publishActivities([], pageResult: false)
   }
   func currentUserUpdated() {}
@@ -105,18 +105,18 @@ final class ActivitiesViewModel {
     self.pendingRefreshes += 1
     self.drainBadgeEvents()
     if self.activityFeature.sessionFeature.currentUser != nil {
-      self.pageTask = self.activityFeature.requestActivityPage()
+      self.pageTask = self.activityFeature.startActivityPageLoad()
     }
   }
   func willDisplayRow(_ row: Int, outOf totalRows: Int) {
     let nearBottom = totalRows > 3 && row >= totalRows - 2
     guard self.lastNearBottom != nearBottom else { return }
     self.lastNearBottom = nearBottom
-    if nearBottom { self.pageTask = self.activityFeature.requestActivityPage(next: true) }
+    if nearBottom { self.pageTask = self.activityFeature.startActivityPageLoad(next: true) }
   }
   func surveyResponseViewControllerDismissed() {
     if self.activityFeature.sessionFeature.currentUser != nil {
-      self.surveyTask = self.activityFeature.requestUnansweredSurveys()
+      self.surveyTask = self.activityFeature.startUnansweredSurveyLoad()
     }
   }
   func managePledgeViewControllerDidFinish() { self.refreshUser(.user) }
@@ -147,9 +147,9 @@ final class ActivitiesViewModel {
     let token = UUID()
     let request: Task<User, Error>
     switch operation {
-    case .user: request = sessionFeature.requestCurrentUser()
-    case .graphUser: request = sessionFeature.requestGraphUser()
-    case .clearActivity: request = sessionFeature.requestClearActivityIndicator()
+    case .user: request = sessionFeature.startCurrentUserFetch()
+    case .graphUser: request = sessionFeature.startGraphUserFetch()
+    case .clearActivity: request = sessionFeature.startClearActivityIndicator()
     }
     let task = Task { [weak self] in
       defer {

@@ -23,11 +23,11 @@ final class ConnectivityServiceTests: XCTestCase {
     var second: [Reachability] = []
     let delivered = expectation(description: "both observers received offline")
     delivered.expectedFulfillmentCount = 2
-    let a = service.source.observe {
+    let a = service.connectivityState.observe {
       first.append($0)
       if $0 == .none { delivered.fulfill() }
     }
-    let b = service.source.observe {
+    let b = service.connectivityState.observe {
       second.append($0)
       if $0 == .none { delivered.fulfill() }
     }
@@ -44,7 +44,7 @@ final class ConnectivityServiceTests: XCTestCase {
 
   func testConnectivityDisposalKeepsOtherObserverAndServiceReleaseStopsStream() async throws {
     var service: ConnectivityService? = self.makeService()
-    let source = try XCTUnwrap(service).source
+    let source = try XCTUnwrap(service).connectivityState
     let monitor = self.connectivityMonitor
     let stopped = expectation(description: "stream cancelled")
     monitor.continuation.onTermination = { _ in stopped.fulfill() }
@@ -66,7 +66,7 @@ final class ConnectivityServiceTests: XCTestCase {
   func testConnectivityObserverReceivesInitialValueSynchronously() {
     let service = self.makeService()
     var values: [Reachability] = []
-    let observation = service.source.observe { values.append($0) }
+    let observation = service.connectivityState.observe { values.append($0) }
     XCTAssertEqual(values, [.wifi])
     XCTAssertEqual(self.monitorStarts, 1)
     withExtendedLifetime(observation) {}
