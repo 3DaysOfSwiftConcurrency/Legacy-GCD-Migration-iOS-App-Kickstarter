@@ -12,7 +12,7 @@ public final class PledgeOverTimeUseCase {
   var onShow: ((Bool) -> Void)?
   var onLoading: ((Bool) -> Void)?
   var onConfig: ((PledgePaymentPlansAndSelectionData?) -> Void)?
-  var onRequest: ((String, String) -> Void)?
+  var onPaymentPlanRequested: ((String, String) -> Void)?
   private let pledgeFeature: PledgeFeature
   private let route = UUID()
   private var project: Project?
@@ -33,18 +33,18 @@ public final class PledgeOverTimeUseCase {
   func updateProject(_ project: Project) {
     self.project = project
     self.publishAvailability()
-    self.requestPlan()
+    self.startPledgePaymentPlanLoad()
   }
   func updateTotal(_ total: Double) {
     guard self.total != total else { return }
     self.total = total
-    self.requestPlan()
+    self.startPledgePaymentPlanLoad()
   }
   func updateContext(_ context: PledgeViewContext) {
     self.context = context
     self.publishAvailability()
   }
-  func paymentPlanSelected(_ plan: PledgePaymentPlansType) {
+  func selectPaymentPlan(_ plan: PledgePaymentPlansType) {
     self.selectedPlan = plan
     if var latest = self.latestPlan {
       latest.selectedPlan = plan
@@ -61,13 +61,13 @@ public final class PledgeOverTimeUseCase {
     if !enabled { self.publishPlanConfiguration(nil) }
   }
 
-  private func requestPlan() {
+  private func startPledgePaymentPlanLoad() {
     guard let project = self.project, let total = self.total else { return }
     let formatter = NumberFormatter()
     formatter.minimumFractionDigits = 2
     formatter.maximumFractionDigits = 2
     let amount = formatter.string(from: NSNumber(value: total)) ?? ""
-    self.onRequest?(project.slug, amount)
+    self.onPaymentPlanRequested?(project.slug, amount)
     self.planTask?.cancel()
     let revision = UUID()
     self.paymentPlanRequestID = revision
@@ -116,7 +116,7 @@ public final class PledgeOverTimeUseCase {
     self.pledgeOverTimeConfigData = data
     self.onConfig?(data)
   }
-  func waitForPlan() async { await self.planTask?.value }
+  func waitForPaymentPlanLoad() async { await self.planTask?.value }
   deinit {
     self.planTask?.cancel()
     let pledgeFeature = self.pledgeFeature

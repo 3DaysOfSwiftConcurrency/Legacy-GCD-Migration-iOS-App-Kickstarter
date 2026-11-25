@@ -399,7 +399,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   }
 
   public func paymentPlanSelected(_ paymentPlan: PledgePaymentPlansType) {
-    self.pledgeOverTimeUseCase.paymentPlanSelected(paymentPlan)
+    self.pledgeOverTimeUseCase.selectPaymentPlan(paymentPlan)
   }
 
   public func goToLoginSignupTapped() {

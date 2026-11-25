@@ -31,7 +31,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
 
     MainActor.assumeIsolated {
       self.useCase = PledgeOverTimeUseCase(pledgeFeature: self.feature)
-      self.useCase!.onRequest = { [weak self] slug, amount in self?.buildPaymentPlanInputs.record((slug, amount)) }
+      self.useCase!.onPaymentPlanRequested = { [weak self] slug, amount in self?.buildPaymentPlanInputs.record((slug, amount)) }
       self.useCase!.onLoading = { [weak self] in self?.pledgeOverTimeIsLoading.record($0) }
       self.useCase!.onShow = { [weak self] in self?.showPledgeOverTimeUI.record($0) }
       self.useCase!.onConfig = { [weak self] in self?.selectedPlan.record($0?.selectedPlan) }
@@ -55,14 +55,14 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.useCase!.updateContext(.pledge)
       self.useCase!.updateProject(project)
       self.useCase!.updateTotal(100)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
       XCTAssertEqual(projects, [1])
       project.id = 2
       project.slug = "second-project"
       self.useCase!.updateProject(project)
       XCTAssertEqual(projects, [1], "Do not pair the previous plan with the new project")
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
       XCTAssertEqual(projects, [1, 2])
     }
@@ -85,7 +85,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.buildPaymentPlanInputs.assertValueCount(1)
       XCTAssertEqual(self.buildPaymentPlanInputs.lastValue?.0, "some-slug")
       XCTAssertEqual(self.buildPaymentPlanInputs.lastValue?.1, "928.66")
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
     }
   }
@@ -123,9 +123,9 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       XCTAssertEqual(self.buildPaymentPlanInputs.lastValue?.0, "some-slug")
       XCTAssertEqual(self.buildPaymentPlanInputs.lastValue?.1, "165.00")
 
-      self.useCase!.paymentPlanSelected(.pledgeInFull)
-      self.useCase!.paymentPlanSelected(.pledgeOverTime)
-      self.useCase!.paymentPlanSelected(.pledgeInFull)
+      self.useCase!.selectPaymentPlan(.pledgeInFull)
+      self.useCase!.selectPaymentPlan(.pledgeOverTime)
+      self.useCase!.selectPaymentPlan(.pledgeInFull)
 
       // Only emits unique values skipping repeats
       // pledgeTotalObserver stream:
@@ -138,9 +138,9 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       // 2. 98.00
       // 3. 165.00
 
-      // Updates from paymentPlanSelected should not trigger additional emissions to buildPaymentPlanInputs.
+      // Updates from selectPaymentPlan should not trigger additional emissions to buildPaymentPlanInputs.
       self.buildPaymentPlanInputs.assertValueCount(3)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
     }
   }
@@ -162,7 +162,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.useCase!.updateContext(.pledge)
       self.useCase!.updateProject(project)
       self.useCase!.updateTotal(100.0)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
 
       self.showPledgeOverTimeUI.assertValues([true])
@@ -187,7 +187,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.useCase!.updateContext(.pledge)
       self.useCase!.updateProject(project)
       self.useCase!.updateTotal(100.0)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
 
       self.pledgeOverTimeIsLoading.assertValues([false])
@@ -207,7 +207,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.useCase!.updateContext(.pledge)
       self.useCase!.updateProject(project)
       self.useCase!.updateTotal(100.0)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
 
       self.pledgeOverTimeIsLoading.assertValues([true, false])
@@ -231,7 +231,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
 
       self.showPledgeOverTimeUI.assertValues([false])
       self.selectedPlan.assertValues([nil])
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
     }
   }
@@ -250,7 +250,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.useCase!.updateContext(.pledge)
       self.useCase!.updateProject(project)
       self.useCase!.updateTotal(100.0)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
 
       self.buildPaymentPlanInputs.assertDidEmitValue()
@@ -279,16 +279,16 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.useCase!.updateContext(.pledge)
       self.useCase!.updateProject(project)
       self.useCase!.updateTotal(pledgeTotal)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
 
       // Defaults to pledgeInFull
       self.selectedPlan.assertValues([.pledgeInFull])
 
-      self.useCase!.paymentPlanSelected(.pledgeOverTime)
+      self.useCase!.selectPaymentPlan(.pledgeOverTime)
       self.selectedPlan.assertValues([.pledgeInFull, .pledgeOverTime])
 
-      self.useCase!.paymentPlanSelected(.pledgeInFull)
+      self.useCase!.selectPaymentPlan(.pledgeInFull)
       self.selectedPlan.assertValues([.pledgeInFull, .pledgeOverTime, .pledgeInFull])
     }
   }
@@ -311,7 +311,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.useCase!.updateContext(.pledge)
       self.useCase!.updateProject(project)
       self.useCase!.updateTotal(100.0)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
 
       self.showPledgeOverTimeUI.assertValues([true])
@@ -338,7 +338,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
       self.useCase!.updateContext(.pledge)
       self.useCase!.updateProject(project)
       self.useCase!.updateTotal(100.0)
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
 
       self.showPledgeOverTimeUI.assertValues([true])
@@ -377,7 +377,7 @@ final class PledgeOverTimeUseCaseTests: TestCase {
         self.useCase!.updateContext(context)
         self.showPledgeOverTimeUI.assertLastValue(true)
       }
-      await self.useCase?.waitForPlan()
+      await self.useCase?.waitForPaymentPlanLoad()
       await self.feature.waitForOperations()
     }
   }

@@ -618,3 +618,12 @@ PledgeManagerWeb and pledge UI callers. Other Pledge files remain pending.
 `pledge-boundary-5` Build For Testing exited zero and reported
 `TEST BUILD SUCCEEDED` for app and test targets. Runtime tests remain
 unverified. Remaining inventory decisions: 1,787.
+
+Pledge supporting model checkpoint: 61 declaration decisions across
+PledgeOverTimeUseCase, ManagedPledge and PledgeViewData. The payment plan use
+case now names its fetch event, selection mutation, start and wait methods.
+Updated PledgeViewModel and focused use-case tests; `pledge-over-time-6`
+Build For Testing exited zero with `TEST BUILD SUCCEEDED` for the app and
+test targets. The remaining Pledge support files still need individual
+decisions. Runtime tests remain unverified. Remaining inventory decisions:
+1,726.

@@ -22,7 +22,7 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Onboarding | 2 | 26 | 46 | 72 |
 | Other Model | 47 | 352 | 387 | 0 |
 | Payments | 10 | 70 | 57 | 127 |
-| Pledge | 14 | 161 | 112 | 124 |
+| Pledge | 14 | 161 | 112 | 185 |
 | PledgedProjects | 6 | 43 | 81 | 124 |
 | Profile | 2 | 21 | 27 | 48 |
 | ProjectDetails | 10 | 72 | 126 | 0 |
@@ -34,7 +34,7 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Search | 12 | 93 | 136 | 0 |
 | Session | 1 | 33 | 27 | 60 |
 | Settings | 8 | 64 | 116 | 0 |
-| **Total** | **159** | **1407** | **1617** | **1237** |
+| **Total** | **159** | **1407** | **1617** | **1298** |
 
 ## Declaration decisions
 
@@ -1145,18 +1145,18 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Features/Pledge/LaunchedCountries.swift:4 | LaunchedCountries | stored, public | `let countries: [Project.Country]` | Pending | Pending | Pending |
 | Features/Pledge/LaunchedCountries.swift:6 | LaunchedCountries | initializer, public | `init(countries: [Project.Country] = Project.Country.all)` | Pending | Pending | Pending |
 | Features/Pledge/LaunchedCountries.swift:17 | LaunchedCountries | function, public | `currencyNeedsCode(_ currencySymbol: String) -> Bool` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:14 | ManagedPledge | stored, internal | `let backing: Backing` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:16 | ManagedPledge | computed, internal | `var hasPaymentSchedule: Bool` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:18 | ManagedPledge | computed, internal | `var needsStandalonePaymentRepair: Bool` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:23 | ManagedPledge | function, internal | `showsPaymentMethod(viewerIsCreator: Bool) -> Bool` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:27 | ManagedPledge | function, internal | `availableActions(for project: Project, viewerIsCreator: Bool) -> [ManagePledgeAction]` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:37 | ManagedPledge | computed, internal | `var rewards: [Reward]` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:43 | ManagedPledge | computed, internal | `var rewardMinimum: Double` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:54 | ManagedPledgeDetails | stored, internal | `let project: Project` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:55 | ManagedPledgeDetails | stored, internal | `let pledge: ManagedPledge` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:56 | ManagedPledgeDetails | stored, internal | `let viewerIsCreator: Bool` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:58 | ManagedPledgeDetails | function, internal | `paymentSelection(context: PledgeViewContext) -> PledgeViewData` | Pending | Pending | Pending |
-| Features/Pledge/ManagedPledge.swift:73 | extension PledgeFeature | function, internal | `managedPledgeDetails(project: Project, backing: Backing) -> ManagedPledgeDetails` | Pending | Pending | Pending |
+| Features/Pledge/ManagedPledge.swift:14 | ManagedPledge | stored, internal | `let backing: Backing` | Hold backing being managed. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:16 | ManagedPledge | computed, internal | `var hasPaymentSchedule: Bool` | Check whether backing has incremental payment schedule. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:18 | ManagedPledge | computed, internal | `var needsStandalonePaymentRepair: Bool` | Check whether failed non-incremental payment requires repair. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:23 | ManagedPledge | function, internal | `showsPaymentMethod(viewerIsCreator: Bool) -> Bool` | Decide if non-creator should see payment method. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:27 | ManagedPledge | function, internal | `availableActions(for project: Project, viewerIsCreator: Bool) -> [ManagePledgeAction]` | Return available management actions for viewer and project. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:37 | ManagedPledge | computed, internal | `var rewards: [Reward]` | Return distinct reward and add-on list. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:43 | ManagedPledge | computed, internal | `var rewardMinimum: Double` | Return reward minimum including add-ons. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:54 | ManagedPledgeDetails | stored, internal | `let project: Project` | Hold project for managed pledge details. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:55 | ManagedPledgeDetails | stored, internal | `let pledge: ManagedPledge` | Hold managed pledge. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:56 | ManagedPledgeDetails | stored, internal | `let viewerIsCreator: Bool` | Hold whether viewer created project. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:58 | ManagedPledgeDetails | function, internal | `paymentSelection(context: PledgeViewContext) -> PledgeViewData` | Create PledgeViewData for selecting payment method. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
+| Features/Pledge/ManagedPledge.swift:73 | extension PledgeFeature | function, internal | `managedPledgeDetails(project: Project, backing: Backing) -> ManagedPledgeDetails` | Create managed pledge details with backing attached to project. | ManagePledge ViewModels and PledgeFeature detail composition. | Keep: name, types and input labels expose data or behavior. |
 | Features/Pledge/PledgeDestination.swift:8 |  | function, internal | `pledgeDestination(project: Project, backing: Backing) -> ViewPledgeDestination` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:7 | PledgeProvider | function, internal | `fetchProjectForUpdateContext(_ param: Param) async throws -> Project` | Fetch project context for update deep link. | Feature read coordinator and controlled provider. | Rename: network read/write, domain and Task timing now visible. |
 | Features/Pledge/PledgeFeature.swift:8 | PledgeProvider | function, internal | `fetchProjectUpdate(_ id: Int, param: Param) async throws -> Update` | Fetch project update by ID. | Feature update-context read and controlled provider. | Rename: network read/write, domain and Task timing now visible. |
@@ -1282,35 +1282,35 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Features/Pledge/PledgeFeature.swift:686 | PledgeFeature | function, public | `releaseRead(route: UUID)` | Cancel outstanding read and clear route identity. | PledgeManagerWeb lifecycle. | Keep: releaseRead names resource and route. |
 | Features/Pledge/PledgeFeature.swift:691 | PledgeFeature | function, public | `reset()` | Cancel route reads and clear session read/write revisions. | AppModel logout and Feature tests. | Keep: reset scoped by PledgeFeature. |
 | Features/Pledge/PledgeFeature.swift:699 | PledgeFeature | function, public | `waitForOperations() async` | Await pending pledge reads and writes. | Feature/ViewModel tests. | Keep: waitForOperations scoped by PledgeFeature. |
-| Features/Pledge/PledgeOverTimeUseCase.swift:9 | PledgeOverTimeUseCase | stored, public | `var showPledgeOverTimeUI` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:10 | PledgeOverTimeUseCase | stored, public | `var pledgeOverTimeIsLoading` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:11 | PledgeOverTimeUseCase | stored, public | `var pledgeOverTimeConfigData: PledgePaymentPlansAndSelectionData?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:12 | PledgeOverTimeUseCase | stored, internal | `var onShow: ((Bool) -> Void)?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:13 | PledgeOverTimeUseCase | stored, internal | `var onLoading: ((Bool) -> Void)?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:14 | PledgeOverTimeUseCase | stored, internal | `var onConfig: ((PledgePaymentPlansAndSelectionData?) -> Void)?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:15 | PledgeOverTimeUseCase | stored, internal | `var onRequest: ((String, String) -> Void)?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:16 | PledgeOverTimeUseCase | stored, private | `let pledgeFeature: PledgeFeature` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:17 | PledgeOverTimeUseCase | stored, private | `let route` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:18 | PledgeOverTimeUseCase | stored, private | `var project: Project?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:19 | PledgeOverTimeUseCase | stored, private | `var total: Double?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:20 | PledgeOverTimeUseCase | stored, private | `var context: PledgeViewContext?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:21 | PledgeOverTimeUseCase | stored, private | `var selectedPlan: PledgePaymentPlansType?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:22 | PledgeOverTimeUseCase | stored, private | `var latestPlan: PledgePaymentPlansAndSelectionData?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:23 | PledgeOverTimeUseCase | stored, private | `var hasPublishedPlanConfiguration` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:24 | PledgeOverTimeUseCase | stored, private | `var lastPublishedPlanWasNil` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:25 | PledgeOverTimeUseCase | stored, private | `var lastPublishedLoadingState: Bool?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:26 | PledgeOverTimeUseCase | stored, private | `var paymentPlanRequestID` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:27 | PledgeOverTimeUseCase | stored, private | `var planTask: Task<Void, Never>?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:29 | PledgeOverTimeUseCase | initializer, internal | `init(pledgeFeature: PledgeFeature)` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:33 | PledgeOverTimeUseCase | function, internal | `updateProject(_ project: Project)` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:38 | PledgeOverTimeUseCase | function, internal | `updateTotal(_ total: Double)` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:43 | PledgeOverTimeUseCase | function, internal | `updateContext(_ context: PledgeViewContext)` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:47 | PledgeOverTimeUseCase | function, internal | `paymentPlanSelected(_ plan: PledgePaymentPlansType)` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:55 | PledgeOverTimeUseCase | function, private | `publishAvailability()` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:64 | PledgeOverTimeUseCase | function, private | `requestPlan()` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:106 | PledgeOverTimeUseCase | function, private | `publishLoading(_ loading: Bool)` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:112 | PledgeOverTimeUseCase | function, private | `publishPlanConfiguration(_ data: PledgePaymentPlansAndSelectionData?)` | Pending | Pending | Pending |
-| Features/Pledge/PledgeOverTimeUseCase.swift:119 | PledgeOverTimeUseCase | function, internal | `waitForPlan() async` | Pending | Pending | Pending |
+| Features/Pledge/PledgeOverTimeUseCase.swift:9 | PledgeOverTimeUseCase | stored, public | `var showPledgeOverTimeUI` | Expose whether pay-over-time option is visible. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:10 | PledgeOverTimeUseCase | stored, public | `var pledgeOverTimeIsLoading` | Expose whether payment plan fetch is in progress. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:11 | PledgeOverTimeUseCase | stored, public | `var pledgeOverTimeConfigData: PledgePaymentPlansAndSelectionData?` | Expose latest payment plan configuration. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:12 | PledgeOverTimeUseCase | stored, internal | `var onShow: ((Bool) -> Void)?` | Notify option visibility change. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:13 | PledgeOverTimeUseCase | stored, internal | `var onLoading: ((Bool) -> Void)?` | Notify loading change. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:14 | PledgeOverTimeUseCase | stored, internal | `var onConfig: ((PledgePaymentPlansAndSelectionData?) -> Void)?` | Notify available plan configuration. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:15 | PledgeOverTimeUseCase | stored, internal | `var onPaymentPlanRequested: ((String, String) -> Void)?` | Notify plan-fetch inputs sent to provider. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Rename onPaymentPlanRequested: callback names event. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:16 | PledgeOverTimeUseCase | stored, private | `let pledgeFeature: PledgeFeature` | Hold PledgeFeature for payment plan fetch. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:17 | PledgeOverTimeUseCase | stored, private | `let route` | Hold route identity for payment plan reads. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:18 | PledgeOverTimeUseCase | stored, private | `var project: Project?` | Hold selected project for plan request. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:19 | PledgeOverTimeUseCase | stored, private | `var total: Double?` | Hold current pledge total. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:20 | PledgeOverTimeUseCase | stored, private | `var context: PledgeViewContext?` | Hold checkout context. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:21 | PledgeOverTimeUseCase | stored, private | `var selectedPlan: PledgePaymentPlansType?` | Hold selected plan type. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:22 | PledgeOverTimeUseCase | stored, private | `var latestPlan: PledgePaymentPlansAndSelectionData?` | Hold latest fetched plan configuration. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:23 | PledgeOverTimeUseCase | stored, private | `var hasPublishedPlanConfiguration` | Avoid duplicate plan configuration callbacks. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:24 | PledgeOverTimeUseCase | stored, private | `var lastPublishedPlanWasNil` | Avoid duplicate nil plan publication. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:25 | PledgeOverTimeUseCase | stored, private | `var lastPublishedLoadingState: Bool?` | Avoid duplicate loading callbacks. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:26 | PledgeOverTimeUseCase | stored, private | `var paymentPlanRequestID` | Reject superseded plan fetch. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:27 | PledgeOverTimeUseCase | stored, private | `var planTask: Task<Void, Never>?` | Retain plan fetch task. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:29 | PledgeOverTimeUseCase | initializer, internal | `init(pledgeFeature: PledgeFeature)` | Construct payment plan use case with Feature. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:33 | PledgeOverTimeUseCase | function, internal | `updateProject(_ project: Project)` | Update project and request fresh plan. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:38 | PledgeOverTimeUseCase | function, internal | `updateTotal(_ total: Double)` | Update total and request fresh plan when changed. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:43 | PledgeOverTimeUseCase | function, internal | `updateContext(_ context: PledgeViewContext)` | Update context and publish option availability. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:47 | PledgeOverTimeUseCase | function, internal | `selectPaymentPlan(_ plan: PledgePaymentPlansType)` | Select plan and publish updated configuration. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Rename selectPaymentPlan: names state mutation. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:55 | PledgeOverTimeUseCase | function, private | `publishAvailability()` | Publish availability based on project and context. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:64 | PledgeOverTimeUseCase | function, private | `startPledgePaymentPlanLoad()` | Start plan fetch, cancel obsolete fetch and publish configuration. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Rename startPledgePaymentPlanLoad: starts work and publishes result. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:106 | PledgeOverTimeUseCase | function, private | `publishLoading(_ loading: Bool)` | Publish loading only on state change. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:112 | PledgeOverTimeUseCase | function, private | `publishPlanConfiguration(_ data: PledgePaymentPlansAndSelectionData?)` | Publish plan configuration only on state change. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Keep: name and type convey value or action in this use case. |
+| Features/Pledge/PledgeOverTimeUseCase.swift:119 | PledgeOverTimeUseCase | function, internal | `waitForPaymentPlanLoad() async` | Wait for current plan fetch completion. | PledgeViewModel and focused PledgeOverTimeUseCase tests. | Rename waitForPaymentPlanLoad: names awaited work. |
 | Features/Pledge/PledgePaymentIncrementFormatted.swift:5 | PledgePaymentIncrementFormatted | stored, public | `var incrementChargeNumber: String` | Pending | Pending | Pending |
 | Features/Pledge/PledgePaymentIncrementFormatted.swift:6 | PledgePaymentIncrementFormatted | stored, public | `var amount: String` | Pending | Pending | Pending |
 | Features/Pledge/PledgePaymentIncrementFormatted.swift:7 | PledgePaymentIncrementFormatted | stored, public | `var scheduledCollection: String` | Pending | Pending | Pending |
@@ -1343,26 +1343,26 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Features/Pledge/PledgeViewContext.swift:89 | PledgeViewContext | computed, internal | `var applePayButtonHidden: Bool` | Pending | Pending | Pending |
 | Features/Pledge/PledgeViewContext.swift:96 | PledgeViewContext | computed, internal | `var submitButtonTitle: String` | Pending | Pending | Pending |
 | Features/Pledge/PledgeViewContext.swift:104 | PledgeViewContext | computed, internal | `var title: String` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:8 | PledgeViewData | stored, public | `let project: Project` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:9 | PledgeViewData | stored, public | `let rewards: [Reward]` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:10 | PledgeViewData | stored, public | `let bonusSupport: Double?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:11 | PledgeViewData | stored, public | `let selectedShippingRule: ShippingRule?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:12 | PledgeViewData | stored, public | `let selectedQuantities: SelectedRewardQuantities` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:13 | PledgeViewData | stored, public | `let selectedLocationId: Int?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:14 | PledgeViewData | stored, public | `let refTag: RefTag?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:15 | PledgeViewData | stored, public | `let context: PledgeViewContext` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:17 | PledgeViewData | function, internal | `hasSamePaymentDetails(as other: PledgeViewData) -> Bool` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:30 | PledgeViewData | function, internal | `retriesExistingPayment(with payment: PaymentSourceSelected?) -> Bool` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:35 | PledgeViewData | function, internal | `backingRequests(     payment: PaymentSourceSelected?, plan: PledgePaymentPlansType, applePay: ApplePayParams?   ) -> (create: CreateBackingData, update: UpdateBackingData?)?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:85 | PledgeAmounts | stored, internal | `let rewards: Double` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:86 | PledgeAmounts | stored, internal | `let shipping: Double` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:87 | PledgeAmounts | stored, internal | `let bonus: Double` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:88 | PledgeAmounts | stored, internal | `let total: Double?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:90 | PledgeAmounts | initializer, internal | `init(_ data: PledgeViewData)` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:106 | PostCampaignAmounts | stored, internal | `let rewards: Double` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:107 | PostCampaignAmounts | stored, internal | `let shipping: Double` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:108 | PostCampaignAmounts | stored, internal | `let total: Double` | Pending | Pending | Pending |
-| Features/Pledge/PledgeViewData.swift:110 | PostCampaignAmounts | initializer, internal | `init(_ data: PledgeViewData)` | Pending | Pending | Pending |
+| Features/Pledge/PledgeViewData.swift:8 | PledgeViewData | stored, public | `let project: Project` | Hold project being pledged. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:9 | PledgeViewData | stored, public | `let rewards: [Reward]` | Hold selected rewards. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:10 | PledgeViewData | stored, public | `let bonusSupport: Double?` | Hold optional bonus contribution. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:11 | PledgeViewData | stored, public | `let selectedShippingRule: ShippingRule?` | Hold selected shipping rule. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:12 | PledgeViewData | stored, public | `let selectedQuantities: SelectedRewardQuantities` | Hold selected reward quantities. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:13 | PledgeViewData | stored, public | `let selectedLocationId: Int?` | Hold selected shipping location ID. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:14 | PledgeViewData | stored, public | `let refTag: RefTag?` | Hold referral tag. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:15 | PledgeViewData | stored, public | `let context: PledgeViewContext` | Hold pledge flow context. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:17 | PledgeViewData | function, internal | `hasSamePaymentDetails(as other: PledgeViewData) -> Bool` | Compare payment relevant fields for reconfiguration. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:30 | PledgeViewData | function, internal | `retriesExistingPayment(with payment: PaymentSourceSelected?) -> Bool` | Check whether selected card retries existing failed payment. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:35 | PledgeViewData | function, internal | `backingRequests(     payment: PaymentSourceSelected?, plan: PledgePaymentPlansType, applePay: ApplePayParams?   ) -> (create: CreateBackingData, update: UpdateBackingData?)?` | Build create/update backing request data from payment, plan and Apple Pay. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:85 | PledgeAmounts | stored, internal | `let rewards: Double` | Hold reward subtotal for normal pledge. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:86 | PledgeAmounts | stored, internal | `let shipping: Double` | Hold shipping subtotal for normal pledge. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:87 | PledgeAmounts | stored, internal | `let bonus: Double` | Hold bonus contribution for normal pledge. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:88 | PledgeAmounts | stored, internal | `let total: Double?` | Hold optional normal pledge total. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:90 | PledgeAmounts | initializer, internal | `init(_ data: PledgeViewData)` | Calculate normal pledge amounts from view data. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:106 | PostCampaignAmounts | stored, internal | `let rewards: Double` | Hold post-campaign reward subtotal. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:107 | PostCampaignAmounts | stored, internal | `let shipping: Double` | Hold post-campaign shipping total. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:108 | PostCampaignAmounts | stored, internal | `let total: Double` | Hold post-campaign pledge total. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
+| Features/Pledge/PledgeViewData.swift:110 | PostCampaignAmounts | initializer, internal | `init(_ data: PledgeViewData)` | Calculate post-campaign amounts from view data. | PledgeFeature write entry points and Pledge ViewModels. | Keep: domain/value names and typed result explicit. |
 | Features/Pledge/ProjectAndPledgeRules.swift:17 |  | function, public | `userIsBacking(reward: Reward, inProject project: Project) -> Bool` | Pending | Pending | Pending |
 | Features/Pledge/ProjectAndPledgeRules.swift:33 |  | function, internal | `userIsBackingProject(_ project: Project) -> Bool` | Pending | Pending | Pending |
 | Features/Pledge/ProjectAndPledgeRules.swift:45 |  | function, public | `currentUserIsCreator(of project: Project, currentUser: User?) -> Bool` | Pending | Pending | Pending |
