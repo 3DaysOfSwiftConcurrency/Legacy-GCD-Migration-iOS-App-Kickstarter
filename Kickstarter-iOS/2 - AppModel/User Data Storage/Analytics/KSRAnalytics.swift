@@ -1795,7 +1795,7 @@ public final class KSRAnalytics {
   ) -> [String: Any] {
     var props: [String: Any] = [:]
 
-    props["apple_pay_capable"] = AppEnvironment.current.applePayCapabilities.applePayCapable()
+    props["apple_pay_capable"] = AppEnvironment.current.applePayCapabilities.canPayWithSupportedApplePayNetworks()
     props["client"] = "native"
     props["country"] = self.config?.countryCode
     props["display_language"] = AppEnvironment.current.language.rawValue

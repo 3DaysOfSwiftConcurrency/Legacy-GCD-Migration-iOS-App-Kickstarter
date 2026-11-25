@@ -11,12 +11,12 @@ public protocol ApplePayCapabilitiesType {
    Returns whether the current device is capable of making payments using the list of allSupportedNetworks()
    */
   @MainActor
-  func applePayCapable() -> Bool
+  func canPayWithSupportedApplePayNetworks() -> Bool
   /*
    Returns whether the current device is capable of making Apple Pay payments with any network
    */
   @MainActor
-  func applePayDevice() -> Bool
+  func canMakeAnyApplePayPayment() -> Bool
 
   /*
    Returns whether the current device is capable of making
@@ -26,7 +26,7 @@ public protocol ApplePayCapabilitiesType {
    - project: the project to use for determining supported card types
    */
   @MainActor
-  func applePayCapable(for project: Project, launchedCountries: LaunchedCountries) -> Bool
+  func canMakeApplePayPayment(for project: Project, launchedCountries: LaunchedCountries) -> Bool
 
   /*
    Returns an array of supported PKPaymentNetworks
@@ -57,17 +57,17 @@ public struct ApplePayCapabilities: ApplePayCapabilitiesType {
   }
 
   @MainActor
-  public func applePayCapable() -> Bool {
+  public func canPayWithSupportedApplePayNetworks() -> Bool {
     return PKPaymentAuthorizationViewController.canMakePayments(usingNetworks: self.allSupportedNetworks())
   }
 
   @MainActor
-  public func applePayDevice() -> Bool {
+  public func canMakeAnyApplePayPayment() -> Bool {
     return PKPaymentAuthorizationViewController.canMakePayments()
   }
 
   @MainActor
-  public func applePayCapable(for project: Project, launchedCountries: LaunchedCountries) -> Bool {
+  public func canMakeApplePayPayment(for project: Project, launchedCountries: LaunchedCountries) -> Bool {
     return PKPaymentAuthorizationViewController.canMakePayments(
       usingNetworks: self.supportedNetworks(for: project, launchedCountries: launchedCountries)
     )

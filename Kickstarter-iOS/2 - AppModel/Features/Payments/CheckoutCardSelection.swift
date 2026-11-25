@@ -23,7 +23,7 @@ struct CheckoutCardSelection {
     self.snapshot = Snapshot()
   }
 
-  mutating func load(_ cards: [UserCreditCards.CreditCard], for project: Project) -> Snapshot? {
+  mutating func loadSavedCards(_ cards: [UserCreditCards.CreditCard], for project: Project) -> Snapshot? {
     guard let allowedTypes = project.availableCardTypes else { return nil }
     let backing = project.personalization.backing
     let backedCardID = backing?.paymentSource?.id
@@ -44,7 +44,7 @@ struct CheckoutCardSelection {
     return result
   }
 
-  mutating func add(
+  mutating func addSavedCard(
     _ savedCard: UserCreditCards.CreditCard, stripePaymentMethodID: String?, for project: Project
   ) -> Snapshot? {
     guard let allowedTypes = project.availableCardTypes else { return nil }
@@ -72,7 +72,7 @@ struct CheckoutCardSelection {
     return self.card(at: row, in: snapshot)?.isEnabled == true
   }
 
-  mutating func select(row: Int) -> Snapshot? {
+  mutating func selectCard(row: Int) -> Snapshot? {
     guard var snapshot = self.snapshot, let entry = self.card(at: row, in: snapshot),
           entry.isEnabled else { return nil }
     let isAddedCardRow = row < snapshot.added.count

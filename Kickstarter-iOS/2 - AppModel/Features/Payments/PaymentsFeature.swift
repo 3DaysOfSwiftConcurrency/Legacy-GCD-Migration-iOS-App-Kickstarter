@@ -192,7 +192,7 @@ public final class PaymentsFeature {
   private var cardReads: [SessionIdentity: CardRead] = [:]
 
 
-  private func request(_ command: Command, operation: @escaping @MainActor (any PaymentsProvider) async throws -> Value)
+  private func startPaymentCommand(_ command: Command, operation: @escaping @MainActor (any PaymentsProvider) async throws -> Value)
     -> Task<Value, Error> {
     let identity = Identity(session: self.sessionIdentity, command: command)
     let previous = command.changesCards ? self.latestCardWriteBySession[identity.session] : nil
@@ -300,7 +300,7 @@ public final class PaymentsFeature {
   public func removePaymentMethod(id: String) async throws -> DeletePaymentMethodEnvelope {
     try Task.checkCancellation()
     let session = self.sessionIdentity
-    let value = try await self.request(.remove(id)) { .removed(try await $0.removePaymentMethod(id: id)) }.value
+    let value = try await self.startPaymentCommand(.remove(id)) { .removed(try await $0.removePaymentMethod(id: id)) }.value
     try self.requireCurrent(session)
     guard case let .removed(envelope) = value else { preconditionFailure("Payment command type mismatch") }
     return envelope
@@ -308,7 +308,7 @@ public final class PaymentsFeature {
   public func createPaymentSource(secret: String) async throws -> CreatePaymentSourceEnvelope {
     try Task.checkCancellation()
     let session = self.sessionIdentity
-    let value = try await self.request(.store(secret)) { .stored(try await $0.createPaymentSource(secret: secret)) }.value
+    let value = try await self.startPaymentCommand(.store(secret)) { .stored(try await $0.createPaymentSource(secret: secret)) }.value
     try self.requireCurrent(session)
     guard case let .stored(envelope) = value else { preconditionFailure("Payment command type mismatch") }
     return envelope
@@ -316,7 +316,7 @@ public final class PaymentsFeature {
   public func createSetupIntent(projectID: String?, context: GraphAPI.StripeIntentContextTypes) async throws -> ClientSecretEnvelope {
     try Task.checkCancellation()
     let session = self.sessionIdentity
-    let value = try await self.request(.setup(projectID, context.rawValue)) {
+    let value = try await self.startPaymentCommand(.setup(projectID, context.rawValue)) {
       .setup(try await $0.createSetupIntent(input: KsApi.CreateSetupIntentInput(projectId: projectID, context: context)))
     }.value
     try self.requireCurrent(session)
@@ -325,17 +325,17 @@ public final class PaymentsFeature {
   }
   public func createPaymentIntent(projectID: String, backingID: String, checkoutID: String, total: Double) async throws -> PaymentIntentEnvelope {
     try Task.checkCancellation()
-    let task = self.requestPaymentIntent(projectID: projectID, backingID: backingID, checkoutID: checkoutID, total: total)
+    let task = self.startPaymentIntentCreation(projectID: projectID, backingID: backingID, checkoutID: checkoutID, total: total)
     let value = try await task.value
     try Task.checkCancellation()
     return value
   }
 
   /// Admit the intent immediately; cancellation of a screen's waiter does not cancel the write.
-  public func requestPaymentIntent(projectID: String, backingID: String, checkoutID: String, total: Double) -> Task<PaymentIntentEnvelope, Error> {
+  public func startPaymentIntentCreation(projectID: String, backingID: String, checkoutID: String, total: Double) -> Task<PaymentIntentEnvelope, Error> {
     let session = self.sessionIdentity
     let amount = String(format: "%.2f", total)
-    let request = self.request(.intent(projectID, backingID, checkoutID, amount)) {
+    let request = self.startPaymentCommand(.intent(projectID, backingID, checkoutID, amount)) {
       .intent(try await $0.createPaymentIntent(input: KsApi.CreatePaymentIntentInput(
         projectId: projectID, backingId: backingID, amountDollars: amount,
         checkoutId: encodeToBase64("Checkout-\(checkoutID)"), digitalMarketingAttributed: nil
@@ -349,7 +349,7 @@ public final class PaymentsFeature {
     }
   }
 
-  public func waitForOperations() async {
+  public func waitForPaymentOperations() async {
     while !self.commands.isEmpty || !self.cardReads.isEmpty {
       for task in Array(self.commands.values) { _ = await task.result }
       for read in Array(self.cardReads.values) { await read.task.value }

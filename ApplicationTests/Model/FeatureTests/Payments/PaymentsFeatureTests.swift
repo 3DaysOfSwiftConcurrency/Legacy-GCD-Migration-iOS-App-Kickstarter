@@ -84,7 +84,7 @@ final class PaymentsFeatureTests: TestCase {
   override func tearDown() async throws {
     self.session.sessionChanged()
     self.provider.releaseAll()
-    await self.feature.waitForOperations()
+    await self.feature.waitForPaymentOperations()
     try await super.tearDown()
   }
 
@@ -99,16 +99,16 @@ final class PaymentsFeatureTests: TestCase {
       |> Project.lens.personalization.backing .~ backing
 
     var selection = CheckoutCardSelection()
-    let cards = try XCTUnwrap(selection.load([amex, visa], for: project))
+    let cards = try XCTUnwrap(selection.loadSavedCards([amex, visa], for: project))
     XCTAssertEqual(cards.existing.map { $0.card.id }, [visa.id, amex.id])
     XCTAssertEqual(cards.selected?.savedCreditCardId, visa.id)
     XCTAssertFalse(selection.canSelect(row: 1))
-    XCTAssertNil(selection.select(row: 1))
+    XCTAssertNil(selection.selectCard(row: 1))
     XCTAssertEqual(selection.snapshot?.selected?.savedCreditCardId, visa.id)
 
     let errored = backing |> Backing.lens.status .~ .errored
     let retryProject = project |> Project.lens.personalization.backing .~ errored
-    let retryCards = try XCTUnwrap(selection.load([amex, visa], for: retryProject))
+    let retryCards = try XCTUnwrap(selection.loadSavedCards([amex, visa], for: retryProject))
     XCTAssertNil(retryCards.selected)
     XCTAssertEqual(retryCards.existing.first?.isErroredPaymentMethod, true)
   }
@@ -121,15 +121,15 @@ final class PaymentsFeatureTests: TestCase {
       |> \.availableCardTypes .~ [visaBrand]
       |> Project.lens.personalization.backing .~ nil
     var selection = CheckoutCardSelection()
-    _ = selection.load([visa], for: project)
+    _ = selection.loadSavedCards([visa], for: project)
 
-    let unsupported = try XCTUnwrap(selection.add(amex, stripePaymentMethodID: nil, for: project))
+    let unsupported = try XCTUnwrap(selection.addSavedCard(amex, stripePaymentMethodID: nil, for: project))
     XCTAssertEqual(unsupported.selected?.savedCreditCardId, visa.id)
     XCTAssertEqual(unsupported.added.first?.isSelected, false)
 
     var added = visa
     added.stripeCardId = nil
-    let supported = try XCTUnwrap(selection.add(added, stripePaymentMethodID: "method-fixture", for: project))
+    let supported = try XCTUnwrap(selection.addSavedCard(added, stripePaymentMethodID: "method-fixture", for: project))
     XCTAssertEqual(supported.selected?.stripePaymentMethodId, "method-fixture")
     XCTAssertEqual(supported.existing.first?.isSelected, false)
     XCTAssertEqual(supported.added.map(\.isSelected), [true, false])
@@ -340,7 +340,7 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testCancelingIntentWaiterDoesNotCancelAdmittedWrite() async throws {
-    let request = self.feature.requestPaymentIntent(projectID: "p", backingID: "b", checkoutID: "c", total: 1)
+    let request = self.feature.startPaymentIntentCreation(projectID: "p", backingID: "b", checkoutID: "c", total: 1)
     let waiter = Task { try await request.value }
     waiter.cancel()
     await self.provider.intents.waitFor(1)

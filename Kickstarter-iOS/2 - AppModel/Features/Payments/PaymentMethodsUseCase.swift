@@ -20,7 +20,7 @@ public final class PaymentMethodsUseCase {
     self.currentUser = currentUser
   }
 
-  public func configure(_ pledgeViewData: PledgeViewData) {
+  public func configurePaymentMethods(for pledgeViewData: PledgeViewData) {
     self.pledgeViewData = pledgeViewData
     self.lastKnownLoginState = self.currentUser() != nil
     self.sendConfigurationIfAvailable()
@@ -34,14 +34,14 @@ public final class PaymentMethodsUseCase {
     }
   }
 
-  public func loginChanged(_ loggedIn: Bool) {
+  public func updateLoginState(_ loggedIn: Bool) {
     guard self.lastKnownLoginState != loggedIn else { return }
     self.lastKnownLoginState = loggedIn
     if loggedIn { self.sendConfigurationIfAvailable() }
     self.publishPaymentMethodsVisibility()
   }
 
-  public func creditCardSelected(with source: PaymentSourceSelected) {
+  public func selectPaymentSource(_ source: PaymentSourceSelected) {
     self.lastSelectedPaymentSource = source
     self.selectedPaymentSource = source
     self.onSelected?(source)

@@ -125,7 +125,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     paymentMethods.onValidity = { formState.setPaymentValid($0) }
     login.onLoginState = { value in
       ctaState.setLoggedIn(value)
-      paymentMethods.loginChanged(value)
+      paymentMethods.updateLoginState(value)
     }
 
     // MARK: - Apple Pay
@@ -242,7 +242,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       formState.configure()
       requestState.configure(data)
       login.publishInitialLoginState()
-      paymentMethods.configure(data)
+      paymentMethods.configurePaymentMethods(for: data)
       planUseCase.updateProject(data.project)
       if let total = PledgeAmounts(data).total { planUseCase.updateTotal(total) }
       planUseCase.updateContext(data.context)
@@ -384,7 +384,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
   }
 
   public func creditCardSelected(with paymentSourceData: PaymentSourceSelected) {
-    self.paymentMethodsUseCase.creditCardSelected(with: paymentSourceData)
+    self.paymentMethodsUseCase.selectPaymentSource( paymentSourceData)
   }
 
   private let applePayAuthorization = ApplePayAuthorization()

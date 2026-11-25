@@ -78,7 +78,7 @@ internal final class ManagePledgeViewModelTests: TestCase {
     makeProvider: { AsyncPaymentsProvider(service: MockService()) },
     currencyContext: { .live() },
     hasEligibleApplePayCard: {
-      AppEnvironment.current.applePayCapabilities.applePayCapable(
+      AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
     },

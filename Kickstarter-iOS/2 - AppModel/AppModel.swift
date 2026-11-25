@@ -915,7 +915,7 @@ public final class AppModel {
         currencyContext: { .live() },
         launchedCountries: { AppEnvironment.current.launchedCountries },
         hasEligibleApplePayCard: {
-          AppEnvironment.current.applePayCapabilities.applePayCapable(
+          AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
             for: $0, launchedCountries: AppEnvironment.current.launchedCountries
           )
         },
@@ -1021,7 +1021,7 @@ public final class AppModel {
         sessionFeature: sessionFeature,
         makeProvider: { AsyncRewardsProvider(service: AppEnvironment.current.apiService) },
         hasEligibleApplePayCard: {
-          AppEnvironment.current.applePayCapabilities.applePayCapable(
+          AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
             for: $0, launchedCountries: AppEnvironment.current.launchedCountries
           )
         },

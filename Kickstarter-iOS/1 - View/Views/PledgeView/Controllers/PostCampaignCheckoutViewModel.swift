@@ -245,7 +245,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     let previousLoginHandler = login.onLoginState
     login.onLoginState = { value in
       previousLoginHandler?(value)
-      paymentMethods.loginChanged(value)
+      paymentMethods.updateLoginState(value)
     }
 
     // MARK: Create checkout
@@ -358,7 +358,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
         self.hasTrackingCheckoutResult = true
         self.trackPageIfReady()
         self.paymentIntentTask?.cancel()
-        let request = paymentsFeature.requestPaymentIntent(
+        let request = paymentsFeature.startPaymentIntentCreation(
           projectID: data.project.graphID, backingID: checkout.checkout.backingId, checkoutID: decodedCheckoutID,
           total: PostCampaignAmounts(data).total
         )
@@ -422,7 +422,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       ctaState.configure(data)
       openingState.configure(data)
       login.publishInitialLoginState()
-      paymentMethods.configure(data)
+      paymentMethods.configurePaymentMethods(for: data)
     }
     ctaState.onChange = { [weak self] in self?.onPledgeCTA?($0) }
     appleState.onAuthorize = { [weak self] secret in
@@ -564,7 +564,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
   public func creditCardSelected(
     source: PaymentSourceSelected
   ) {
-    self.paymentMethodsUseCase.creditCardSelected(with: source)
+    self.paymentMethodsUseCase.selectPaymentSource( source)
   }
 
   public func goToLoginSignupTapped() {

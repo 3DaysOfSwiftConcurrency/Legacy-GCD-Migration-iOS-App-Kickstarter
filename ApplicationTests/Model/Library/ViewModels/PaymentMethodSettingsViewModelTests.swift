@@ -12,7 +12,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
   private func advancePayments(by _: DispatchTimeInterval = .seconds(0)) async {
     await self.vm.waitForPending()
-    await self.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForPaymentOperations()
   }
   private func runPayments() async { await self.advancePayments() }
 
@@ -135,7 +135,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       model.paymentSheetDidAdd(setupIntent: sheet.secret, session: sheet.session)
       model.didDelete(card, visibleCellCount: 0)
       await model.waitForPending()
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
 
       XCTAssertEqual(self.paymentsProvider.storeRequests, 0)
       XCTAssertEqual(self.paymentsProvider.removeRequests, 0)
@@ -154,7 +154,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.paymentMethods.assertValues([UserCreditCards.template.storedCards])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -167,7 +167,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.setStripePublishableKey.assertDidEmitValue()
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -184,7 +184,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       self.errorLoadingPaymentMethodsOrSetupIntent
         .assertValue(ErrorEnvelope.couldNotParseJSON.localizedDescription)
       self.paymentMethods.assertDidNotEmitValue()
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -205,7 +205,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -240,7 +240,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       self.paymentMethods.assertValueCount(1)
       self.errorLoadingPaymentMethodsOrSetupIntent.assertDidNotEmitValue()
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -266,7 +266,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.cancelLoadingState.assertDidEmitValue()
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -300,7 +300,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       self.vm.editButtonTapped()
       self.editButtonIsEnabled.assertValues([false, true])
       self.editButtonTitle.assertValues(["Edit", "Done", "Edit"])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -317,7 +317,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.editButtonIsEnabled.assertValues([false])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -351,7 +351,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.editButtonIsEnabled.assertValues([false, true])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -385,7 +385,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
       await self.advancePayments()
 
       self.editButtonIsEnabled.assertValues([false, true, false])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -406,7 +406,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -435,7 +435,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -484,7 +484,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
         [UserCreditCards.template.storedCards],
         "Emits once"
       )
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -525,7 +525,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
         [UserCreditCards.template.storedCards, UserCreditCards.template.storedCards],
         "Emits again to reload the tableview after an error occurred"
       )
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -564,7 +564,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
 
       self.tableViewIsEditing.assertValues([false, true], "Editing mode remains enabled")
       self.showAlert.assertValues([])
-    await self.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForPaymentOperations()
     }
 
     let response2 = UserEnvelope<GraphUser>(me: userTemplate)
@@ -607,7 +607,7 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
         ],
         "Cards are refreshed normally"
       )
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 }

@@ -12,7 +12,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
   private func advancePayments(by _: DispatchTimeInterval = .seconds(0)) async {
     await self.vm.waitForPending()
-    await self.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForPaymentOperations()
   }
   private func runPayments() async { await self.advancePayments() }
 
@@ -374,7 +374,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         addPaymentSheetResponse.createPaymentSource.paymentSource.id
       ])
       self.reloadPaymentMethodsShouldReload.assertValues([true, true, true])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -538,7 +538,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         "No changes"
       )
       self.reloadPaymentMethodsShouldReload.assertValues([true, true, true])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -626,7 +626,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       self.reloadPaymentMethodsSelectedCardId
         .assertValues([nil, nil, addPaymentSheetResponse.createPaymentSource.paymentSource.id])
       self.reloadPaymentMethodsShouldReload.assertValues([true, true, true])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -721,7 +721,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         )
       self.reloadPaymentMethodsShouldReload.assertValues([true, true, true])
       self.reloadPaymentMethodsIsLoading.assertValues([true, false, false])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -817,7 +817,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         )
       self.reloadPaymentMethodsShouldReload.assertValues([true, true, true])
       self.reloadPaymentMethodsIsLoading.assertValues([true, false, false])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -903,7 +903,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
           ],
           "No card to select after payment sheet card added."
         )
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -958,7 +958,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       ])
       self.reloadPaymentMethodsSelectedCardId.assertValues([nil, UserCreditCards.visa.id])
       self.reloadPaymentMethodsShouldReload.assertValues([true, true])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -988,7 +988,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       self.reloadPaymentMethodsShouldReload.assertDidNotEmitValue()
       self.reloadPaymentMethodsIsLoading.assertDidNotEmitValue()
       self.notifyDelegateLoadPaymentMethodsError.assertDidNotEmitValue()
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1026,7 +1026,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         PaymentSourceSelected.savedCreditCard(UserCreditCards.amex.id, "pm_fake_amex"),
         PaymentSourceSelected.savedCreditCard(UserCreditCards.discover.id, "pm_fake_discover")
       ])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1085,7 +1085,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
             "pm_fake_from_viewmodel"
           )
       ])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1144,7 +1144,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
             "pm_fake_from_response"
           )
       ])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1199,7 +1199,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         row: 1, section: PaymentMethodsTableViewSection.loading.rawValue
       )
       XCTAssertNil(self.vm.willSelectRowAtIndexPath(outOfBoundsIndexPath))
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1236,7 +1236,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(self.goToAddStripeCardIntent.values.count, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1273,7 +1273,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(self.goToAddStripeCardIntent.values.count, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1310,7 +1310,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(self.goToAddStripeCardIntent.values.count, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1347,7 +1347,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(self.goToAddStripeCardIntent.values.count, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1384,7 +1384,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(self.goToAddStripeCardIntent.values.count, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1436,7 +1436,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         self.reloadPaymentSheetPaymentMethodsCards.lastValue?.last?.card.id,
         addPaymentSheetResponse.createPaymentSource.paymentSource.id
       )
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1497,7 +1497,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       self.reloadPaymentMethodsSelectedCardId
         .assertValues([nil, nil, nil])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1559,7 +1559,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       self.reloadPaymentMethodsSelectedCardId
         .assertValues([nil, UserCreditCards.amex.id, UserCreditCards.amex.id])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1612,7 +1612,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
         self.reloadPaymentSheetPaymentMethodsCards.lastValue?.last?.card.id,
         addPaymentSheetResponse.createPaymentSource.paymentSource.id
       )
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1658,7 +1658,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       await self.advancePayments(by: .seconds(1))
 
       XCTAssertEqual(self.notifyDelegateLoadPaymentMethodsError.lastValue, error.localizedDescription)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1702,7 +1702,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       await self.advancePayments(by: .seconds(1))
       XCTAssertEqual(self.reloadPaymentSheetPaymentMethodsCards.lastValue?.count, 0)
-    await self.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForPaymentOperations()
     }
 
     await withEnvironment(
@@ -1720,7 +1720,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       let firstCardInList = self.reloadPaymentSheetPaymentMethodsCards.lastValue?[0]
       XCTAssertEqual(firstCardInList?.card.id, "1")
       XCTAssertTrue(firstCardInList?.isSelected ?? false)
-    await self.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForPaymentOperations()
     }
 
     await withEnvironment(
@@ -1738,7 +1738,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       let firstCardInList = self.reloadPaymentSheetPaymentMethodsCards.lastValue?[0]
       XCTAssertEqual(firstCardInList?.card.id, "2")
       XCTAssertTrue(firstCardInList?.isSelected ?? false)
-    await self.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForPaymentOperations()
     }
 
     await withEnvironment(
@@ -1756,7 +1756,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       let firstCardInList = self.reloadPaymentSheetPaymentMethodsCards.lastValue?[0]
       XCTAssertEqual(firstCardInList?.card.id, "3")
       XCTAssertTrue(firstCardInList?.isSelected ?? false)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1791,7 +1791,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1825,7 +1825,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1867,7 +1867,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       await self.runPayments()
 
       self.addNewCardLoadingState.assertValues([true, false])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1918,7 +1918,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertTrue(allowedDelayedPaymentMethods)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 0)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -1967,7 +1967,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       }
 
       XCTAssertTrue(allowedDelayedPaymentMethods)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -2028,7 +2028,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(self.reloadPaymentMethodsSelectedCardId.lastValue, UserCreditCards.visa.id)
       XCTAssertEqual(self.reloadPaymentMethodsIsSelected.lastValue, [true])
       XCTAssertEqual(self.reloadPaymentMethodsAvailableCardTypes.lastValue, [true])
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -2082,7 +2082,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(newCardData?.isEnabled, false)
       XCTAssertEqual(newCardData?.isSelected, false)
       XCTAssertNil(self.reloadPaymentMethodsSelectedCardId.lastValue ?? nil)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 
@@ -2146,7 +2146,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       XCTAssertEqual(newCardData?.isEnabled, true)
       XCTAssertEqual(newCardData?.isSelected, true)
       XCTAssertEqual(self.reloadPaymentMethodsSelectedCardId.lastValue, UserCreditCards.visa.id)
-    await self.paymentsFeature.waitForOperations()
+    await self.paymentsFeature.waitForPaymentOperations()
     }
 
     await withEnvironment(apiService: mockService2, currentUser: User.template) {
@@ -2194,7 +2194,7 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
 
       // The visa is still selected
       XCTAssertEqual(self.reloadPaymentMethodsSelectedCardId.lastValue, UserCreditCards.visa.id)
-      await self.paymentsFeature.waitForOperations()
+      await self.paymentsFeature.waitForPaymentOperations()
     }
   }
 }

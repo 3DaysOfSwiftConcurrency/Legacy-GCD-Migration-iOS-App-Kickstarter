@@ -51,7 +51,7 @@ final class PledgeViewModelTests: TestCase {
     stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
     currencyContext: { .live() },
     hasEligibleApplePayCard: {
-      AppEnvironment.current.applePayCapabilities.applePayCapable(
+      AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
     },

@@ -46,7 +46,7 @@ final class RewardsCollectionViewModelTests: TestCase {
   private let vm = RewardsCollectionViewModel(rewardsFeature: RewardsFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
     makeProvider: { AsyncRewardsProvider(service: AppEnvironment.current.apiService) },
     hasEligibleApplePayCard: {
-      AppEnvironment.current.applePayCapabilities.applePayCapable(
+      AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
     },

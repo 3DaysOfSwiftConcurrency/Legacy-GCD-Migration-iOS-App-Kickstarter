@@ -13,11 +13,11 @@ across 23 Feature areas and the rest of the Model. It includes declarations in
 extensions and conditional compilation branches. Session, Activity, Help,
 ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
 DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
-Discovery and Authentication have 862 individual behavior, caller and naming
-decisions. The remaining 2,162 rows are
+Discovery, Authentication and Payments have 989 individual behavior, caller
+and naming decisions. The remaining 2,035 rows are
 pending; the whole Model has
-**not** been declared reviewed. The latest app and test sources passed Build
-For Testing in the runner; runtime tests remain unverified.
+**not** been declared reviewed. The latest Payments caller closure passed
+Build For Testing for the app and test targets; runtime tests remain unverified.
 
 The repaired `Library-iOS` app and `LibraryTests` compilation passed in Xcode
 on 25 November 2026, build log
@@ -39,7 +39,7 @@ replacement. Proposed names need review against every overload and caller.
 | `Features/Pledge/PledgeFeature.swift:320,335,350` | `create(_:)`, `update(_:)`, `cancel(_:)` | Creates, changes and cancels a **backing**. Callers only learn this from the input type. | `createBacking`, `updateBacking`, `cancelBacking`; reconcile the provider, overloads and tests. |
 | `Features/CreatorDrafts/CreatorDraftsFeature.swift:161,176` | private `execute(_:)`, `request(_:state:)` | Admits and queues draft edits, deduplicates equivalent writes, and returns a retained task; `execute` awaits it and checks the current session. | Names should distinguish queue admission from awaiting a draft edit. They are private but still obscure the flow. |
 | `Features/Friends/FriendsFeature.swift:205,248` | private `request(_:)`, `execute(_:)` | Queues follow writes per session; `execute` awaits and verifies session freshness. | State the follow-write action and queue/await distinction. |
-| `Features/Payments/PaymentsFeature.swift:195` | private `request(_:operation:)` | Shares equivalent payment operations, sequences card writes and returns a retained task. | Identify the admitted payment command and its retained operation. |
+| `Features/Payments/PaymentsFeature.swift:195` | former private `request(_:operation:)` | Shares equivalent payment operations, sequences card writes and returns a retained task. | Resolved as `startPaymentCommand(_:operation:)`; caller/build closure recorded in the readability ledger. |
 | `Features/Pledge/PledgeFeature.swift:233,296` | private `request(_:)`, `execute(_:)` | Queues backing writes in order and awaits them under a session guard. | Name backing-write admission and awaiting. |
 | `Features/Settings/SettingsFeature.swift:314,318` | private `request(_:from:)` | Queues an account preference edit; one overload wraps the other. | Name account-preference write admission and remove ambiguity between overloads. |
 | `Features/Search/FetchCategoriesUseCase.swift:30,34` | `load()`, `start()` | `start()` returns the category-loading task and may publish cached categories; `load()` awaits it. | Name the categories and whether work is started or awaited. |

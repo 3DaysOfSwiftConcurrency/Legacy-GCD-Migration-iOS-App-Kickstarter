@@ -124,7 +124,7 @@ final class PledgePaymentMethodsViewModel {
         try await sleep(1)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity),
-              let cards = self.cardSelection.load(result.me.storedCards.storedCards, for: config.project)
+              let cards = self.cardSelection.loadSavedCards(result.me.storedCards.storedCards, for: config.project)
         else { return }
         self.publish(cards, checkout: identity)
       } catch {
@@ -147,7 +147,7 @@ final class PledgePaymentMethodsViewModel {
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity), envelope.createPaymentSource.isSuccessful,
               let config = self.configuration else { return }
-        if let cards = self.cardSelection.add(
+        if let cards = self.cardSelection.addSavedCard(
           envelope.createPaymentSource.paymentSource, stripePaymentMethodID: paymentMethod, for: config.project
         ) {
           self.publish(cards, checkout: identity)
@@ -179,7 +179,7 @@ final class PledgePaymentMethodsViewModel {
       return
     }
     guard indexPath.section == PaymentMethodsTableViewSection.paymentMethods.rawValue,
-          let cards = self.cardSelection.select(row: indexPath.row) else { return }
+          let cards = self.cardSelection.selectCard(row: indexPath.row) else { return }
     self.shouldCancelPaymentSheetAppearance(state: true)
     self.publish(cards, checkout: identity)
   }

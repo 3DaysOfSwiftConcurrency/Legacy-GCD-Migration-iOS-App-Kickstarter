@@ -549,3 +549,18 @@ scan identified two direct provider tests and they were repaired before the
 final `authentication-final-2` Build For Testing. It exited zero and reported
 `TEST BUILD SUCCEEDED` for app and test targets. Runtime tests remain
 unverified. Remaining inventory decisions: 2,162.
+
+Payments Feature review: all 127 declaration rows across ten files have
+behavior, caller and naming decisions. The payment command coordinator now
+names starting a command; Task-returning payment intent creation names its
+admission, while the async counterpart awaits it. Card selection names loading
+saved cards, adding a saved card and selecting a card. Payment methods
+configuration, login-state updates and source selection state their effects.
+Apple Pay capability predicates now distinguish supported networks, any Apple
+Pay capability and project-specific eligibility. Updated Pledge checkout and
+payment ViewModels, AppModel composition, analytics, the capability mock and
+all affected test callers. Early builds exposed missed test references to the
+selection and use-case APIs; those callers were repaired and
+`payments-closure-4` Build For Testing exited zero with `TEST BUILD SUCCEEDED`
+for the app and test targets. Runtime tests remain unverified. Remaining
+inventory decisions: 2,035.

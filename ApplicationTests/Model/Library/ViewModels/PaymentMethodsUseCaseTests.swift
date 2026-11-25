@@ -48,7 +48,7 @@ final class PaymentMethodsUseCaseTests: TestCase {
     self.configureWithValue.assertDidNotEmitValue()
     self.paymentMethodsViewHidden.assertDidNotEmitValue()
 
-    self.useCase.configure(data)
+    self.useCase.configurePaymentMethods(for: data)
 
     self.configureWithValue.assertDidNotEmitValue("Nobody is logged in, so no event should have been sent.")
     self.paymentMethodsViewHidden.assertLastValue(
@@ -57,7 +57,7 @@ final class PaymentMethodsUseCaseTests: TestCase {
     )
 
     withEnvironment(currentUser: User.template) {
-      self.useCase.loginChanged(true)
+      self.useCase.updateLoginState(true)
 
       self.configureWithValue
         .assertDidEmitValue("A user is logged in, so a configuration event should be sent.")
@@ -84,7 +84,7 @@ final class PaymentMethodsUseCaseTests: TestCase {
     )
 
     withEnvironment(currentUser: User.template) {
-      self.useCase.configure(updateData)
+      self.useCase.configurePaymentMethods(for: updateData)
 
       self.configureWithValue
         .assertDidNotEmitValue(
@@ -115,12 +115,12 @@ final class PaymentMethodsUseCaseTests: TestCase {
     withEnvironment(currentUser: User.template) {
       self.selectedPaymentSource.assertDidNotEmitValue()
 
-      self.useCase.configure(updateData)
+      self.useCase.configurePaymentMethods(for: updateData)
       self.selectedPaymentSource.assertLastValue(nil, "Default selected payment source should be nil.")
 
       let card = PaymentSourceSelected.savedCreditCard("123", "pm_fake")
 
-      self.useCase.creditCardSelected(with: card)
+      self.useCase.selectPaymentSource(card)
       self.selectedPaymentSource.assertDidEmitValue()
       XCTAssertEqual(self.selectedPaymentSource.lastValue!, card)
     }
@@ -144,11 +144,11 @@ final class PaymentMethodsUseCaseTests: TestCase {
     withEnvironment(currentUser: User.template) {
       self.paymentMethodChangedAndValid.assertDidNotEmitValue()
 
-      self.useCase.configure(updateData)
+      self.useCase.configurePaymentMethods(for: updateData)
 
       self.paymentMethodChangedAndValid.assertLastValue(false)
 
-      self.useCase.creditCardSelected(with: .savedCreditCard("123", "pm_fake"))
+      self.useCase.selectPaymentSource(.savedCreditCard("123", "pm_fake"))
 
       self.paymentMethodChangedAndValid.assertLastValue(true)
     }
@@ -172,7 +172,7 @@ final class PaymentMethodsUseCaseTests: TestCase {
     withEnvironment(currentUser: User.template) {
       self.paymentMethodChangedAndValid.assertDidNotEmitValue()
 
-      self.useCase.configure(updateData)
+      self.useCase.configurePaymentMethods(for: updateData)
 
       self.paymentMethodsViewHidden.assertLastValue(true)
       self.paymentMethodChangedAndValid.assertLastValue(
@@ -203,24 +203,24 @@ final class PaymentMethodsUseCaseTests: TestCase {
     withEnvironment(currentUser: User.template) {
       self.paymentMethodChangedAndValid.assertDidNotEmitValue()
 
-      self.useCase.configure(updateData)
+      self.useCase.configurePaymentMethods(for: updateData)
 
       self.paymentMethodsViewHidden.assertLastValue(false)
       self.paymentMethodChangedAndValid.assertLastValue(false)
 
-      self.useCase.creditCardSelected(with: .savedCreditCard(backing.paymentSource!.id!, "pm_fake"))
+      self.useCase.selectPaymentSource(.savedCreditCard(backing.paymentSource!.id!, "pm_fake"))
       self.paymentMethodChangedAndValid.assertLastValue(
         false,
         "Selecting the same credit card should not fix the payment method"
       )
 
-      self.useCase.creditCardSelected(with: .savedCreditCard("123456", "pm_fake"))
+      self.useCase.selectPaymentSource(.savedCreditCard("123456", "pm_fake"))
       self.paymentMethodChangedAndValid.assertLastValue(
         true,
         "Selecting a new credit card should fix the payment method"
       )
 
-      self.useCase.creditCardSelected(with: .savedCreditCard(backing.paymentSource!.id!, "pm_fake"))
+      self.useCase.selectPaymentSource(.savedCreditCard(backing.paymentSource!.id!, "pm_fake"))
       self.paymentMethodChangedAndValid.assertLastValue(
         false,
         "Selecting the same credit card again should not fix the payment method"

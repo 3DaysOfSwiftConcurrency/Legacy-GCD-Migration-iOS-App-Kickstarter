@@ -16,7 +16,7 @@ final class RewardAddOnSelectionViewModelTests: TestCase {
       return AsyncRewardsProvider(service: AppEnvironment.current.apiService)
     },
     hasEligibleApplePayCard: {
-      AppEnvironment.current.applePayCapabilities.applePayCapable(
+      AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
     },
