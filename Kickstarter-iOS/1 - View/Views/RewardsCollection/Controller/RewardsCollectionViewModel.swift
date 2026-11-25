@@ -78,7 +78,7 @@ final class RewardsCollectionViewModel {
     self.loadingGeneration = generation
     let currentLocation = self.location
     let feature = self.rewardsFeature
-    let request = feature.requestProjectRewards(route: self.route, project: config.project, location: currentLocation)
+    let request = feature.startProjectRewardsLoad(route: self.route, project: config.project, location: currentLocation)
     self.loadingTask = Task { [weak self] in
       await request.value
       guard let self, !Task.isCancelled, !request.isCancelled, self.loadingGeneration == generation else { return }

@@ -638,3 +638,13 @@ source scan missed; it was repaired. The final `pledge-currency-repair-8`
 Build For Testing exited zero with `TEST BUILD SUCCEEDED` for app and test
 targets. Runtime tests remain unverified. Remaining inventory decisions:
 1,638.
+
+Rewards checkpoint: reviewed all 125 declarations in its six Model files. Provider
+reads now name the fetched resource, Task-returning route methods state that they
+start work, and the awaited add-ons method states that it loads. Renamed the
+private route operation to `activeLoad`, the backing-state derivation and secret
+reward navigation action; updated View callers, provider conformances and tests.
+The first build found two missed awaited add-ons test calls; repaired both.
+`rewards-closure-2` Build For Testing exited zero with `TEST BUILD SUCCEEDED`
+for app and test targets. Runtime tests remain unverified. Remaining inventory
+decisions: 1,513.

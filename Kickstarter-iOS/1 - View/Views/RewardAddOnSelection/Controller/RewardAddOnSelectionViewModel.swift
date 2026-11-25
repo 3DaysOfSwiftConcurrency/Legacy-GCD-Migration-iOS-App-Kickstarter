@@ -294,7 +294,7 @@ public final class RewardAddOnSelectionViewModel: RewardAddOnSelectionViewModelT
     self.addOnsTask?.cancel()
     let id = UUID()
     self.addOnsRequestID = id
-    self.addOnsTask = self.rewardsFeature.startAddOns(
+    self.addOnsTask = self.rewardsFeature.startAddOnsLoad(
       route: self.addOnsRoute, slug: data.project.slug,
       baseReward: data.rewards.first, shippingRule: data.selectedShippingRule
     ) { [weak self] result in

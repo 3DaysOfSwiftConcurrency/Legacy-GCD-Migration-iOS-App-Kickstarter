@@ -132,11 +132,11 @@ final class RewardsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.requestProjectRewards(route: route, project: .template, location: .usa)
-    let duplicate = feature.requestProjectRewards(route: route, project: .template, location: .usa)
+    let first = feature.startProjectRewardsLoad(route: route, project: .template, location: .usa)
+    let duplicate = feature.startProjectRewardsLoad(route: route, project: .template, location: .usa)
     await provider.waitForRequests(1)
     XCTAssertEqual(provider.countries, ["US"])
-    let second = feature.requestProjectRewards(route: route, project: .template, location: .australia)
+    let second = feature.startProjectRewardsLoad(route: route, project: .template, location: .australia)
     await provider.waitForRequests(2)
     XCTAssertTrue(first.isCancelled)
     try provider.finish(1, rewards: [Reward.digitalReward])
@@ -172,8 +172,8 @@ final class RewardsFeatureTests: TestCase {
     let feature = self.feature(provider)
     let firstRoute = UUID()
     let secondRoute = UUID()
-    let first = feature.requestProjectRewards(route: firstRoute, project: .template, location: nil)
-    let second = feature.requestProjectRewards(route: secondRoute, project: .template, location: nil)
+    let first = feature.startProjectRewardsLoad(route: firstRoute, project: .template, location: nil)
+    let second = feature.startProjectRewardsLoad(route: secondRoute, project: .template, location: nil)
     await provider.waitForRequests(2)
     feature.release(route: firstRoute)
     XCTAssertTrue(first.isCancelled)
@@ -192,7 +192,7 @@ final class RewardsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.requestProjectRewards(route: route, project: .template, location: nil)
+    let first = feature.startProjectRewardsLoad(route: route, project: .template, location: nil)
     await provider.waitForRequests(1)
     AppEnvironment.pushEnvironment(currentUser: User.template)
     defer { AppEnvironment.popEnvironment() }
@@ -201,7 +201,7 @@ final class RewardsFeatureTests: TestCase {
       await first.value
       XCTAssertTrue(feature.snapshot(for: route).rewards.isEmpty)
       XCTAssertFalse(feature.snapshot(for: route).hasResult)
-      let signedIn = feature.requestProjectRewards(route: route, project: .template, location: nil)
+      let signedIn = feature.startProjectRewardsLoad(route: route, project: .template, location: nil)
       await provider.waitForRequests(2)
       try provider.finish(1, rewards: [Reward.digitalReward])
       await signedIn.value
@@ -219,11 +219,11 @@ final class RewardsFeatureTests: TestCase {
     XCTAssertTrue(feature.snapshot(for: route).hasResult)
 
     provider.pause = true
-    let old = feature.requestProjectRewards(route: route, project: .template, location: nil)
+    let old = feature.startProjectRewardsLoad(route: route, project: .template, location: nil)
     await provider.waitForRequests(2)
     feature.sessionFeature.sessionChanged()
     XCTAssertTrue(feature.snapshot(for: route).rewards.isEmpty)
-    let current = feature.requestProjectRewards(route: route, project: .template, location: nil)
+    let current = feature.startProjectRewardsLoad(route: route, project: .template, location: nil)
     await provider.waitForRequests(3)
     try provider.finish(0, rewards: [.shipsToUSAReward])
     await old.value
@@ -328,14 +328,14 @@ final class RewardsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.shippingFeature(provider)
     let route = UUID()
-    let first = feature.requestShippingLocations(
+    let first = feature.startShippingLocationLoad(
       route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true
     )
-    let duplicate = feature.requestShippingLocations(
+    let duplicate = feature.startShippingLocationLoad(
       route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true
     )
     await provider.waitForRequests(1)
-    let replacement = feature.requestShippingLocations(
+    let replacement = feature.startShippingLocationLoad(
       route: route, projectID: 1, selectedLocationID: Location.canada.id, hasShippableRewards: true
     )
     await provider.waitForRequests(2)
@@ -357,10 +357,10 @@ final class RewardsFeatureTests: TestCase {
     let feature = self.shippingFeature(provider)
     let firstRoute = UUID()
     let secondRoute = UUID()
-    let first = feature.requestShippingLocations(
+    let first = feature.startShippingLocationLoad(
       route: firstRoute, projectID: 1, selectedLocationID: nil, hasShippableRewards: true
     )
-    let second = feature.requestShippingLocations(
+    let second = feature.startShippingLocationLoad(
       route: secondRoute, projectID: 2, selectedLocationID: nil, hasShippableRewards: true
     )
     await provider.waitForRequests(2)
@@ -381,7 +381,7 @@ final class RewardsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.shippingFeature(provider)
     let route = UUID()
-    let first = feature.requestShippingLocations(
+    let first = feature.startShippingLocationLoad(
       route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true
     )
     await provider.waitForRequests(1)
@@ -391,7 +391,7 @@ final class RewardsFeatureTests: TestCase {
     await first.value
     XCTAssertTrue(feature.shippingSnapshot(for: route).locations.isEmpty)
     XCTAssertNil(feature.shippingSnapshot(for: route).error)
-    let signedIn = feature.requestShippingLocations(
+    let signedIn = feature.startShippingLocationLoad(
       route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true
     )
     await provider.waitForRequests(2)
@@ -411,11 +411,11 @@ final class RewardsFeatureTests: TestCase {
     XCTAssertEqual(feature.shippingSnapshot(for: route).selectedLocation, .usa)
 
     provider.pause = true
-    let old = feature.requestShippingLocations(route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true)
+    let old = feature.startShippingLocationLoad(route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true)
     await provider.waitForRequests(2)
     feature.sessionFeature.sessionChanged()
     XCTAssertNil(feature.shippingSnapshot(for: route).selectedLocation)
-    let current = feature.requestShippingLocations(route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true)
+    let current = feature.startShippingLocationLoad(route: route, projectID: 1, selectedLocationID: nil, hasShippableRewards: true)
     await provider.waitForRequests(3)
     try provider.finish(0, locations: [.usa])
     await old.value
@@ -441,10 +441,10 @@ final class RewardsFeatureTests: TestCase {
 
 @MainActor
 private final class ControlledShippingProvider: RewardsProvider {
-  func addOns(slug: String, locationID: String?) async throws -> [Reward]? {
+  func fetchAddOns(slug: String, locationID: String?) async throws -> [Reward]? {
     throw ErrorEnvelope.couldNotParseJSON
   }
-  func fastAddOns(baseRewardID: Int, country: String) async throws -> [Reward] {
+  func fetchFastAddOns(baseRewardID: Int, country: String) async throws -> [Reward] {
     throw ErrorEnvelope.couldNotParseJSON
   }
   var locations: [Location] = []
@@ -454,7 +454,7 @@ private final class ControlledShippingProvider: RewardsProvider {
   private var pending: [CheckedContinuation<[Location], Error>?] = []
   private var waits: [(Int, XCTestExpectation)] = []
 
-  func rewards(
+  func fetchProjectRewards(
     projectID _: Int,
     country _: String?,
     inserter _: any NoRewardInserter
@@ -462,7 +462,7 @@ private final class ControlledShippingProvider: RewardsProvider {
     throw ErrorEnvelope.graphError("Unexpected rewards request")
   }
 
-  func shippingLocations(projectID: Int) async throws -> [Location] {
+  func fetchShippingLocations(projectID: Int) async throws -> [Location] {
     self.projectIDs.append(projectID)
     if self.pause {
       return try await withCheckedThrowingContinuation { continuation in
@@ -502,13 +502,13 @@ private final class ControlledShippingProvider: RewardsProvider {
 
 @MainActor
 private final class ControlledRewardsProvider: RewardsProvider {
-  func addOns(slug: String, locationID: String?) async throws -> [Reward]? {
+  func fetchAddOns(slug: String, locationID: String?) async throws -> [Reward]? {
     throw ErrorEnvelope.couldNotParseJSON
   }
-  func fastAddOns(baseRewardID: Int, country: String) async throws -> [Reward] {
+  func fetchFastAddOns(baseRewardID: Int, country: String) async throws -> [Reward] {
     throw ErrorEnvelope.couldNotParseJSON
   }
-  func shippingLocations(projectID _: Int) async throws -> [Location] { [] }
+  func fetchShippingLocations(projectID _: Int) async throws -> [Location] { [] }
   var rewards = [Reward.digitalReward]
   var countries: [String?] = []
   var fail = false
@@ -516,7 +516,7 @@ private final class ControlledRewardsProvider: RewardsProvider {
   private var pending: [CheckedContinuation<[Reward], Error>?] = []
   private var waits: [(Int, XCTestExpectation)] = []
 
-  func rewards(projectID _: Int, country: String?, inserter: any NoRewardInserter) async throws
+  func fetchProjectRewards(projectID _: Int, country: String?, inserter: any NoRewardInserter) async throws
     -> [Reward]
   {
     self.countries.append(country)
@@ -560,7 +560,7 @@ extension RewardsFeatureTests {
   func testCancelledAddOnsCallerDoesNotAdmitRequest() async {
     let fixture = AddOnsFixture()
     let task = Task {
-      try await fixture.feature.addOns(
+      try await fixture.feature.loadAddOns(
         route: UUID(), slug: "fixture",
         baseReward: fixture.reward, shippingRule: nil)
     }
@@ -611,7 +611,7 @@ extension RewardsFeatureTests {
   func testAddOnsSkipMissingNoRewardAndRewardsWithoutAddOns() async throws {
     let fixture = AddOnsFixture()
     for reward: Reward? in [nil, .noReward, Reward.template |> Reward.lens.hasAddOns .~ false] {
-      let value = try await fixture.feature.addOns(
+      let value = try await fixture.feature.loadAddOns(
         route: UUID(), slug: "test", baseReward: reward, shippingRule: nil)
       XCTAssertNil(value)
     }
@@ -779,7 +779,7 @@ private final class AddOnsFixture {
     _ route: UUID, shipping: ShippingRule? = nil,
     completion: @escaping @MainActor (Result<[Reward]?, Error>) -> Void
   ) -> Task<Void, Never> {
-    self.feature.startAddOns(route: route, slug: "fixture", baseReward: self.reward,
+    self.feature.startAddOnsLoad(route: route, slug: "fixture", baseReward: self.reward,
                               shippingRule: shipping, completion: completion)
   }
 }
@@ -791,21 +791,21 @@ private final class ControlledAddOnsProvider: RewardsProvider {
   var locations: [String?] = []
   var fastIDs: [Int] = []
   var countries: [String] = []
-  func addOns(slug: String, locationID: String?) async throws -> [Reward]? {
+  func fetchAddOns(slug: String, locationID: String?) async throws -> [Reward]? {
     self.slugs.append(slug)
     self.locations.append(locationID)
     return try await self.gate.request()
   }
-  func fastAddOns(baseRewardID: Int, country: String) async throws -> [Reward] {
+  func fetchFastAddOns(baseRewardID: Int, country: String) async throws -> [Reward] {
     self.fastIDs.append(baseRewardID)
     self.countries.append(country)
     let value = try await self.gate.request()
     return try XCTUnwrap(value)
   }
-  func shippingLocations(projectID: Int) async throws -> [Location] {
+  func fetchShippingLocations(projectID: Int) async throws -> [Location] {
     throw ErrorEnvelope.couldNotParseJSON
   }
-  func rewards(projectID: Int, country: String?, inserter: any NoRewardInserter) async throws
+  func fetchProjectRewards(projectID: Int, country: String?, inserter: any NoRewardInserter) async throws
     -> [Reward]
   {
     throw ErrorEnvelope.couldNotParseJSON

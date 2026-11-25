@@ -13,12 +13,11 @@ across 23 Feature areas and the rest of the Model. It includes declarations in
 extensions and conditional compilation branches. Session, Activity, Help,
 ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
 DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
-Discovery, Authentication, Payments, PledgedProjects and the first Pledge
-Feature declaration review has 1,386 individual behavior, caller and naming
-decisions. The remaining 1,638 rows are
-pending; the whole Model has
-**not** been declared reviewed. The latest Pledge support closure passed
-Build For Testing for the app and test targets; runtime tests remain unverified.
+Discovery, Authentication, Payments, PledgedProjects, Pledge and Rewards
+have 1,511 individual behavior, caller and naming decisions. The remaining
+1,513 rows are pending; the whole Model has **not** been declared reviewed.
+The latest Rewards closure passed Build For Testing for the app and test targets;
+runtime tests remain unverified.
 
 The repaired `Library-iOS` app and `LibraryTests` compilation passed in Xcode
 on 25 November 2026, build log

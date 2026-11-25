@@ -500,7 +500,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     self.cancelImagePreparation()
     self.configData = (projectOrParam, refInfo, secretRewardToken)
     self.recordAttributionIfReady()
-    self.rewardsUseCase.configure(secretRewardToken: secretRewardToken)
+    self.rewardsUseCase.setSecretRewardToken(secretRewardToken)
   }
 
   /// Convenience overload for `configureWith` that defaults the `secretRewardToken` to `nil`.
@@ -545,7 +545,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
         PledgeCTAPrelaunchState(prelaunch: true, saved: saved, watchesCount: watchesCount)
       )
     case .pledge, .viewRewards, .viewYourRewards:
-      self.rewardsUseCase.goToRewardsTapped()
+      self.rewardsUseCase.openRewardsOrRequestLogin()
     case .pledgeManager:
       guard let project = self.projectDetailsFeature.snapshot(for: self.projectRoute).project else { return }
       self.onGoToPledgeManager?(

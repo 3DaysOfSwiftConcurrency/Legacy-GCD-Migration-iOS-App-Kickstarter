@@ -14,7 +14,7 @@ final class RewardCellProjectBackingStateTypeTests: TestCase {
 
     XCTAssertEqual(
       .nonBacked(live: .live),
-      RewardCellProjectBackingStateType.state(with: project)
+      RewardCellProjectBackingStateType.backingState(for: project)
     )
   }
 
@@ -26,7 +26,7 @@ final class RewardCellProjectBackingStateTypeTests: TestCase {
 
     XCTAssertEqual(
       .nonBacked(live: .nonLive),
-      RewardCellProjectBackingStateType.state(with: project)
+      RewardCellProjectBackingStateType.backingState(for: project)
     )
   }
 
@@ -40,7 +40,7 @@ final class RewardCellProjectBackingStateTypeTests: TestCase {
 
     XCTAssertEqual(
       .backed(live: .nonLive),
-      RewardCellProjectBackingStateType.state(with: project)
+      RewardCellProjectBackingStateType.backingState(for: project)
     )
   }
 
@@ -54,7 +54,7 @@ final class RewardCellProjectBackingStateTypeTests: TestCase {
 
     XCTAssertEqual(
       .backed(live: .live),
-      RewardCellProjectBackingStateType.state(with: project)
+      RewardCellProjectBackingStateType.backingState(for: project)
     )
   }
 
@@ -69,7 +69,7 @@ final class RewardCellProjectBackingStateTypeTests: TestCase {
 
     XCTAssertEqual(
       .backed(live: .live),
-      RewardCellProjectBackingStateType.state(with: project)
+      RewardCellProjectBackingStateType.backingState(for: project)
     )
   }
 
@@ -84,7 +84,7 @@ final class RewardCellProjectBackingStateTypeTests: TestCase {
 
     XCTAssertEqual(
       .backed(live: .nonLive),
-      RewardCellProjectBackingStateType.state(with: project)
+      RewardCellProjectBackingStateType.backingState(for: project)
     )
   }
 }

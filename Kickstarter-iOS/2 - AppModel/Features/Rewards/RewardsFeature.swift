@@ -5,10 +5,10 @@ import KsApi
 /// A substitution boundary for the shipping-sorted rewards API.
 @MainActor
 public protocol RewardsProvider {
-  func addOns(slug: String, locationID: String?) async throws -> [Reward]?
-  func fastAddOns(baseRewardID: Int, country: String) async throws -> [Reward]
-  func shippingLocations(projectID: Int) async throws -> [Location]
-  func rewards(projectID: Int, country: String?, inserter: any NoRewardInserter) async throws
+  func fetchAddOns(slug: String, locationID: String?) async throws -> [Reward]?
+  func fetchFastAddOns(baseRewardID: Int, country: String) async throws -> [Reward]
+  func fetchShippingLocations(projectID: Int) async throws -> [Location]
+  func fetchProjectRewards(projectID: Int, country: String?, inserter: any NoRewardInserter) async throws
     -> [Reward]
 }
 
@@ -16,17 +16,17 @@ public protocol RewardsProvider {
 public struct AsyncRewardsProvider: RewardsProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func addOns(slug: String, locationID: String?) async throws -> [Reward]? {
+  public func fetchAddOns(slug: String, locationID: String?) async throws -> [Reward]? {
     try await self.service.rewardAddOns(slug: slug, locationID: locationID)
   }
-  public func fastAddOns(baseRewardID: Int, country: String) async throws -> [Reward] {
+  public func fetchFastAddOns(baseRewardID: Int, country: String) async throws -> [Reward] {
     try await self.service.fastRewardAddOns(baseRewardID: baseRewardID, country: country)
   }
-  public func shippingLocations(projectID: Int) async throws -> [Location] {
+  public func fetchShippingLocations(projectID: Int) async throws -> [Location] {
     try await self.service.shippingLocations(projectID: projectID)
   }
 
-  public func rewards(
+  public func fetchProjectRewards(
     projectID: Int,
     country: String?,
     inserter: any NoRewardInserter
@@ -116,7 +116,7 @@ public final class RewardsFeature {
   private final class ShippingRoute {
     let session: ReadSession
     var snapshot = ShippingSnapshot()
-    var request: (id: UUID, identity: ShippingIdentity, task: Task<Void, Never>)?
+    var activeLoad: (id: UUID, identity: ShippingIdentity, task: Task<Void, Never>)?
 
     init(session: ReadSession) { self.session = session }
   }
@@ -133,7 +133,7 @@ public final class RewardsFeature {
     route: UUID, projectID: Int, selectedLocationID: Int?, hasShippableRewards: Bool
   ) async {
     guard !Task.isCancelled else { return }
-    await self.requestShippingLocations(
+    await self.startShippingLocationLoad(
       route: route, projectID: projectID, selectedLocationID: selectedLocationID,
       hasShippableRewards: hasShippableRewards
     ).value
@@ -142,7 +142,7 @@ public final class RewardsFeature {
   /// A selector owns its route. Equivalent reads share execution; reconfiguration
   /// replaces only that selector's request, just as the former switchMap did.
   @discardableResult
-  public func requestShippingLocations(
+  public func startShippingLocationLoad(
     route: UUID, projectID: Int, selectedLocationID: Int?, hasShippableRewards: Bool
   ) -> Task<Void, Never> {
     let identity = ShippingIdentity(
@@ -152,8 +152,8 @@ public final class RewardsFeature {
     let session = self.readSession
     let previous = self.shippingSelectionByRoute[route]
     if let previous, previous.session == session,
-       let request = previous.request, request.identity == identity { return request.task }
-    previous?.request?.task.cancel()
+       let request = previous.activeLoad, request.identity == identity { return request.task }
+    previous?.activeLoad?.task.cancel()
     let entry = previous.flatMap { $0.session == session ? $0 : nil } ?? ShippingRoute(session: session)
     self.shippingSelectionByRoute[route] = entry
     let requestID = UUID()
@@ -166,8 +166,8 @@ public final class RewardsFeature {
     entry.snapshot.hasResult = false
     let task = Task { [weak self] in
       defer {
-        if self != nil, entry.request?.id == requestID {
-          entry.request = nil
+        if self != nil, entry.activeLoad?.id == requestID {
+          entry.activeLoad = nil
           entry.snapshot.isLoading = false
         }
       }
@@ -177,11 +177,11 @@ public final class RewardsFeature {
           throw CancellationError()
         }
         let locations =
-          hasShippableRewards ? try await provider.shippingLocations(projectID: projectID) : []
+          hasShippableRewards ? try await provider.fetchShippingLocations(projectID: projectID) : []
         try await sleep(delay)
         try Task.checkCancellation()
         guard session.isCurrent(in: sessionFeature),
-          let self, self.shippingSelectionByRoute[route]?.request?.id == requestID
+          let self, self.shippingSelectionByRoute[route]?.activeLoad?.id == requestID
         else { return }
         entry.snapshot.hasResult = true
         entry.snapshot.locations = locations
@@ -194,14 +194,14 @@ public final class RewardsFeature {
         // Legacy materialization delayed errors as well as successful data.
         do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, session.isCurrent(in: sessionFeature),
-          let self, self.shippingSelectionByRoute[route]?.request?.id == requestID
+          let self, self.shippingSelectionByRoute[route]?.activeLoad?.id == requestID
         else { return }
         let failure = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
         entry.snapshot.error = failure
         entry.snapshot.hasResult = true
       }
     }
-    entry.request = (requestID, identity, task)
+    entry.activeLoad = (requestID, identity, task)
     return task
   }
 
@@ -212,8 +212,8 @@ public final class RewardsFeature {
 
   public func releaseShippingLocations(route: UUID) {
     guard let entry = self.shippingSelectionByRoute.removeValue(forKey: route) else { return }
-    let task = entry.request?.task
-    entry.request = nil
+    let task = entry.activeLoad?.task
+    entry.activeLoad = nil
     task?.cancel()
   }
 
@@ -238,7 +238,7 @@ public final class RewardsFeature {
   private final class Route {
     let session: ReadSession
     var snapshot = Snapshot()
-    var request: (id: UUID, identity: Identity, task: Task<Void, Never>)?
+    var activeLoad: (id: UUID, identity: Identity, task: Task<Void, Never>)?
 
     init(session: ReadSession) { self.session = session }
   }
@@ -345,11 +345,11 @@ public final class RewardsFeature {
 
   public func loadProjectRewards(route: UUID, project: Project, location: Location?) async {
     guard !Task.isCancelled else { return }
-    await self.requestProjectRewards(route: route, project: project, location: location).value
+    await self.startProjectRewardsLoad(route: route, project: project, location: location).value
   }
 
   @discardableResult
-  public func requestProjectRewards(route: UUID, project: Project, location: Location?) -> Task<Void, Never> {
+  public func startProjectRewardsLoad(route: UUID, project: Project, location: Location?) -> Task<Void, Never> {
     let identity = Identity(
       projectID: project.id, country: location?.country, locationID: location?.id,
       moveNoReward: self.moveNoReward(),
@@ -359,8 +359,8 @@ public final class RewardsFeature {
     let session = self.readSession
     let previous = self.rewardCollectionByRoute[route]
     if let previous, previous.session == session,
-       let request = previous.request, request.identity == identity { return request.task }
-    previous?.request?.task.cancel()
+       let request = previous.activeLoad, request.identity == identity { return request.task }
+    previous?.activeLoad?.task.cancel()
     let entry = previous.flatMap { $0.session == session ? $0 : nil } ?? Route(session: session)
     self.rewardCollectionByRoute[route] = entry
     let requestID = UUID()
@@ -381,8 +381,8 @@ public final class RewardsFeature {
     entry.snapshot.hasResult = false
     let task = Task { [weak self] in
       defer {
-        if entry.request?.id == requestID {
-          entry.request = nil
+        if entry.activeLoad?.id == requestID {
+          entry.activeLoad = nil
           entry.snapshot.isLoading = false
         }
       }
@@ -391,7 +391,7 @@ public final class RewardsFeature {
         guard session.isCurrent(in: sessionFeature) else {
           throw CancellationError()
         }
-        let rewards = try await provider.rewards(
+        let rewards = try await provider.fetchProjectRewards(
           projectID: project.id,
           country: location?.country,
           inserter: inserter
@@ -399,7 +399,7 @@ public final class RewardsFeature {
         try await sleep(delay)
         try Task.checkCancellation()
         guard session.isCurrent(in: sessionFeature),
-          let self, self.rewardCollectionByRoute[route]?.request?.id == requestID
+          let self, self.rewardCollectionByRoute[route]?.activeLoad?.id == requestID
         else { return }
         let now = self.platform.now()
         let visibleRewards = rewards.filter { isStartDateBeforeToday(for: $0, now: now) }
@@ -409,19 +409,19 @@ public final class RewardsFeature {
         // Superseded reads do not produce product errors or empty success.
       } catch {
         guard !Task.isCancelled, session.isCurrent(in: sessionFeature),
-          let self, self.rewardCollectionByRoute[route]?.request?.id == requestID
+          let self, self.rewardCollectionByRoute[route]?.activeLoad?.id == requestID
         else { return }
         entry.snapshot.error = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
       }
     }
-    entry.request = (requestID, identity, task)
+    entry.activeLoad = (requestID, identity, task)
     return task
   }
 
   public func cancel(route: UUID) {
     guard let entry = self.rewardCollectionByRoute[route] else { return }
-    let task = entry.request?.task
-    entry.request = nil
+    let task = entry.activeLoad?.task
+    entry.activeLoad = nil
     entry.snapshot.isLoading = false
     task?.cancel()
   }
@@ -458,7 +458,7 @@ public final class RewardsFeature {
     else { throw CancellationError() }
   }
 
-  private func requestAddOns(
+  private func startAddOnsFetch(
     route: UUID, slug: String, baseReward: Reward?, shippingRule: ShippingRule?
   ) -> AddOnsRequest {
     let query: AddOnsQuery
@@ -492,9 +492,9 @@ public final class RewardsFeature {
         switch query {
         case .none: rewards = nil
         case .standard(let slug, let location):
-          rewards = try await provider.addOns(slug: slug, locationID: location)
+          rewards = try await provider.fetchAddOns(slug: slug, locationID: location)
         case .fast(let rewardID, let country):
-          rewards = try await provider.fastAddOns(baseRewardID: rewardID, country: country)
+          rewards = try await provider.fetchFastAddOns(baseRewardID: rewardID, country: country)
         }
         try await self.sleep(delay)
         try self.requireCurrentAddOns(identity, route: route, version: id)
@@ -512,11 +512,11 @@ public final class RewardsFeature {
     return request
   }
 
-  public func addOns(route: UUID, slug: String, baseReward: Reward?, shippingRule: ShippingRule?)
+  public func loadAddOns(route: UUID, slug: String, baseReward: Reward?, shippingRule: ShippingRule?)
     async throws -> [Reward]?
   {
     try Task.checkCancellation()
-    let request = self.requestAddOns(
+    let request = self.startAddOnsFetch(
       route: route, slug: slug, baseReward: baseReward, shippingRule: shippingRule)
     do {
       let value = try await request.task.value
@@ -529,11 +529,11 @@ public final class RewardsFeature {
   }
 
   /// Admits the request immediately and owns its delivery until completion or cancellation.
-  public func startAddOns(
+  public func startAddOnsLoad(
     route: UUID, slug: String, baseReward: Reward?, shippingRule: ShippingRule?,
     completion: @escaping @MainActor (Result<[Reward]?, Error>) -> Void
   ) -> Task<Void, Never> {
-    let request = self.requestAddOns(
+    let request = self.startAddOnsFetch(
       route: route, slug: slug, baseReward: baseReward, shippingRule: shippingRule
     )
     let id = UUID()
@@ -623,7 +623,7 @@ private func filteredAddOns(
        or digital-only add-ons are available.
        */
       isValidAddonToDisplay =
-        isAddOnDigital || addOnReward(addOn, shipsTo: shippingRule?.location.id)
+        isAddOnDigital || addOnShipsToLocation(addOn, shipsTo: shippingRule?.location.id)
     }
 
     return isValidAddonToDisplay
@@ -632,7 +632,7 @@ private func filteredAddOns(
 
 /// For base rewards that have restricted or unrestricted shipping, only return
 /// add-ons that can ship to the selected shipping location.
-private func addOnReward(
+private func addOnShipsToLocation(
   _ addOn: Reward,
   shipsTo locationId: Int?
 ) -> Bool {

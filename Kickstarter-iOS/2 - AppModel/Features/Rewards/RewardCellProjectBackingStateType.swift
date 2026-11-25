@@ -11,7 +11,7 @@ public enum RewardCellProjectBackingStateType: Equatable {
   case nonBacked(live: ProjectState)
   case backed(live: ProjectState)
 
-  static func state(with project: Project) -> RewardCellProjectBackingStateType {
+  static func backingState(for project: Project) -> RewardCellProjectBackingStateType {
     guard project.personalization.backing != nil else {
       if project.isInPostCampaignPledgingPhase {
         return .nonBacked(live: .inPostCampaignPledgingPhase)

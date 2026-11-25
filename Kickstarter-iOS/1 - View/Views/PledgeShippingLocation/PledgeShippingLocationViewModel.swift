@@ -80,7 +80,7 @@ final class PledgeShippingLocationViewModel {
     self.onEvent?(.loading(true))
     let feature = self.rewardsFeature
     let route = self.route
-    let request = feature.requestShippingLocations(
+    let request = feature.startShippingLocationLoad(
       route: route, projectID: data.pid, selectedLocationID: data.selectedLocationId,
       hasShippableRewards: data.hasShippableRewards
     )

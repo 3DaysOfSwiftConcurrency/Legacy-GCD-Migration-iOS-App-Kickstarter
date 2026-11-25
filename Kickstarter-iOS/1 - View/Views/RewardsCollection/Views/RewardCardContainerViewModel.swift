@@ -43,7 +43,7 @@ public final class RewardCardContainerViewModel {
 private func pledgeButtonTitle(data: RewardCardViewData, isCreator: Bool) -> String? {
   if isCreator { return nil }
 
-  let projectBackingState = RewardCellProjectBackingStateType.state(with: data.project)
+  let projectBackingState = RewardCellProjectBackingStateType.backingState(for: data.project)
   let isBackingThisReward = userIsBacking(reward: data.reward, inProject: data.project)
   let isRewardAvailable = rewardIsAvailable(data.reward)
   let rewardShipsToLocation = rewardCanShip(data.reward, toLocation: data.currentShippingLocation)
@@ -78,7 +78,7 @@ private func pledgeButtonTitle(data: RewardCardViewData, isCreator: Bool) -> Str
 private func buttonStyleType(data: RewardCardViewData, isCreator: Bool) -> ButtonStyleType {
   if isCreator { return .none }
 
-  let projectBackingState = RewardCellProjectBackingStateType.state(with: data.project)
+  let projectBackingState = RewardCellProjectBackingStateType.backingState(for: data.project)
   let isBackingThisReward = userIsBacking(reward: data.reward, inProject: data.project)
 
   switch projectBackingState {

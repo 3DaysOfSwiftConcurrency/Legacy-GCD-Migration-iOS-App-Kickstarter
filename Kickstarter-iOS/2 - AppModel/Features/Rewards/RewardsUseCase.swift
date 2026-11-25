@@ -12,12 +12,12 @@ public final class RewardsUseCase {
     self.isLoggedIn = isLoggedIn
   }
 
-  func configure(secretRewardToken: String?) {
+  func setSecretRewardToken(_ secretRewardToken: String?) {
     self.hasConfiguredSecretRewardToken = true
     self.secretRewardToken = secretRewardToken
   }
 
-  func goToRewardsTapped() {
+  func openRewardsOrRequestLogin() {
     guard self.hasConfiguredSecretRewardToken else { return }
     if let token = self.secretRewardToken, !token.isEmpty, !self.isLoggedIn() {
       self.onLogin?(.backProject)

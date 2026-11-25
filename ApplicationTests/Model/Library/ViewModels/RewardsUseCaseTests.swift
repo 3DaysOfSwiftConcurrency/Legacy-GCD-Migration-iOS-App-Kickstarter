@@ -17,15 +17,15 @@ final class RewardsUseCaseTests: TestCase {
   }
 
   func testNoTokenValueDoesNotNavigate() {
-    self.vm.goToRewardsTapped()
+    self.vm.openRewardsOrRequestLogin()
     XCTAssertEqual(self.rewards, 0)
     XCTAssertTrue(self.logins.isEmpty)
   }
 
   func testNoSecretTokenAllowsLoggedOutUser() {
     withEnvironment(currentUser: nil) {
-      self.vm.configure(secretRewardToken: nil)
-      self.vm.goToRewardsTapped()
+      self.vm.setSecretRewardToken(nil)
+      self.vm.openRewardsOrRequestLogin()
       XCTAssertEqual(self.rewards, 1)
       XCTAssertTrue(self.logins.isEmpty)
     }
@@ -33,8 +33,8 @@ final class RewardsUseCaseTests: TestCase {
 
   func testSecretTokenRequiresLogin() {
     withEnvironment(currentUser: nil) {
-      self.vm.configure(secretRewardToken: "secret")
-      self.vm.goToRewardsTapped()
+      self.vm.setSecretRewardToken("secret")
+      self.vm.openRewardsOrRequestLogin()
       XCTAssertEqual(self.logins, [.backProject])
       XCTAssertEqual(self.rewards, 0)
     }
@@ -42,8 +42,8 @@ final class RewardsUseCaseTests: TestCase {
 
   func testSecretTokenAllowsLoggedInUser() {
     withEnvironment(currentUser: .template) {
-      self.vm.configure(secretRewardToken: "secret")
-      self.vm.goToRewardsTapped()
+      self.vm.setSecretRewardToken("secret")
+      self.vm.openRewardsOrRequestLogin()
       XCTAssertEqual(self.rewards, 1)
       XCTAssertTrue(self.logins.isEmpty)
     }
