@@ -307,18 +307,18 @@ public final class PledgeFeature {
   }
 
   public func confirmAddress(backingID: String, addressID: String) async throws -> Bool {
-    try Self.acknowledged(await self.performPledgeWrite(.confirmAddress(backingID, addressID)))
+    try Self.acknowledgedWrite(await self.performPledgeWrite(.confirmAddress(backingID, addressID)))
   }
   public func setRewardReceiptStatus(backingID: String, received: Bool) async throws -> Bool {
-    try Self.acknowledged(await self.performPledgeWrite(.receipt(backingID, received)))
+    try Self.acknowledgedWrite(await self.performPledgeWrite(.receipt(backingID, received)))
   }
-  private static func acknowledged(_ value: Value) throws -> Bool {
+  private static func acknowledgedWrite(_ value: Value) throws -> Bool {
     guard case .acknowledged(let success) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return success
   }
 
   public func createBacking(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope {
-    try Self.created(await self.performPledgeWrite(.create(input)))
+    try Self.createdBackingEnvelope(await self.performPledgeWrite(.create(input)))
   }
   func startBackingCreation(_ data: CreateBackingData, isApplePay: Bool) -> Task<CreateBackingEnvelope, Error> {
     self.startBackingCreation(CreateBackingInput.input(from: data, isApplePay: isApplePay))
@@ -328,12 +328,12 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.create(input))
     return Task {
-      try Self.created(await self.awaitAdmitted(command, session: session))
+      try Self.createdBackingEnvelope(await self.awaitAdmitted(command, session: session))
     }
   }
 
   public func updateBacking(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope {
-    try Self.updated(await self.performPledgeWrite(.update(input)))
+    try Self.updatedBackingEnvelope(await self.performPledgeWrite(.update(input)))
   }
   func startBackingUpdate(_ data: UpdateBackingData, isApplePay: Bool) -> Task<UpdateBackingEnvelope, Error> {
     self.startBackingUpdate(UpdateBackingInput.input(from: data, isApplePay: isApplePay))
@@ -343,7 +343,7 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.update(input))
     return Task {
-      try Self.updated(await self.awaitAdmitted(command, session: session))
+      try Self.updatedBackingEnvelope(await self.awaitAdmitted(command, session: session))
     }
   }
 
@@ -351,7 +351,7 @@ public final class PledgeFeature {
     _ = try await self.performPledgeWrite(.cancel(input))
   }
   /// Keep the existing presentation delay and suppress results from a replaced session.
-  func cancelWithPresentationDelay(_ input: KsApi.CancelBackingInput) async throws {
+  func cancelBackingWithPresentationDelay(_ input: KsApi.CancelBackingInput) async throws {
     let session = self.sessionIdentity
     let delay = self.platform.responseDelaySeconds()
     let result: Result<Void, Error>
@@ -362,13 +362,13 @@ public final class PledgeFeature {
     try result.get()
   }
   public func setPledgeRewardReceived(projectID: Int, userID: Int, received: Bool) async throws -> Backing {
-    try Self.received(
+    try Self.updatedRewardReceiptBacking(
       await self.performPledgeWrite(.received(projectID: projectID, userID: userID, received: received)))
   }
 
   /// Admit writes synchronously so rapid toggle changes keep their order even if
   /// their presentation tasks are cancelled.
-  func startReceivedForCurrentUser(project: Project, received: Bool) -> Task<Backing, Error>? {
+  func startRewardReceiptUpdateForCurrentUser(project: Project, received: Bool) -> Task<Backing, Error>? {
     guard let userID = self.sessionFeature.currentUser?.id else { return nil }
     self.trackRewardReceivedToggle(received, project)
     let session = self.sessionIdentity
@@ -385,14 +385,14 @@ public final class PledgeFeature {
   func startRewardReceivedUpdate(projectID: Int, userID: Int, received: Bool) -> Task<Backing, Error> {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.received(projectID: projectID, userID: userID, received: received))
-    return Task { try Self.received(await self.awaitAdmitted(command, session: session)) }
+    return Task { try Self.updatedRewardReceiptBacking(await self.awaitAdmitted(command, session: session)) }
   }
 
 
   public func openCheckout(_ input: KsApi.CreateCheckoutInput) async throws
     -> CreateCheckoutEnvelope
   {
-    try Self.checkout(await self.performPledgeWrite(.openCheckout(input)))
+    try Self.openedCheckoutEnvelope(await self.performPledgeWrite(.openCheckout(input)))
   }
   func startOpenCheckout(_ data: PledgeViewData) -> Task<CreateCheckoutEnvelope, Error> {
     let rewardIDs = data.rewards.first?.isNoReward == true ? [] : data.rewards.flatMap { reward in
@@ -416,14 +416,14 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.openCheckout(input))
     return Task {
-      try Self.checkout(await self.awaitAdmitted(command, session: session))
+      try Self.openedCheckoutEnvelope(await self.awaitAdmitted(command, session: session))
     }
   }
 
   public func validateCheckout(checkoutID: String, sourceID: String, secret: String) async throws
     -> ValidateCheckoutEnvelope
   {
-    try Self.validated(
+    try Self.validatedCheckoutEnvelope(
       await self.performPledgeWrite(
         .validateCheckout(checkoutID: checkoutID, sourceID: sourceID, secret: secret)))
   }
@@ -433,7 +433,7 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.validateCheckout(checkoutID: checkoutID, sourceID: sourceID, secret: secret))
     return Task {
-      try Self.validated(await self.awaitAdmitted(command, session: session))
+      try Self.validatedCheckoutEnvelope(await self.awaitAdmitted(command, session: session))
     }
   }
 
@@ -473,36 +473,36 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.completeCheckout(input))
     return Task {
-      try Self.completed(await self.awaitAdmitted(command, session: session))
+      try Self.requireCompletedCheckout(await self.awaitAdmitted(command, session: session))
     }
   }
 
   public func completeCheckout(_ input: GraphAPI.CompleteOnSessionCheckoutInput) async throws
   {
-    try Self.completed(await self.performPledgeWrite(.completeCheckout(input)))
+    try Self.requireCompletedCheckout(await self.performPledgeWrite(.completeCheckout(input)))
   }
-  private static func checkout(_ value: Value) throws -> CreateCheckoutEnvelope {
+  private static func openedCheckoutEnvelope(_ value: Value) throws -> CreateCheckoutEnvelope {
     guard case .checkout(let envelope) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return envelope
   }
-  private static func validated(_ value: Value) throws -> ValidateCheckoutEnvelope {
+  private static func validatedCheckoutEnvelope(_ value: Value) throws -> ValidateCheckoutEnvelope {
     guard case .validated(let envelope) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return envelope
   }
-  private static func completed(_ value: Value) throws
+  private static func requireCompletedCheckout(_ value: Value) throws
   {
     guard case .completed = value else { throw ErrorEnvelope.couldNotParseJSON }
   }
 
-  private static func created(_ value: Value) throws -> CreateBackingEnvelope {
+  private static func createdBackingEnvelope(_ value: Value) throws -> CreateBackingEnvelope {
     guard case .created(let envelope) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return envelope
   }
-  private static func updated(_ value: Value) throws -> UpdateBackingEnvelope {
+  private static func updatedBackingEnvelope(_ value: Value) throws -> UpdateBackingEnvelope {
     guard case .updated(let envelope) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return envelope
   }
-  private static func received(_ value: Value) throws -> Backing {
+  private static func updatedRewardReceiptBacking(_ value: Value) throws -> Backing {
     guard case .received(let backing) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return backing
   }
@@ -604,13 +604,13 @@ public final class PledgeFeature {
       let value = try await request.value()
       try self.requireCurrent(session)
       guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
-      return try Self.updateContext(value)
+      return try Self.projectUpdateContext(value)
     } catch {
       try self.requireCurrent(session)
       throw error
     }
   }
-  private static func updateContext(_ value: ReadValue) throws -> (Project, Update) {
+  private static func projectUpdateContext(_ value: ReadValue) throws -> (Project, Update) {
     guard case .updateContext(let project, let update) = value else {
       throw ErrorEnvelope.couldNotParseJSON
     }
@@ -626,7 +626,7 @@ public final class PledgeFeature {
         let value = try await request.value()
         try self.requireCurrent(session)
         guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
-        return try Self.plan(value)
+        return try Self.pledgePaymentPlan(value)
       } catch {
         try self.requireCurrent(session)
         throw error
@@ -641,7 +641,7 @@ public final class PledgeFeature {
     try Task.checkCancellation()
     return result
   }
-  private static func plan(_ value: ReadValue) throws -> PledgePaymentPlan? {
+  private static func pledgePaymentPlan(_ value: ReadValue) throws -> PledgePaymentPlan? {
     guard case .plan(let data) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return data
   }
@@ -654,7 +654,7 @@ public final class PledgeFeature {
       let value = try await request.value()
       try self.requireCurrent(session)
       guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
-      return try Self.project(value)
+      return try Self.pledgeProject(value)
     } catch {
       try self.requireCurrent(session)
       throw error
@@ -669,17 +669,17 @@ public final class PledgeFeature {
       let value = try await request.value()
       try self.requireCurrent(session)
       guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
-      return try Self.backing(value)
+      return try Self.managedBacking(value)
     } catch {
       try self.requireCurrent(session)
       throw error
     }
   }
-  private static func project(_ value: ReadValue) throws -> Project {
+  private static func pledgeProject(_ value: ReadValue) throws -> Project {
     guard case .project(let project) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return project
   }
-  private static func backing(_ value: ReadValue) throws -> Backing {
+  private static func managedBacking(_ value: ReadValue) throws -> Backing {
     guard case .backing(let backing) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return backing
   }

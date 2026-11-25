@@ -69,7 +69,7 @@ public final class ManageViewPledgeRewardReceivedViewModel {
     guard self.loaded, let configuration = self.configuration,
           self.pledgeFeature.sessionIdentity == configuration.session else { return }
     let project = configuration.data.project
-    guard let write = self.pledgeFeature.startReceivedForCurrentUser(project: project, received: isOn)
+    guard let write = self.pledgeFeature.startRewardReceiptUpdateForCurrentUser(project: project, received: isOn)
     else { return }
 
     self.observation?.task.cancel()

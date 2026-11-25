@@ -57,7 +57,7 @@ final class CancelPledgeViewModel {
     let pledgeFeature = self.pledgeFeature
     self.task = Task { [weak self] in
       do {
-        try await pledgeFeature.cancelWithPresentationDelay(input)
+        try await pledgeFeature.cancelBackingWithPresentationDelay(input)
         guard !Task.isCancelled, let self else { return }
         self.onEvent?(.success(Strings.Youve_canceled_your_pledge()))
         self.onEvent?(.loading(false))

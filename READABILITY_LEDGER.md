@@ -600,3 +600,12 @@ the controlled provider and focused Feature tests. A stale caller scan and
 `pledge-read-names-3` Build For Testing completed with exit zero and
 `TEST BUILD SUCCEEDED` for the app and test targets. Runtime tests remain
 unverified. Remaining inventory decisions: 1,873.
+
+Pledge result extraction checkpoint: 13 more declaration decisions. Private
+result extractors now identify which envelope or backing they return;
+`requireCompletedCheckout` checks the completion case. The cancellation
+method names backing and presentation delay, and the current-user toggle
+method names the reward receipt write it starts. Updated both presentation
+ViewModels and focused tests. `pledge-extractors-4` Build For Testing exited
+zero and reported `TEST BUILD SUCCEEDED` for app and test targets. Runtime
+tests remain unverified. Remaining inventory decisions: 1,860.

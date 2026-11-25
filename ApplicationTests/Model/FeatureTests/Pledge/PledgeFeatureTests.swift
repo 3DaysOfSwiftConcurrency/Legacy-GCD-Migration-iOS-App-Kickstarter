@@ -217,7 +217,7 @@ final class PledgeFeatureTests: TestCase {
     )
 
     let operation = try XCTUnwrap(
-      feature.startReceivedForCurrentUser(project: .template, received: true)
+      feature.startRewardReceiptUpdateForCurrentUser(project: .template, received: true)
     )
     await self.provider.receipts.waitFor(1)
     try self.provider.receipts.finish(0, .success(.template))
@@ -336,7 +336,7 @@ final class PledgeFeatureTests: TestCase {
       sessionFeature: self.session,
       makeProvider: { self.provider }
     )
-    let operation = Task { try await feature.cancelWithPresentationDelay(
+    let operation = Task { try await feature.cancelBackingWithPresentationDelay(
       .init(backingId: "backing", cancellationReason: nil)) }
     await self.provider.cancellations.waitFor(1)
     try self.provider.cancellations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
