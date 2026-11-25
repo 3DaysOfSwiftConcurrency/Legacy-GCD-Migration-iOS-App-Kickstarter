@@ -91,7 +91,7 @@ final class VideoFeedShareSheetViewTests: TestCase {
   private var mockFeedItem: VideoFeedItem {
     VideoFeedItem(
       id: "0",
-      pid: 3,
+      projectNumericID: 3,
       slug: "video_feed",
       projectURL: "https://test.com",
       title: "Ringo Move - The Ultimate Workout Bottle",
@@ -108,7 +108,7 @@ final class VideoFeedShareSheetViewTests: TestCase {
       ],
       videoURL: nil,
       videoPreviewImageURL: self.previewImageURL,
-      projectId: "1",
+      projectGraphID: "1",
       isSaved: false,
       sharesCount: 1,
       watchesCount: 50,

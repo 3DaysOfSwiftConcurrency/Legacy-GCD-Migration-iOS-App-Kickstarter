@@ -54,7 +54,7 @@ final class VideoFeedAudioControllerTests: TestCase {
     controller.handleSilentSwitchChange()
     let reset = controller.resetTask
     await gate.waitFor(1)
-    controller.handleDismiss()
+    controller.endFeedAudioSession()
     let count = session.categories.count
     controller.handleVolumeUp()
     controller.handleOverlayUnmute()
@@ -69,14 +69,14 @@ final class VideoFeedAudioControllerTests: TestCase {
     let session = MockAudioSession()
     let controller = VideoFeedAudioController(session: session)
     let view = UIView()
-    controller.setupObservers(in: view)
+    controller.observeVolumeAndSilentSwitch(in: view)
     let first = controller.observationTask
-    controller.setupObservers(in: view)
+    controller.observeVolumeAndSilentSwitch(in: view)
     await first?.value
     XCTAssertEqual(view.subviews.filter { $0 is MPVolumeView }.count, 1)
     let current = controller.observationTask
     NotificationCenter.default.post(name: AVAudioSession.outputMuteStateChangeNotification, object: nil)
-    controller.handleDismiss()
+    controller.endFeedAudioSession()
     let count = session.categories.count
     await current?.value
     XCTAssertEqual(session.categories.count, count)
@@ -88,7 +88,7 @@ final class VideoFeedAudioControllerTests: TestCase {
     let view = UIView()
     var controller: VideoFeedAudioController? = VideoFeedAudioController(session: MockAudioSession())
     weak var released = controller
-    controller?.setupObservers(in: view)
+    controller?.observeVolumeAndSilentSwitch(in: view)
     let task = controller?.observationTask
     controller = nil
     XCTAssertNil(released)
@@ -101,7 +101,7 @@ final class VideoFeedAudioControllerTests: TestCase {
     let mock = MockAudioSession()
     let controller = VideoFeedAudioController(session: mock)
 
-    controller.configure()
+    controller.configureAudioSession()
 
     if #available(iOS 26, *) {
       XCTAssertEqual(mock.lastCategory, .soloAmbient)
@@ -173,7 +173,7 @@ final class VideoFeedAudioControllerTests: TestCase {
     let controller = VideoFeedAudioController(session: mock)
 
     controller.handleVolumeUp()
-    controller.handleDismiss()
+    controller.endFeedAudioSession()
 
     XCTAssertEqual(mock.lastCategory, .soloAmbient)
   }

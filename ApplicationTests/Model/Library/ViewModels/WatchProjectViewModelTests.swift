@@ -67,7 +67,7 @@ internal final class WatchProjectViewModelTests: TestCase {
     }
     await Task.yield()
     await self.clock.advance(by: seconds)
-    await self.feature.waitForOperations()
+    await self.feature.waitForProjectSaveOperations()
     if seconds >= 0.5 { await self.vm.waitForOperation() }
     await Task.yield()
   }

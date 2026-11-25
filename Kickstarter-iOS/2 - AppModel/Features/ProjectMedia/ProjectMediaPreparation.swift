@@ -29,11 +29,11 @@ final class ProjectMediaPreparation {
     return imageResponse.image
   }
 
-  static func load(url: URL, thumbnailURL: URL?) async throws -> PreparedProjectMedia {
-    try await ProjectMediaPreparation().load(url: url, thumbnailURL: thumbnailURL)
+  static func preparePlayback(url: URL, thumbnailURL: URL?) async throws -> PreparedProjectMedia {
+    try await ProjectMediaPreparation().preparePlayback(url: url, thumbnailURL: thumbnailURL)
   }
 
-  private func load(url: URL, thumbnailURL: URL?) async throws -> PreparedProjectMedia {
+  private func preparePlayback(url: URL, thumbnailURL: URL?) async throws -> PreparedProjectMedia {
     if let thumbnailURL {
       self.thumbnailLoadTask = Task { [weak self] in
         // Same cache, WebP processor and serializer as the existing image helper.

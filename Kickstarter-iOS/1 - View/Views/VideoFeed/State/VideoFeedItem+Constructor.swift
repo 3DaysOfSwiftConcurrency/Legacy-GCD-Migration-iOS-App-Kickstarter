@@ -11,7 +11,7 @@ extension VideoFeedItem {
 
   init(response: VideoFeedResponse) {
     self.init(
-      id: response.id, pid: response.pid, slug: response.slug, projectURL: response.url,
+      id: response.id, projectNumericID: response.pid, slug: response.slug, projectURL: response.url,
       title: response.name, creator: response.creatorName,
       creatorImageURL: response.creatorImageURL.flatMap(URL.init(string:)),
       statsText: Self.statsTextInUserPreferredCurrency(
@@ -21,7 +21,7 @@ extension VideoFeedItem {
       },
       videoURL: response.videoURL.flatMap(URL.init(string:)),
       videoPreviewImageURL: response.previewURL.flatMap(URL.init(string:)),
-      projectId: response.id, isSaved: response.isWatched, sharesCount: response.shares,
+      projectGraphID: response.id, isSaved: response.isWatched, sharesCount: response.shares,
       watchesCount: response.watches, percentFunded: response.percentFunded
     )
   }

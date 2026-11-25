@@ -102,7 +102,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
   // MARK: - Inputs
 
   public func viewDidLoad() {
-    self.loadingTask = self.projectMediaFeature.requestFeed(route: self.route)
+    self.loadingTask = self.projectMediaFeature.startVideoFeedLoad(route: self.route)
   }
 
   /// Called each time the feed reappears.
@@ -145,7 +145,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
 
   /// Immediate visual feedback; the Feature orders durable writes per project.
   public func toggleSaved(for item: VideoFeedItem) {
-    self.projectMediaFeature.toggleSaved(
+    self.projectMediaFeature.toggleProjectSavedInFeed(
       route: self.route, projectID: item.id
     )
   }
@@ -171,7 +171,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
 
     self.analytics().trackVideoFeedSwipe(
       videoId: incoming.id,
-      projectId: incoming.projectId,
+      projectId: incoming.projectGraphID,
       positionInSession: index,
       fromVideoId: outgoing.id,
       totalWatchTimeMs: totalWatchTimeMs,
@@ -180,7 +180,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
 
     self.analytics().trackVideoFeedImpression(
       videoId: incoming.id,
-      projectId: incoming.projectId,
+      projectId: incoming.projectGraphID,
       positionInSession: index
     )
 
@@ -191,14 +191,14 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
     self.analytics().trackVideoFeedCTAClicked(
       ctaContext: ctaContext,
       videoId: item.id,
-      projectId: item.projectId
+      projectId: item.projectGraphID
     )
   }
 
   public func trackProgressBarTapped(item: VideoFeedItem, positionInSession: Int, percentageWatched: Float) {
     self.analytics().trackVideoFeedProgressBarTapped(
       videoId: item.id,
-      projectId: item.projectId,
+      projectId: item.projectGraphID,
       positionInSession: positionInSession,
       percentageWatched: percentageWatched
     )
@@ -212,7 +212,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
   }
 
   func fetchVideoFeed() async {
-    self.loadingTask = self.projectMediaFeature.requestFeed(route: self.route)
+    self.loadingTask = self.projectMediaFeature.startVideoFeedLoad(route: self.route)
     await self.loadingTask?.value
   }
 

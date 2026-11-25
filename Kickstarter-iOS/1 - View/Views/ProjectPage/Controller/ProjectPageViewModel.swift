@@ -246,7 +246,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     if let pending = self.imageWaiters[slot], pending.url == url { return pending.task }
     self.imageWaiters[slot]?.task.cancel()
     let id = UUID()
-    let request = self.projectMediaFeature.requestImage(route: self.projectRoute, url: url)
+    let request = self.projectMediaFeature.startImageLoad(route: self.projectRoute, url: url)
     let task = Task { [weak self] in
       defer { if self?.imageWaiters[slot]?.id == id { self?.imageWaiters[slot] = nil } }
       do {
@@ -272,7 +272,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     if let pending = self.mediaWaiters[slot], pending.url == url, pending.thumbnail == thumbnail { return pending.task }
     self.mediaWaiters[slot]?.task.cancel()
     let id = UUID()
-    let request = self.projectMediaFeature.requestPlaybackPreparation(route: self.projectRoute, slot: slot, url: url, thumbnail: thumbnail)
+    let request = self.projectMediaFeature.startPlaybackPreparation(route: self.projectRoute, slot: slot, url: url, thumbnail: thumbnail)
     let task = Task { [weak self] in
       defer { if self?.mediaWaiters[slot]?.id == id { self?.mediaWaiters[slot] = nil } }
       do {

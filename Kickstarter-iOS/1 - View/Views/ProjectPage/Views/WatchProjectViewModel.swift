@@ -25,7 +25,7 @@ final class WatchProjectViewModel {
   private var isReady = false
   private var selected: Bool?
   private var pendingLoginSelection: Bool?
-  private var pendingIntent: ProjectMediaFeature.WatchIntent?
+  private var pendingIntent: ProjectMediaFeature.ProjectSaveIntent?
   private var task: Task<Void, Never>?
 
   init(
@@ -42,14 +42,14 @@ final class WatchProjectViewModel {
   func configure(with value: WatchProjectValue) {
     self.invalidate()
     self.configured = value
-    if self.isReady { self.publishProject(self.projectMediaFeature.cached(value.project)) }
+    if self.isReady { self.publishProject(self.projectMediaFeature.projectWithCachedSaveState(value.project)) }
   }
 
   func awakeFromNib() { self.ready() }
   func viewDidLoad() { self.ready() }
   private func ready() {
     self.isReady = true
-    if let value = self.configured { self.publishProject(self.projectMediaFeature.cached(value.project)) }
+    if let value = self.configured { self.publishProject(self.projectMediaFeature.projectWithCachedSaveState(value.project)) }
   }
 
   func projectFromNotification(project: Project?) {
@@ -87,7 +87,7 @@ final class WatchProjectViewModel {
   private func submit(selected: Bool) {
     guard var project = self.project else { return }
     self.invalidate()
-    let intent = self.projectMediaFeature.prepareWatch(projectID: project.graphID, watched: !selected, previous: selected)
+    let intent = self.projectMediaFeature.prepareProjectSaveIntent(projectID: project.graphID, watched: !selected, previous: selected)
     self.pendingIntent = intent
     project.personalization.isStarred = !selected
     self.publishProject(project)
@@ -100,10 +100,10 @@ final class WatchProjectViewModel {
     let sleep = self.sleep
     self.task = Task { [weak self] in
       do { try await sleep(0.5) } catch { return }
-      guard !Task.isCancelled, projectMediaFeature.isCurrentIntent(intent),
-            let result = await projectMediaFeature.watch(project: project, intent: intent) else { return }
+      guard !Task.isCancelled, projectMediaFeature.isCurrentProjectSaveIntent(intent),
+            let result = await projectMediaFeature.applyProjectSaveIntent(project: project, intent: intent) else { return }
       do { try await sleep(projectMediaFeature.responseDelayForWatch()) } catch { return }
-      guard !Task.isCancelled, projectMediaFeature.isCurrentIntent(intent) else { return }
+      guard !Task.isCancelled, projectMediaFeature.isCurrentProjectSaveIntent(intent) else { return }
       self?.publishProject(result)
     }
   }
@@ -113,7 +113,7 @@ final class WatchProjectViewModel {
   private func invalidate() {
     self.task?.cancel()
     self.task = nil
-    if let pendingIntent { self.projectMediaFeature.cancelPreparedWatch(pendingIntent) }
+    if let pendingIntent { self.projectMediaFeature.cancelPreparedProjectSaveIntent(pendingIntent) }
     self.pendingIntent = nil
   }
 
@@ -131,7 +131,7 @@ final class WatchProjectViewModel {
     self.task?.cancel()
     if let intent = self.pendingIntent {
       let projectMediaFeature = self.projectMediaFeature
-      Task { @MainActor in projectMediaFeature.cancelPreparedWatch(intent) }
+      Task { @MainActor in projectMediaFeature.cancelPreparedProjectSaveIntent(intent) }
     }
   }
 }

@@ -53,7 +53,7 @@ final class VideoFeedViewControllerTests: TestCase {
         cell.configureWith(
           item: .constant(VideoFeedItem(
             id: "0",
-            pid: 3,
+            projectNumericID: 3,
             slug: "video_feed",
             projectURL: "https://test.com",
             title: "Ringo Move - The Ultimate Workout Bottle",
@@ -70,7 +70,7 @@ final class VideoFeedViewControllerTests: TestCase {
             ],
             videoURL: nil,
             videoPreviewImageURL: nil,
-            projectId: "1",
+            projectGraphID: "1",
             isSaved: false,
             sharesCount: 1,
             watchesCount: 50,
@@ -116,7 +116,7 @@ final class VideoFeedViewControllerTests: TestCase {
         cell.configureWith(
           item: .constant(VideoFeedItem(
             id: "0",
-            pid: 3,
+            projectNumericID: 3,
             slug: "video_feed",
             projectURL: "https://test.com",
             title: "Ringo Move - The Ultimate Workout Bottle for People Who Like Long Product Names That Wrap Across Several Lines For People Who Like Long Product Names That Wrap Across Several Lines",
@@ -133,7 +133,7 @@ final class VideoFeedViewControllerTests: TestCase {
             ],
             videoURL: nil,
             videoPreviewImageURL: nil,
-            projectId: "1",
+            projectGraphID: "1",
             isSaved: true,
             sharesCount: 1,
             watchesCount: 50,
@@ -181,7 +181,7 @@ final class VideoFeedViewControllerTests: TestCase {
         cell.configureWith(
           item: .constant(VideoFeedItem(
             id: "0",
-            pid: 3,
+            projectNumericID: 3,
             slug: "video_feed",
             projectURL: "https://test.com",
             title: "Ringo Move - The Ultimate Workout Bottle",
@@ -197,7 +197,7 @@ final class VideoFeedViewControllerTests: TestCase {
             ],
             videoURL: nil,
             videoPreviewImageURL: nil,
-            projectId: "1",
+            projectGraphID: "1",
             isSaved: false,
             sharesCount: 1,
             watchesCount: 50,
@@ -245,7 +245,7 @@ final class VideoFeedViewControllerTests: TestCase {
         cell.configureWith(
           item: .constant(VideoFeedItem(
             id: "0",
-            pid: 3,
+            projectNumericID: 3,
             slug: "video_feed",
             projectURL: "https://test.com",
             title: "Ringo Move - The Ultimate Workout Bottle",
@@ -262,7 +262,7 @@ final class VideoFeedViewControllerTests: TestCase {
             ],
             videoURL: nil,
             videoPreviewImageURL: nil,
-            projectId: "1",
+            projectGraphID: "1",
             isSaved: false,
             sharesCount: 1,
             watchesCount: 50,
@@ -312,7 +312,7 @@ final class VideoFeedViewControllerTests: TestCase {
         cell.configureWith(
           item: .constant(VideoFeedItem(
             id: "0",
-            pid: 3,
+            projectNumericID: 3,
             slug: "video_feed",
             projectURL: "https://test.com",
             title: "Ringo Move - The Ultimate Workout Bottle",
@@ -328,7 +328,7 @@ final class VideoFeedViewControllerTests: TestCase {
             ],
             videoURL: nil,
             videoPreviewImageURL: nil,
-            projectId: "1",
+            projectGraphID: "1",
             isSaved: false,
             sharesCount: 1,
             watchesCount: 50,
@@ -379,7 +379,7 @@ final class VideoFeedViewControllerTests: TestCase {
         cell.configureWith(
           item: .constant(VideoFeedItem(
             id: "0",
-            pid: 3,
+            projectNumericID: 3,
             slug: "video_feed",
             projectURL: "https://test.com",
             title: "Ringo Move - The Ultimate Workout Bottle",
@@ -396,7 +396,7 @@ final class VideoFeedViewControllerTests: TestCase {
             ],
             videoURL: nil,
             videoPreviewImageURL: nil,
-            projectId: "1",
+            projectGraphID: "1",
             isSaved: false,
             sharesCount: 1,
             watchesCount: 50,
@@ -447,7 +447,7 @@ final class VideoFeedViewControllerTests: TestCase {
         cell.configureWith(
           item: .constant(VideoFeedItem(
             id: "0",
-            pid: 3,
+            projectNumericID: 3,
             slug: "video_feed",
             projectURL: "https://test.com",
             title: "Ringo Move - The Ultimate Workout Bottle",
@@ -464,7 +464,7 @@ final class VideoFeedViewControllerTests: TestCase {
             ],
             videoURL: nil,
             videoPreviewImageURL: nil,
-            projectId: "1",
+            projectGraphID: "1",
             isSaved: false,
             sharesCount: 1,
             watchesCount: 50,

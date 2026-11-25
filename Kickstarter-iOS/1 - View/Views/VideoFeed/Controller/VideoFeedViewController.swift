@@ -81,14 +81,14 @@ final class VideoFeedViewController: UIViewController {
 
     self.view.backgroundColor = Constants.backgroundColor
 
-    self.audioController.configure()
+    self.audioController.configureAudioSession()
     self.observeAppLifecycle()
 
     if #available(iOS 26, *) {
       self.audioController.onVolumeUpDetected = { [weak self] in
         self?.muteVisibleCells()
       }
-      self.audioController.setupObservers(in: self.view)
+      self.audioController.observeVolumeAndSilentSwitch(in: self.view)
     }
 
     self.setupCollectionView()
@@ -135,7 +135,7 @@ final class VideoFeedViewController: UIViewController {
     self.pauseVisibleCell()
 
     if self.isBeingDismissed, #available(iOS 26, *) {
-      self.audioController.handleDismiss()
+      self.audioController.endFeedAudioSession()
     }
   }
 
@@ -248,7 +248,7 @@ final class VideoFeedViewController: UIViewController {
         composition.analytics().trackVideoFeedShareDestinationClicked(
           destination: destination.analyticsContext,
           videoId: item.id,
-          projectId: item.projectId
+          projectId: item.projectGraphID
         )
       }
     )

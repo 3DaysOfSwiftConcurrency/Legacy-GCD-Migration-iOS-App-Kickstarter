@@ -659,3 +659,14 @@ exposed dropped local argument names, and a later build caught an inferred
 `.fromParams` View caller; repaired both. `project-details-caller-6` Build For
 Testing exited zero with `TEST BUILD SUCCEEDED` for app and test targets.
 Runtime tests remain unverified. Remaining inventory decisions: 1,315.
+
+ProjectMedia checkpoint: reviewed all 167 declarations in its five Model files.
+Provider and Feature APIs now distinguish fetching video feed, beginning image
+and player preparation, starting playback reports, and preparing/submitting
+saved-project intents. The video feed item names separate numeric project ID
+from GraphQL project ID. Audio-controller lifecycle entry points say what they
+configure or observe. Updated View and test callers, including the optional
+audio-controller test call found by the first build and a ViewModel test using
+the old save-operation wait method. `project-media-final-5` Build For Testing
+exited zero with `TEST BUILD SUCCEEDED` for app and test targets. Runtime tests
+remain unverified. Remaining inventory decisions: 1,148.

@@ -3,7 +3,7 @@ import KsApi
 extension VideoFeedItem: HasProjectCreatorProperties {
   public var projectCreatorProperties: ProjectCreatorProperties {
     ProjectCreatorProperties(
-      id: self.pid,
+      id: self.projectNumericID,
       name: self.title,
       projectWebURL: self.projectURL
     )

@@ -3,7 +3,7 @@ import Foundation
 public struct VideoFeedItem: Hashable, Identifiable, Sendable {
   public let id: String
 
-  public let pid: Int
+  public let projectNumericID: Int
 
   public let slug: String
 
@@ -32,7 +32,7 @@ public struct VideoFeedItem: Hashable, Identifiable, Sendable {
   public let videoPreviewImageURL: URL?
 
   /// The GraphQL project ID used for watch/unwatch mutations.
-  public let projectId: String
+  public let projectGraphID: String
 
   /// Whether the current user has saved/watched this project.
   public var isSaved: Bool

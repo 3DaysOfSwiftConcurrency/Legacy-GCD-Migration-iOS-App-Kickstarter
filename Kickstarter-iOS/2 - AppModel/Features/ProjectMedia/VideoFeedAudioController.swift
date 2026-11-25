@@ -79,7 +79,7 @@ public final class VideoFeedAudioController {
     Task { @MainActor in volumeView?.removeFromSuperview() }
   }
 
-  public func configure() {
+  public func configureAudioSession() {
     self.isDismissed = false
     self.configurationError = nil
     do {
@@ -97,7 +97,7 @@ public final class VideoFeedAudioController {
   /// Sets up volume up detection and silent switch observation on iOS 26+.
   /// `MPVolumeView` reroutes hardware volume buttons to media volume so `outputVolume` KVO fires in silent mode.
   @available(iOS 26, *)
-  public func setupObservers(in view: UIView) {
+  public func observeVolumeAndSilentSwitch(in view: UIView) {
     self.stopObserving()
     self.isDismissed = false
     let version = self.audioObservationID
@@ -182,7 +182,7 @@ public final class VideoFeedAudioController {
   }
 
   /// Called on dismiss. Resets to `.soloAmbient` so the feed doesn't hold `.playback` after leaving.
-  public func handleDismiss() {
+  public func endFeedAudioSession() {
     self.isDismissed = true
     self.stopObserving()
     self.audioResetID = UUID()

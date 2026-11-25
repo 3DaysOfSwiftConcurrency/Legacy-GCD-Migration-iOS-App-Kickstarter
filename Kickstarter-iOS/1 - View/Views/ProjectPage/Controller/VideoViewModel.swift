@@ -119,7 +119,7 @@ public final class VideoViewModel {
   }
 
   private func report(project: any VideoViewConfiguration, completed: Bool) -> Task<Void, Never> {
-    let request = self.projectMediaFeature.requestReport(
+    let request = self.projectMediaFeature.startPlaybackReport(
       route: self.route, project: project, completed: completed
     )
     return Task { [weak self] in

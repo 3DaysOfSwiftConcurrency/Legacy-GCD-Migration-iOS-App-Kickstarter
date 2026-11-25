@@ -5,25 +5,25 @@ import UIKit
 
 @MainActor
 public protocol ProjectMediaProvider {
-  func report(project: any HasProjectWebURL, completed: Bool) async throws -> VoidEnvelope
-  func feed() async throws -> [VideoFeedItem]
-  func setWatched(id: String, watched: Bool) async throws -> WatchProjectResponseEnvelope
+  func reportPlaybackEvent(project: any HasProjectWebURL, completed: Bool) async throws -> VoidEnvelope
+  func fetchVideoFeed() async throws -> [VideoFeedItem]
+  func setProjectWatched(id: String, watched: Bool) async throws -> WatchProjectResponseEnvelope
 }
 
 @MainActor
 public struct AsyncProjectMediaProvider: ProjectMediaProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func report(project: any HasProjectWebURL, completed: Bool) async throws -> VoidEnvelope {
+  public func reportPlaybackEvent(project: any HasProjectWebURL, completed: Bool) async throws -> VoidEnvelope {
     try await self.service.reportVideoEvent(project: project, completed: completed)
   }
 
-  public func feed() async throws -> [VideoFeedItem] {
+  public func fetchVideoFeed() async throws -> [VideoFeedItem] {
     let data = try await self.service.projectVideoFeed()
     return data.map { VideoFeedItem(response: $0) }
   }
 
-  public func setWatched(id: String, watched: Bool) async throws -> WatchProjectResponseEnvelope {
+  public func setProjectWatched(id: String, watched: Bool) async throws -> WatchProjectResponseEnvelope {
     try await self.service.setProjectWatched(id: id, watched: watched)
   }
 }
@@ -75,7 +75,7 @@ public final class ProjectMediaFeature {
   private var pendingImageLoads: [ImageKey: (id: UUID, task: Task<UIImage, Error>)] = [:]
   private let loadImage: @MainActor (URL) async throws -> UIImage
 
-  public func requestImage(route: UUID, url: URL) -> Task<UIImage, Error> {
+  public func startImageLoad(route: UUID, url: URL) -> Task<UIImage, Error> {
     let key = ImageKey(route: route, url: url)
     if let pending = self.pendingImageLoads[key] { return pending.task }
     let id = UUID()
@@ -116,7 +116,7 @@ public final class ProjectMediaFeature {
 
   /// Each page/element owns an independent player. Equivalent requests for that
   /// slot share pending work; changed URLs replace it without affecting other rows.
-  public func requestPlaybackPreparation(
+  public func startPlaybackPreparation(
     route: UUID, slot: String, url: URL, thumbnail: URL?
   ) -> Task<PreparedProjectMedia, Error> {
     let key = PreparationKey(route: route, slot: slot)
@@ -161,13 +161,13 @@ public final class ProjectMediaFeature {
   private var feedRequests: [UUID: (userID: Int?, generation: Int, token: UUID, task: Task<Void, Never>)] = [:]
   private var feedSaveTasksByRoute: [UUID: [String: (token: UUID, task: Task<Void, Never>)]] = [:]
 
-  fileprivate struct WatchIdentity: Hashable {
+  fileprivate struct ProjectSaveIdentity: Hashable {
     let projectID: String
     let userID: Int?
     let generation: Int
   }
 
-  private var watchWrites: [WatchIdentity: (watched: Bool, token: UUID, task: Task<WatchProjectResponseEnvelope, Error>)] = [:]
+  private var watchWrites: [ProjectSaveIdentity: (watched: Bool, token: UUID, task: Task<WatchProjectResponseEnvelope, Error>)] = [:]
 
   public func feedState(route: UUID) -> FeedState {
     if let feed = self.videoFeedStatesByRoute[route] { return feed }
@@ -178,13 +178,13 @@ public final class ProjectMediaFeature {
 
   public var hasCurrentUser: Bool { self.sessionFeature.currentUser != nil }
 
-  public func loadFeed(route: UUID) async {
+  public func loadVideoFeed(route: UUID) async {
     guard !Task.isCancelled else { return }
-    await self.requestFeed(route: route).value
+    await self.startVideoFeedLoad(route: route).value
   }
 
   @discardableResult
-  public func requestFeed(route: UUID) -> Task<Void, Never> {
+  public func startVideoFeedLoad(route: UUID) -> Task<Void, Never> {
     let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
     if let request = self.feedRequests[route], request.userID == userID, request.generation == generation {
@@ -207,7 +207,7 @@ public final class ProjectMediaFeature {
       do {
         try Task.checkCancellation()
         guard sessionFeature.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
-        let items = try await provider.feed()
+        let items = try await provider.fetchVideoFeed()
         try Task.checkCancellation()
         guard let self, self.feedRequests[route]?.token == token,
               sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
@@ -218,7 +218,7 @@ public final class ProjectMediaFeature {
         feed.fetchedItems = items
         feed.items = items
         self.analytics()?.trackVideoFeedImpression(
-          videoId: first.id, projectId: first.projectId, positionInSession: 0
+          videoId: first.id, projectId: first.projectGraphID, positionInSession: 0
         )
       } catch is CancellationError {
       } catch {
@@ -235,8 +235,8 @@ public final class ProjectMediaFeature {
   /// preceding write for this account/project. Disposing a request cannot undo
   /// a server mutation, so save→unsave must not race on separate connections.
   @discardableResult
-  public func requestWatch(projectID: String, watched: Bool) -> Task<WatchProjectResponseEnvelope, Error> {
-    let key = self.watchIdentity(projectID)
+  public func startProjectSaveWrite(projectID: String, watched: Bool) -> Task<WatchProjectResponseEnvelope, Error> {
+    let key = self.saveIdentity(projectID)
     if let pending = self.watchWrites[key], pending.watched == watched { return pending.task }
     let predecessor = self.watchWrites[key]?.task
     let provider = self.makeProvider()
@@ -245,53 +245,53 @@ public final class ProjectMediaFeature {
       defer { if self.watchWrites[key]?.token == token { self.watchWrites[key] = nil } }
       if let predecessor { _ = await predecessor.result }
       try Task.checkCancellation()
-      guard self.isCurrent(key) else { throw CancellationError() }
-      let result = try await provider.setWatched(id: projectID, watched: watched)
+      guard self.isCurrentSaveIdentity(key) else { throw CancellationError() }
+      let result = try await provider.setProjectWatched(id: projectID, watched: watched)
       try Task.checkCancellation()
-      guard self.isCurrent(key) else { throw CancellationError() }
+      guard self.isCurrentSaveIdentity(key) else { throw CancellationError() }
       return result
     }
     self.watchWrites[key] = (watched, token, task)
     return task
   }
 
-  public struct WatchIntent {
-    fileprivate let key: WatchIdentity
+  public struct ProjectSaveIntent {
+    fileprivate let key: ProjectSaveIdentity
     fileprivate let token: UUID
     public let watched: Bool
     fileprivate let previous: Bool
   }
-  private var watchIntents: [WatchIdentity: (token: UUID, admitted: Bool)] = [:]
+  private var watchIntents: [ProjectSaveIdentity: (token: UUID, admitted: Bool)] = [:]
   private var watchSettlements: [UUID: Task<WatchProjectResponseEnvelope, Error>] = [:]
   private let savedProjects = NSCache<NSNumber, NSNumber>()
-  private var cacheIdentity: WatchIdentity?
+  private var cacheIdentity: ProjectSaveIdentity?
 
-  private func watchIdentity(_ projectID: String) -> WatchIdentity {
-    WatchIdentity(projectID: projectID, userID: self.sessionFeature.currentUser?.id,
+  private func saveIdentity(_ projectID: String) -> ProjectSaveIdentity {
+    ProjectSaveIdentity(projectID: projectID, userID: self.sessionFeature.currentUser?.id,
                   generation: self.sessionFeature.generation)
   }
-  private func isCurrent(_ key: WatchIdentity) -> Bool {
+  private func isCurrentSaveIdentity(_ key: ProjectSaveIdentity) -> Bool {
     key.userID == self.sessionFeature.currentUser?.id && key.generation == self.sessionFeature.generation
   }
-  private func prepareCache() {
-    let identity = self.watchIdentity("")
+  private func resetSaveCacheForCurrentSession() {
+    let identity = self.saveIdentity("")
     if let previous = self.cacheIdentity, previous != identity {
       self.savedProjects.removeAllObjects()
       self.watchIntents.removeAll()
     }
     self.cacheIdentity = identity
   }
-  public func cached(_ project: Project) -> Project {
-    self.prepareCache()
+  public func projectWithCachedSaveState(_ project: Project) -> Project {
+    self.resetSaveCacheForCurrentSession()
     var project = project
     if let saved = self.savedProjects.object(forKey: NSNumber(value: project.id)) {
       project.personalization.isStarred = saved.boolValue
     }
     return project
   }
-  private func cache(_ saved: Bool, for key: WatchIdentity) {
-    guard self.isCurrent(key), let id = decompose(id: key.projectID) else { return }
-    self.prepareCache()
+  private func cacheProjectSaveState(_ saved: Bool, for key: ProjectSaveIdentity) {
+    guard self.isCurrentSaveIdentity(key), let id = decompose(id: key.projectID) else { return }
+    self.resetSaveCacheForCurrentSession()
     self.savedProjects.setObject(NSNumber(value: saved), forKey: NSNumber(value: id))
   }
   public func claimSaveProjectTip(for project: Project) -> Bool {
@@ -308,36 +308,36 @@ public final class ProjectMediaFeature {
     return true
   }
 
-  public func prepareWatch(projectID: String, watched: Bool, previous: Bool) -> WatchIntent {
-    self.prepareCache()
-    let intent = WatchIntent(key: self.watchIdentity(projectID), token: UUID(), watched: watched, previous: previous)
+  public func prepareProjectSaveIntent(projectID: String, watched: Bool, previous: Bool) -> ProjectSaveIntent {
+    self.resetSaveCacheForCurrentSession()
+    let intent = ProjectSaveIntent(key: self.saveIdentity(projectID), token: UUID(), watched: watched, previous: previous)
     self.watchIntents[intent.key] = (intent.token, false)
-    self.cache(watched, for: intent.key)
+    self.cacheProjectSaveState(watched, for: intent.key)
     return intent
   }
-  public func isCurrentIntent(_ intent: WatchIntent) -> Bool {
-    self.isCurrent(intent.key) && self.watchIntents[intent.key]?.token == intent.token
+  public func isCurrentProjectSaveIntent(_ intent: ProjectSaveIntent) -> Bool {
+    self.isCurrentSaveIdentity(intent.key) && self.watchIntents[intent.key]?.token == intent.token
   }
-  public func cancelPreparedWatch(_ intent: WatchIntent) {
-    guard self.isCurrentIntent(intent), self.watchIntents[intent.key]?.admitted == false else { return }
-    self.cache(intent.previous, for: intent.key)
+  public func cancelPreparedProjectSaveIntent(_ intent: ProjectSaveIntent) {
+    guard self.isCurrentProjectSaveIntent(intent), self.watchIntents[intent.key]?.admitted == false else { return }
+    self.cacheProjectSaveState(intent.previous, for: intent.key)
     self.watchIntents[intent.key] = nil
   }
-  public func submitWatch(_ intent: WatchIntent) -> Task<WatchProjectResponseEnvelope, Error> {
+  public func submitProjectSaveIntent(_ intent: ProjectSaveIntent) -> Task<WatchProjectResponseEnvelope, Error> {
     if let pending = self.watchSettlements[intent.token] { return pending }
-    guard self.isCurrentIntent(intent) else { return Task { throw CancellationError() } }
+    guard self.isCurrentProjectSaveIntent(intent) else { return Task { throw CancellationError() } }
     self.watchIntents[intent.key]?.admitted = true
-    let command = self.requestWatch(projectID: intent.key.projectID, watched: intent.watched)
+    let command = self.startProjectSaveWrite(projectID: intent.key.projectID, watched: intent.watched)
     let task = Task { [self] in
       defer { self.watchSettlements[intent.token] = nil }
       do {
         let value = try await command.value
-        guard self.isCurrent(intent.key) else { throw CancellationError() }
-        if self.isCurrentIntent(intent) { self.cache(intent.watched, for: intent.key) }
+        guard self.isCurrentSaveIdentity(intent.key) else { throw CancellationError() }
+        if self.isCurrentProjectSaveIntent(intent) { self.cacheProjectSaveState(intent.watched, for: intent.key) }
         return value
       } catch {
-        guard self.isCurrent(intent.key) else { throw CancellationError() }
-        if self.isCurrentIntent(intent) { self.cache(intent.previous, for: intent.key) }
+        guard self.isCurrentSaveIdentity(intent.key) else { throw CancellationError() }
+        if self.isCurrentProjectSaveIntent(intent) { self.cacheProjectSaveState(intent.previous, for: intent.key) }
         throw error
       }
     }
@@ -346,28 +346,28 @@ public final class ProjectMediaFeature {
   }
 
   /// Returns the current save state, or nil if the observing task or intent became stale.
-  public func watch(project: Project, intent: WatchIntent) async -> Project? {
-    guard !Task.isCancelled, self.isCurrentIntent(intent) else { return nil }
-    return await self.resolveWatch(project: project, intent: intent, command: self.submitWatch(intent))
+  public func applyProjectSaveIntent(project: Project, intent: ProjectSaveIntent) async -> Project? {
+    guard !Task.isCancelled, self.isCurrentProjectSaveIntent(intent) else { return nil }
+    return await self.resolveProjectSaveOutcome(project: project, intent: intent, command: self.submitProjectSaveIntent(intent))
   }
 
-  private func resolveWatch(
-    project: Project, intent: WatchIntent, command: Task<WatchProjectResponseEnvelope, Error>
+  private func resolveProjectSaveOutcome(
+    project: Project, intent: ProjectSaveIntent, command: Task<WatchProjectResponseEnvelope, Error>
   ) async -> Project? {
     var project = project
     do {
       let response = try await command.value
-      guard !Task.isCancelled, self.isCurrentIntent(intent) else { return nil }
+      guard !Task.isCancelled, self.isCurrentProjectSaveIntent(intent) else { return nil }
       project.watchesCount = response.watchProject.project.watchesCount
       project.personalization.isStarred = intent.watched
     } catch {
-      guard !Task.isCancelled, !(error is CancellationError), self.isCurrentIntent(intent) else { return nil }
+      guard !Task.isCancelled, !(error is CancellationError), self.isCurrentProjectSaveIntent(intent) else { return nil }
       project.personalization.isStarred = intent.previous
     }
     return project
   }
 
-  public func waitForOperations() async {
+  public func waitForProjectSaveOperations() async {
     while !self.watchWrites.isEmpty || !self.watchSettlements.isEmpty {
       for pending in Array(self.watchWrites.values) { _ = await pending.task.result }
       for task in Array(self.watchSettlements.values) { _ = await task.result }
@@ -375,7 +375,7 @@ public final class ProjectMediaFeature {
   }
 
   @discardableResult
-  public func toggleSaved(route: UUID, projectID: String) -> Task<Void, Never>? {
+  public func toggleProjectSavedInFeed(route: UUID, projectID: String) -> Task<Void, Never>? {
     guard let feed = self.videoFeedStatesByRoute[route],
           let index = feed.items.firstIndex(where: { $0.id == projectID }) else { return nil }
     let item = feed.items[index]
@@ -384,10 +384,10 @@ public final class ProjectMediaFeature {
     feed.items[index].isSaved = !wasSaved
     feed.items[index].watchesCount = max(0, item.watchesCount + (wasSaved ? -1 : 1))
     self.analytics()?.trackVideoFeedCTAClicked(
-      ctaContext: .videoFeedSave, videoId: item.id, projectId: item.projectId
+      ctaContext: .videoFeedSave, videoId: item.id, projectId: item.projectGraphID
     )
-    let intent = self.prepareWatch(projectID: item.projectId, watched: !wasSaved, previous: wasSaved)
-    let mutation = self.submitWatch(intent)
+    let intent = self.prepareProjectSaveIntent(projectID: item.projectGraphID, watched: !wasSaved, previous: wasSaved)
+    let mutation = self.submitProjectSaveIntent(intent)
     let token = UUID()
     let task = Task { [self] in
       defer {
@@ -400,7 +400,7 @@ public final class ProjectMediaFeature {
       } catch {
         guard !(error is CancellationError), self.videoFeedStatesByRoute[route] === feed,
               self.feedSaveTasksByRoute[route]?[projectID]?.token == token,
-              userID == self.sessionFeature.currentUser?.id, self.isCurrentIntent(intent),
+              userID == self.sessionFeature.currentUser?.id, self.isCurrentProjectSaveIntent(intent),
               let index = feed.items.firstIndex(where: { $0.id == projectID }) else { return }
         // Preserve rollback and toast for the latest visible intent only.
         feed.items[index].isSaved = wasSaved
@@ -422,10 +422,10 @@ public final class ProjectMediaFeature {
   }
 
   public func reconcileSavedProjects(route: UUID) {
-    self.prepareCache()
+    self.resetSaveCacheForCurrentSession()
     guard let feed = self.videoFeedStatesByRoute[route] else { return }
     for index in feed.items.indices {
-      if let id = decompose(id: feed.items[index].projectId),
+      if let id = decompose(id: feed.items[index].projectGraphID),
          let saved = self.savedProjects.object(forKey: NSNumber(value: id))?.boolValue {
         let previous = feed.items[index].isSaved
         feed.items[index].isSaved = saved
@@ -480,7 +480,7 @@ public final class ProjectMediaFeature {
     self.connectivity = connectivity
     self.settingsFeature = settingsFeature
     self.loadImage = loadImage ?? { try await ProjectMediaPreparation.loadImage(url: $0) }
-    self.preparePlayback = preparePlayback ?? { try await ProjectMediaPreparation.load(url: $0, thumbnailURL: $1) }
+    self.preparePlayback = preparePlayback ?? { try await ProjectMediaPreparation.preparePlayback(url: $0, thumbnailURL: $1) }
     self.sessionFeature = sessionFeature
     self.readWebBaseURL = webBaseURL
     self.analytics = analytics
@@ -490,13 +490,13 @@ public final class ProjectMediaFeature {
   }
 
   @discardableResult
-  public func report(route: UUID, project: any HasProjectWebURL, completed: Bool) async -> VoidEnvelope? {
+  public func reportPlayback(route: UUID, project: any HasProjectWebURL, completed: Bool) async -> VoidEnvelope? {
     guard !Task.isCancelled else { return nil }
-    return await self.requestReport(route: route, project: project, completed: completed).value
+    return await self.startPlaybackReport(route: route, project: project, completed: completed).value
   }
 
   @discardableResult
-  public func requestReport(
+  public func startPlaybackReport(
     route: UUID, project: any HasProjectWebURL, completed: Bool
   ) -> Task<VoidEnvelope?, Never> {
     let event = Event(
@@ -519,7 +519,7 @@ public final class ProjectMediaFeature {
       do {
         try Task.checkCancellation()
         guard sessionFeature.isCurrent(userID: event.userID, generation: event.generation) else { return nil }
-        let value = try await provider.report(project: project, completed: completed)
+        let value = try await provider.reportPlaybackEvent(project: project, completed: completed)
         try Task.checkCancellation()
         guard let self, self.playbackReportTasksByEvent[event]?.id == token,
               sessionFeature.isCurrent(userID: event.userID, generation: event.generation) else { return nil }

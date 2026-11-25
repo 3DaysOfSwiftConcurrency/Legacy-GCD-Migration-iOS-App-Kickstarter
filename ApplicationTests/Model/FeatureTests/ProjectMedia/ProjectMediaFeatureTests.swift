@@ -177,14 +177,14 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { gate.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), url = URL(fileURLWithPath: "/tmp/campaign-image")
-    let first = feature.requestImage(route: route, url: url)
-    let shared = feature.requestImage(route: route, url: url)
+    let first = feature.startImageLoad(route: route, url: url)
+    let shared = feature.startImageLoad(route: route, url: url)
     await gate.waitFor(1)
     try gate.finish(0, .failure(URLError(.cannotDecodeContentData)))
     for request in [first, shared] {
       if case .success = await request.result { XCTFail("Image error was swallowed") }
     }
-    let retry = feature.requestImage(route: route, url: url)
+    let retry = feature.startImageLoad(route: route, url: url)
     await gate.waitFor(2)
     let image = UIImage()
     try gate.finish(1, .success(image))
@@ -198,12 +198,12 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { gate.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), loadImage: { _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), url = URL(fileURLWithPath: "/tmp/campaign-image")
-    let old = feature.requestImage(route: route, url: url)
+    let old = feature.startImageLoad(route: route, url: url)
     await gate.waitFor(1)
-    let independent = feature.requestImage(route: UUID(), url: url)
+    let independent = feature.startImageLoad(route: UUID(), url: url)
     await gate.waitFor(2)
     feature.cancelImages(route: route)
-    let replacement = feature.requestImage(route: route, url: url)
+    let replacement = feature.startImageLoad(route: route, url: url)
     await gate.waitFor(3)
     let image = UIImage()
     try gate.finish(0, .success(image)) // Deliberately noncooperative late completion.
@@ -254,14 +254,14 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { gate.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), url = URL(fileURLWithPath: "/tmp/synthetic-video")
-    let first = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
-    let shared = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
+    let first = feature.startPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
+    let shared = feature.startPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(1)
     try gate.finish(0, .failure(URLError(.cannotDecodeContentData)))
     for request in [first, shared] {
       if case .success = await request.result { XCTFail("Preparation error was swallowed") }
     }
-    let retry = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
+    let retry = feature.startPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(2)
     let player = AVPlayer()
     try gate.finish(1, .success(PreparedProjectMedia(player: player)))
@@ -275,11 +275,11 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { gate.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), preparePlayback: { _, _ in try await gate.request() }, makeProvider: { ControlledMediaProvider() })
     let route = UUID(), other = UUID(), url = URL(fileURLWithPath: "/tmp/synthetic-video")
-    let old = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
+    let old = feature.startPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(1)
-    let current = feature.requestPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: url)
+    let current = feature.startPlaybackPreparation(route: route, slot: "row", url: url, thumbnail: url)
     await gate.waitFor(2)
-    let independent = feature.requestPlaybackPreparation(route: other, slot: "row", url: url, thumbnail: nil)
+    let independent = feature.startPlaybackPreparation(route: other, slot: "row", url: url, thumbnail: nil)
     await gate.waitFor(3)
     feature.cancelPlaybackPreparations(route: route)
     for index in 0...2 { try gate.finish(index, .success(PreparedProjectMedia(player: AVPlayer()))) }
@@ -313,7 +313,7 @@ final class ProjectMediaFeatureTests: TestCase {
 
   func testNativePreparationRejectsMissingLocalAsset() async {
     do {
-      _ = try await ProjectMediaPreparation.load(url: URL(fileURLWithPath: "/tmp/" + UUID().uuidString + ".mp4"), thumbnailURL: nil)
+      _ = try await ProjectMediaPreparation.preparePlayback(url: URL(fileURLWithPath: "/tmp/" + UUID().uuidString + ".mp4"), thumbnailURL: nil)
       XCTFail("Missing media must fail")
     } catch { XCTAssertFalse(error is CancellationError) }
   }
@@ -337,7 +337,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let finished = expectation(description: "Local asset readiness")
     var result: Result<PreparedProjectMedia, Error>?
     let task = Task {
-      do { result = .success(try await ProjectMediaPreparation.load(url: url, thumbnailURL: nil)) }
+      do { result = .success(try await ProjectMediaPreparation.preparePlayback(url: url, thumbnailURL: nil)) }
       catch { result = .failure(error) }
       finished.fulfill()
     }
@@ -357,23 +357,23 @@ final class ProjectMediaFeatureTests: TestCase {
     provider.feedItems = [ControlledMediaProvider.item(project.graphID)]
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
-    await feature.loadFeed(route: route)
-    let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
-    let observation = Task { await feature.watch(project: project, intent: intent) }
+    await feature.loadVideoFeed(route: route)
+    let intent = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: true, previous: false)
+    let observation = Task { await feature.applyProjectSaveIntent(project: project, intent: intent) }
     await provider.waitForWatches(1)
-    let duplicate = feature.toggleSaved(route: route, projectID: project.graphID)
+    let duplicate = feature.toggleProjectSavedInFeed(route: route, projectID: project.graphID)
     XCTAssertEqual(provider.watches.count, 1)
-    let unsave = feature.toggleSaved(route: route, projectID: project.graphID)
+    let unsave = feature.toggleProjectSavedInFeed(route: route, projectID: project.graphID)
     try provider.finishWatch(0)
     await provider.waitForWatches(2)
     XCTAssertEqual(provider.watches.map(\.watched), [true, false])
     try provider.finishWatch(1)
     await duplicate?.value
     await unsave?.value
-    await feature.waitForOperations()
+    await feature.waitForProjectSaveOperations()
     let received = await observation.value
     XCTAssertNil(received, "Newer video intent supersedes the older button response")
-    XCTAssertEqual(feature.cached(project).personalization.isStarred, false)
+    XCTAssertEqual(feature.projectWithCachedSaveState(project).personalization.isStarred, false)
     XCTAssertFalse(feature.feedState(route: route).items[0].isSaved)
   }
 
@@ -383,15 +383,15 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
-    let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
-    let observation = Task { await feature.watch(project: project, intent: intent) }
+    let intent = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: true, previous: false)
+    let observation = Task { await feature.applyProjectSaveIntent(project: project, intent: intent) }
     await provider.waitForWatches(1)
     observation.cancel()
     try provider.finishWatch(0)
-    await feature.waitForOperations()
+    await feature.waitForProjectSaveOperations()
     let received = await observation.value
     XCTAssertNil(received)
-    XCTAssertEqual(feature.cached(project).personalization.isStarred, true)
+    XCTAssertEqual(feature.projectWithCachedSaveState(project).personalization.isStarred, true)
   }
 
   func testNativeSaveFailureRestoresPreviousState() async throws {
@@ -400,13 +400,13 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
-    let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
-    let task = Task { await feature.watch(project: project, intent: intent) }
+    let intent = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: true, previous: false)
+    let task = Task { await feature.applyProjectSaveIntent(project: project, intent: intent) }
     await provider.waitForWatches(1)
     try provider.finishWatch(0, failure: true)
     let result = await task.value
     XCTAssertEqual(result?.personalization.isStarred, false)
-    XCTAssertEqual(feature.cached(project).personalization.isStarred, false)
+    XCTAssertEqual(feature.projectWithCachedSaveState(project).personalization.isStarred, false)
   }
 
   func testCancelledNativeSaveWaiterStillSettlesWrite() async throws {
@@ -415,14 +415,14 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
-    let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
-    let task = Task { await feature.watch(project: project, intent: intent) }
+    let intent = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: true, previous: false)
+    let task = Task { await feature.applyProjectSaveIntent(project: project, intent: intent) }
     await provider.waitForWatches(1)
     task.cancel()
     try provider.finishWatch(0)
     let result = await task.value
     XCTAssertNil(result)
-    XCTAssertEqual(feature.cached(project).personalization.isStarred, true)
+    XCTAssertEqual(feature.projectWithCachedSaveState(project).personalization.isStarred, true)
   }
 
   func testNewerSaveIntentCannotBeRolledBackByEarlierFailure() async throws {
@@ -431,15 +431,15 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
-    let first = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
-    let request = feature.submitWatch(first)
+    let first = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: true, previous: false)
+    let request = feature.submitProjectSaveIntent(first)
     await provider.waitForWatches(1)
-    let second = feature.prepareWatch(projectID: project.graphID, watched: false, previous: true)
-    let next = feature.submitWatch(second)
+    let second = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: false, previous: true)
+    let next = feature.submitProjectSaveIntent(second)
     try provider.finishWatch(0, failure: true)
     _ = await request.result
     await provider.waitForWatches(2)
-    XCTAssertEqual(feature.cached(project).personalization.isStarred, false)
+    XCTAssertEqual(feature.projectWithCachedSaveState(project).personalization.isStarred, false)
     try provider.finishWatch(1)
     _ = try await next.value
   }
@@ -450,14 +450,14 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
-    let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
-    let task = feature.submitWatch(intent)
+    let intent = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: true, previous: false)
+    let task = feature.submitProjectSaveIntent(intent)
     await provider.waitForWatches(1)
     feature.sessionFeature.sessionChanged()
     try provider.finishWatch(0)
     do { _ = try await task.value; XCTFail("Old session must not commit") }
     catch { XCTAssertTrue(error is CancellationError) }
-    XCTAssertFalse(feature.cached(project).personalization.isStarred ?? false)
+    XCTAssertFalse(feature.projectWithCachedSaveState(project).personalization.isStarred ?? false)
   }
 
   func testSavedProjectCacheIsIsolatedByFeatureAndSession() async throws {
@@ -470,13 +470,13 @@ final class ProjectMediaFeatureTests: TestCase {
     let other = ProjectMediaFeature(sessionFeature: session, makeProvider: { provider })
     var project = Project.template
     project.personalization.isStarred = false
-    let intent = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
-    _ = try await feature.submitWatch(intent).value
+    let intent = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: true, previous: false)
+    _ = try await feature.submitProjectSaveIntent(intent).value
 
-    XCTAssertEqual(feature.cached(project).personalization.isStarred, true)
-    XCTAssertEqual(other.cached(project).personalization.isStarred, false)
+    XCTAssertEqual(feature.projectWithCachedSaveState(project).personalization.isStarred, true)
+    XCTAssertEqual(other.projectWithCachedSaveState(project).personalization.isStarred, false)
     session.sessionChanged()
-    XCTAssertEqual(feature.cached(project).personalization.isStarred, false)
+    XCTAssertEqual(feature.projectWithCachedSaveState(project).personalization.isStarred, false)
   }
 
   func testReusedCellDiscardsDebouncedRequestAndItsOptimisticCache() async {
@@ -490,11 +490,11 @@ final class ProjectMediaFeatureTests: TestCase {
       vm.configure(with: (original, .project, nil))
       vm.viewDidLoad()
       vm.saveButtonTapped(selected: false)
-      XCTAssertEqual(feature.cached(original).personalization.isStarred, true)
+      XCTAssertEqual(feature.projectWithCachedSaveState(original).personalization.isStarred, true)
       vm.configure(with: (replacement, .project, nil))
-      await feature.waitForOperations()
+      await feature.waitForProjectSaveOperations()
       XCTAssertTrue(provider.watches.isEmpty)
-      XCTAssertEqual(feature.cached(original).personalization.isStarred, false)
+      XCTAssertEqual(feature.projectWithCachedSaveState(original).personalization.isStarred, false)
     }
   }
 
@@ -502,10 +502,10 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let project = Project.template
-    let old = feature.prepareWatch(projectID: project.graphID, watched: true, previous: false)
-    _ = feature.prepareWatch(projectID: project.graphID, watched: false, previous: true)
-    feature.cancelPreparedWatch(old)
-    XCTAssertEqual(feature.cached(project).personalization.isStarred, false)
+    let old = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: true, previous: false)
+    _ = feature.prepareProjectSaveIntent(projectID: project.graphID, watched: false, previous: true)
+    feature.cancelPreparedProjectSaveIntent(old)
+    XCTAssertEqual(feature.projectWithCachedSaveState(project).personalization.isStarred, false)
   }
 
   func testFeedObservationPublishesInitialFlagBeforeReloadAndSaveDoesNotReload() async {
@@ -519,7 +519,7 @@ final class ProjectMediaFeatureTests: TestCase {
     } onChange: {
       MainActor.assumeIsolated { initialFlagAtReload = state.isInitialLoadComplete }
     }
-    await feature.loadFeed(route: route)
+    await feature.loadVideoFeed(route: route)
     XCTAssertTrue(initialFlagAtReload)
     var reloadedForSave = false
     withObservationTracking {
@@ -527,7 +527,7 @@ final class ProjectMediaFeatureTests: TestCase {
     } onChange: {
       MainActor.assumeIsolated { reloadedForSave = true }
     }
-    let save = feature.toggleSaved(route: route, projectID: "one")
+    let save = feature.toggleProjectSavedInFeed(route: route, projectID: "one")
     await save?.value
     XCTAssertFalse(reloadedForSave)
     XCTAssertTrue(state.items[0].isSaved)
@@ -541,8 +541,8 @@ final class ProjectMediaFeatureTests: TestCase {
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
     let state = feature.feedState(route: route)
-    let first = feature.requestFeed(route: route)
-    let duplicate = feature.requestFeed(route: route)
+    let first = feature.startVideoFeedLoad(route: route)
+    let duplicate = feature.startVideoFeedLoad(route: route)
     await provider.waitForFeeds(1)
     XCTAssertTrue(state.isLoading)
     try provider.finishFeed(0, items: provider.feedItems)
@@ -553,7 +553,7 @@ final class ProjectMediaFeatureTests: TestCase {
     XCTAssertEqual(state.items.count, 2)
     provider.pauseFeed = false
     provider.feedItems = []
-    await feature.loadFeed(route: route)
+    await feature.loadVideoFeed(route: route)
     XCTAssertTrue(state.error is ProjectMediaFeature.FeedError)
     XCTAssertEqual(state.items.count, 2, "Failed refresh does not erase usable data")
     XCTAssertFalse(state.isLoading)
@@ -567,9 +567,9 @@ final class ProjectMediaFeatureTests: TestCase {
     let firstRoute = UUID(), secondRoute = UUID()
     let releasedState = feature.feedState(route: firstRoute)
     let oldAccountState = feature.feedState(route: secondRoute)
-    let released = feature.requestFeed(route: firstRoute)
+    let released = feature.startVideoFeedLoad(route: firstRoute)
     await provider.waitForFeeds(1)
-    let oldAccount = feature.requestFeed(route: secondRoute)
+    let oldAccount = feature.startVideoFeedLoad(route: secondRoute)
     await provider.waitForFeeds(2)
     feature.release(route: firstRoute)
     await withEnvironment(currentUser: .template) {
@@ -596,14 +596,14 @@ final class ProjectMediaFeatureTests: TestCase {
     )
     let feature = ProjectMediaFeature(sessionFeature: session, makeProvider: { provider })
     let route = UUID()
-    let stale = feature.requestFeed(route: route)
+    let stale = feature.startVideoFeedLoad(route: route)
     await provider.waitForFeeds(1)
     session.sessionChanged()
     try provider.finishFeed(0, items: provider.feedItems)
     await stale.value
     XCTAssertTrue(feature.feedState(route: route).items.isEmpty)
 
-    let current = feature.requestFeed(route: route)
+    let current = feature.startVideoFeedLoad(route: route)
     await provider.waitForFeeds(2)
     try provider.finishFeed(1, items: provider.feedItems)
     await current.value
@@ -615,10 +615,10 @@ final class ProjectMediaFeatureTests: TestCase {
     provider.pauseWatch = true
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
-    let save = feature.requestWatch(projectID: "one", watched: true)
-    let duplicate = feature.requestWatch(projectID: "one", watched: true)
-    let unsave = feature.requestWatch(projectID: "one", watched: false)
-    let other = feature.requestWatch(projectID: "two", watched: true)
+    let save = feature.startProjectSaveWrite(projectID: "one", watched: true)
+    let duplicate = feature.startProjectSaveWrite(projectID: "one", watched: true)
+    let unsave = feature.startProjectSaveWrite(projectID: "one", watched: false)
+    let other = feature.startProjectSaveWrite(projectID: "two", watched: true)
     await provider.waitForWatches(2)
     XCTAssertEqual(provider.watches.map(\.id).sorted(), ["one", "two"])
     XCTAssertTrue(provider.watches.allSatisfy(\.watched), "Unsave must wait for the first save")
@@ -641,9 +641,9 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
-    await feature.loadFeed(route: route)
+    await feature.loadVideoFeed(route: route)
     let state = feature.feedState(route: route)
-    let save = try XCTUnwrap(feature.toggleSaved(route: route, projectID: "one"))
+    let save = try XCTUnwrap(feature.toggleProjectSavedInFeed(route: route, projectID: "one"))
     XCTAssertTrue(state.items[0].isSaved)
     XCTAssertEqual(state.items[0].watchesCount, 4)
     XCTAssertFalse(state.fetchedItems[0].isSaved, "Save must not trigger a feed reload")
@@ -655,7 +655,7 @@ final class ProjectMediaFeatureTests: TestCase {
     XCTAssertEqual(state.saveFailedItemID, "one")
     feature.clearSaveFailure(route: route)
     XCTAssertNil(state.saveFailedItemID)
-    let retry = try XCTUnwrap(feature.toggleSaved(route: route, projectID: "one"))
+    let retry = try XCTUnwrap(feature.toggleProjectSavedInFeed(route: route, projectID: "one"))
     await provider.waitForWatches(2)
     try provider.finishWatch(1)
     await retry.value
@@ -668,10 +668,10 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
-    await feature.loadFeed(route: route)
+    await feature.loadVideoFeed(route: route)
     let state = feature.feedState(route: route)
-    let first = try XCTUnwrap(feature.toggleSaved(route: route, projectID: "one"))
-    let last = try XCTUnwrap(feature.toggleSaved(route: route, projectID: "one"))
+    let first = try XCTUnwrap(feature.toggleProjectSavedInFeed(route: route, projectID: "one"))
+    let last = try XCTUnwrap(feature.toggleProjectSavedInFeed(route: route, projectID: "one"))
     XCTAssertFalse(state.items[0].isSaved)
     XCTAssertEqual(state.items[0].watchesCount, 3)
     await provider.waitForWatches(1)
@@ -691,16 +691,16 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
-    await feature.loadFeed(route: route)
-    let save = try XCTUnwrap(feature.toggleSaved(route: route, projectID: "one"))
+    await feature.loadVideoFeed(route: route)
+    let save = try XCTUnwrap(feature.toggleProjectSavedInFeed(route: route, projectID: "one"))
     await provider.waitForWatches(1)
     feature.release(route: route)
     try provider.finishWatch(0)
     await save.value
     XCTAssertEqual(provider.watches.count, 1)
 
-    let first = feature.requestWatch(projectID: "two", watched: true)
-    let queued = feature.requestWatch(projectID: "two", watched: false)
+    let first = feature.startProjectSaveWrite(projectID: "two", watched: true)
+    let queued = feature.startProjectSaveWrite(projectID: "two", watched: false)
     await provider.waitForWatches(2)
     await withEnvironment(currentUser: .template) {
       provider.finishAllWatches()
@@ -716,10 +716,10 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID()
-    let start = feature.requestReport(route: route, project: Project.template, completed: false)
-    let duplicate = feature.requestReport(route: route, project: Project.template, completed: false)
+    let start = feature.startPlaybackReport(route: route, project: Project.template, completed: false)
+    let duplicate = feature.startPlaybackReport(route: route, project: Project.template, completed: false)
     await provider.waitForRequests(1)
-    let completed = feature.requestReport(route: route, project: Project.template, completed: true)
+    let completed = feature.startPlaybackReport(route: route, project: Project.template, completed: true)
     await provider.waitForRequests(2)
     XCTAssertEqual(provider.events, [false, true])
     XCTAssertFalse(start.isCancelled)
@@ -738,9 +738,9 @@ final class ProjectMediaFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
     let route = UUID(), other = UUID()
-    let first = feature.requestReport(route: route, project: Project.template, completed: false)
+    let first = feature.startPlaybackReport(route: route, project: Project.template, completed: false)
     await provider.waitForRequests(1)
-    let second = feature.requestReport(route: other, project: Project.template, completed: false)
+    let second = feature.startPlaybackReport(route: other, project: Project.template, completed: false)
     await provider.waitForRequests(2)
     feature.release(route: route)
     XCTAssertTrue(first.isCancelled)
@@ -757,13 +757,13 @@ final class ProjectMediaFeatureTests: TestCase {
     let provider = ControlledMediaProvider()
     defer { provider.releaseAll() }
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: { provider })
-    let pending = feature.requestReport(route: UUID(), project: Project.template, completed: true)
+    let pending = feature.startPlaybackReport(route: UUID(), project: Project.template, completed: true)
     await provider.waitForRequests(1)
     AppEnvironment.pushEnvironment(currentUser: .template)
     defer { AppEnvironment.popEnvironment() }
     try provider.finish(0)
     let pendingValue = await pending.value
-    let cancelled = Task { await feature.report(route: UUID(), project: Project.template, completed: false) }
+    let cancelled = Task { await feature.reportPlayback(route: UUID(), project: Project.template, completed: false) }
     cancelled.cancel()
     let cancelledValue = await cancelled.value
     XCTAssertEqual(provider.events, [true])
@@ -780,10 +780,10 @@ final class ProjectMediaFeatureTests: TestCase {
     )
     let feature = ProjectMediaFeature(sessionFeature: session, makeProvider: { provider })
     let route = UUID()
-    let stale = feature.requestReport(route: route, project: Project.template, completed: true)
+    let stale = feature.startPlaybackReport(route: route, project: Project.template, completed: true)
     await provider.waitForRequests(1)
     session.sessionChanged()
-    let current = feature.requestReport(route: route, project: Project.template, completed: true)
+    let current = feature.startPlaybackReport(route: route, project: Project.template, completed: true)
     await provider.waitForRequests(2)
     try provider.finish(0)
     try provider.finish(1)
@@ -797,7 +797,7 @@ final class ProjectMediaFeatureTests: TestCase {
     let feature = ProjectMediaFeature(sessionFeature: .live(), makeProvider: {
       AsyncProjectMediaProvider(service: MockService(incrementVideoStartError: .couldNotParseJSON))
     })
-    let result = await feature.report(route: UUID(), project: Project.template, completed: false)
+    let result = await feature.reportPlayback(route: UUID(), project: Project.template, completed: false)
     XCTAssertNil(result)
   }
 }
@@ -816,14 +816,14 @@ private final class ControlledMediaProvider: ProjectMediaProvider {
 
   static func item(_ id: String) -> VideoFeedItem {
     VideoFeedItem(
-      id: id, pid: 1, slug: id, projectURL: "https://example.com", title: id,
+      id: id, projectNumericID: 1, slug: id, projectURL: "https://example.com", title: id,
       creator: "Example", creatorImageURL: nil, statsText: "", badges: [],
-      videoURL: nil, videoPreviewImageURL: nil, projectId: id, isSaved: false,
+      videoURL: nil, videoPreviewImageURL: nil, projectGraphID: id, isSaved: false,
       sharesCount: 0, watchesCount: 3, percentFunded: 10
     )
   }
 
-  func feed() async throws -> [VideoFeedItem] {
+  func fetchVideoFeed() async throws -> [VideoFeedItem] {
     self.feedCount += 1
     if !self.pauseFeed { return self.feedItems }
     return try await withCheckedThrowingContinuation { continuation in
@@ -832,7 +832,7 @@ private final class ControlledMediaProvider: ProjectMediaProvider {
     }
   }
 
-  func setWatched(id: String, watched: Bool) async throws -> WatchProjectResponseEnvelope {
+  func setProjectWatched(id: String, watched: Bool) async throws -> WatchProjectResponseEnvelope {
     self.watches.append((id, watched))
     if !self.pauseWatch { return watched ? .watchTemplate : .unwatchTemplate }
     try await withCheckedThrowingContinuation { continuation in
@@ -884,7 +884,7 @@ private final class ControlledMediaProvider: ProjectMediaProvider {
   var events: [Bool] = []
   private var pending: [CheckedContinuation<VoidEnvelope, Error>?] = []
   private var waits: [(Int, XCTestExpectation)] = []
-  func report(project _: any HasProjectWebURL, completed: Bool) async throws -> VoidEnvelope {
+  func reportPlaybackEvent(project _: any HasProjectWebURL, completed: Bool) async throws -> VoidEnvelope {
     self.events.append(completed)
     return try await withCheckedThrowingContinuation { continuation in
       self.pending.append(continuation)
