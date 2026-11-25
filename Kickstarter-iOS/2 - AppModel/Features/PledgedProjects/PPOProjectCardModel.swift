@@ -11,14 +11,14 @@ public enum PPORewardToggleState: Equatable {
 public struct PPOProjectCardModel: Identifiable, Equatable, Hashable {
   public let isUnread: Bool
   public let alerts: [Alert]
-  public let image: URL
+  public let projectImageURL: URL
   public let projectName: String
   public let projectId: Int
-  public let pledge: String
+  public let formattedPledgeAmount: String
   public let creatorName: String
   public let address: DisplayAddress
   public let rewardReceivedToggleState: PPORewardToggleState
-  public let action: ButtonAction?
+  public let buttonAction: ButtonAction?
   public let tierType: PPOTierType
   public let backingId: Int
   public let backingGraphId: String
@@ -28,14 +28,14 @@ public struct PPOProjectCardModel: Identifiable, Equatable, Hashable {
   public init(
     isUnread: Bool,
     alerts: [Alert],
-    image: URL,
+    projectImageURL: URL,
     projectName: String,
     projectId: Int,
-    pledge: String,
+    formattedPledgeAmount: String,
     creatorName: String,
     address: DisplayAddress,
     rewardReceivedToggleState: PPORewardToggleState,
-    action: ButtonAction?,
+    buttonAction: ButtonAction?,
     tierType: PPOTierType,
     backingId: Int,
     backingGraphId: String,
@@ -44,14 +44,14 @@ public struct PPOProjectCardModel: Identifiable, Equatable, Hashable {
   ) {
     self.isUnread = isUnread
     self.alerts = alerts
-    self.image = image
+    self.projectImageURL = projectImageURL
     self.projectName = projectName
     self.projectId = projectId
-    self.pledge = pledge
+    self.formattedPledgeAmount = formattedPledgeAmount
     self.creatorName = creatorName
     self.address = address
     self.rewardReceivedToggleState = rewardReceivedToggleState
-    self.action = action
+    self.buttonAction = buttonAction
     self.tierType = tierType
     self.backingId = backingId
     self.backingGraphId = backingGraphId
@@ -62,13 +62,13 @@ public struct PPOProjectCardModel: Identifiable, Equatable, Hashable {
   public func hash(into hasher: inout Hasher) {
     hasher.combine(self.isUnread)
     hasher.combine(self.alerts)
-    hasher.combine(self.image)
+    hasher.combine(self.projectImageURL)
     hasher.combine(self.projectName)
     hasher.combine(self.projectId)
-    hasher.combine(self.pledge)
+    hasher.combine(self.formattedPledgeAmount)
     hasher.combine(self.creatorName)
     hasher.combine(self.address)
-    hasher.combine(self.action)
+    hasher.combine(self.buttonAction)
     hasher.combine(self.tierType)
   }
 
@@ -77,7 +77,7 @@ public struct PPOProjectCardModel: Identifiable, Equatable, Hashable {
   // Create the card's id from the project id, tier type, and actions.
   // If any other fields change, the card should be considered the same card, just modified.
   public var id: String {
-    "\(self.projectId)-\(self.tierType)-\(self.action?.id ?? "")"
+    "\(self.projectId)-\(self.tierType)-\(self.buttonAction?.id ?? "")"
   }
 
   // MARK: - Equatable
@@ -87,14 +87,14 @@ public struct PPOProjectCardModel: Identifiable, Equatable, Hashable {
   public static func == (lhs: PPOProjectCardModel, rhs: PPOProjectCardModel) -> Bool {
     lhs.isUnread == rhs.isUnread &&
       lhs.alerts == rhs.alerts &&
-      lhs.image == rhs.image &&
+      lhs.projectImageURL == rhs.projectImageURL &&
       lhs.projectName == rhs.projectName &&
       lhs.projectId == rhs.projectId &&
-      lhs.pledge == rhs.pledge &&
+      lhs.formattedPledgeAmount == rhs.formattedPledgeAmount &&
       lhs.creatorName == rhs.creatorName &&
       lhs.address == rhs.address &&
       lhs.rewardReceivedToggleState == rhs.rewardReceivedToggleState &&
-      lhs.action == rhs.action &&
+      lhs.buttonAction == rhs.buttonAction &&
       lhs.tierType == rhs.tierType &&
       lhs.backingId == rhs.backingId
   }

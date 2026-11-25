@@ -307,16 +307,16 @@ final class PPOViewModel: ObservableObject, PPOViewModelInputs, PPOViewModelOutp
   // MARK: - Inputs
 
   func viewDidAppear() {
-    self.pledgedProjectsFeature.requestFirstPage(route: self.route)
+    self.pledgedProjectsFeature.startFirstPledgedProjectsPageLoad(route: self.route)
     self.viewDidAppearSubject.send()
   }
 
   func loadMore() async {
-    await self.pledgedProjectsFeature.loadNextPage(route: self.route)
+    await self.pledgedProjectsFeature.loadNextPledgedProjectsPage(route: self.route)
   }
 
   func refresh() async {
-    await self.pledgedProjectsFeature.refresh(route: self.route)
+    await self.pledgedProjectsFeature.refreshPledgedProjects(route: self.route)
   }
 
   func handleCardEvent(_ cardAction: PPOCardEvent, from cardModel: PPOProjectCardModel) {

@@ -28,7 +28,7 @@ final class PPOProjectCardModelTests: XCTestCase {
       locale: Locale(identifier: "de_DE")
     ))
 
-    XCTAssertNotEqual(us.pledge, germany.pledge)
+    XCTAssertNotEqual(us.formattedPledgeAmount, germany.formattedPledgeAmount)
   }
 
   func testParsingNoAddress() throws {
@@ -131,7 +131,7 @@ final class PPOProjectCardModelTests: XCTestCase {
       showRewardReceivedToggle: false,
       locale: Locale(identifier: "en_US")
     ))
-    XCTAssertEqual(card.image.absoluteString, project.fragments.pPOProjectFragment.image?.url)
+    XCTAssertEqual(card.projectImageURL.absoluteString, project.fragments.pPOProjectFragment.image?.url)
     XCTAssertEqual(card.projectAnalytics.id, project.fragments.projectAnalyticsFragment.id)
     XCTAssertEqual(card.projectAnalytics.name, project.fragments.projectAnalyticsFragment.name)
     XCTAssertEqual(card.projectAnalytics.statsPledged, project.fragments.projectAnalyticsFragment.statsPledged)

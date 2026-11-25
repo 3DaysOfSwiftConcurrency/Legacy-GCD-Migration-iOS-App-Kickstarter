@@ -60,8 +60,8 @@ final class PledgedProjectsFeatureTests: TestCase {
   }
   func testEquivalentFirstPageSharesPendingRequest() async throws {
     self.observe()
-    let first = self.feature.requestFirstPage(route: self.route)
-    let second = self.feature.requestFirstPage(route: self.route)
+    let first = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
+    let second = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(1)
     try self.provider.gate.finish(0, .success(try .fakeOverview()))
     await first.value
@@ -75,29 +75,29 @@ final class PledgedProjectsFeatureTests: TestCase {
   }
   func testPaginationAppendsThenTerminalLoadMoreReturnsWithoutRequest() async throws {
     self.observe()
-    let first = self.feature.requestFirstPage(route: self.route)
+    let first = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(1)
     try self.provider.gate.finish(0, .success(try .fakeOverview(1...3, more: true)))
     await first.value
-    let next = Task { await self.feature.loadNextPage(route: self.route) }
+    let next = Task { await self.feature.loadNextPledgedProjectsPage(route: self.route) }
     await self.provider.gate.waitFor(2)
     XCTAssertEqual(self.provider.inputs[1].cursor, "3")
     try self.provider.gate.finish(1, .success(try .fakeOverview(4...5)))
     await next.value
     XCTAssertEqual(self.snapshots.last?.values.map(\.projectId), [1, 2, 3, 4, 5])
     XCTAssertEqual(self.snapshots.last?.page, 2)
-    await self.feature.loadNextPage(route: self.route)
+    await self.feature.loadNextPledgedProjectsPage(route: self.route)
     XCTAssertEqual(self.provider.inputs.count, 2)
   }
   func testRefreshRejectsLatePaginationCompletion() async throws {
     self.observe()
-    let first = self.feature.requestFirstPage(route: self.route)
+    let first = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(1)
     try self.provider.gate.finish(0, .success(try .fakeOverview(1...3, more: true)))
     await first.value
-    let next = Task { await self.feature.loadNextPage(route: self.route) }
+    let next = Task { await self.feature.loadNextPledgedProjectsPage(route: self.route) }
     await self.provider.gate.waitFor(2)
-    let refresh = self.feature.requestFirstPage(route: self.route)
+    let refresh = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(3)
     try self.provider.gate.finish(2, .success(try .fakeOverview(9...9)))
     await refresh.value
@@ -108,7 +108,7 @@ final class PledgedProjectsFeatureTests: TestCase {
   }
   func testReleaseRejectsLateNonCooperativeResponse() async throws {
     self.observe()
-    let task = self.feature.requestFirstPage(route: self.route)
+    let task = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(1)
     self.feature.release(route: self.route)
     try self.provider.gate.finish(0, .success(try .fakeOverview()))
@@ -118,11 +118,11 @@ final class PledgedProjectsFeatureTests: TestCase {
   }
   func testAccountReplacementClearsCardsAndRejectsOldResponse() async throws {
     self.observe()
-    let old = self.feature.requestFirstPage(route: self.route)
+    let old = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(1)
     self.session.sessionChanged()
     self.feature.reset()
-    let new = self.feature.requestFirstPage(route: self.route)
+    let new = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(2)
     try self.provider.gate.finish(1, .success(try .fakeOverview(9...9)))
     await new.value
@@ -132,13 +132,13 @@ final class PledgedProjectsFeatureTests: TestCase {
   }
   func testFailureDoesNotRetryAndExplicitRefreshRecovers() async throws {
     self.observe()
-    let first = self.feature.requestFirstPage(route: self.route)
+    let first = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(1)
     try self.provider.gate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await first.value
     XCTAssertNotNil(self.snapshots.last?.error)
     XCTAssertEqual(self.provider.inputs.count, 1)
-    let retry = self.feature.requestFirstPage(route: self.route)
+    let retry = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
     await self.provider.gate.waitFor(2)
     try self.provider.gate.finish(1, .success(try .fakeOverview(nil)))
     await retry.value
@@ -146,8 +146,8 @@ final class PledgedProjectsFeatureTests: TestCase {
   }
   func testRoutesDoNotCancelEachOther() async throws {
     self.observe()
-    let first = self.feature.requestFirstPage(route: self.route)
-    let second = self.feature.requestFirstPage(route: UUID())
+    let first = self.feature.startFirstPledgedProjectsPageLoad(route: self.route)
+    let second = self.feature.startFirstPledgedProjectsPageLoad(route: UUID())
     await self.provider.gate.waitFor(2)
     try self.provider.gate.finish(0, .success(try .fakeOverview()))
     try self.provider.gate.finish(1, .success(try .fakeOverview(nil)))
@@ -161,7 +161,7 @@ final class PledgedProjectsFeatureTests: TestCase {
 private final class ControlledPledgedProjectsProvider: PledgedProjectsProvider {
   let gate = AccountRequestGate<GraphAPI.FetchPledgedProjectsQuery.Data>()
   var inputs: [(tiers: [PledgeProjectsOverviewSort], cursor: String?, limit: Int)] = []
-  func page(tiers: [PledgeProjectsOverviewSort], cursor: String?, limit: Int) async throws
+  func fetchPledgedProjectsPage(tiers: [PledgeProjectsOverviewSort], cursor: String?, limit: Int) async throws
     -> PledgedProjectsResponse
   {
     self.inputs.append((tiers, cursor, limit))

@@ -35,14 +35,14 @@ import KsApi
       alerts: [
         .init(type: .info, icon: nil, message: "Pledge collected")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: nil,
+      buttonAction: nil,
       tierType: .pledgeCollected,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -58,10 +58,10 @@ import KsApi
       alerts: [
         .init(type: .info, icon: nil, message: "Survey submitted")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .editable(
         address: """
@@ -73,7 +73,7 @@ import KsApi
         editUrl: "fakeEditUrl"
       ),
       rewardReceivedToggleState: .hidden,
-      action: nil,
+      buttonAction: nil,
       tierType: .surveySubmitted,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -86,10 +86,10 @@ import KsApi
       alerts: [
         .init(type: .warning, icon: .time, message: "Address locks in 8 hours")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .editable(
         address: """
@@ -101,7 +101,7 @@ import KsApi
         editUrl: "fakeEditUrl"
       ),
       rewardReceivedToggleState: .hidden,
-      action: nil,
+      buttonAction: nil,
       tierType: .addressConfirmed,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -114,14 +114,14 @@ import KsApi
       alerts: [
         .init(type: .info, icon: nil, message: "Reward received")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay",
       address: .hidden,
       rewardReceivedToggleState: .rewardReceived,
-      action: nil,
+      buttonAction: nil,
       tierType: .rewardReceived,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -134,10 +134,10 @@ import KsApi
       alerts: [
         .init(type: .info, icon: nil, message: "In fulfillment")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .locked(address: """
       Firsty Lasty
@@ -146,7 +146,7 @@ import KsApi
       United States
       """),
       rewardReceivedToggleState: .notReceived,
-      action: nil,
+      buttonAction: nil,
       tierType: .awaitingReward,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -168,14 +168,14 @@ import KsApi
         .init(type: .info, icon: .time, message: "13 days to go"),
         .init(type: .warning, icon: nil, message: "43.12% funded")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .manageLivePledge,
+      buttonAction: .manageLivePledge,
       tierType: .campaignLive,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -189,14 +189,14 @@ import KsApi
         .init(type: .info, icon: .time, message: "2 days to go"),
         .init(type: .info, icon: nil, message: "2278.37% funded")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .manageLivePledge,
+      buttonAction: .manageLivePledge,
       tierType: .campaignFunded,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -209,14 +209,14 @@ import KsApi
       alerts: [
         .init(type: .info, icon: nil, message: "2278.37% funded")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: nil,
+      buttonAction: nil,
       tierType: .campaignEnded,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -237,14 +237,14 @@ import KsApi
       alerts: [
         .init(type: .warning, icon: nil, message: "Campaign unsuccessful")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: nil,
+      buttonAction: nil,
       tierType: .campaignFailed,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -257,14 +257,14 @@ import KsApi
       alerts: [
         .init(type: .alert, icon: .alert, message: "Pledge dropped")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: nil,
+      buttonAction: nil,
       tierType: .pledgeDropped,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -277,14 +277,14 @@ import KsApi
       alerts: [
         .init(type: .warning, icon: nil, message: "Pledge canceled")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: nil,
+      buttonAction: nil,
       tierType: .pledgeCanceled,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -299,10 +299,10 @@ import KsApi
       alerts: [
         .init(type: .warning, icon: .time, message: "Address locks in 8 hours")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .editable(
         address: """
@@ -314,7 +314,7 @@ import KsApi
         editUrl: "fakeEditUrl"
       ),
       rewardReceivedToggleState: .hidden,
-      action: .confirmAddress(
+      buttonAction: .confirmAddress(
         address: """
           123 First Street, Apt #5678
           Los Angeles, CA 90025-1234
@@ -335,14 +335,14 @@ import KsApi
         .init(type: .warning, icon: .alert, message: "Survey available"),
         .init(type: .warning, icon: .time, message: "Address locks in 48 hours")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .completeSurvey(url: "fakeSurveyUrl"),
+      buttonAction: .completeSurvey(url: "fakeSurveyUrl"),
       tierType: .openSurvey,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -360,14 +360,14 @@ import KsApi
           message: "Pledge will be dropped in 6 days"
         )
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .fixPayment,
+      buttonAction: .fixPayment,
       tierType: .fixPayment,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -385,14 +385,14 @@ import KsApi
           message: "Pledge will be dropped in 6 days"
         )
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .authenticateCard(clientSecret: "seti_asdqwe_secret_x"),
+      buttonAction: .authenticateCard(clientSecret: "seti_asdqwe_secret_x"),
       tierType: .authenticateCard,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -405,14 +405,14 @@ import KsApi
       alerts: [
         .init(type: .warning, icon: .alert, message: "Survey available")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .completeSurvey(url: "fakeSurveyUrl"),
+      buttonAction: .completeSurvey(url: "fakeSurveyUrl"),
       tierType: .openSurvey,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -425,14 +425,14 @@ import KsApi
       alerts: [
         .init(type: .warning, icon: .alert, message: "Finalize your pledge")
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Sugardew Island - Your cozy farm shop let’s pretend this is a way way way longer title",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "rokaplay truncate if longer than this extra long string",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .openPledgeManager(url: "fakePledgeManagerUrl"),
+      buttonAction: .openPledgeManager(url: "fakePledgeManagerUrl"),
       tierType: .pledgeManagement,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -481,14 +481,14 @@ import KsApi
           message: "Bad"
         )
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Project",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "Bob",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .completeSurvey(url: "fakeSurveyUrl"),
+      buttonAction: .completeSurvey(url: "fakeSurveyUrl"),
       tierType: .openSurvey,
       backingId: 47,
       backingGraphId: "backing-fake-id",
@@ -515,14 +515,14 @@ import KsApi
           message: "And still very long"
         )
       ],
-      image: URL(string: "https:///")!,
+      projectImageURL: URL(string: "https:///")!,
       projectName: "Project",
       projectId: 12_345,
-      pledge: "$50.00",
+      formattedPledgeAmount: "$50.00",
       creatorName: "Bob",
       address: .hidden,
       rewardReceivedToggleState: .hidden,
-      action: .completeSurvey(url: "fakeSurveyUrl"),
+      buttonAction: .completeSurvey(url: "fakeSurveyUrl"),
       tierType: .openSurvey,
       backingId: 47,
       backingGraphId: "backing-fake-id",

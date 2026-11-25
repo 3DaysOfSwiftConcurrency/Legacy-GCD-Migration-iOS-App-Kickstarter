@@ -91,9 +91,9 @@ struct PPOProjectCard: View {
       viewModel?.projectDetailsTapped()
     } label: {
       PPOProjectDetails(
-        image: .network(self.viewModel.card.image),
+        image: .network(self.viewModel.card.projectImageURL),
         title: self.viewModel.card.projectName,
-        pledge: self.viewModel.card.pledge,
+        pledge: self.viewModel.card.formattedPledgeAmount,
         leadingColumnWidth: leadingColumnWidth
       )
       .padding([.horizontal])
@@ -176,7 +176,7 @@ struct PPOProjectCard: View {
 
   @ViewBuilder
   private var actionButton: some View {
-    if let action = self.viewModel.card.action {
+    if let action = self.viewModel.card.buttonAction {
       self.button(for: action)
     }
   }
@@ -219,7 +219,7 @@ struct PPOProjectCard: View {
   // Generally, show a divider before the action section, if there is an action.
   // If it's a confirmAddress card, hide the divider.
   private func showDividerBeforeAction() -> Bool {
-    switch self.viewModel.card.action {
+    switch self.viewModel.card.buttonAction {
     case .confirmAddress: return false
     case .some: return true
     case nil: return false

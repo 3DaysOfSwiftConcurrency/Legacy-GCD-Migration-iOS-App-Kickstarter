@@ -62,7 +62,7 @@ protocol PPOProjectCardViewModelOutputs {
 extension PPOProjectCardViewModelOutputs {
   // Action details related to the action, if any.
   var actionDetails: String? {
-    switch self.card.action {
+    switch self.card.buttonAction {
     case .openPledgeManager:
       return Strings.This_may_involve_submitting_a_delivery_address()
     default:

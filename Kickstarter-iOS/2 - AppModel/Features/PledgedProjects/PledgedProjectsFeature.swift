@@ -5,7 +5,7 @@ import KsApi
 
 @MainActor
 public protocol PledgedProjectsProvider {
-  func page(tiers: [PledgeProjectsOverviewSort], cursor: String?, limit: Int) async throws
+  func fetchPledgedProjectsPage(tiers: [PledgeProjectsOverviewSort], cursor: String?, limit: Int) async throws
     -> PledgedProjectsResponse
 }
 
@@ -13,7 +13,7 @@ public protocol PledgedProjectsProvider {
 public struct AsyncPledgedProjectsProvider: PledgedProjectsProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func page(tiers: [PledgeProjectsOverviewSort], cursor: String?, limit: Int) async throws
+  public func fetchPledgedProjectsPage(tiers: [PledgeProjectsOverviewSort], cursor: String?, limit: Int) async throws
     -> PledgedProjectsResponse
   {
     try await self.service.pledgedProjects(tiers: tiers, cursor: cursor, limit: limit)
@@ -170,27 +170,27 @@ public final class PledgedProjectsFeature {
   }
 
   @discardableResult
-  public func requestFirstPage(route: UUID) -> Task<Void, Never> {
-    self.requestPage(route: route, cursor: nil)
+  public func startFirstPledgedProjectsPageLoad(route: UUID) -> Task<Void, Never> {
+    self.startPledgedProjectsPageLoad(route: route, cursor: nil)
   }
-  public func refresh(route: UUID) async {
+  public func refreshPledgedProjects(route: UUID) async {
     guard !Task.isCancelled else { return }
-    await self.requestFirstPage(route: route).value
+    await self.startFirstPledgedProjectsPageLoad(route: route).value
   }
-  public func loadNextPage(route id: UUID) async {
+  public func loadNextPledgedProjectsPage(route id: UUID) async {
     guard !Task.isCancelled else { return }
     let route = self.route(id)
     if route.session != self.session || route.tiers != self.enabledTiers {
-      await self.refresh(route: id)
+      await self.refreshPledgedProjects(route: id)
     } else if let pending = route.pending {
       await pending.task.value
     } else if let cursor = route.snapshots.value.cursor {
-      await self.requestPage(route: id, cursor: cursor).value
+      await self.startPledgedProjectsPageLoad(route: id, cursor: cursor).value
     }
     // A terminal page is already complete; it must never wait for another publication.
   }
 
-  private func requestPage(route id: UUID, cursor: String?) -> Task<Void, Never> {
+  private func startPledgedProjectsPageLoad(route id: UUID, cursor: String?) -> Task<Void, Never> {
     let route = self.route(id)
     let session = self.session
     let tiers = self.enabledTiers
@@ -218,7 +218,7 @@ public final class PledgedProjectsFeature {
       }
       do {
         try Task.checkCancellation()
-        let data = try await provider.page(tiers: tiers, cursor: cursor, limit: 10)
+        let data = try await provider.fetchPledgedProjectsPage(tiers: tiers, cursor: cursor, limit: 10)
         try Task.checkCancellation()
         guard route.pending?.id == requestID, self.session == session else { return }
         let newCards = data.cards.compactMap {

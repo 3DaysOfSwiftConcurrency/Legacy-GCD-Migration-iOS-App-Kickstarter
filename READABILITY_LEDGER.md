@@ -564,3 +564,15 @@ selection and use-case APIs; those callers were repaired and
 `payments-closure-4` Build For Testing exited zero with `TEST BUILD SUCCEEDED`
 for the app and test targets. Runtime tests remain unverified. Remaining
 inventory decisions: 2,035.
+
+PledgedProjects review: all 124 declarations across the Feature, parsing,
+templates, card model, tiers and settings have decisions. Provider page fetching
+now names its network read. The Feature's Task-returning first-page and private
+page methods say they start work, while refresh and next-page APIs say what
+they await. The card model's formerly generic `image`, `pledge` and `action`
+properties now say `projectImageURL`, `formattedPledgeAmount` and
+`buttonAction`; the parser, simulator templates, ViewModels, views and focused
+tests were updated together. The `pledged-projects-api-1` and final
+`pledged-card-names-2` Build For Testing runs both exited zero and reported
+`TEST BUILD SUCCEEDED` for the app and test targets. Runtime tests remain
+unverified. Remaining inventory decisions: 1,911.

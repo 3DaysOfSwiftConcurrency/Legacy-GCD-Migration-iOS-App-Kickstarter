@@ -13,10 +13,10 @@ across 23 Feature areas and the rest of the Model. It includes declarations in
 extensions and conditional compilation branches. Session, Activity, Help,
 ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
 DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
-Discovery, Authentication and Payments have 989 individual behavior, caller
-and naming decisions. The remaining 2,035 rows are
+Discovery, Authentication, Payments and PledgedProjects have 1,113 individual
+behavior, caller and naming decisions. The remaining 1,911 rows are
 pending; the whole Model has
-**not** been declared reviewed. The latest Payments caller closure passed
+**not** been declared reviewed. The latest pledged-projects caller closure passed
 Build For Testing for the app and test targets; runtime tests remain unverified.
 
 The repaired `Library-iOS` app and `LibraryTests` compilation passed in Xcode
