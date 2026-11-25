@@ -81,11 +81,15 @@ public final class ProjectMediaFeature {
     let id = UUID()
     let load = self.loadImage
     let task = Task { [weak self] in
-      defer { if self?.images[key]?.id == id { self?.images[key] = nil } }
+      defer {
+        if self?.pendingImageLoads[key]?.id == id {
+          self?.pendingImageLoads[key] = nil
+        }
+      }
       try Task.checkCancellation()
       let image = try await load(url)
       try Task.checkCancellation()
-      guard self?.images[key]?.id == id else { throw CancellationError() }
+      guard self?.pendingImageLoads[key]?.id == id else { throw CancellationError() }
       return image
     }
     self.pendingImageLoads[key] = (id, task)
@@ -507,7 +511,11 @@ public final class ProjectMediaFeature {
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
     let task: Task<VoidEnvelope?, Never> = Task { [weak self] in
-      defer { if self?.requests[event]?.id == token { self?.requests[event] = nil } }
+      defer {
+        if self?.playbackReportTasksByEvent[event]?.id == token {
+          self?.playbackReportTasksByEvent[event] = nil
+        }
+      }
       do {
         try Task.checkCancellation()
         guard sessionFeature.isCurrent(userID: event.userID, generation: event.generation) else { return nil }

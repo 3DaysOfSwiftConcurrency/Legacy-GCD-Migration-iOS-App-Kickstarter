@@ -572,7 +572,11 @@ public final class DiscussionFeature {
     let sessionFeature = self.sessionFeature
     let token = UUID()
     let task: Task<Update?, Never> = Task { [weak self] in
-      defer { if self?.updates[route]?.id == token { self?.updates[route] = nil } }
+      defer {
+        if self?.pendingUpdateRequestsByRoute[route]?.id == token {
+          self?.pendingUpdateRequestsByRoute[route] = nil
+        }
+      }
       do {
         try Task.checkCancellation()
         guard sessionFeature.isCurrent(userID: identity.userID, generation: identity.generation) else { return nil }
@@ -608,7 +612,11 @@ public final class DiscussionFeature {
     let sessionFeature = self.sessionFeature
     let token = UUID()
     let task: Task<Project?, Never> = Task { [weak self] in
-      defer { if self?.projects[route]?.id == token { self?.projects[route] = nil } }
+      defer {
+        if self?.pendingProjectRequestsByRoute[route]?.id == token {
+          self?.pendingProjectRequestsByRoute[route] = nil
+        }
+      }
       do {
         try Task.checkCancellation()
         guard sessionFeature.isCurrent(userID: userID, generation: generation) else { return nil }
