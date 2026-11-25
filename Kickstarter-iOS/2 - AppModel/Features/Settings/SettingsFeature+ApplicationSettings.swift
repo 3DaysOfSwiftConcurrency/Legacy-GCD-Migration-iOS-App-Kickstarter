@@ -118,7 +118,7 @@ extension SettingsFeature {
   @discardableResult
   public func requestApplicationSettingsRefresh() -> Task<Config, Error> {
     guard let settings = self.applicationSettings else { return Task { throw CancellationError() } }
-    return settings.configuration.refresh()
+    return settings.configuration.requestConfigurationRefresh()
   }
 
   public func resetApplicationSettings() { self.applicationSettings?.configuration.reset() }

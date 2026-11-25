@@ -14,8 +14,8 @@ final class SessionFeatureTests: XCTestCase {
     )
     var delivered: [String] = []
 
-    feature.receiveDeviceToken(Data([0x01, 0xff])) { delivered.append($0) }
-    feature.receiveDeviceToken(Data([0x00, 0x0a, 0xbe])) { delivered.append($0) }
+    feature.scheduleDeviceRegistration(for: Data([0x01, 0xff])) { delivered.append($0) }
+    feature.scheduleDeviceRegistration(for: Data([0x00, 0x0a, 0xbe])) { delivered.append($0) }
     XCTAssertTrue(provider.registeredTokens.isEmpty)
     await provider.registrations.waitFor(1)
     XCTAssertEqual(provider.registeredTokens, ["000abe"])
@@ -33,7 +33,7 @@ final class SessionFeatureTests: XCTestCase {
       currentUser: { .template }
     )
 
-    feature.receiveDeviceToken(Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
+    feature.scheduleDeviceRegistration(for: Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
     await debounce.waitFor(1)
     feature.sessionChanged()
     try debounce.finish(0, .success(()))
@@ -146,9 +146,9 @@ final class SessionFeatureTests: XCTestCase {
       deviceRegistrationDebounce: {}, currentUser: { .template }
     )
     var delivered: [String] = []
-    feature.receiveDeviceToken(Data([0x01])) { delivered.append($0) }
+    feature.scheduleDeviceRegistration(for: Data([0x01])) { delivered.append($0) }
     await provider.registrations.waitFor(1)
-    feature.receiveDeviceToken(Data([0x02])) { delivered.append($0) }
+    feature.scheduleDeviceRegistration(for: Data([0x02])) { delivered.append($0) }
     await fulfillment(of: [secondAdmitted], timeout: 2)
 
     try provider.registrations.finish(0, .success(()))
@@ -172,7 +172,7 @@ final class SessionFeatureTests: XCTestCase {
     )
     let generation = feature.generation
     var delivered: [String] = []
-    feature.receiveDeviceToken(Data([0x01])) { delivered.append($0) }
+    feature.scheduleDeviceRegistration(for: Data([0x01])) { delivered.append($0) }
     await debounce.waitFor(1)
 
     feature.commitRefreshedUser(.template, userID: nil, generation: generation, allowSessionRestore: true)
@@ -196,7 +196,7 @@ final class SessionFeatureTests: XCTestCase {
     )
     let generation = feature.generation
     var delivered: [String] = []
-    feature.receiveDeviceToken(Data([0x01])) { delivered.append($0) }
+    feature.scheduleDeviceRegistration(for: Data([0x01])) { delivered.append($0) }
     await provider.registrations.waitFor(1)
 
     feature.commitRefreshedUser(.template, userID: nil, generation: generation, allowSessionRestore: true)
@@ -241,7 +241,7 @@ final class SessionFeatureTests: XCTestCase {
     let gate = AccountRequestGate<Void>()
     defer { gate.releaseAll() }
     let feature = SessionFeature(makeProvider: { ControlledSessionProvider() })
-    let operation = feature.sessionBound { try await gate.request() }
+    let operation = feature.wrapOperationForCurrentSession { try await gate.request() }
     let observer = Task { try await operation() }
     await gate.waitFor(1)
     observer.cancel()
@@ -261,11 +261,11 @@ final class SessionFeatureTests: XCTestCase {
       makeProvider: { provider }, currentUser: { user },
       updateUser: { user = $0; commits += 1 }
     )
-    let first = feature.request(.clearActivity)
-    let duplicate = feature.request(.clearActivity)
+    let first = feature.requestClearActivityIndicator()
+    let duplicate = feature.requestClearActivityIndicator()
     await provider.badges.waitFor(1)
     user?.chosenCurrency = "GBP"
-    let readRevision = feature.readGeneration
+    let readRevision = feature.userReadGeneration
     try provider.badges.finish(0, .success(0))
     _ = try await first.value
     _ = try await duplicate.value
@@ -273,7 +273,7 @@ final class SessionFeatureTests: XCTestCase {
     XCTAssertEqual(commits, 1)
     XCTAssertEqual(user?.chosenCurrency, "GBP")
     XCTAssertEqual(user?.unseenActivityCount, 0)
-    XCTAssertGreaterThan(feature.readGeneration, readRevision)
+    XCTAssertGreaterThan(feature.userReadGeneration, readRevision)
   }
 
   func testFailedBadgeCommandPreservesUserAndCanRetry() async throws {
@@ -286,14 +286,14 @@ final class SessionFeatureTests: XCTestCase {
       makeProvider: { provider }, currentUser: { user },
       updateUser: { user = $0; commits += 1 }
     )
-    let failed = feature.request(.clearActivity)
+    let failed = feature.requestClearActivityIndicator()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { _ = try await failed.value; XCTFail("Expected failure") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
     XCTAssertEqual(user?.unseenActivityCount, 7)
     XCTAssertEqual(commits, 0)
-    let retry = feature.request(.clearActivity)
+    let retry = feature.requestClearActivityIndicator()
     await provider.badges.waitFor(2)
     try provider.badges.finish(1, .success(0))
     _ = try await retry.value
@@ -308,9 +308,9 @@ final class SessionFeatureTests: XCTestCase {
     let feature = SessionFeature(
       makeProvider: { provider }, currentUser: { user }, updateUser: { user = $0 }
     )
-    let read = feature.request()
+    let read = feature.requestCurrentUser()
     await provider.users.waitFor(1)
-    let write = feature.request(.clearActivity)
+    let write = feature.requestClearActivityIndicator()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .success(0))
     _ = try await write.value
@@ -329,11 +329,11 @@ final class SessionFeatureTests: XCTestCase {
     var setupCommits = 0
     let feature = SessionFeature(
       makeProvider: { provider }, currentUser: { user },
-      updateUser: { user = $0 }, updateSetup: { _ in setupCommits += 1 }
+      updateUser: { user = $0 }, applyGraphUserSetup: { _ in setupCommits += 1 }
     )
-    let setup = Task { try await feature.refreshSetup() }
+    let setup = Task { try await feature.refreshGraphUserSetup() }
     await provider.setups.waitFor(1)
-    let badge = feature.request(.clearActivity)
+    let badge = feature.requestClearActivityIndicator()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .success(0))
     _ = try await badge.value
@@ -359,11 +359,11 @@ final class SessionFeatureTests: XCTestCase {
         currentUserPPOSettings: { nil },
         updateUser: { _ in XCTFail("Setup updated the user record") },
         login: { _ in XCTFail("Setup established a session") },
-        updateSetup: { commits.append($0) }
+        applyGraphUserSetup: { commits.append($0) }
       )
     )
-    let first = Task { try await feature.refreshSetup() }
-    let second = Task { try await feature.refreshSetup() }
+    let first = Task { try await feature.refreshGraphUserSetup() }
+    let second = Task { try await feature.refreshGraphUserSetup() }
     await provider.setups.waitFor(1)
     let setup = GraphUserSetup(
       email: "fixture@example.invalid",
@@ -386,7 +386,7 @@ final class SessionFeatureTests: XCTestCase {
     let feature = SessionFeature(
       makeProvider: { provider },
       currentUser: { .template },
-      updateSetup: { _ in commits += 1 }
+      applyGraphUserSetup: { _ in commits += 1 }
     )
     let setup = GraphUserSetup(
       email: "fixture@example.invalid",
@@ -398,7 +398,7 @@ final class SessionFeatureTests: XCTestCase {
       Result<GraphUserSetup, Error>.success(setup),
       .failure(ErrorEnvelope.couldNotParseJSON)
     ].enumerated() {
-      let pending = Task { try await feature.refreshSetup() }
+      let pending = Task { try await feature.refreshGraphUserSetup() }
       await provider.setups.waitFor(index + 1)
       feature.sessionChanged()
       try provider.setups.finish(index, result)
@@ -406,7 +406,7 @@ final class SessionFeatureTests: XCTestCase {
       catch { XCTAssertTrue(error is CancellationError) }
     }
     XCTAssertEqual(commits, 0)
-    let retry = Task { try await feature.refreshSetup() }
+    let retry = Task { try await feature.refreshGraphUserSetup() }
     await provider.setups.waitFor(3)
     try provider.setups.finish(2, .success(setup))
     _ = try await retry.value
@@ -420,12 +420,12 @@ final class SessionFeatureTests: XCTestCase {
     let feature = SessionFeature(
       makeProvider: { provider },
       currentUser: { .template },
-      updateSetup: { _ in commits += 1 }
+      applyGraphUserSetup: { _ in commits += 1 }
     )
     let generation = feature.generation
-    let pending = Task { try await feature.refreshSetup() }
+    let pending = Task { try await feature.refreshGraphUserSetup() }
     await provider.setups.waitFor(1)
-    feature.invalidateReads()
+    feature.invalidateAccountReads()
     let setup = GraphUserSetup(
       email: "old@example.invalid",
       enabledFeatures: [],
@@ -443,7 +443,7 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let old = feature.request()
+    let old = feature.requestCurrentUser()
     await provider.users.waitFor(1)
     feature.sessionChanged()
     let unauthorized = ErrorEnvelope(
@@ -455,7 +455,7 @@ final class SessionFeatureTests: XCTestCase {
     try provider.users.finish(0, .failure(unauthorized))
     do { _ = try await old.value; XCTFail("Old error escaped") }
     catch { XCTAssertTrue(error is CancellationError) }
-    let current = feature.request()
+    let current = feature.requestCurrentUser()
     await provider.users.waitFor(2)
     try provider.users.finish(1, .failure(unauthorized))
     do { _ = try await current.value; XCTFail("Current error was swallowed") }
@@ -488,15 +488,15 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let first = feature.request()
-    let duplicate = feature.request()
+    let first = feature.requestCurrentUser()
+    let duplicate = feature.requestCurrentUser()
     await provider.users.waitFor(1)
     try provider.users.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     for task in [first, duplicate] {
       do { _ = try await task.value; XCTFail("Expected error") } catch {}
     }
     XCTAssertEqual(provider.users.count, 1)
-    let retry = feature.request()
+    let retry = feature.requestCurrentUser()
     await provider.users.waitFor(2)
     try provider.users.finish(1, .success(.template))
     let user = try await retry.value
@@ -507,10 +507,10 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let old = feature.request()
+    let old = feature.requestCurrentUser()
     await provider.users.waitFor(1)
     feature.sessionChanged()
-    let new = feature.request()
+    let new = feature.requestCurrentUser()
     await provider.users.waitFor(2)
     try provider.users.finish(0, .success(.template))
     do { _ = try await old.value; XCTFail("Obsolete read published") } catch is CancellationError {} catch {
@@ -525,8 +525,8 @@ final class SessionFeatureTests: XCTestCase {
     defer { provider.releaseAll() }
     var user: User? = .template
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { user })
-    let first = feature.request(.clearActivity)
-    let duplicate = feature.request(.clearActivity)
+    let first = feature.requestClearActivityIndicator()
+    let duplicate = feature.requestClearActivityIndicator()
     await provider.badges.waitFor(1)
     user = nil
     feature.sessionChanged()
@@ -536,7 +536,7 @@ final class SessionFeatureTests: XCTestCase {
         XCTFail("\(error)")
       }
     }
-    let denied = feature.request(.clearActivity)
+    let denied = feature.requestClearActivityIndicator()
     do { _ = try await denied.value; XCTFail("Logged-out mutation") } catch {}
     XCTAssertEqual(provider.badges.count, 1)
   }
@@ -545,13 +545,13 @@ final class SessionFeatureTests: XCTestCase {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { .template })
-    let shared = feature.request()
+    let shared = feature.requestCurrentUser()
     let joined = XCTestExpectation(description: "Waiter enters shared read")
     let waiter = Task {
       joined.fulfill()
-      return try await feature.refresh()
+      return try await feature.refreshCurrentUser()
     }
-    let graph = feature.request(.graphUser)
+    let graph = feature.requestGraphUser()
     await provider.users.waitFor(1)
     await provider.graphs.waitFor(1)
     await fulfillment(of: [joined], timeout: 2)
@@ -569,7 +569,7 @@ final class SessionFeatureTests: XCTestCase {
 @MainActor
 private final class ControlledSessionProvider: SessionProvider {
   let setups = AccountRequestGate<GraphUserSetup>()
-  func setup() async throws -> GraphUserSetup { try await self.setups.request() }
+  func fetchGraphUserSetup() async throws -> GraphUserSetup { try await self.setups.request() }
   let users = AccountRequestGate<User>()
   let graphs = AccountRequestGate<User>()
   let badges = AccountRequestGate<Int>()
@@ -581,8 +581,8 @@ private final class ControlledSessionProvider: SessionProvider {
     defer { self.registrationWasCancelled.append(Task.isCancelled) }
     try await self.registrations.request()
   }
-  func user() async throws -> User { try await self.users.request() }
-  func graphUser() async throws -> User { try await self.graphs.request() }
+  func fetchCurrentUser() async throws -> User { try await self.users.request() }
+  func fetchGraphUser() async throws -> User { try await self.graphs.request() }
   func clearActivityIndicator() async throws -> Int { try await self.badges.request() }
   func releaseAll() {
     self.users.releaseAll(); self.graphs.releaseAll(); self.badges.releaseAll(); self.setups.releaseAll()

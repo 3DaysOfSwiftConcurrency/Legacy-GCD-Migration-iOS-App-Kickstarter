@@ -55,7 +55,7 @@ final class ThanksViewModelTests: TestCase {
 
   override func tearDown() async throws {
     self.feature.reset()
-    await self.feature.waitForOperations()
+    await self.feature.waitForRecommendationLoads()
       await self.vm.waitForRecommendations()
     await self.settingsFeature.waitForOperations()
     try await super.tearDown()
@@ -134,7 +134,7 @@ final class ThanksViewModelTests: TestCase {
       self.vm.configure(with: self.thanksPageData(project: project))
       self.vm.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.vm.waitForRecommendations()
 
       self.showRecommendationsProjects.assertValueCount(1)
@@ -357,7 +357,7 @@ final class ThanksViewModelTests: TestCase {
       self.vm.configure(with: self.thanksPageData(project: project))
       self.vm.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.vm.waitForRecommendations()
 
       self.showRecommendationsProjects.assertValueCount(1)
@@ -399,7 +399,7 @@ final class ThanksViewModelTests: TestCase {
       self.vm.configure(with: self.thanksPageData(project: project))
       self.vm.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.vm.waitForRecommendations()
 
       self.showRecommendationsProjects.assertValueCount(1, "Recommended projects emit, shuffled.")
@@ -415,7 +415,7 @@ final class ThanksViewModelTests: TestCase {
       self.vm.configure(with: self.thanksPageData(project: project))
       self.vm.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.vm.waitForRecommendations()
 
       self.showRecommendationsProjects.assertValueCount(0, "Recommended projects did not emit")

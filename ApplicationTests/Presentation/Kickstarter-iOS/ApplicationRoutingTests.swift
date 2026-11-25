@@ -178,8 +178,8 @@ final class ApplicationRoutingTests: TestCase {
     self.deepLinkRouter.reset()
     await self.deepLinkRouter.waitForOperations()
     await self.settingsFeature.waitForOperations()
-    self.messagingFeature.reset()
-    await self.messagingFeature.waitForOperations()
+    self.messagingFeature.resetMailboxState()
+    await self.messagingFeature.waitForMessagingOperations()
     try await super.tearDown()
   }
 
@@ -191,7 +191,7 @@ final class ApplicationRoutingTests: TestCase {
     )
     XCTAssertTrue(accepted)
     await self.deepLinkRouter.waitForOperations()
-    await self.messagingFeature.waitForOperations()
+    await self.messagingFeature.waitForMessagingOperations()
     self.messageThreads.assertValueCount(1)
     XCTAssertEqual(self.messageThreads.lastValue?.id, MessageThread.template.id)
     await self.settingsFeature.waitForOperations()

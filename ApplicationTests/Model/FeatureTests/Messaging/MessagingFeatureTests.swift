@@ -15,9 +15,9 @@ final class MessagingFeatureTests: TestCase {
   private lazy var feature = MessagingFeature(sessionFeature: self.session, makeProvider: { self.provider })
 
   override func tearDown() async throws {
-    self.feature.reset()
+    self.feature.resetMailboxState()
     self.provider.releaseAll()
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
     try await super.tearDown()
   }
 
@@ -43,82 +43,82 @@ final class MessagingFeatureTests: TestCase {
     )
     let route = UUID()
 
-    let request = feature.requestMailbox(route: route, mailbox: .inbox, project: nil)
+    let request = feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(self.page([1])))
     await request.value
 
     XCTAssertEqual(sleeps, [7])
-    XCTAssertEqual(feature.snapshot(route: route).threads.map(\.id), [1])
+    XCTAssertEqual(feature.mailboxSnapshot(for: route).threads.map(\.id), [1])
   }
 
   func testMailboxSharesPendingPagesAndPreservesConcatenation() async throws {
     let route = UUID()
-    let first = self.feature.requestMailbox(route: route, mailbox: .inbox, project: nil)
-    let duplicate = self.feature.requestMailbox(route: route, mailbox: .inbox, project: nil)
+    let first = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
+    let duplicate = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
     await self.provider.pages.waitFor(1)
     XCTAssertEqual(self.provider.pages.count, 1)
     try self.provider.pages.finish(0, .success(self.page([1, 2])))
     await first.value; await duplicate.value
-    let next = self.feature.requestNextPage(route: route)
-    let repeated = self.feature.requestNextPage(route: route)
+    let next = self.feature.loadNextMailboxPage(route: route)
+    let repeated = self.feature.loadNextMailboxPage(route: route)
     await self.provider.pages.waitFor(2)
     XCTAssertEqual(self.provider.cursors, [nil, "next"])
     try self.provider.pages.finish(1, .success(self.page([2, 3])))
     await next?.value; await repeated?.value
-    XCTAssertEqual(self.feature.snapshot(route: route).threads.map(\.id), [1, 2, 2, 3])
-    XCTAssertFalse(self.feature.snapshot(route: route).isLoading)
+    XCTAssertEqual(self.feature.mailboxSnapshot(for: route).threads.map(\.id), [1, 2, 2, 3])
+    XCTAssertFalse(self.feature.mailboxSnapshot(for: route).isLoading)
   }
 
   func testMailboxChangeRejectsLatePageAndEmptyPageStopsPagination() async throws {
     let route = UUID()
-    let old = self.feature.requestMailbox(route: route, mailbox: .inbox, project: nil)
+    let old = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
     await self.provider.pages.waitFor(1)
-    let current = self.feature.requestMailbox(route: route, mailbox: .sent, project: nil)
+    let current = self.feature.loadMailboxFirstPage(route: route, mailbox: .sent, project: nil)
     await self.provider.pages.waitFor(2)
     try self.provider.pages.finish(1, .success(self.page([])))
     await current.value
     try self.provider.pages.finish(0, .success(self.page([99])))
     await old.value
-    XCTAssertTrue(self.feature.snapshot(route: route).threads.isEmpty)
-    XCTAssertNil(self.feature.requestNextPage(route: route))
+    XCTAssertTrue(self.feature.mailboxSnapshot(for: route).threads.isEmpty)
+    XCTAssertNil(self.feature.loadNextMailboxPage(route: route))
   }
 
   func testRefreshSupersedesNextPageAndFailureAllowsExplicitRetry() async throws {
     let route = UUID()
-    let initial = self.feature.requestMailbox(route: route, mailbox: .inbox, project: nil)
+    let initial = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success(self.page([1])))
     await initial.value
-    let old = self.feature.requestNextPage(route: route)
+    let old = self.feature.loadNextMailboxPage(route: route)
     await self.provider.pages.waitFor(2)
-    let refresh = self.feature.requestMailbox(route: route, mailbox: .inbox, project: nil, refresh: true)
+    let refresh = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil, refresh: true)
     await self.provider.pages.waitFor(3)
     try self.provider.pages.finish(2, .failure(ErrorEnvelope.couldNotParseJSON))
     await refresh.value
     try self.provider.pages.finish(1, .success(self.page([2])))
     await old?.value
-    XCTAssertNotNil(self.feature.snapshot(route: route).error)
-    XCTAssertTrue(self.feature.snapshot(route: route).threads.isEmpty)
-    let retry = self.feature.requestMailbox(route: route, mailbox: .inbox, project: nil, refresh: true)
+    XCTAssertNotNil(self.feature.mailboxSnapshot(for: route).error)
+    XCTAssertTrue(self.feature.mailboxSnapshot(for: route).threads.isEmpty)
+    let retry = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil, refresh: true)
     await self.provider.pages.waitFor(4)
     try self.provider.pages.finish(3, .success(self.page([3])))
     await retry.value
-    XCTAssertEqual(self.feature.snapshot(route: route).threads.map(\.id), [3])
-    XCTAssertNil(self.feature.snapshot(route: route).error)
+    XCTAssertEqual(self.feature.mailboxSnapshot(for: route).threads.map(\.id), [3])
+    XCTAssertNil(self.feature.mailboxSnapshot(for: route).error)
   }
 
   func testMailboxRoutesDoNotCancelEachOther() async throws {
     let firstRoute = UUID(), secondRoute = UUID()
-    let first = self.feature.requestMailbox(route: firstRoute, mailbox: .inbox, project: nil)
+    let first = self.feature.loadMailboxFirstPage(route: firstRoute, mailbox: .inbox, project: nil)
     await self.provider.pages.waitFor(1)
-    let second = self.feature.requestMailbox(route: secondRoute, mailbox: .sent, project: .template)
+    let second = self.feature.loadMailboxFirstPage(route: secondRoute, mailbox: .sent, project: .template)
     await self.provider.pages.waitFor(2)
     try self.provider.pages.finish(1, .success(self.page([2])))
     try self.provider.pages.finish(0, .success(self.page([1])))
     await first.value; await second.value
-    XCTAssertEqual(self.feature.snapshot(route: firstRoute).threads.map(\.id), [1])
-    XCTAssertEqual(self.feature.snapshot(route: secondRoute).threads.map(\.id), [2])
+    XCTAssertEqual(self.feature.mailboxSnapshot(for: firstRoute).threads.map(\.id), [1])
+    XCTAssertEqual(self.feature.mailboxSnapshot(for: secondRoute).threads.map(\.id), [2])
   }
 
   func testMailboxPresentationPagesAndRejectsLateResultAfterSwitch() async throws {
@@ -153,12 +153,12 @@ final class MessagingFeatureTests: TestCase {
     await self.provider.searches.waitFor(1)
     vm.clearSearchText()
     try self.provider.searches.finish(0, .success(self.page([99])))
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
     XCTAssertTrue(vm.messageThreads.isEmpty)
     vm.searchTextChanged("new")
     await self.provider.searches.waitFor(2)
     try self.provider.searches.finish(1, .success(self.page([2])))
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
     await vm.waitForSearch()
     XCTAssertEqual(vm.messageThreads.map(\.id), [2])
     XCTAssertEqual(self.provider.queries, ["old", "new"])
@@ -188,7 +188,7 @@ final class MessagingFeatureTests: TestCase {
     await Task.yield()
     XCTAssertTrue(vm.isSearching)
     try self.provider.searches.finish(1, .success(self.page([2])))
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
     await vm.waitForSearch()
     XCTAssertFalse(vm.isSearching)
   }
@@ -211,7 +211,7 @@ final class MessagingFeatureTests: TestCase {
     XCTAssertEqual(self.provider.bodies, ["A", "B", "A"])
     try self.provider.sends.finish(2, .success(.template))
     for command in [first, duplicate, second, third] { _ = try await command.value }
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
   }
 
   func testFailedSendDoesNotRetryAndNextCommandCanSucceed() async throws {
@@ -263,7 +263,7 @@ final class MessagingFeatureTests: TestCase {
     await self.provider.sends.waitFor(1)
     vm.cancelButtonPressed()
     try self.provider.sends.finish(0, .success(.template))
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
     XCTAssertEqual(self.provider.bodies, ["Hello"])
     XCTAssertEqual(posted, 0)
   }
@@ -286,7 +286,7 @@ final class MessagingFeatureTests: TestCase {
   }
 
   func testThreadReadRejectsSameUserReplacementSession() async throws {
-    let task = Task { try await self.feature.thread(id: 42) }
+    let task = Task { try await self.feature.fetchMessageThread(id: 42) }
     await self.provider.threads.waitFor(1)
     self.session.sessionChanged()
     let value = try await MockService().messageThread(id: 42)
@@ -299,7 +299,7 @@ final class MessagingFeatureTests: TestCase {
     var events = 0
     let task = Task {
       do {
-        _ = try await self.feature.thread(id: 42)
+        _ = try await self.feature.fetchMessageThread(id: 42)
         guard !Task.isCancelled else { return }
         events += 1
       } catch {
@@ -326,20 +326,20 @@ private final class ControlledMessagingProvider: MessagingProvider {
   private(set) var bodies: [String] = []
   private(set) var queries: [String] = []
   private(set) var cursors: [String?] = []
-  func page(mailbox: Mailbox, project: Project?, cursor: String?) async throws -> MessageThreadsEnvelope {
+  func fetchMessageThreadsPage(mailbox: Mailbox, project: Project?, cursor: String?) async throws -> MessageThreadsEnvelope {
     self.cursors.append(cursor)
     return try await self.pages.request()
   }
-  func search(query: String, project: Project?) async throws -> MessageThreadsEnvelope {
+  func searchMessageThreads(query: String, project: Project?) async throws -> MessageThreadsEnvelope {
     self.queries.append(query)
     return try await self.searches.request()
   }
-  func thread(id: Int) async throws -> MessageThreadEnvelope { try await self.threads.request() }
-  func thread(backing: Backing) async throws -> MessageThreadEnvelope? { try await self.threads.request() }
-  func backing(id: Int) async throws -> Backing { .template }
-  func backing(project: Project, user: User) async throws -> Backing { .template }
-  func markRead(_ thread: MessageThread) async throws -> MessageThread { try await self.reads.request() }
-  func send(body: String, subject: MessageSubject) async throws -> Message {
+  func fetchMessageThread(id: Int) async throws -> MessageThreadEnvelope { try await self.threads.request() }
+  func fetchMessageThread(backing: Backing) async throws -> MessageThreadEnvelope? { try await self.threads.request() }
+  func fetchBacking(id: Int) async throws -> Backing { .template }
+  func fetchBacking(project: Project, user: User) async throws -> Backing { .template }
+  func markMessageThreadRead(_ thread: MessageThread) async throws -> MessageThread { try await self.reads.request() }
+  func sendMessage(body: String, subject: MessageSubject) async throws -> Message {
     self.bodies.append(body)
     return try await self.sends.request()
   }

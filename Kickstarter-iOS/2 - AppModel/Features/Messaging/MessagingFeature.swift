@@ -3,42 +3,42 @@ import KsApi
 
 @MainActor
 public protocol MessagingProvider {
-  func page(mailbox: Mailbox, project: Project?, cursor: String?) async throws -> MessageThreadsEnvelope
-  func search(query: String, project: Project?) async throws -> MessageThreadsEnvelope
-  func thread(id: Int) async throws -> MessageThreadEnvelope
-  func thread(backing: Backing) async throws -> MessageThreadEnvelope?
-  func backing(id: Int) async throws -> Backing
-  func backing(project: Project, user: User) async throws -> Backing
-  func markRead(_ thread: MessageThread) async throws -> MessageThread
-  func send(body: String, subject: MessageSubject) async throws -> Message
+  func fetchMessageThreadsPage(mailbox: Mailbox, project: Project?, cursor: String?) async throws -> MessageThreadsEnvelope
+  func searchMessageThreads(query: String, project: Project?) async throws -> MessageThreadsEnvelope
+  func fetchMessageThread(id: Int) async throws -> MessageThreadEnvelope
+  func fetchMessageThread(backing: Backing) async throws -> MessageThreadEnvelope?
+  func fetchBacking(id: Int) async throws -> Backing
+  func fetchBacking(project: Project, user: User) async throws -> Backing
+  func markMessageThreadRead(_ thread: MessageThread) async throws -> MessageThread
+  func sendMessage(body: String, subject: MessageSubject) async throws -> Message
 }
 
 @MainActor
 public struct AsyncMessagingProvider: MessagingProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func page(mailbox: Mailbox, project: Project?, cursor: String?) async throws -> MessageThreadsEnvelope {
+  public func fetchMessageThreadsPage(mailbox: Mailbox, project: Project?, cursor: String?) async throws -> MessageThreadsEnvelope {
     try await self.service.messageThreadsPage(mailbox: mailbox, project: project, cursor: cursor)
   }
-  public func search(query: String, project: Project?) async throws -> MessageThreadsEnvelope {
+  public func searchMessageThreads(query: String, project: Project?) async throws -> MessageThreadsEnvelope {
     try await self.service.messageSearch(query: query, project: project)
   }
-  public func thread(id: Int) async throws -> MessageThreadEnvelope {
+  public func fetchMessageThread(id: Int) async throws -> MessageThreadEnvelope {
     try await self.service.messageThread(id: id)
   }
-  public func thread(backing: Backing) async throws -> MessageThreadEnvelope? {
+  public func fetchMessageThread(backing: Backing) async throws -> MessageThreadEnvelope? {
     try await self.service.messageThread(backing: backing)
   }
-  public func backing(id: Int) async throws -> Backing {
+  public func fetchBacking(id: Int) async throws -> Backing {
     try await self.service.projectDetailsBacking(id: id).backing
   }
-  public func backing(project: Project, user: User) async throws -> Backing {
+  public func fetchBacking(project: Project, user: User) async throws -> Backing {
     try await self.service.messageBacking(project: project, user: user)
   }
-  public func markRead(_ thread: MessageThread) async throws -> MessageThread {
+  public func markMessageThreadRead(_ thread: MessageThread) async throws -> MessageThread {
     try await self.service.readMessageThread(thread)
   }
-  public func send(body: String, subject: MessageSubject) async throws -> Message {
+  public func sendMessage(body: String, subject: MessageSubject) async throws -> Message {
     try await self.service.submitMessage(body: body, subject: subject)
   }
 }
@@ -92,10 +92,10 @@ public final class MessagingFeature {
     }
   }
   private var mailboxStatesByRoute: [UUID: MailboxRoute] = [:]
-  public func snapshot(route: UUID) -> MailboxSnapshot { self.mailboxStatesByRoute[route]?.snapshot ?? MailboxSnapshot() }
+  public func mailboxSnapshot(for route: UUID) -> MailboxSnapshot { self.mailboxStatesByRoute[route]?.snapshot ?? MailboxSnapshot() }
 
   @discardableResult
-  public func requestMailbox(
+  public func loadMailboxFirstPage(
     route: UUID, mailbox: Mailbox, project: Project?, refresh: Bool = false
   ) -> Task<Void, Never> {
     if !refresh, let existing = self.mailboxStatesByRoute[route], existing.mailbox == mailbox,
@@ -105,18 +105,18 @@ public final class MessagingFeature {
     previous?.request?.task.cancel()
     let state = MailboxRoute(mailbox: mailbox, project: project, session: self.session)
     self.mailboxStatesByRoute[route] = state
-    return self.startPage(route: route, state: state, cursor: nil)
+    return self.startMailboxPageLoad(route: route, state: state, cursor: nil)
   }
 
   @discardableResult
-  public func requestNextPage(route: UUID) -> Task<Void, Never>? {
+  public func loadNextMailboxPage(route: UUID) -> Task<Void, Never>? {
     guard let state = self.mailboxStatesByRoute[route], state.session == self.session else { return nil }
     if let request = state.request { return request.task }
     guard let cursor = state.cursor else { return nil }
-    return self.startPage(route: route, state: state, cursor: cursor)
+    return self.startMailboxPageLoad(route: route, state: state, cursor: cursor)
   }
 
-  private func startPage(route: UUID, state: MailboxRoute, cursor: String?) -> Task<Void, Never> {
+  private func startMailboxPageLoad(route: UUID, state: MailboxRoute, cursor: String?) -> Task<Void, Never> {
     let id = UUID()
     let provider = self.makeProvider()
     let delay = self.responseDelaySeconds()
@@ -132,7 +132,7 @@ public final class MessagingFeature {
       }
       do {
         try self.ensureMessagingSessionIsCurrent(state.session)
-        let envelope = try await provider.page(mailbox: state.mailbox, project: state.project, cursor: cursor)
+        let envelope = try await provider.fetchMessageThreadsPage(mailbox: state.mailbox, project: state.project, cursor: cursor)
         try await sleep(delay)
         try self.ensureMessagingSessionIsCurrent(state.session)
         guard self.mailboxStatesByRoute[route]?.request?.id == id else { return }
@@ -149,11 +149,11 @@ public final class MessagingFeature {
     return task
   }
 
-  public func release(route: UUID) {
+  public func releaseMailbox(route: UUID) {
     self.mailboxStatesByRoute.removeValue(forKey: route)?.request?.task.cancel()
   }
 
-  public func reset() {
+  public func resetMailboxState() {
     for route in self.mailboxStatesByRoute.values { route.request?.task.cancel() }
     self.mailboxStatesByRoute = [:]
   }
@@ -162,34 +162,34 @@ public final class MessagingFeature {
     guard !query.isEmpty else { return [] }
     let session = self.session
     try self.ensureMessagingSessionIsCurrent(session)
-    let value = try await self.makeProvider().search(query: query, project: project)
+    let value = try await self.makeProvider().searchMessageThreads(query: query, project: project)
     try self.ensureMessagingSessionIsCurrent(session)
     return value.messageThreads
   }
 
-  public func thread(id: Int) async throws -> MessageThreadEnvelope? {
+  public func fetchMessageThread(id: Int) async throws -> MessageThreadEnvelope? {
     let session = self.session
     try self.ensureMessagingSessionIsCurrent(session)
-    let value = try await self.makeProvider().thread(id: id)
+    let value = try await self.makeProvider().fetchMessageThread(id: id)
     try self.ensureMessagingSessionIsCurrent(session)
     return value
   }
 
-  public func thread(backing: Backing) async throws -> MessageThreadEnvelope? {
+  public func fetchMessageThread(backing: Backing) async throws -> MessageThreadEnvelope? {
     let session = self.session
     try self.ensureMessagingSessionIsCurrent(session)
-    let value = try await self.makeProvider().thread(backing: backing)
+    let value = try await self.makeProvider().fetchMessageThread(backing: backing)
     try self.ensureMessagingSessionIsCurrent(session)
     return value
   }
 
-  public func backing(id: Int?, project: Project, user: User) async throws -> Backing {
+  public func fetchMessageBacking(id: Int?, project: Project, user: User) async throws -> Backing {
     let session = self.session
     try self.ensureMessagingSessionIsCurrent(session)
     let provider = self.makeProvider()
     let value: Backing
-    if let id { value = try await provider.backing(id: id) }
-    else { value = try await provider.backing(project: project, user: user) }
+    if let id { value = try await provider.fetchBacking(id: id) }
+    else { value = try await provider.fetchBacking(project: project, user: user) }
     try self.ensureMessagingSessionIsCurrent(session)
     return value
   }
@@ -228,7 +228,7 @@ public final class MessagingFeature {
       if let previous { _ = await previous.task.result }
       try self.ensureMessagingSessionIsCurrent(destination.session)
       do {
-        let message = try await provider.send(body: body, subject: subject)
+        let message = try await provider.sendMessage(body: body, subject: subject)
         try self.ensureMessagingSessionIsCurrent(destination.session)
         return message
       } catch {
@@ -241,7 +241,7 @@ public final class MessagingFeature {
     return task
   }
 
-  public func send(body: String, subject: MessageSubject) async throws -> Message {
+  public func sendMessage(body: String, subject: MessageSubject) async throws -> Message {
     try Task.checkCancellation()
     let value = try await self.requestSend(body: body, subject: subject).value
     try Task.checkCancellation()
@@ -257,7 +257,7 @@ public final class MessagingFeature {
       defer { self.markThreadReadTasks[key] = nil }
       try self.ensureMessagingSessionIsCurrent(key.session)
       do {
-        let value = try await provider.markRead(thread)
+        let value = try await provider.markMessageThreadRead(thread)
         try self.ensureMessagingSessionIsCurrent(key.session)
         return value
       } catch {
@@ -269,7 +269,7 @@ public final class MessagingFeature {
     return task
   }
 
-  public func waitForOperations() async {
+  public func waitForMessagingOperations() async {
     while !self.sendTasks.isEmpty || !self.markThreadReadTasks.isEmpty
       || self.mailboxStatesByRoute.values.contains(where: { $0.request != nil }) {
       for route in Array(self.mailboxStatesByRoute.values) { await route.request?.task.value }

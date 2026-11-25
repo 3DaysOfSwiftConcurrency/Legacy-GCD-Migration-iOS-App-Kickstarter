@@ -542,9 +542,9 @@ private struct NoRequestDiscoveryProvider: DiscoveryProvider {
 
 @MainActor
 private struct NoDeviceRegistrationProvider: SessionProvider {
-  func setup() async throws -> GraphUserSetup { throw CancellationError() }
-  func user() async throws -> User { throw CancellationError() }
-  func graphUser() async throws -> User { throw CancellationError() }
+  func fetchGraphUserSetup() async throws -> GraphUserSetup { throw CancellationError() }
+  func fetchCurrentUser() async throws -> User { throw CancellationError() }
+  func fetchGraphUser() async throws -> User { throw CancellationError() }
   func clearActivityIndicator() async throws -> Int { throw CancellationError() }
   func registerDeviceToken(_: String) async throws {
     XCTFail("Obsolete device registration reached the transport")

@@ -32,7 +32,7 @@ extension SessionFeature {
     currentUserPPOSettings: @escaping () -> PPOUserSettings? = { AppEnvironment.current.currentUserPPOSettings },
     updateUser: @escaping @MainActor (User) -> Void = { AppEnvironment.updateCurrentUser($0) },
     login: @escaping @MainActor (AccessTokenEnvelope) -> Void = { AppEnvironment.login($0) },
-    updateSetup: @escaping (GraphUserSetup) -> Void = { setup in
+    applyGraphUserSetup: @escaping (GraphUserSetup) -> Void = { setup in
       guard let email = setup.email else { return }
       AppEnvironment.replaceCurrentEnvironment(
         currentUserEmail: email,
@@ -49,7 +49,7 @@ extension SessionFeature {
       storage: Storage(
         currentUser: currentUser, currentUserEmail: currentUserEmail,
         currentUserPPOSettings: currentUserPPOSettings, updateUser: updateUser,
-        login: login, updateSetup: updateSetup
+        login: login, applyGraphUserSetup: applyGraphUserSetup
       )
     )
   }
@@ -572,7 +572,7 @@ public struct AppEnvironment: AppEnvironmentType {
     userDefaults: KeyValueStoreType
   ) {
     // Preserve the active stack's policy, including when a new environment is being pushed.
-    let useKeychain = featureEnabled(feature: .useKeychainForOAuthToken, environment: self.current)
+    let useKeychain = remoteConfigFeatureIsEnabled(.useKeychainForOAuthToken, in: self.current)
     var storedEnvironmentValues: [String: Any] = [:]
 
     // swiftformat:disable wrap

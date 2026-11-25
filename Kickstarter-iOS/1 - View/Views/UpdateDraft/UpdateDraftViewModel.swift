@@ -171,7 +171,7 @@ final class UpdateDraftViewModel {
     }
   }
   func waitForPending() async {
-    await self.creatorDraftsFeature.waitForOperations()
+    await self.creatorDraftsFeature.waitForDraftOperations()
     await self.saveTask?.value
     for task in Array(self.imageEditsByRequestID.values) { await task.value }
   }

@@ -563,8 +563,8 @@ internal final class MessagesViewModelTests: TestCase {
   }
 
   override func tearDown() async throws {
-    self.feature.reset()
-    await self.feature.waitForOperations()
+    self.feature.resetMailboxState()
+    await self.feature.waitForMessagingOperations()
     await self.discussion.waitForMutations()
     try await super.tearDown()
   }
@@ -573,11 +573,11 @@ internal final class MessagesViewModelTests: TestCase {
     // Await screen-owned requests and the operations they start.
     await self.vm.waitForThread()
     await self.vm.waitForBacking()
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
     await self.discussion.waitForMutations()
     await self.vm.waitForBlock()
     // Thread delivery can start a backing lookup and read-status command.
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
     await self.vm.waitForMarkRead()
   }
 }

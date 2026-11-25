@@ -3,14 +3,14 @@ import KsApi
 
 @MainActor
 public protocol ProfileProvider {
-  func page(type: ProfileProjectsType, cursor: String?) async throws -> ProfileFeature.Page
+  func fetchProfileProjectsPage(type: ProfileProjectsType, cursor: String?) async throws -> ProfileFeature.Page
 }
 
 @MainActor
 public struct AsyncProfileProvider: ProfileProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func page(type: ProfileProjectsType, cursor: String?) async throws -> ProfileFeature.Page {
+  public func fetchProfileProjectsPage(type: ProfileProjectsType, cursor: String?) async throws -> ProfileFeature.Page {
     let data: ProfileProjectsResponse
     switch type {
     case .backed: data = try await self.service.profileBackedProjects(cursor: cursor)
@@ -61,7 +61,7 @@ public final class ProfileFeature {
   private var headerRequest: (
     userID: Int?,
     generation: Int,
-    readGeneration: Int,
+    userReadGeneration: Int,
     token: UUID,
     task: Task<Void, Never>
   )?
@@ -190,13 +190,13 @@ public final class ProfileFeature {
     let generation = self.sessionFeature.generation
     if !replacing, let request = self.headerRequest, request.userID == userID,
        request.generation == generation,
-       request.readGeneration == self.sessionFeature.readGeneration { return request.task }
+       request.userReadGeneration == self.sessionFeature.userReadGeneration { return request.task }
     self.headerRequest?.task.cancel()
-    if replacing { self.sessionFeature.invalidateReads() }
-    let readGeneration = self.sessionFeature.readGeneration
+    if replacing { self.sessionFeature.invalidateAccountReads() }
+    let userReadGeneration = self.sessionFeature.userReadGeneration
     let token = UUID()
-    let userTask = self.sessionFeature.request(.user)
-    let graphTask = self.sessionFeature.request(.graphUser)
+    let userTask = self.sessionFeature.requestCurrentUser()
+    let graphTask = self.sessionFeature.requestGraphUser()
     let delay = self.responseDelaySeconds()
     self.userError = nil
     self.graphUserError = nil
@@ -211,7 +211,7 @@ public final class ProfileFeature {
         graph: false,
         userID: userID,
         generation: generation,
-        readGeneration: readGeneration,
+        userReadGeneration: userReadGeneration,
         delay: delay
       )
       async let graph = self.publishHeader(
@@ -219,32 +219,32 @@ public final class ProfileFeature {
         graph: true,
         userID: userID,
         generation: generation,
-        readGeneration: readGeneration,
+        userReadGeneration: userReadGeneration,
         delay: delay
       )
       let (restUser, graphUser) = await (user, graph)
       guard !Task.isCancelled, self.headerRequest?.token == token,
             self.sessionFeature.isCurrent(userID: userID, generation: generation),
-            self.sessionFeature.readGeneration == readGeneration,
+            self.sessionFeature.userReadGeneration == userReadGeneration,
             var merged = restUser, let graphUser else { return }
       merged.stats.starredProjectsCount = graphUser.stats.starredProjectsCount
       self.sessionFeature.commitUser(merged, userID: userID, generation: generation)
       self.publishHeaderEvent(.combinedUser(merged))
     }
-    self.headerRequest = (userID, generation, readGeneration, token, task)
+    self.headerRequest = (userID, generation, userReadGeneration, token, task)
     return task
   }
 
   private func publishHeader(
     _ task: Task<User, Error>, graph: Bool, userID: Int?, generation: Int,
-    readGeneration: Int, delay: TimeInterval
+    userReadGeneration: Int, delay: TimeInterval
   ) async -> User? {
     do {
       let user = try await task.value
       try await self.sleep(delay)
       try Task.checkCancellation()
       guard self.sessionFeature.isCurrent(userID: userID, generation: generation),
-            self.sessionFeature.readGeneration == readGeneration else { return nil }
+            self.sessionFeature.userReadGeneration == userReadGeneration else { return nil }
       if graph {
         self.publishHeaderEvent(.graphUser(user))
       } else {
@@ -255,19 +255,19 @@ public final class ProfileFeature {
       guard !Task.isCancelled, !(error is CancellationError), self.sessionFeature.isCurrent(
         userID: userID,
         generation: generation
-      ), self.sessionFeature.readGeneration == readGeneration else { return nil }
+      ), self.sessionFeature.userReadGeneration == userReadGeneration else { return nil }
       if graph { self.graphUserError = error } else { self.userError = error }
       return nil
     }
   }
 
-  public func refresh(type: ProfileProjectsType) async { await self.requestPage(type: type)?.value }
-  public func loadNextPage(type: ProfileProjectsType) async {
-    await self.requestPage(type: type, next: true)?.value
+  public func refreshProfileProjects(type: ProfileProjectsType) async { await self.requestProfileProjectsPage(type: type)?.value }
+  public func loadNextProfileProjectsPage(type: ProfileProjectsType) async {
+    await self.requestProfileProjectsPage(type: type, next: true)?.value
   }
 
   @discardableResult
-  public func requestPage(type: ProfileProjectsType, next: Bool = false) -> Task<Void, Never>? {
+  public func requestProfileProjectsPage(type: ProfileProjectsType, next: Bool = false) -> Task<Void, Never>? {
     let userID = self.sessionFeature.currentUser?.id
     guard userID != nil else { self.reset(); return nil }
     let generation = self.sessionFeature.generation
@@ -300,7 +300,7 @@ public final class ProfileFeature {
       do {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        let result = try await provider.page(type: type, cursor: cursor)
+        let result = try await provider.fetchProfileProjectsPage(type: type, cursor: cursor)
         try await sleep(delay)
         try Task.checkCancellation()
         guard self.projectCollectionsByType[type] === page, page.request?.token == token,

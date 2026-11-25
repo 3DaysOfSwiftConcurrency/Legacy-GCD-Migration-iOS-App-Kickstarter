@@ -277,7 +277,7 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     self.badgeTask?.cancel() // Presentation only; the admitted shared write continues.
     let token = UUID()
     let sessionFeature = self.sessionFeature
-    let request = sessionFeature.request(.clearActivity)
+    let request = sessionFeature.requestClearActivityIndicator()
     self.badgeIdentity = (userID, generation, token)
     self.badgeTask = Task { [weak self] in
       defer {

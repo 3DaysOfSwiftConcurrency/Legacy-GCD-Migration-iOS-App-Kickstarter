@@ -13,7 +13,7 @@ final class ActivitiesViewModelTests: TestCase {
   private lazy var feature = ActivityFeature(
     sessionFeature: self.sessionFeature,
     makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) },
-    projectCardClicked: {
+    trackProjectCardClick: {
       AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(page: .activities, project: $0)
     },
     sleep: { _ in }

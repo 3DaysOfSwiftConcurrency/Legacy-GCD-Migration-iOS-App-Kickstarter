@@ -494,13 +494,13 @@ extension ActivityFeature.Platform {
     },
     applicationBadgeNumber: @escaping @MainActor () -> Int = { 0 },
     responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
-    projectCardClicked: @escaping @MainActor (Project) -> Void = { _ in }
+    trackProjectCardClick: @escaping @MainActor (Project) -> Void = { _ in }
   ) -> Self {
     Self(
       loadSurvey: loadSurvey,
       applicationBadgeNumber: applicationBadgeNumber,
       responseDelaySeconds: responseDelaySeconds,
-      projectCardClicked: projectCardClicked
+      trackProjectCardClick: trackProjectCardClick
     )
   }
 }
@@ -513,7 +513,7 @@ extension ActivityFeature {
       throw ErrorEnvelope.couldNotParseJSON
     },
     applicationBadgeNumber: @escaping @MainActor () -> Int = { 0 },
-    projectCardClicked: @escaping @MainActor (Project) -> Void = { _ in },
+    trackProjectCardClick: @escaping @MainActor (Project) -> Void = { _ in },
     sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
@@ -522,7 +522,7 @@ extension ActivityFeature {
       platform: .test(
         loadSurvey: loadSurvey,
         applicationBadgeNumber: applicationBadgeNumber,
-        projectCardClicked: projectCardClicked
+        trackProjectCardClick: trackProjectCardClick
       ),
       sessionFeature: sessionFeature,
       makeProvider: makeProvider,

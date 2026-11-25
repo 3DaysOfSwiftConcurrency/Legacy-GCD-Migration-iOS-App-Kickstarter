@@ -61,7 +61,7 @@ public final class FindFriendsViewModel {
   }
 
   private func loadPage(next: Bool = false) {
-    guard let task = self.friendsFeature.requestPage(route: self.route, next: next) else { return }
+    guard let task = self.friendsFeature.requestFriendsPage(route: self.route, next: next) else { return }
     let friendsFeature = self.friendsFeature, route = self.route
     let generation = friendsFeature.sessionFeature.generation
     let userID = friendsFeature.sessionFeature.currentUser?.id
@@ -86,7 +86,7 @@ public final class FindFriendsViewModel {
     let friendsFeature = self.friendsFeature, route = self.route
     let generation = friendsFeature.sessionFeature.generation
     let userID = friendsFeature.sessionFeature.currentUser?.id
-    let task = friendsFeature.requestStatistics(route: route)
+    let task = friendsFeature.requestFriendStatistics(route: route)
     self.statisticsObservation?.cancel()
     self.statisticsObservation = Task { [weak self] in
       await task.value

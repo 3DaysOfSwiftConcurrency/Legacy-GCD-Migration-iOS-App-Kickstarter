@@ -34,7 +34,7 @@ public final class SettingsLinkPresentation {
     let session = self.settingsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let operation = session.sessionBound { try await request.value }
+    let operation = session.wrapOperationForCurrentSession { try await request.value }
     let delay = self.sleep
     let seconds = self.responseDelay()
     let id = UUID()
@@ -58,7 +58,7 @@ public final class SettingsLinkPresentation {
     let session = self.settingsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let operation = session.sessionBound { try await request.value }
+    let operation = session.wrapOperationForCurrentSession { try await request.value }
     let delay = self.sleep
     let seconds = self.responseDelay()
     let id = UUID()

@@ -5,28 +5,28 @@ import PassKit
 
 @MainActor
 public protocol PaymentsProvider {
-  func cards() async throws -> UserEnvelope<GraphUser>
-  func remove(id: String) async throws -> DeletePaymentMethodEnvelope
-  func store(secret: String) async throws -> CreatePaymentSourceEnvelope
-  func setup(input: KsApi.CreateSetupIntentInput) async throws -> ClientSecretEnvelope
-  func intent(input: KsApi.CreatePaymentIntentInput) async throws -> PaymentIntentEnvelope
+  func fetchSavedCards() async throws -> UserEnvelope<GraphUser>
+  func removePaymentMethod(id: String) async throws -> DeletePaymentMethodEnvelope
+  func createPaymentSource(secret: String) async throws -> CreatePaymentSourceEnvelope
+  func createSetupIntent(input: KsApi.CreateSetupIntentInput) async throws -> ClientSecretEnvelope
+  func createPaymentIntent(input: KsApi.CreatePaymentIntentInput) async throws -> PaymentIntentEnvelope
 }
 
 @MainActor
 public struct AsyncPaymentsProvider: PaymentsProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func cards() async throws -> UserEnvelope<GraphUser> { try await self.service.paymentCards() }
-  public func remove(id: String) async throws -> DeletePaymentMethodEnvelope {
+  public func fetchSavedCards() async throws -> UserEnvelope<GraphUser> { try await self.service.paymentCards() }
+  public func removePaymentMethod(id: String) async throws -> DeletePaymentMethodEnvelope {
     try await self.service.removePaymentMethod(id: id)
   }
-  public func store(secret: String) async throws -> CreatePaymentSourceEnvelope {
+  public func createPaymentSource(secret: String) async throws -> CreatePaymentSourceEnvelope {
     try await self.service.storePaymentMethod(secret: secret)
   }
-  public func setup(input: KsApi.CreateSetupIntentInput) async throws -> ClientSecretEnvelope {
+  public func createSetupIntent(input: KsApi.CreateSetupIntentInput) async throws -> ClientSecretEnvelope {
     try await self.service.paymentSetupIntent(input: input)
   }
-  public func intent(input: KsApi.CreatePaymentIntentInput) async throws -> PaymentIntentEnvelope {
+  public func createPaymentIntent(input: KsApi.CreatePaymentIntentInput) async throws -> PaymentIntentEnvelope {
     try await self.service.paymentIntent(input: input)
   }
 }
@@ -131,11 +131,11 @@ public final class PaymentsFeature {
   }
 
   func createCardSetupIntentForPaymentSettings() async throws -> ClientSecretEnvelope {
-    try await self.setup(projectID: nil, context: .profileSettings)
+    try await self.createSetupIntent(projectID: nil, context: .profileSettings)
   }
 
   func createCardSetupIntentForPledge(projectID: String, context: PledgeViewContext) async throws -> ClientSecretEnvelope {
-    try await self.setup(
+    try await self.createSetupIntent(
       projectID: projectID, context: context == .latePledge ? .postCampaignCheckout : .crowdfundingCheckout
     )
   }
@@ -227,7 +227,7 @@ public final class PaymentsFeature {
 
   /// Equivalent reads within one session share a fetch and any reload required by a
   /// card write. A canceled waiter leaves the fetch alive while anyone still needs it.
-  public func cards() async throws -> UserEnvelope<GraphUser> {
+  public func fetchSavedCards() async throws -> UserEnvelope<GraphUser> {
     let session = self.sessionIdentity
     while true {
       let result = try await self.waitForCardRead(in: session)
@@ -281,7 +281,7 @@ public final class PaymentsFeature {
       }
       let revision = self.cardWriteRevision
       let result: Result<UserEnvelope<GraphUser>, Error>
-      do { result = .success(try await self.makeProvider().cards()) }
+      do { result = .success(try await self.makeProvider().fetchSavedCards()) }
       catch { result = .failure(error) }
       try self.requireCurrent(session)
       if revision == self.cardWriteRevision { return CardReadResult(revision: revision, cards: result) }
@@ -297,46 +297,46 @@ public final class PaymentsFeature {
     }
   }
 
-  public func remove(id: String) async throws -> DeletePaymentMethodEnvelope {
+  public func removePaymentMethod(id: String) async throws -> DeletePaymentMethodEnvelope {
     try Task.checkCancellation()
     let session = self.sessionIdentity
-    let value = try await self.request(.remove(id)) { .removed(try await $0.remove(id: id)) }.value
+    let value = try await self.request(.remove(id)) { .removed(try await $0.removePaymentMethod(id: id)) }.value
     try self.requireCurrent(session)
     guard case let .removed(envelope) = value else { preconditionFailure("Payment command type mismatch") }
     return envelope
   }
-  public func store(secret: String) async throws -> CreatePaymentSourceEnvelope {
+  public func createPaymentSource(secret: String) async throws -> CreatePaymentSourceEnvelope {
     try Task.checkCancellation()
     let session = self.sessionIdentity
-    let value = try await self.request(.store(secret)) { .stored(try await $0.store(secret: secret)) }.value
+    let value = try await self.request(.store(secret)) { .stored(try await $0.createPaymentSource(secret: secret)) }.value
     try self.requireCurrent(session)
     guard case let .stored(envelope) = value else { preconditionFailure("Payment command type mismatch") }
     return envelope
   }
-  public func setup(projectID: String?, context: GraphAPI.StripeIntentContextTypes) async throws -> ClientSecretEnvelope {
+  public func createSetupIntent(projectID: String?, context: GraphAPI.StripeIntentContextTypes) async throws -> ClientSecretEnvelope {
     try Task.checkCancellation()
     let session = self.sessionIdentity
     let value = try await self.request(.setup(projectID, context.rawValue)) {
-      .setup(try await $0.setup(input: KsApi.CreateSetupIntentInput(projectId: projectID, context: context)))
+      .setup(try await $0.createSetupIntent(input: KsApi.CreateSetupIntentInput(projectId: projectID, context: context)))
     }.value
     try self.requireCurrent(session)
     guard case let .setup(envelope) = value else { preconditionFailure("Payment command type mismatch") }
     return envelope
   }
-  public func intent(projectID: String, backingID: String, checkoutID: String, total: Double) async throws -> PaymentIntentEnvelope {
+  public func createPaymentIntent(projectID: String, backingID: String, checkoutID: String, total: Double) async throws -> PaymentIntentEnvelope {
     try Task.checkCancellation()
-    let task = self.requestIntent(projectID: projectID, backingID: backingID, checkoutID: checkoutID, total: total)
+    let task = self.requestPaymentIntent(projectID: projectID, backingID: backingID, checkoutID: checkoutID, total: total)
     let value = try await task.value
     try Task.checkCancellation()
     return value
   }
 
   /// Admit the intent immediately; cancellation of a screen's waiter does not cancel the write.
-  public func requestIntent(projectID: String, backingID: String, checkoutID: String, total: Double) -> Task<PaymentIntentEnvelope, Error> {
+  public func requestPaymentIntent(projectID: String, backingID: String, checkoutID: String, total: Double) -> Task<PaymentIntentEnvelope, Error> {
     let session = self.sessionIdentity
     let amount = String(format: "%.2f", total)
     let request = self.request(.intent(projectID, backingID, checkoutID, amount)) {
-      .intent(try await $0.intent(input: KsApi.CreatePaymentIntentInput(
+      .intent(try await $0.createPaymentIntent(input: KsApi.CreatePaymentIntentInput(
         projectId: projectID, backingId: backingID, amountDollars: amount,
         checkoutId: encodeToBase64("Checkout-\(checkoutID)"), digitalMarketingAttributed: nil
       )))

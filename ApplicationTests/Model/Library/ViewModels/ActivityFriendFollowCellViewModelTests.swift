@@ -18,13 +18,13 @@ final class ActivityFriendFollowCellViewModelTests: TestCase {
   private lazy var vm = ActivityFriendFollowCellViewModel(friendsFeature: self.feature)
   override func tearDown() async throws {
     self.feature.reset()
-    await self.feature.waitForOperations()
+    await self.feature.waitForFriendsOperations()
     try await super.tearDown()
   }
 
   private func advanceFriends(by interval: DispatchTimeInterval = .seconds(0)) async {
     await self.vm.waitForObservation()
-    await self.feature.waitForOperations()
+    await self.feature.waitForFriendsOperations()
   }
 
   func testFriendDetails_Complete() async {
@@ -116,7 +116,7 @@ final class ActivityFriendFollowCellViewModelTests: TestCase {
     XCTAssertEqual(self.vm.hideFollowButton, false)
 
     self.vm.followButtonTapped()
-    await self.feature.waitForOperations()
+    await self.feature.waitForFriendsOperations()
     await self.advanceFriends()
   }
 }

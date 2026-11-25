@@ -282,3 +282,213 @@ SystemConfiguration deprecation warnings. The signing-disabled generic
 resolution with a sandbox permission error. CoreSimulator still refused
 connections, so runtime tests remain unverified. Push remains pending because
 this session could not resolve `github.com`.
+
+## Exhaustive declaration review (open)
+
+The preceding file-level naming pass was not a per-declaration review. A new
+SwiftSyntax inventory in `READABILITY_NAME_REVIEW.md` enumerates 1,407 functions
+and initializers plus 1,617 stored or computed properties across all 159 Swift
+files in `2 - AppModel`. Every declaration is currently marked pending until
+its behaviour, callers, local names and keep/rename reason have been recorded.
+The 23 Feature areas take priority; three files contain enum cases but no
+function or property declarations. Reconcile counts after the last code edit.
+
+The earlier uncommitted Session change replaces `request(_:)` with separate
+current-user, Graph-user and activity-indicator requests, updating its
+presentation, Profile and test callers. This pass further named the awaited
+current-user refresh, the operation wrapper, and SessionProvider fetches.
+Payments now exposes card fetch, payment-method removal, payment-source creation
+and setup/payment-intent creation by name, including its provider and tests.
+Settings names account refresh, Recommendations names its load, and the
+configuration service names the refresh request. These are code changes,
+not evidence that the 3,024-declaration review is complete.
+
+All currently changed Swift files parse and `git diff --check` passes. Xcode
+scheme discovery stops during SwiftPM package manifest resolution because the
+session cannot write its user cache. Temporary package, derived-data and module
+caches did not remove the manifest-cache denial. An unrestricted Xcode command
+was automatically rejected by this session's approval policy. The final build
+and focused runtime tests have therefore not run; the code and naming pass must
+not be marked complete or committed as a verified checkpoint. Next: complete
+each per-declaration decision, reconcile all 159 target files and callers,
+then compile and run focused tests at the final revision.
+
+Final-revision build attempt: `xcodebuild -project Kickstarter.xcodeproj
+-scheme Library-iOS -destination 'generic/platform=iOS Simulator'
+-derivedDataPath /tmp/kickstarter-derived-data -packageCachePath
+/tmp/kickstarter-package-cache -clonedSourcePackagesDirPath
+/tmp/kickstarter-source-packages CODE_SIGNING_ALLOWED=NO build`, with temporary
+XDG, Clang and SwiftPM module caches. Exit 74 during package resolution;
+SwiftPM could not write `~/Library/Caches/org.swift.swiftpm/manifests/ManifestLoading`.
+No app source reached compilation. Re-run this build and focused tests once
+Xcode can write its caches; parsing success is not a build result.
+
+Xcode's 25 November 16:29 `Library-iOS` build reached compilation and reported
+seven errors: two `SessionFeature.sessionBound` callers in
+`SettingsLinkPresentation`, two internal `PaymentsFeature.setup` calls and
+three dependent type-inference diagnostics. Repaired those five stale calls
+immediately, including the matching Session test call found by a whole-repo
+search. No old `sessionBound`, `setup(projectID:)`, `requestIntent`,
+`refreshSetup` or `invalidateReads` references remain in first-party Swift.
+All changed Swift files parse and `git diff --check` passes. A new final Xcode
+build is still required; the restricted terminal cannot write SwiftPM's user
+manifest cache, so this repair is not yet reported as compile-verified.
+The Toolkit's executable rename-build gate was run against `Library-iOS` after
+the repair. It exited nonzero during Xcode scheme discovery/package resolution
+for the same cache permission failure and wrote no verification evidence.
+
+The developer then built the final source in Xcode at 16:55 on 25 November:
+`Library-iOS`, iPhone 17 Pro, Build Succeeded. Xcode's build log
+`39E56E2A-3728-4DEA-9D80-028A489AACB9` records zero errors and includes
+compilation of the changed app sources. This verifies the repaired app target
+at that revision. Warnings remain. The `ApplicationTests` target did not appear
+in that build log, so changed test sources and runtime behaviour still need
+their own build-for-testing/test verification. The 3,024-declaration naming
+review remains open independently of this repaired rename checkpoint.
+
+Xcode's 25 November 17:00 `Library-iOS` Build For Testing reached the
+`LibraryTests` target and failed with six `ApplicationConfigurationService`
+no-member-`refresh` diagnostics in
+`ApplicationTests/Model/Platform/ApplicationConfigurationServiceTests.swift`.
+Build log: `9DAF8AAB-F562-4DB5-86F2-75A771F70A34`. Updated all six test
+callers to `requestConfigurationRefresh()`, the current service API. The
+changed Swift sources parse, and `git diff --check` passes. The test target
+has not yet been rebuilt after this repair; a passing Build For Testing is
+required before this rename checkpoint can be treated as compile-verified.
+
+The developer reran Xcode Build For Testing after the six test-caller fixes.
+Build log `3DD20365-5D61-405E-AFE7-354263638797` records a successful
+`Library-iOS` build, zero errors, and compilation of `LibraryTests`, including
+`ApplicationConfigurationServiceTests.swift`. This verifies compilation of
+the repaired source and test targets at this revision. The build recorded 145
+warnings; it did not execute runtime tests. Subsequent source edits require a
+new build before any rename checkpoint can be called verified again.
+
+## Model-only naming audit (in progress)
+
+The renewed audit covers all 159 Swift files under `2 - AppModel`, including
+its 23 Feature areas, composition, navigation, storage, services and workers.
+The View layer is outside the naming-review scope; existing View callers and
+tests must still be updated if a Model API is renamed. The source-located
+inventory in `READABILITY_NAME_REVIEW.md` has 1,407 functions/initializers and
+1,617 properties; all 3,024 decisions remain open. A first implementation
+triage found additional ambiguous Model APIs. See `MODEL_READABILITY_AUDIT.md`
+for the concrete candidates and their observed behavior. This was a discovery
+checkpoint, not a completed per-declaration audit or permission to rename
+without a fresh build.
+
+Session Feature review: all 60 inventory declarations now have a recorded
+action/result, caller context and keep-or-rename reason. Renamed the public
+`readGeneration` accessor to `userReadGeneration` and the internal token
+ingress from `receiveDeviceToken` to
+`scheduleDeviceRegistration(for:onRegistered:)`. The AppModel ingress retains
+its own `receiveDeviceToken` name because it receives the application event.
+Renamed the environment storage closure `updateSetup` to
+`applyGraphUserSetup`; updated its composition and Session tests. A full
+first-party Swift scan found no remaining references to the removed Session
+members. Source parsing and `git diff --check` pass. Xcode's subsequent
+`Library-iOS` Build For Testing log
+`E6C199B9-873D-4781-8EAE-DA9A6BEB4E88` compiled app and LibraryTests,
+including SessionFeatureTests, with zero errors. Runtime tests have not run.
+The Terminal build runner executed the fixed `Library-iOS` Build For Testing
+command outside this session's SwiftPM cache restriction. Its initial
+`session-runner-smoke` build exited zero and reported `TEST BUILD SUCCEEDED`.
+The runner is invoked by a one-time Terminal launch and a request file; no
+further developer Xcode clicks are required for ordinary rename checkpoints.
+
+Activity Feature review: all 42 declarations have decisions. The provider now
+fetches named Activity pages and unanswered surveys. The public page error and
+loading properties identify the page, and project-card click forwarding names
+its analytics action. Traced the AppModel, Activity ViewModel, test factory and
+provider test implementations; other Features' similarly spelled providers
+were left intact. Full-source stale caller scan, Swift parsing and diff checks
+passed. The runner's `activity-renames-1` Build For Testing exited zero and
+reported `TEST BUILD SUCCEEDED`. Runtime tests have not run.
+
+Help Feature review: all four declarations have explicit keep reasons after
+reading the request builder and its Help ViewModel and test callers. No source
+change or additional build was required.
+
+ProjectReporting Feature review: all 28 declarations have decisions. Provider
+reads and submissions, the public report submission, current reporting context
+and submission waiter are now named for their behavior. Updated report
+ViewModels and focused tests. Its runner build `reporting-renames-1` exited
+zero and reported `TEST BUILD SUCCEEDED`; the renamed app and test targets
+compile. Runtime tests have not run. Model review remaining: 2,890
+declaration decisions.
+
+Recommendations Feature review: all 42 declarations have behavior and naming
+decisions. Renamed provider project/category reads, loaded selection by route,
+curated and post-backing private loaders, and the waiter for recommendation
+loads. Updated Curated and Thanks ViewModels and the provider/Feature tests.
+The first `recommendations-renames-1` Build For Testing failed: eleven missed
+`RecommendationsFeature.waitForOperations()` calls in CuratedProjects and
+Thanks ViewModel tests. Repaired all eleven immediately and searched every
+first-party Swift file mentioning RecommendationsFeature for remaining old
+waiter calls; only unrelated SettingsFeature calls remain. The runner's
+`recommendations-repair-2` Build For Testing exited zero and reported
+`TEST BUILD SUCCEEDED`. The repaired app and test targets compile; runtime
+tests remain unverified. Remaining inventory decisions: 2,848.
+
+Profile Feature review: all 48 declarations across `ProfileFeature.swift` and
+`UserAttribute.swift` have behavior and naming decisions. Provider page reads
+now say they fetch a profile projects page; the Feature's refresh, next-page
+and task-returning page APIs name the project collection. Updated the backed
+and saved projects ViewModel, controlled provider and focused tests. A global
+first-party Swift scan found no old Profile page APIs. The runner's
+`profile-renames-1` Build For Testing exited zero and reported
+`TEST BUILD SUCCEEDED`; app and test targets compile. Runtime tests remain
+unverified. Remaining inventory decisions: 2,800.
+
+Friends Feature review: all 58 declarations across `FriendsFeature.swift` and
+`FriendsSource.swift` have behavior and naming decisions. Provider reads now
+fetch named friends pages and statistics. Public page methods name the Friends
+data, while private write methods distinguish starting a follow write from
+awaiting one. Updated Find Friends presentation and all identified Feature and
+follow-cell test callers. A first-party type-context scan found no old Friends
+API callers. The runner's `friends-renames-1` Build For Testing exited zero and
+reported `TEST BUILD SUCCEEDED`; app and test targets compile. Runtime tests
+remain unverified. Remaining inventory decisions: 2,742.
+
+CreatorDrafts Feature review: all 46 declarations have behavior and naming
+decisions. Provider reads and draft/image mutations now name the data and
+operation. The private draft dispatcher distinguishes starting an ordered edit
+from awaiting it. Updated the UpdateDraft ViewModel and controlled provider
+tests. Source scan, Swift parsing and diff checks passed. The runner's
+`drafts-renames-1` Build For Testing exited zero and reported
+`TEST BUILD SUCCEEDED`; app and test targets compile. Runtime tests remain
+unverified. Remaining inventory decisions: 2,696.
+
+DeveloperExamples Feature review: all 61 declarations across
+`DeveloperExamplesFeature.swift` and `DebugData.swift` have behavior and naming
+decisions. Provider reads now distinguish Discovery pages from rich-text example
+projects. Public pagination and direct lookup APIs identify their datasets;
+private page admission and cancellation do likewise. Updated Pagination and
+RichText ViewModels, the provider conformance in presentation tests and the
+Feature tests. A scoped first-party stale-name scan, Swift parsing and diff
+checks passed. The runner's `examples-renames-1` Build For Testing exited zero
+and reported `TEST BUILD SUCCEEDED`; app and test targets compile. Runtime
+tests remain unverified. Remaining inventory decisions: 2,635.
+
+Messaging Feature review: all 63 declarations have behavior, caller and naming
+decisions. Provider reads now distinguish mailbox pages, searches, threads and
+backings; write methods name message sending and marking a thread read. The
+Feature's page, snapshot, route release, reset and thread/backing reads name
+their data and effects. Updated the MessageThreads, Messages and MessageDialog
+ViewModel callers, deep-link lookup, AppModel reset, the controlled provider
+and all identified test callers. The first runner build
+`messaging-renames-1` found an argument-label mismatch at the renamed
+`mailboxSnapshot(for:)` caller. Fixed the ViewModel and all ten focused test
+calls, searched for the old label, then reran Build For Testing as
+`messaging-repair-2`. It exited zero and reported `TEST BUILD SUCCEEDED` for
+app and test targets. Runtime tests remain unverified. Remaining inventory
+decisions: 2,572.
+
+RemoteConfiguration review: all 46 declarations across eleven files have
+individual decisions. Most client operations intentionally retain Firebase's
+interface names; the flag lookup helper was ambiguous at its call site, so
+both overloads are now `remoteConfigFeatureIsEnabled` and its AppEnvironment
+caller was updated. A first-party scan found no old helper calls. The runner's
+`remote-config-renames-1` Build For Testing exited zero and reported
+`TEST BUILD SUCCEEDED`; app and test targets compile. Runtime tests remain
+unverified. Remaining inventory decisions: 2,526.

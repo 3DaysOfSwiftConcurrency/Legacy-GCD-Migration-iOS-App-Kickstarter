@@ -52,7 +52,7 @@ public final class CuratedProjectsViewModel {
       await command.value
       guard !Task.isCancelled, let self, self.revision == revision,
             session.isCurrent(userID: userID, generation: generation),
-            let selection = recommendationsFeature.selection(route: route) else { return }
+            let selection = recommendationsFeature.loadedSelection(for: route) else { return }
       self.projects = selection.projects
       self.onProjects?(selection.projects)
       if selection.projects.isEmpty { self.onError?(Strings.general_error_something_wrong()) }
@@ -69,7 +69,7 @@ public final class CuratedProjectsViewModel {
   }
 
   public func projectTapped(_ project: Project?) {
-    guard let project, self.recommendationsFeature.selection(route: self.route) != nil else { return }
+    guard let project, self.recommendationsFeature.loadedSelection(for: self.route) != nil else { return }
     self.onProject?((project, self.projects, .onboarding))
   }
 

@@ -4,20 +4,20 @@ import KsApi
 
 @MainActor
 public protocol ProjectReportingProvider {
-  func options() async throws -> [ReportProjectInfoListItem]
-  func email() async throws -> String?
-  func submit(_ draft: ProjectReportingFeature.Draft) async throws
+  func fetchReportOptions() async throws -> [ReportProjectInfoListItem]
+  func fetchReportingEmail() async throws -> String?
+  func submitProjectReport(_ draft: ProjectReportingFeature.Draft) async throws
 }
 
 @MainActor
 public struct AsyncProjectReportingProvider: ProjectReportingProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func options() async throws -> [ReportProjectInfoListItem] {
+  public func fetchReportOptions() async throws -> [ReportProjectInfoListItem] {
     try await self.service.fetchProjectFlaggingOptions()
   }
-  public func email() async throws -> String? { try await self.service.reportingEmail() }
-  public func submit(_ draft: ProjectReportingFeature.Draft) async throws {
+  public func fetchReportingEmail() async throws -> String? { try await self.service.reportingEmail() }
+  public func submitProjectReport(_ draft: ProjectReportingFeature.Draft) async throws {
     try await self.service.submitProjectReport(input: CreateFlaggingInput(
       contentId: draft.projectID, kind: draft.kind, details: draft.details, clientMutationId: nil
     ))
@@ -57,17 +57,17 @@ public final class ProjectReportingFeature {
     self.makeProvider = makeProvider
   }
 
-  public var context: Context {
+  public var currentReportingContext: Context {
     Context(userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation)
   }
   public func ensureReportingSessionIsCurrent(_ context: Context) throws {
     try Task.checkCancellation()
-    guard self.context == context else { throw CancellationError() }
+    guard self.currentReportingContext == context else { throw CancellationError() }
   }
   public func fetchReportOptions(context: Context) async throws -> [ReportProjectInfoListItem] {
     try self.ensureReportingSessionIsCurrent(context)
     do {
-      let result = try await self.makeProvider().options()
+      let result = try await self.makeProvider().fetchReportOptions()
       try self.ensureReportingSessionIsCurrent(context)
       return result
     } catch {
@@ -78,7 +78,7 @@ public final class ProjectReportingFeature {
   public func fetchReportingEmail(context: Context) async throws -> String? {
     try self.ensureReportingSessionIsCurrent(context)
     do {
-      let result = try await self.makeProvider().email()
+      let result = try await self.makeProvider().fetchReportingEmail()
       try self.ensureReportingSessionIsCurrent(context)
       return result
     } catch {
@@ -89,7 +89,7 @@ public final class ProjectReportingFeature {
 
   /// Equivalent pending submissions share; changed reports execute in account
   /// order. Failures are surfaced for an explicit retry, never retried silently.
-  public func submit(_ draft: Draft, context: Context) throws -> Task<Void, Error> {
+  public func submitProjectReport(_ draft: Draft, context: Context) throws -> Task<Void, Error> {
     try self.ensureReportingSessionIsCurrent(context)
     guard !draft.projectID.isEmpty, !draft.details.isEmpty else { throw ErrorEnvelope.couldNotParseJSON }
     let previous = self.latestQueuedReportBySession[context]
@@ -104,7 +104,7 @@ public final class ProjectReportingFeature {
       if let previous { _ = await previous.task.result }
       try self.ensureReportingSessionIsCurrent(context)
       do {
-        try await provider.submit(draft)
+        try await provider.submitProjectReport(draft)
         try self.ensureReportingSessionIsCurrent(context)
       } catch {
         try self.ensureReportingSessionIsCurrent(context)
@@ -116,7 +116,7 @@ public final class ProjectReportingFeature {
     return task
   }
 
-  public func waitForOperations() async {
+  public func waitForReportSubmissions() async {
     while !self.reportSubmissionTasks.isEmpty {
       for task in Array(self.reportSubmissionTasks.values) { _ = await task.result }
     }

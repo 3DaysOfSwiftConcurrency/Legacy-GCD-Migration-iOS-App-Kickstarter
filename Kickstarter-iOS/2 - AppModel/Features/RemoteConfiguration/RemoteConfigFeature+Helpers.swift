@@ -2,12 +2,12 @@ import KsApi
 
 /// Return remote config values either a value from the cloud, if it found one, or an override value from user defaults.
 @MainActor
-func featureEnabled(feature: RemoteConfigFeature) -> Bool {
+func remoteConfigFeatureIsEnabled(_ feature: RemoteConfigFeature) -> Bool {
   let environment: Environment = AppEnvironment.current
-  return featureEnabled(feature: feature, environment: environment)
+  return remoteConfigFeatureIsEnabled(feature, in: environment)
 }
 
-func featureEnabled(feature: RemoteConfigFeature, environment: Environment) -> Bool {
+func remoteConfigFeatureIsEnabled(_ feature: RemoteConfigFeature, in environment: Environment) -> Bool {
   if let valueFromDefaults = environment.userDefaults
     .remoteConfigFeatureFlags[feature.rawValue] {
     return valueFromDefaults
@@ -23,5 +23,5 @@ func featureEnabled(feature: RemoteConfigFeature, environment: Environment) -> B
 
 @MainActor
 public func featureUseKeychainForOAuthTokenEnabled() -> Bool {
-  featureEnabled(feature: .useKeychainForOAuthToken)
+  remoteConfigFeatureIsEnabled(.useKeychainForOAuthToken)
 }

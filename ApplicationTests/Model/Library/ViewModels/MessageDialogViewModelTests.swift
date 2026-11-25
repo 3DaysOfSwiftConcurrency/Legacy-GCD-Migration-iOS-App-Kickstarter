@@ -134,8 +134,8 @@ internal final class MessageDialogViewModelTests: TestCase {
   }
 
   override func tearDown() async throws {
-    self.feature.reset()
-    await self.feature.waitForOperations()
+    self.feature.resetMailboxState()
+    await self.feature.waitForMessagingOperations()
 
     try await super.tearDown()
   }

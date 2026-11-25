@@ -22,7 +22,7 @@ final class ProjectReportingFeatureTests: XCTestCase {
     self.provider.optionsGate.releaseAll()
     self.provider.emailGate.releaseAll()
     self.provider.submitGate.releaseAll()
-    await self.feature.waitForOperations()
+    await self.feature.waitForReportSubmissions()
     try await super.tearDown()
   }
 
@@ -31,10 +31,10 @@ final class ProjectReportingFeatureTests: XCTestCase {
   }
 
   func testDuplicatePendingSubmissionsShareAndDifferentDraftsStayOrdered() async throws {
-    let context = self.feature.context
-    let first = try self.feature.submit(self.draft(), context: context)
-    let duplicate = try self.feature.submit(self.draft(), context: context)
-    let second = try self.feature.submit(self.draft("Changed"), context: context)
+    let context = self.feature.currentReportingContext
+    let first = try self.feature.submitProjectReport(self.draft(), context: context)
+    let duplicate = try self.feature.submitProjectReport(self.draft(), context: context)
+    let second = try self.feature.submitProjectReport(self.draft("Changed"), context: context)
     await self.provider.submitGate.waitFor(1)
     XCTAssertEqual(self.provider.drafts, [self.draft()])
     try self.provider.submitGate.finish(0, .success(()))
@@ -47,22 +47,22 @@ final class ProjectReportingFeatureTests: XCTestCase {
   }
 
   func testFailureAllowsExplicitRetryWithoutAutomaticResubmission() async throws {
-    let first = try self.feature.submit(self.draft(), context: self.feature.context)
+    let first = try self.feature.submitProjectReport(self.draft(), context: self.feature.currentReportingContext)
     await self.provider.submitGate.waitFor(1)
     try self.provider.submitGate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { try await first.value; XCTFail("Expected failure") } catch {}
-    await self.feature.waitForOperations()
+    await self.feature.waitForReportSubmissions()
     XCTAssertEqual(self.provider.submitGate.count, 1)
-    let retry = try self.feature.submit(self.draft(), context: self.feature.context)
+    let retry = try self.feature.submitProjectReport(self.draft(), context: self.feature.currentReportingContext)
     await self.provider.submitGate.waitFor(2)
     try self.provider.submitGate.finish(1, .success(()))
     try await retry.value
   }
 
   func testSessionReplacementSuppressesCompletionAndQueuedWrite() async throws {
-    let context = self.feature.context
-    let first = try self.feature.submit(self.draft(), context: context)
-    let second = try self.feature.submit(self.draft("Second"), context: context)
+    let context = self.feature.currentReportingContext
+    let first = try self.feature.submitProjectReport(self.draft(), context: context)
+    let second = try self.feature.submitProjectReport(self.draft("Second"), context: context)
     await self.provider.submitGate.waitFor(1)
     self.session.sessionChanged()
     try self.provider.submitGate.finish(0, .success(()))
@@ -71,11 +71,11 @@ final class ProjectReportingFeatureTests: XCTestCase {
       catch { XCTAssertTrue(error is CancellationError) }
     }
     XCTAssertEqual(self.provider.submitGate.count, 1)
-    XCTAssertThrowsError(try self.feature.submit(self.draft(), context: context))
+    XCTAssertThrowsError(try self.feature.submitProjectReport(self.draft(), context: context))
   }
 
   func testEmptyInputIsRejectedBeforeRequest() throws {
-    XCTAssertThrowsError(try self.feature.submit(self.draft(""), context: self.feature.context))
+    XCTAssertThrowsError(try self.feature.submitProjectReport(self.draft(""), context: self.feature.currentReportingContext))
     XCTAssertEqual(self.provider.submitGate.count, 0)
   }
 
@@ -106,7 +106,7 @@ final class ProjectReportingFeatureTests: XCTestCase {
   }
 
   func testOldSessionReadFailuresBecomeCancellation() async throws {
-    let context = self.feature.context
+    let context = self.feature.currentReportingContext
     let options = Task { try await self.feature.fetchReportOptions(context: context) }
     let email = Task { try await self.feature.fetchReportingEmail(context: context) }
     await self.provider.optionsGate.waitFor(1)
@@ -137,7 +137,7 @@ final class ProjectReportingFeatureTests: XCTestCase {
     vm.stop()
     try self.provider.submitGate.finish(0, .success(()))
     await task.value
-    await self.feature.waitForOperations()
+    await self.feature.waitForReportSubmissions()
     XCTAssertFalse(vm.submitSuccess)
     XCTAssertNil(vm.bannerMessage)
     XCTAssertEqual(self.provider.submitGate.count, 1)
@@ -191,9 +191,9 @@ private final class ControlledReportingProvider: ProjectReportingProvider {
   let emailGate = AccountRequestGate<String?>()
   let submitGate = AccountRequestGate<Void>()
   private(set) var drafts: [ProjectReportingFeature.Draft] = []
-  func options() async throws -> [ReportProjectInfoListItem] { try await self.optionsGate.request() }
-  func email() async throws -> String? { try await self.emailGate.request() }
-  func submit(_ draft: ProjectReportingFeature.Draft) async throws {
+  func fetchReportOptions() async throws -> [ReportProjectInfoListItem] { try await self.optionsGate.request() }
+  func fetchReportingEmail() async throws -> String? { try await self.emailGate.request() }
+  func submitProjectReport(_ draft: ProjectReportingFeature.Draft) async throws {
     self.drafts.append(draft)
     try await self.submitGate.request()
   }

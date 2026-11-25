@@ -26,7 +26,7 @@ public final class MessageThreadsViewModel {
 
   deinit {
     let messagingFeature = self.messagingFeature, route = self.route
-    Task { @MainActor in messagingFeature.release(route: route) }
+    Task { @MainActor in messagingFeature.releaseMailbox(route: route) }
   }
 
   public func configureWith(project: Project?, refTag _: RefTag?) { self.project = project }
@@ -50,7 +50,7 @@ public final class MessageThreadsViewModel {
     defer { self.isNearBottom = nearBottom }
     guard nearBottom, !self.isNearBottom else { return }
     self.loadingFooterIsHidden = false
-    guard let task = self.messagingFeature.requestNextPage(route: self.route) else { return }
+    guard let task = self.messagingFeature.loadNextMailboxPage(route: self.route) else { return }
     self.projectResult(task)
   }
 
@@ -60,7 +60,7 @@ public final class MessageThreadsViewModel {
     guard let mailbox = self.mailbox else { return }
     if self.hadRequested { self.messageThreads = [] }
     self.hadRequested = true
-    let task = self.messagingFeature.requestMailbox(
+    let task = self.messagingFeature.loadMailboxFirstPage(
       route: self.route, mailbox: mailbox, project: self.project, refresh: true
     )
     self.projectResult(task)
@@ -73,7 +73,7 @@ public final class MessageThreadsViewModel {
     self.projectionTask = Task { [weak self] in
       await task.value
       guard let self, !Task.isCancelled, self.requestGeneration == generation else { return }
-      let snapshot = self.messagingFeature.snapshot(route: self.route)
+      let snapshot = self.messagingFeature.mailboxSnapshot(for: self.route)
       if snapshot.error == nil {
         self.messageThreads = snapshot.threads
         self.emptyStateIsVisible = snapshot.threads.isEmpty

@@ -56,7 +56,7 @@ final class ThanksViewModel {
       await command.value
       guard !Task.isCancelled, let self, self.recommendationRevision == revision,
             session.isCurrent(userID: userID, generation: generation),
-            let selection = recommendationsFeature.selection(route: route), let category = selection.category else { return }
+            let selection = recommendationsFeature.loadedSelection(for: route), let category = selection.category else { return }
       self.recommendedProjects = selection.projects
       self.onEvent?(.showRecommendations(selection.projects, category))
     }

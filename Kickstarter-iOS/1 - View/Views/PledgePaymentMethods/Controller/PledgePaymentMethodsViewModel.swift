@@ -120,7 +120,7 @@ final class PledgePaymentMethodsViewModel {
     self.presentationTasks.replace(.cards) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        let result = try await feature.cards()
+        let result = try await feature.fetchSavedCards()
         try await sleep(1)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity),
@@ -142,7 +142,7 @@ final class PledgePaymentMethodsViewModel {
     self.presentationTasks.replace(.store) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        let envelope = try await feature.store(secret: clientSecret)
+        let envelope = try await feature.createPaymentSource(secret: clientSecret)
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity), envelope.createPaymentSource.isSuccessful,

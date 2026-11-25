@@ -20,7 +20,7 @@ public final class SettingsNewslettersViewModel {
     let settingsFeature = self.settingsFeature
     self.reads[id] = Task { [weak self, settingsFeature] in
       defer { self?.reads[id] = nil }
-      guard let user = try? await settingsFeature.refresh(), !Task.isCancelled else { return }
+      guard let user = try? await settingsFeature.refreshAccount(), !Task.isCancelled else { return }
       self?.displayLoaded(user)
     }
   }

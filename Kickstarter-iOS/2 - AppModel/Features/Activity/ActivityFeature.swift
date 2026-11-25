@@ -5,19 +5,19 @@ import Observation
 
 @MainActor
 public protocol ActivityProvider {
-  func page(cursor: String?) async throws -> ActivityEnvelope
-  func surveys() async throws -> [SurveyResponse]
+  func fetchActivityPage(cursor: String?) async throws -> ActivityEnvelope
+  func fetchUnansweredSurveys() async throws -> [SurveyResponse]
 }
 
 @MainActor
 public struct AsyncActivityProvider: ActivityProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func page(cursor: String?) async throws -> ActivityEnvelope { try await self.service
+  public func fetchActivityPage(cursor: String?) async throws -> ActivityEnvelope { try await self.service
     .activityPage(cursor: cursor)
   }
 
-  public func surveys() async throws -> [SurveyResponse] { try await self.service.unansweredSurveys() }
+  public func fetchUnansweredSurveys() async throws -> [SurveyResponse] { try await self.service.unansweredSurveys() }
 }
 
 /// Owns the Activity tab's ordered, deduplicated history and survey requests.
@@ -28,27 +28,27 @@ public final class ActivityFeature {
     public let loadSurvey: @MainActor (Int) async throws -> SurveyResponse
     public let applicationBadgeNumber: @MainActor () -> Int
     public let responseDelaySeconds: @MainActor () -> TimeInterval
-    public let projectCardClicked: @MainActor (Project) -> Void
+    public let trackProjectCardClick: @MainActor (Project) -> Void
 
     public init(
       loadSurvey: @escaping @MainActor (Int) async throws -> SurveyResponse,
       applicationBadgeNumber: @escaping @MainActor () -> Int,
       responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
-      projectCardClicked: @escaping @MainActor (Project) -> Void
+      trackProjectCardClick: @escaping @MainActor (Project) -> Void
     ) {
       self.loadSurvey = loadSurvey
       self.applicationBadgeNumber = applicationBadgeNumber
       self.responseDelaySeconds = responseDelaySeconds
-      self.projectCardClicked = projectCardClicked
+      self.trackProjectCardClick = trackProjectCardClick
     }
   }
 
   public let sessionFeature: SessionFeature
   public private(set) var activities: [Activity] = []
   public private(set) var surveys: [SurveyResponse] = []
-  public private(set) var error: Error?
+  public private(set) var activityPageError: Error?
   public private(set) var surveyError: Error?
-  public private(set) var isLoading = false
+  public private(set) var isLoadingActivityPage = false
   private let makeProvider: () -> any ActivityProvider
   private let platform: Platform
   private let sleep: (TimeInterval) async throws -> Void
@@ -95,8 +95,8 @@ public final class ActivityFeature {
     self.sessionFeature.currentUser == user
   }
 
-  public func projectCardClicked(_ project: Project) {
-    self.platform.projectCardClicked(project)
+  public func trackProjectCardClick(_ project: Project) {
+    self.platform.trackProjectCardClick(project)
   }
 
   func surveyURL(id: Int) async throws -> String {
@@ -121,9 +121,9 @@ public final class ActivityFeature {
     self.accumulatedActivityPageItems = []
     self.surveys = []
     self.nextPageCursor = nil
-    self.error = nil
+    self.activityPageError = nil
     self.surveyError = nil
-    if self.isLoading { self.isLoading = false; self.publish(.loading(false)) }
+    if self.isLoadingActivityPage { self.isLoadingActivityPage = false; self.publish(.loading(false)) }
   }
 
   public func refreshActivityFeed() async { await self.requestActivityPage()?.value }
@@ -151,21 +151,21 @@ public final class ActivityFeature {
     let generation = self.sessionFeature.generation
     let provider = self.makeProvider()
     let delay = self.platform.responseDelaySeconds()
-    self.isLoading = true
-    self.error = nil
+    self.isLoadingActivityPage = true
+    self.activityPageError = nil
     let task = Task { [weak self, sleep] in
       guard let self else { return }
       defer {
         if self.activityPageRequest?.token == token {
           self.activityPageRequest = nil
-          self.isLoading = false
+          self.isLoadingActivityPage = false
           self.publish(.loading(false))
         }
       }
       do {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        let envelope = try await provider.page(cursor: cursor)
+        let envelope = try await provider.fetchActivityPage(cursor: cursor)
         try await sleep(delay)
         try Task.checkCancellation()
         guard self.activityPageRequest?.token == token,
@@ -179,7 +179,7 @@ public final class ActivityFeature {
       } catch {
         guard !Task.isCancelled, !(error is CancellationError), self.activityPageRequest?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        self.error = error
+        self.activityPageError = error
       }
     }
     self.activityPageRequest = (token, cursor, task)
@@ -208,7 +208,7 @@ public final class ActivityFeature {
       do {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        let surveys = try await provider.surveys()
+        let surveys = try await provider.fetchUnansweredSurveys()
         try Task.checkCancellation()
         guard self.unansweredSurveyRequest?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }

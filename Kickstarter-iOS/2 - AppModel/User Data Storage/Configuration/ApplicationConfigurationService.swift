@@ -27,7 +27,7 @@ public final class ApplicationConfigurationService {
     self.applyConfiguration = applyConfiguration
   }
 
-  @discardableResult func refresh() -> Task<Config, Error> {
+  @discardableResult func requestConfigurationRefresh() -> Task<Config, Error> {
     self.installVisitorCookies()
     return self.requestConfiguration(applyResult: true)
   }

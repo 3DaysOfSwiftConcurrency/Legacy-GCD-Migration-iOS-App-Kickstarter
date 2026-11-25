@@ -4,24 +4,24 @@ import Prelude
 
 @MainActor
 public protocol CreatorDraftsProvider {
-  func load(project: Project) async throws -> UpdateDraft
-  func save(draft: UpdateDraft, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft
-  func add(file: URL, draft: UpdateDraft) async throws -> UpdateDraft.Image
-  func remove(image: UpdateDraft.Image, draft: UpdateDraft) async throws -> UpdateDraft.Image
+  func fetchDraft(project: Project) async throws -> UpdateDraft
+  func saveDraft(draft: UpdateDraft, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft
+  func uploadDraftImage(file: URL, draft: UpdateDraft) async throws -> UpdateDraft.Image
+  func removeDraftImage(image: UpdateDraft.Image, draft: UpdateDraft) async throws -> UpdateDraft.Image
 }
 
 @MainActor
 public struct AsyncCreatorDraftsProvider: CreatorDraftsProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func load(project: Project) async throws -> UpdateDraft { try await self.service.creatorDraft(project: project) }
-  public func save(draft: UpdateDraft, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft {
+  public func fetchDraft(project: Project) async throws -> UpdateDraft { try await self.service.creatorDraft(project: project) }
+  public func saveDraft(draft: UpdateDraft, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft {
     try await self.service.saveCreatorDraft(draft, title: title, body: body, isPublic: isPublic)
   }
-  public func add(file: URL, draft: UpdateDraft) async throws -> UpdateDraft.Image {
+  public func uploadDraftImage(file: URL, draft: UpdateDraft) async throws -> UpdateDraft.Image {
     try await self.service.addCreatorDraftImage(file: file, draft: draft)
   }
-  public func remove(image: UpdateDraft.Image, draft: UpdateDraft) async throws -> UpdateDraft.Image {
+  public func removeDraftImage(image: UpdateDraft.Image, draft: UpdateDraft) async throws -> UpdateDraft.Image {
     try await self.service.removeCreatorDraftImage(image, draft: draft)
   }
 }
@@ -125,7 +125,7 @@ public final class CreatorDraftsFeature {
       do {
         if let predecessor { _ = await predecessor.result }
         try self.ensureDraftSessionIsCurrent(key)
-        let draft = try await provider.load(project: project)
+        let draft = try await provider.fetchDraft(project: project)
         try await self.sleep(delay)
         try self.ensureDraftSessionIsCurrent(key)
         guard self.routes[route] === state, self.editVersionsByDraft[key, default: 0] == revision else { return }
@@ -144,25 +144,25 @@ public final class CreatorDraftsFeature {
   }
 
   public func saveDraft(route: UUID, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft {
-    let value = try await self.execute(.save(title: title, body: body, isPublic: isPublic), route: route)
+    let value = try await self.performDraftEdit(.save(title: title, body: body, isPublic: isPublic), route: route)
     guard case .saved(let draft) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return draft
   }
   public func uploadDraftImage(file: URL, route: UUID) async throws -> UpdateDraft.Image {
-    let value = try await self.execute(.add(file), route: route)
+    let value = try await self.performDraftEdit(.add(file), route: route)
     guard case .image(let image) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return image
   }
   public func removeDraftImage(imageID: Int, route: UUID) async throws -> UpdateDraft.Image {
-    let value = try await self.execute(.remove(imageID), route: route)
+    let value = try await self.performDraftEdit(.remove(imageID), route: route)
     guard case .image(let image) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return image
   }
-  private func execute(_ command: Command, route: UUID) async throws -> Outcome {
+  private func performDraftEdit(_ command: Command, route: UUID) async throws -> Outcome {
     try Task.checkCancellation()
     guard let state = self.routes[route] else { throw CancellationError() }
     do {
-      let value = try await self.request(command, state: state).value
+      let value = try await self.startDraftEdit(command, state: state).value
       try self.ensureDraftSessionIsCurrent(state.key)
       guard self.routes[route] === state else { throw CancellationError() }
       return value
@@ -173,7 +173,7 @@ public final class CreatorDraftsFeature {
     }
   }
 
-  private func request(_ command: Command, state: Route) throws -> Task<Outcome, Error> {
+  private func startDraftEdit(_ command: Command, state: Route) throws -> Task<Outcome, Error> {
     let key = state.key
     try self.ensureDraftSessionIsCurrent(key)
     guard let admittedDraft = self.cachedDraftsByKey[key] else { throw ErrorEnvelope.couldNotParseJSON }
@@ -193,16 +193,16 @@ public final class CreatorDraftsFeature {
         switch command {
         case let .save(title, body, isPublic):
           if draft.update.title != title || draft.update.body != body || draft.update.isPublic != isPublic {
-            draft = try await provider.save(draft: draft, title: title, body: body, isPublic: isPublic)
+            draft = try await provider.saveDraft(draft: draft, title: title, body: body, isPublic: isPublic)
           }
           outcome = .saved(draft)
         case .add(let file):
-          let image = try await provider.add(file: file, draft: draft)
+          let image = try await provider.uploadDraftImage(file: file, draft: draft)
           draft = draft |> UpdateDraft.lens.images .~ (draft.images.filter { $0.id != image.id } + [image])
           outcome = .image(image)
         case .remove(let id):
           guard let image = draft.images.first(where: { $0.id == id }) else { throw ErrorEnvelope.couldNotParseJSON }
-          let removed = try await provider.remove(image: image, draft: draft)
+          let removed = try await provider.removeDraftImage(image: image, draft: draft)
           draft = draft |> UpdateDraft.lens.images .~ draft.images.filter { $0.id != removed.id }
           outcome = .image(removed)
         }
@@ -230,7 +230,7 @@ public final class CreatorDraftsFeature {
     }
   }
 
-  public func waitForOperations() async {
+  public func waitForDraftOperations() async {
     while !self.draftLoadTasks.isEmpty || !self.draftEditTasks.isEmpty {
       for task in Array(self.draftLoadTasks.values) { await task.value }
       for task in Array(self.draftEditTasks.values) { _ = await task.result }

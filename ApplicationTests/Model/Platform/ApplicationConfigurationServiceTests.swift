@@ -19,7 +19,7 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
 
     await withEnvironment(apiService: apiService, config: stored, cookieStorage: MockCookieStorage(),
                           mainBundle: debugBundle) {
-      _ = await ApplicationConfigurationService.live().refresh().result
+      _ = await ApplicationConfigurationService.live().requestConfigurationRefresh().result
       XCTAssertEqual(AppEnvironment.current.config?.features, [
         "enabled_flag": true, "disabled_flag": false, "new_flag": true
       ])
@@ -28,7 +28,7 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
     let releaseBundle = MockBundle(bundleIdentifier: KickstarterBundleIdentifier.release.rawValue)
     await withEnvironment(apiService: apiService, config: stored, cookieStorage: MockCookieStorage(),
                           mainBundle: releaseBundle) {
-      _ = await ApplicationConfigurationService.live().refresh().result
+      _ = await ApplicationConfigurationService.live().requestConfigurationRefresh().result
       XCTAssertEqual(AppEnvironment.current.config?.features, incoming.features)
     }
   }
@@ -61,10 +61,10 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
       load: { try await gate.request() },
       applyConfiguration: { applied.append($0) }
     )
-    let old = service.refresh()
+    let old = service.requestConfigurationRefresh()
     await gate.waitFor(1)
     service.reset()
-    let current = service.refresh()
+    let current = service.requestConfigurationRefresh()
     await gate.waitFor(2)
     try gate.finish(0, .success(.template))
     try gate.finish(1, .success(.template))
@@ -83,8 +83,8 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
     )
     let prefetch = service.requestConfiguration()
     await gate.waitFor(1)
-    let first = service.refresh()
-    let second = service.refresh()
+    let first = service.requestConfigurationRefresh()
+    let second = service.requestConfigurationRefresh()
     try gate.finish(0, .success(.template))
     _ = try await first.value
     _ = try await second.value

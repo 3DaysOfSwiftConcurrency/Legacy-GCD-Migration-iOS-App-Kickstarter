@@ -358,7 +358,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
         self.hasTrackingCheckoutResult = true
         self.trackPageIfReady()
         self.paymentIntentTask?.cancel()
-        let request = paymentsFeature.requestIntent(
+        let request = paymentsFeature.requestPaymentIntent(
           projectID: data.project.graphID, backingID: checkout.checkout.backingId, checkoutID: decodedCheckoutID,
           total: PostCampaignAmounts(data).total
         )

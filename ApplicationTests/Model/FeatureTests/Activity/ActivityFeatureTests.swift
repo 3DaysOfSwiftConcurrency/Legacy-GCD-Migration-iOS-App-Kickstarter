@@ -64,10 +64,10 @@ final class ActivityFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
     let loadingChanged = expectation(description: "loading state changed")
-    withObservationTracking { _ = feature.isLoading } onChange: { loadingChanged.fulfill() }
+    withObservationTracking { _ = feature.isLoadingActivityPage } onChange: { loadingChanged.fulfill() }
     let request = feature.requestActivityPage()
     await fulfillment(of: [loadingChanged], timeout: 2)
-    XCTAssertTrue(feature.isLoading)
+    XCTAssertTrue(feature.isLoadingActivityPage)
     let activitiesChanged = expectation(description: "activities changed")
     withObservationTracking { _ = feature.activities } onChange: { activitiesChanged.fulfill() }
     await provider.pages.waitFor(1)
@@ -75,7 +75,7 @@ final class ActivityFeatureTests: TestCase {
     await request?.value
     await fulfillment(of: [activitiesChanged], timeout: 2)
     XCTAssertEqual(feature.activities.map(\.id), [4])
-    XCTAssertFalse(feature.isLoading)
+    XCTAssertFalse(feature.isLoadingActivityPage)
   }
 
   func testHistorySharingPaginationSortingEmptyAndRetry() async throws {
@@ -97,14 +97,14 @@ final class ActivityFeatureTests: TestCase {
     await provider.pages.waitFor(3)
     try provider.pages.finish(2, .failure(ErrorEnvelope.couldNotParseJSON))
     await failed?.value
-    XCTAssertNotNil(feature.error)
+    XCTAssertNotNil(feature.activityPageError)
     XCTAssertEqual(feature.activities.count, 3)
     let empty = feature.requestActivityPage()
     await provider.pages.waitFor(4)
     try provider.pages.finish(3, .success(self.page([])))
     await empty?.value
     XCTAssertTrue(feature.activities.isEmpty)
-    XCTAssertNil(feature.error)
+    XCTAssertNil(feature.activityPageError)
     XCTAssertNil(feature.requestActivityPage(next: true))
   }
 
@@ -122,7 +122,7 @@ final class ActivityFeatureTests: TestCase {
     await page?.value; await survey?.value
     XCTAssertTrue(feature.activities.isEmpty)
     XCTAssertTrue(feature.surveys.isEmpty)
-    XCTAssertFalse(feature.isLoading)
+    XCTAssertFalse(feature.isLoadingActivityPage)
   }
 
   func testSurveyFailurePreservesDataAndIndependentPageCanComplete() async throws {
@@ -169,9 +169,9 @@ final class ActivityFeatureTests: TestCase {
     try provider.surveysGate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await page?.value
     await survey?.value
-    XCTAssertNil(feature.error)
+    XCTAssertNil(feature.activityPageError)
     XCTAssertNil(feature.surveyError)
-    XCTAssertFalse(feature.isLoading)
+    XCTAssertFalse(feature.isLoadingActivityPage)
   }
 }
 
@@ -180,10 +180,10 @@ private final class ControlledActivityProvider: ActivityProvider {
   let pages = AccountRequestGate<ActivityEnvelope>()
   let surveysGate = AccountRequestGate<[SurveyResponse]>()
   var cursors: [String?] = []
-  func page(cursor: String?) async throws -> ActivityEnvelope { self.cursors
+  func fetchActivityPage(cursor: String?) async throws -> ActivityEnvelope { self.cursors
     .append(cursor); return try await self.pages.request()
   }
 
-  func surveys() async throws -> [SurveyResponse] { try await self.surveysGate.request() }
+  func fetchUnansweredSurveys() async throws -> [SurveyResponse] { try await self.surveysGate.request() }
   func releaseAll() { self.pages.releaseAll(); self.surveysGate.releaseAll() }
 }

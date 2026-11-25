@@ -36,7 +36,7 @@ final class RecommendationsFeatureTests: XCTestCase {
     self.feature.reset()
     self.provider.categories.releaseAll()
     self.provider.pages.releaseAll()
-    await self.feature.waitForOperations()
+    await self.feature.waitForRecommendationLoads()
     try await super.tearDown()
   }
 
@@ -65,7 +65,7 @@ final class RecommendationsFeatureTests: XCTestCase {
     try self.provider.pages.finish(1, .success([self.project(1)]))
     try self.provider.pages.finish(0, .success([self.project(1)]))
     await task.value
-    XCTAssertEqual(self.feature.selection(route: self.route)?.projects.map(\.id), [1, 1])
+    XCTAssertEqual(self.feature.loadedSelection(for: self.route)?.projects.map(\.id), [1, 1])
   }
 
   func testCuratedPartialFailureRetainsSuccessfulCategory() async throws {
@@ -74,7 +74,7 @@ final class RecommendationsFeatureTests: XCTestCase {
     try self.provider.pages.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     try self.provider.pages.finish(1, .success([self.project(2)]))
     await task.value
-    XCTAssertEqual(self.feature.selection(route: self.route)?.projects.map(\.id), [2])
+    XCTAssertEqual(self.feature.loadedSelection(for: self.route)?.projects.map(\.id), [2])
   }
 
   func testEquivalentPendingInputSharesRequest() async throws {
@@ -86,17 +86,17 @@ final class RecommendationsFeatureTests: XCTestCase {
     await first.value
     await second.value
     XCTAssertEqual(self.provider.pages.count, 1)
-    XCTAssertTrue(try XCTUnwrap(self.feature.selection(route: route)).projects.isEmpty)
+    XCTAssertTrue(try XCTUnwrap(self.feature.loadedSelection(for: route)).projects.isEmpty)
   }
 
   func testClearingCategoriesSuppressesLateSuccess() async throws {
     let route = self.route
     let first = self.feature.requestRecommendations(.curated([.art]), route: route)
     await self.provider.pages.waitFor(1)
-    await self.feature.load(.curated([]), route: route)
+    await self.feature.loadRecommendations(.curated([]), route: route)
     try self.provider.pages.finish(0, .success([self.project(1)]))
     await first.value
-    XCTAssertNil(self.feature.selection(route: self.route))
+    XCTAssertNil(self.feature.loadedSelection(for: self.route))
   }
 
   func testSeparateScreensDoNotCancelEachOther() async throws {
@@ -111,8 +111,8 @@ final class RecommendationsFeatureTests: XCTestCase {
     try self.provider.pages.finish(1, .success([self.project(2)]))
     await first.value
     await second.value
-    XCTAssertNil(self.feature.selection(route: firstRoute))
-    XCTAssertEqual(self.feature.selection(route: secondRoute)?.projects.map(\.id), [2])
+    XCTAssertNil(self.feature.loadedSelection(for: firstRoute))
+    XCTAssertEqual(self.feature.loadedSelection(for: secondRoute)?.projects.map(\.id), [2])
   }
 
   func testRecommendationsStopAfterThreeUniqueAlternatives() async throws {
@@ -124,8 +124,8 @@ final class RecommendationsFeatureTests: XCTestCase {
     try self.provider.pages.finish(0, .success([self.project(1), self.project(2), self.project(2), self.project(3), self.project(4)]))
     await task.value
     XCTAssertEqual(self.provider.pages.count, 1)
-    XCTAssertEqual(Set(try XCTUnwrap(self.feature.selection(route: self.route)).projects.map(\.id)), Set([2, 3, 4]))
-    XCTAssertEqual(self.feature.selection(route: self.route)?.category, .art)
+    XCTAssertEqual(Set(try XCTUnwrap(self.feature.loadedSelection(for: self.route)).projects.map(\.id)), Set([2, 3, 4]))
+    XCTAssertEqual(self.feature.loadedSelection(for: self.route)?.category, .art)
   }
 
   func testFallbackOrderAndFailuresPreserveAvailableAlternatives() async throws {
@@ -144,7 +144,7 @@ final class RecommendationsFeatureTests: XCTestCase {
     XCTAssertEqual(self.provider.parameters[2].staffPicks, true)
     try self.provider.pages.finish(2, .success([self.project(2), self.project(3)]))
     await task.value
-    XCTAssertEqual(self.feature.selection(route: self.route)?.projects.map(\.id), [2, 3])
+    XCTAssertEqual(self.feature.loadedSelection(for: self.route)?.projects.map(\.id), [2, 3])
   }
 
   func testReconfiguredProjectKeepsCategoryPairedAndIgnoresOldLookup() async throws {
@@ -159,7 +159,7 @@ final class RecommendationsFeatureTests: XCTestCase {
     await second.value
     try self.provider.categories.finish(0, .success(.art))
     await first.value
-    XCTAssertEqual(self.feature.selection(route: route)?.category, Category.tabletopGames.parent)
+    XCTAssertEqual(self.feature.loadedSelection(for: route)?.category, Category.tabletopGames.parent)
     XCTAssertEqual(self.provider.pages.count, 1)
   }
 
@@ -172,7 +172,7 @@ final class RecommendationsFeatureTests: XCTestCase {
     try self.provider.pages.finish(0, .success([self.project(2)]))
     await task.value
     XCTAssertEqual(self.provider.pages.count, 1)
-    XCTAssertNil(self.feature.selection(route: self.route))
+    XCTAssertNil(self.feature.loadedSelection(for: self.route))
   }
 
   func testCategoryFailureDoesNotStartDiscovery() async throws {
@@ -181,14 +181,14 @@ final class RecommendationsFeatureTests: XCTestCase {
     try self.provider.categories.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await task.value
     XCTAssertEqual(self.provider.pages.count, 0)
-    XCTAssertNil(self.feature.selection(route: self.route))
+    XCTAssertNil(self.feature.loadedSelection(for: self.route))
   }
 
   func testMissingProjectCategoryDoesNotRequest() async {
     let project = self.project(1) |> Project.lens.category .~ nil
-    await self.feature.load(.afterBacking(project), route: self.route)
+    await self.feature.loadRecommendations(.afterBacking(project), route: self.route)
     XCTAssertEqual(self.provider.categories.count, 0)
-    XCTAssertNil(self.feature.selection(route: self.route))
+    XCTAssertNil(self.feature.loadedSelection(for: self.route))
   }
 
   func testClosingThanksSuppressesLateRecommendations() async throws {
@@ -197,8 +197,8 @@ final class RecommendationsFeatureTests: XCTestCase {
     await self.provider.categories.waitFor(1)
     vm.closeButtonTapped()
     try self.provider.categories.finish(0, .success(.art))
-    await self.feature.waitForOperations()
-    XCTAssertNil(self.feature.selection(route: self.route))
+    await self.feature.waitForRecommendationLoads()
+    XCTAssertNil(self.feature.loadedSelection(for: self.route))
     XCTAssertEqual(self.provider.pages.count, 0)
   }
 }
@@ -208,8 +208,8 @@ private final class ControlledRecommendationsProvider: RecommendationsProvider {
   let categories = AccountRequestGate<KsApi.Category>()
   let pages = AccountRequestGate<[Project]>()
   var parameters: [DiscoveryParams] = []
-  func category(id: String) async throws -> KsApi.Category { try await self.categories.request() }
-  func projects(parameters: DiscoveryParams) async throws -> [Project] {
+  func fetchRecommendationCategory(id: String) async throws -> KsApi.Category { try await self.categories.request() }
+  func fetchProjects(parameters: DiscoveryParams) async throws -> [Project] {
     self.parameters.append(parameters)
     return try await self.pages.request()
   }

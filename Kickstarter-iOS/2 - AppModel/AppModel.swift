@@ -676,7 +676,7 @@ public final class AppModel {
   }
 
   func receiveDeviceToken(_ deviceToken: Data, onRegistered: @escaping @MainActor (String) -> Void) {
-    self.sessionFeature.receiveDeviceToken(deviceToken, onRegistered: onRegistered)
+    self.sessionFeature.scheduleDeviceRegistration(for: deviceToken, onRegistered: onRegistered)
   }
 
   public func applicationWillEnterForeground() {
@@ -710,7 +710,7 @@ public final class AppModel {
     self.friendsFeature.reset()
     self.activityFeature.reset()
     self.profileFeature.reset()
-    self.messagingFeature.reset()
+    self.messagingFeature.resetMailboxState()
     self.pledgeFeature.reset()
     self.pledgedProjectsFeature.reset()
     self.settingsFeature.requestApplicationSettingsRefresh()
@@ -725,7 +725,7 @@ public final class AppModel {
         loadSurvey: { try await AppEnvironment.current.apiService.applicationSurvey(id: $0) },
         applicationBadgeNumber: { AppEnvironment.current.application.applicationIconBadgeNumber },
         responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-        projectCardClicked: {
+        trackProjectCardClick: {
           AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(page: .activities, project: $0)
         }
       ),

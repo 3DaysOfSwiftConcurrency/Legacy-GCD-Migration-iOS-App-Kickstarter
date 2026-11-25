@@ -49,7 +49,7 @@ final class PaymentMethodSettingsViewModel {
     self.presentationTasks.replace(.cards) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        let cards = try await feature.cards().me.storedCards.storedCards
+        let cards = try await feature.fetchSavedCards().me.storedCards.storedCards
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity) else { return }
@@ -73,7 +73,7 @@ final class PaymentMethodSettingsViewModel {
     self.presentationTasks.replace(.delete) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        let cards = try await feature.remove(id: card.id).storedCards
+        let cards = try await feature.removePaymentMethod(id: card.id).storedCards
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity) else { return }
@@ -130,7 +130,7 @@ final class PaymentMethodSettingsViewModel {
     self.presentationTasks.replace(.store) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
-        _ = try await feature.store(secret: setupIntent)
+        _ = try await feature.createPaymentSource(secret: setupIntent)
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.isCurrent(identity) else { return }

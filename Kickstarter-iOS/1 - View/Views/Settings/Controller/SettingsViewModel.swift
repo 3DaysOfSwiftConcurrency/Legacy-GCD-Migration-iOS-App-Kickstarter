@@ -36,7 +36,7 @@ public final class SettingsViewModel {
     let id = UUID()
     self.reads[id] = Task { [weak self, settings] in
       defer { self?.reads[id] = nil }
-      guard let user = try? await settings.refresh(), !Task.isCancelled else { return }
+      guard let user = try? await settings.refreshAccount(), !Task.isCancelled else { return }
       self?.display(user)
     }
   }

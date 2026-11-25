@@ -31,7 +31,7 @@ public final class SettingsPrivacyViewModel {
     self.loadTask?.cancel()
     let settingsFeature = self.settingsFeature
     self.loadTask = Task { [weak self, settingsFeature] in
-      guard let user = try? await settingsFeature.refresh(), !Task.isCancelled else { return }
+      guard let user = try? await settingsFeature.refreshAccount(), !Task.isCancelled else { return }
       self?.display(user)
     }
   }

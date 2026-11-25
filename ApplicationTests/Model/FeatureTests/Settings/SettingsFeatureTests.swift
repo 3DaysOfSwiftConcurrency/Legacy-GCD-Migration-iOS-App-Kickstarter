@@ -460,7 +460,7 @@ final class SettingsFeatureTests: XCTestCase {
     let feature = SettingsFeature(sessionFeature: session, makeProvider: { fixture.provider })
     defer { fixture.provider.gate.releaseAll(); users.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
-    let read = Task { try await feature.refresh() }
+    let read = Task { try await feature.refreshAccount() }
     await users.gate.waitFor(1)
     let write = feature.requestPreferences([.init(.newsletter(.arts), true)], from: user)
     defer { read.cancel() }
@@ -602,7 +602,7 @@ extension SettingsFeatureTests {
     await fixture.provider.emails.waitFor(1)
     try fixture.provider.emails.finish(0, .success(.template))
     await delay.waitFor(1)
-    fixture.session.invalidateReads()
+    fixture.session.invalidateAccountReads()
     try delay.finish(0, .success(()))
     do { _ = try await read.value; XCTFail("Invalidated account fields were returned") }
     catch is CancellationError {}
@@ -783,7 +783,7 @@ extension SettingsFeatureTests {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll(); fixture.readProvider.gate.releaseAll() }
     _ = try fixture.feature.requestAccount(.currency("GBP"))
-    let refresh = fixture.feature.requestRefresh()
+    let refresh = fixture.feature.requestAccountRefresh()
     defer { refresh.cancel() }
     await fixture.provider.gate.waitFor(1)
     XCTAssertEqual(fixture.readProvider.gate.count, 0)
@@ -801,7 +801,7 @@ extension SettingsFeatureTests {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll(); fixture.readProvider.gate.releaseAll() }
     let stale = try XCTUnwrap(fixture.user)
-    let refresh = fixture.feature.requestRefresh()
+    let refresh = fixture.feature.requestAccountRefresh()
     await fixture.readProvider.gate.waitFor(1)
     _ = try fixture.feature.requestAccount(.currency("GBP"))
     defer { refresh.cancel() }
@@ -879,10 +879,10 @@ private final class ControlledPreferencesReadProvider: SessionProvider {
     XCTFail("Unexpected device registration")
     throw CancellationError()
   }
-  func setup() async throws -> GraphUserSetup { throw CancellationError() }
+  func fetchGraphUserSetup() async throws -> GraphUserSetup { throw CancellationError() }
   let gate = AccountRequestGate<User>()
-  func user() async throws -> User { try await self.gate.request() }
-  func graphUser() async throws -> User { throw CancellationError() }
+  func fetchCurrentUser() async throws -> User { try await self.gate.request() }
+  func fetchGraphUser() async throws -> User { throw CancellationError() }
   func clearActivityIndicator() async throws -> Int { throw CancellationError() }
 }
 

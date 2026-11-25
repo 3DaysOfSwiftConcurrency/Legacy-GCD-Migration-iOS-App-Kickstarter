@@ -132,7 +132,7 @@ final class ActivitiesViewModel {
   private func goToProject(_ project: Project?) {
     guard let project else { return }
     self.onEvent?(.goToProject(project, .activity))
-    self.activityFeature.projectCardClicked(project)
+    self.activityFeature.trackProjectCardClick(project)
   }
   func tappedRespondNow(forSurveyResponse response: SurveyResponse) { self.onEvent?(.goToSurveyResponse(response)) }
 
@@ -141,11 +141,16 @@ final class ActivitiesViewModel {
     guard sessionFeature.currentUser != nil else { return }
     let userID = sessionFeature.currentUser?.id
     let generation = sessionFeature.generation
-    let readGeneration = sessionFeature.readGeneration
+    let userReadGeneration = sessionFeature.userReadGeneration
     let projection = operation == .clearActivity ? self.badgeProjection : self.userProjection
     if projection?.userID == userID, projection?.generation == generation { return }
     let token = UUID()
-    let request = sessionFeature.request(operation)
+    let request: Task<User, Error>
+    switch operation {
+    case .user: request = sessionFeature.requestCurrentUser()
+    case .graphUser: request = sessionFeature.requestGraphUser()
+    case .clearActivity: request = sessionFeature.requestClearActivityIndicator()
+    }
     let task = Task { [weak self] in
       defer {
         if operation == .clearActivity, self?.badgeProjection?.token == token {
@@ -159,7 +164,7 @@ final class ActivitiesViewModel {
       do {
         var user = try await request.value
         guard sessionFeature.isCurrent(userID: userID, generation: generation),
-              operation == .clearActivity || sessionFeature.readGeneration == readGeneration else { return }
+              operation == .clearActivity || sessionFeature.userReadGeneration == userReadGeneration else { return }
         if operation == .clearActivity, var current = sessionFeature.currentUser {
           current.unseenActivityCount = user.unseenActivityCount
           user = current

@@ -62,15 +62,15 @@ final class ExamplesPresentationProvider: DeveloperExamplesProvider {
       ),
       makeProvider: { self })
   }
-  func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
+  func fetchDiscoveryPage(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
     self.parameters.append(parameters)
     return try self.pageResult.get()
   }
-  func projects() async throws -> [DeveloperExamplesFeature.ProjectItem] {
+  func fetchRichTextExampleProjects() async throws -> [DeveloperExamplesFeature.ProjectItem] {
     self.listCount += 1
     return try self.listResult.get()
   }
-  func project(slug: String) async throws -> DeveloperExamplesFeature.ProjectItem? {
+  func fetchRichTextExampleProject(slug: String) async throws -> DeveloperExamplesFeature.ProjectItem? {
     self.lookupCount += 1
     return try await self.lookup()
   }

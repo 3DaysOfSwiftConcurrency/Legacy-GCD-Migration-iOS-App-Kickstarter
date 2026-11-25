@@ -26,7 +26,7 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     self.provider.saves.releaseAll()
     self.provider.adds.releaseAll()
     self.provider.removes.releaseAll()
-    await self.feature.waitForOperations()
+    await self.feature.waitForDraftOperations()
     try await super.tearDown()
   }
   private func save(_ title: String) -> Task<UpdateDraft, Error> {
@@ -230,15 +230,15 @@ private final class ControlledCreatorDraftsProvider: CreatorDraftsProvider {
   let removes = AccountRequestGate<UpdateDraft.Image>()
   var titles: [String] = []
   var savedDrafts: [UpdateDraft] = []
-  func load(project: Project) async throws -> UpdateDraft {
+  func fetchDraft(project: Project) async throws -> UpdateDraft {
     if self.pauseLoad { return try await self.loads.request() }
     return .template
   }
-  func save(draft: UpdateDraft, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft {
+  func saveDraft(draft: UpdateDraft, title: String, body: String, isPublic: Bool) async throws -> UpdateDraft {
     self.titles.append(title)
     self.savedDrafts.append(draft)
     return try await self.saves.request()
   }
-  func add(file: URL, draft: UpdateDraft) async throws -> UpdateDraft.Image { try await self.adds.request() }
-  func remove(image: UpdateDraft.Image, draft: UpdateDraft) async throws -> UpdateDraft.Image { try await self.removes.request() }
+  func uploadDraftImage(file: URL, draft: UpdateDraft) async throws -> UpdateDraft.Image { try await self.adds.request() }
+  func removeDraftImage(image: UpdateDraft.Image, draft: UpdateDraft) async throws -> UpdateDraft.Image { try await self.removes.request() }
 }

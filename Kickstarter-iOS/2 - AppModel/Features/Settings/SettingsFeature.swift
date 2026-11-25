@@ -330,7 +330,7 @@ public final class SettingsFeature {
     let id = UUID()
     if valid {
       self.editRevision += 1
-      self.session.invalidateReads()
+      self.session.invalidateAccountReads()
     }
     let task = Task { [self] in
       if let previous { _ = await previous.result }
@@ -360,7 +360,7 @@ public final class SettingsFeature {
           current = latest
         }
         self.session.commitUser(current, userID: account.id, generation: account.generation)
-        self.session.invalidateReads()
+        self.session.invalidateAccountReads()
         self.lastError = nil
         result = .success(current)
       } catch {
@@ -423,7 +423,7 @@ public final class SettingsFeature {
         let envelope = try await provider.verifyEmail(token: token)
         guard self.session.isCurrent(userID: userID, generation: generation)
         else { throw CancellationError() }
-        self.session.invalidateReads()
+        self.session.invalidateAccountReads()
         return envelope
       } catch {
         guard self.session.isCurrent(userID: userID, generation: generation)
@@ -456,7 +456,7 @@ public final class SettingsFeature {
         while let previous = self.latestQueuedAccountWrite?.task { _ = await previous.result }
         try Task.checkCancellation()
         guard self.session.isCurrent(userID: userID, generation: generation) else { return }
-        let setup = try await self.session.refreshSetup()
+        let setup = try await self.session.refreshGraphUserSetup()
         try Task.checkCancellation()
         if setup.email != nil { onEmailAvailable() }
       } catch { /* Setup failures remain silent. */ }
@@ -478,7 +478,7 @@ public final class SettingsFeature {
     let generation = self.session.generation
     let userID = self.session.currentUser?.id
     while let previous = self.latestQueuedAccountWrite?.task { _ = await previous.result }
-    let revision = self.session.readGeneration
+    let revision = self.session.userReadGeneration
     try Task.checkCancellation()
     guard self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
     let task: Task<GraphUser, Error>
@@ -497,7 +497,7 @@ public final class SettingsFeature {
     }
     func requireCurrentRead() throws {
       try Task.checkCancellation()
-      guard revision == self.session.readGeneration,
+      guard revision == self.session.userReadGeneration,
             self.session.isCurrent(userID: userID, generation: generation)
       else { throw CancellationError() }
     }
@@ -522,7 +522,7 @@ public final class SettingsFeature {
 
   /// Start a session-bound refresh immediately; the caller may cancel this read.
   @discardableResult
-  public func requestRefresh(allowSessionRestore: Bool = false) -> Task<User, Error> {
+  public func requestAccountRefresh(allowSessionRestore: Bool = false) -> Task<User, Error> {
     let id = UUID()
     let generation = self.session.generation
     let userID = self.session.currentUser?.id
@@ -534,7 +534,7 @@ public final class SettingsFeature {
     return task
   }
 
-  public func refresh() async throws -> User {
+  public func refreshAccount() async throws -> User {
     try await self.refresh(userID: self.session.currentUser?.id, generation: self.session.generation)
   }
 
@@ -548,11 +548,11 @@ public final class SettingsFeature {
     try Task.checkCancellation()
     guard self.session.isCurrent(userID: userID, generation: generation)
     else { throw CancellationError() }
-    let readGeneration = self.session.readGeneration
+    let userReadGeneration = self.session.userReadGeneration
     do {
-      let user = try await self.session.refresh()
+      let user = try await self.session.refreshCurrentUser()
       try Task.checkCancellation()
-      guard revision == self.editRevision, readGeneration == self.session.readGeneration,
+      guard revision == self.editRevision, userReadGeneration == self.session.userReadGeneration,
             self.session.isCurrent(userID: userID, generation: generation),
             userID == nil || user.id == userID else { throw CancellationError() }
       self.account = self.identity(for: user)
@@ -565,7 +565,7 @@ public final class SettingsFeature {
       return user
     } catch {
       guard !Task.isCancelled, revision == self.editRevision,
-            readGeneration == self.session.readGeneration,
+            userReadGeneration == self.session.userReadGeneration,
             self.session.isCurrent(userID: userID, generation: generation)
       else { throw CancellationError() }
       throw error

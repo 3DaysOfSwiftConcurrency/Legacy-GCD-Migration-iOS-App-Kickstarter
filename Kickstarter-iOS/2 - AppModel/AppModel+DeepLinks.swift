@@ -35,7 +35,7 @@ extension AppModel {
       case let .user(_, .survey(id)):
         destination = .survey(try await self.activityFeature.surveyURL(id: id))
       case let .messages(id):
-        destination = try await self.messagingFeature.thread(id: id).map { .message($0.messageThread) }
+        destination = try await self.messagingFeature.fetchMessageThread(id: id).map { .message($0.messageThread) }
       case let .project(_, .pledgeManagerWebview(url), _, _):
         destination = .survey(url)
       case let .project(param, subpage, refInfo, token):

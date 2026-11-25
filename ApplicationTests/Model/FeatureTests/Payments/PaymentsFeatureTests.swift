@@ -156,8 +156,8 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testDuplicateSetupSharesRequestAndCanceledWaiterDoesNotCancelWrite() async throws {
-    let first = Task { try await self.feature.setup(projectID: nil, context: .profileSettings) }
-    let second = Task { try await self.feature.setup(projectID: nil, context: .profileSettings) }
+    let first = Task { try await self.feature.createSetupIntent(projectID: nil, context: .profileSettings) }
+    let second = Task { try await self.feature.createSetupIntent(projectID: nil, context: .profileSettings) }
     await self.provider.setups.waitFor(1)
     await Task.yield()
     first.cancel()
@@ -184,8 +184,8 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testIntentPreservesAmountCheckoutEncodingAndSharesPendingRequest() async throws {
-    let a = Task { try await self.feature.intent(projectID: "project", backingID: "backing", checkoutID: "19", total: 12.5) }
-    let b = Task { try await self.feature.intent(projectID: "project", backingID: "backing", checkoutID: "19", total: 12.5) }
+    let a = Task { try await self.feature.createPaymentIntent(projectID: "project", backingID: "backing", checkoutID: "19", total: 12.5) }
+    let b = Task { try await self.feature.createPaymentIntent(projectID: "project", backingID: "backing", checkoutID: "19", total: 12.5) }
     await self.provider.intents.waitFor(1)
     await Task.yield()
     let input = try XCTUnwrap(self.provider.intentInputs.first)
@@ -204,9 +204,9 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testCardWritesStayOrderedAndFailureDoesNotBlockNextCommand() async throws {
-    let removal = Task { try await self.feature.remove(id: "old") }
+    let removal = Task { try await self.feature.removePaymentMethod(id: "old") }
     await self.provider.removals.waitFor(1)
-    let storage = Task { try await self.feature.store(secret: "fixture") }
+    let storage = Task { try await self.feature.createPaymentSource(secret: "fixture") }
     await Task.yield()
     XCTAssertEqual(self.provider.stores.count, 0)
     try self.provider.removals.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -220,13 +220,13 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testDuplicatePendingCardTailSharesButInterveningWriteDoesNot() async throws {
-    let first = Task { try await self.feature.remove(id: "card") }
+    let first = Task { try await self.feature.removePaymentMethod(id: "card") }
     await self.provider.removals.waitFor(1)
-    let duplicate = Task { try await self.feature.remove(id: "card") }
+    let duplicate = Task { try await self.feature.removePaymentMethod(id: "card") }
     await Task.yield()
-    let store = Task { try await self.feature.store(secret: "fixture") }
+    let store = Task { try await self.feature.createPaymentSource(secret: "fixture") }
     await Task.yield()
-    let again = Task { try await self.feature.remove(id: "card") }
+    let again = Task { try await self.feature.removePaymentMethod(id: "card") }
     await Task.yield()
     try self.provider.removals.finish(0, .success(DeletePaymentMethodEnvelope(storedCards: [])))
     await self.provider.stores.waitFor(1)
@@ -267,7 +267,7 @@ final class PaymentsFeatureTests: TestCase {
   func testReadOvertakenByWriteReloadsBeforePublishingToEitherWaiter() async throws {
     let first = try await self.startCardRead()
     await self.provider.cardReads.waitFor(1)
-    let write = Task { try await self.feature.remove(id: "card") }
+    let write = Task { try await self.feature.removePaymentMethod(id: "card") }
     await self.provider.removals.waitFor(1)
     let second = try await self.startCardRead()
     try self.provider.cardReads.finish(0, .success(UserEnvelope(me: .template)))
@@ -304,18 +304,18 @@ final class PaymentsFeatureTests: TestCase {
     await withCheckedContinuation { (started: CheckedContinuation<Void, Never>) in
       read = Task {
         started.resume()
-        return try await self.feature.cards()
+        return try await self.feature.fetchSavedCards()
       }
     }
     return try XCTUnwrap(read)
   }
 
   func testSessionChangeSuppressesOldIntentValueAndQueuedCardWrite() async throws {
-    let intent = Task { try await self.feature.intent(projectID: "p", backingID: "b", checkoutID: "c", total: 1) }
-    let removal = Task { try await self.feature.remove(id: "old") }
+    let intent = Task { try await self.feature.createPaymentIntent(projectID: "p", backingID: "b", checkoutID: "c", total: 1) }
+    let removal = Task { try await self.feature.removePaymentMethod(id: "old") }
     await self.provider.intents.waitFor(1)
     await self.provider.removals.waitFor(1)
-    let queued = Task { try await self.feature.store(secret: "fixture") }
+    let queued = Task { try await self.feature.createPaymentSource(secret: "fixture") }
     await Task.yield()
     self.session.sessionChanged()
     try self.provider.intents.finish(0, .success(PaymentIntentEnvelope(clientSecret: "old")))
@@ -330,7 +330,7 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testAwaitableCommandRejectsCanceledCallerWithoutRetryingWrite() async throws {
-    let caller = Task { try await self.feature.setup(projectID: nil, context: .profileSettings) }
+    let caller = Task { try await self.feature.createSetupIntent(projectID: nil, context: .profileSettings) }
     await self.provider.setups.waitFor(1)
     caller.cancel()
     try self.provider.setups.finish(0, .success(ClientSecretEnvelope(clientSecret: "fixture")))
@@ -340,7 +340,7 @@ final class PaymentsFeatureTests: TestCase {
   }
 
   func testCancelingIntentWaiterDoesNotCancelAdmittedWrite() async throws {
-    let request = self.feature.requestIntent(projectID: "p", backingID: "b", checkoutID: "c", total: 1)
+    let request = self.feature.requestPaymentIntent(projectID: "p", backingID: "b", checkoutID: "c", total: 1)
     let waiter = Task { try await request.value }
     waiter.cancel()
     await self.provider.intents.waitFor(1)
@@ -353,11 +353,11 @@ final class PaymentsFeatureTests: TestCase {
 
   func testPublicDemoRejectsEveryPaymentEntryPoint() async {
     let provider = AsyncPaymentsProvider(service: MockService.publicDemo())
-    do { _ = try await provider.cards(); XCTFail("Demo must reject payment reads") } catch {}
-    do { _ = try await provider.remove(id: "card"); XCTFail("Demo must reject deletion") } catch {}
-    do { _ = try await provider.store(secret: "fixture"); XCTFail("Demo must reject card storage") } catch {}
-    do { _ = try await provider.setup(input: .init(projectId: nil, context: .profileSettings)); XCTFail("Demo must reject setup") } catch {}
-    do { _ = try await provider.intent(input: .init(projectId: "p", backingId: "b", amountDollars: "1.00", checkoutId: "c", digitalMarketingAttributed: nil)); XCTFail("Demo must reject intent") } catch {}
+    do { _ = try await provider.fetchSavedCards(); XCTFail("Demo must reject payment reads") } catch {}
+    do { _ = try await provider.removePaymentMethod(id: "card"); XCTFail("Demo must reject deletion") } catch {}
+    do { _ = try await provider.createPaymentSource(secret: "fixture"); XCTFail("Demo must reject card storage") } catch {}
+    do { _ = try await provider.createSetupIntent(input: .init(projectId: nil, context: .profileSettings)); XCTFail("Demo must reject setup") } catch {}
+    do { _ = try await provider.createPaymentIntent(input: .init(projectId: "p", backingId: "b", amountDollars: "1.00", checkoutId: "c", digitalMarketingAttributed: nil)); XCTFail("Demo must reject intent") } catch {}
   }
 
   private func storedCard() -> CreatePaymentSourceEnvelope {
@@ -376,20 +376,20 @@ private final class ControlledPaymentsProvider: PaymentsProvider {
   var storedSecrets: [String] = []
   var setupInputs: [KsApi.CreateSetupIntentInput] = []
   var intentInputs: [KsApi.CreatePaymentIntentInput] = []
-  func cards() async throws -> UserEnvelope<GraphUser> { try await self.cardReads.request() }
-  func remove(id: String) async throws -> DeletePaymentMethodEnvelope {
+  func fetchSavedCards() async throws -> UserEnvelope<GraphUser> { try await self.cardReads.request() }
+  func removePaymentMethod(id: String) async throws -> DeletePaymentMethodEnvelope {
     self.removedIDs.append(id)
     return try await self.removals.request()
   }
-  func store(secret: String) async throws -> CreatePaymentSourceEnvelope {
+  func createPaymentSource(secret: String) async throws -> CreatePaymentSourceEnvelope {
     self.storedSecrets.append(secret)
     return try await self.stores.request()
   }
-  func setup(input: KsApi.CreateSetupIntentInput) async throws -> ClientSecretEnvelope {
+  func createSetupIntent(input: KsApi.CreateSetupIntentInput) async throws -> ClientSecretEnvelope {
     self.setupInputs.append(input)
     return try await self.setups.request()
   }
-  func intent(input: KsApi.CreatePaymentIntentInput) async throws -> PaymentIntentEnvelope {
+  func createPaymentIntent(input: KsApi.CreatePaymentIntentInput) async throws -> PaymentIntentEnvelope {
     self.intentInputs.append(input)
     return try await self.intents.request()
   }

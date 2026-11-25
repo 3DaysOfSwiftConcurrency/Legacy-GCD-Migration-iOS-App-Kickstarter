@@ -54,13 +54,13 @@ final class MessageThreadsViewModelTests: TestCase {
   }
 
   private func settle() async {
-    await self.feature.waitForOperations()
+    await self.feature.waitForMessagingOperations()
     await self.vm.waitForPresentation()
   }
 
   override func tearDown() async throws {
-    self.feature.reset()
-    await self.feature.waitForOperations()
+    self.feature.resetMailboxState()
+    await self.feature.waitForMessagingOperations()
     try await super.tearDown()
   }
 }

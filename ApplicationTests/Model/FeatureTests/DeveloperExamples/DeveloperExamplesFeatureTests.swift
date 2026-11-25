@@ -44,7 +44,7 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
 
   func testInitialAndRefreshParametersAndStatusArePreserved() async throws {
     XCTAssertEqual(self.feature.pageSnapshot(route: self.route).statusText, "Waiting to load")
-    let initial = Task { await self.feature.loadFirstPage(route: self.route) }
+    let initial = Task { await self.feature.loadFirstDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(1)
     XCTAssertEqual(self.provider.parameters[0], .defaults)
     XCTAssertEqual(self.feature.pageSnapshot(route: self.route).statusText, "Loading")
@@ -52,7 +52,7 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
     await initial.value
     XCTAssertEqual(
       self.feature.pageSnapshot(route: self.route).statusText, "Got 2 results; more are available")
-    let refresh = Task { await self.feature.loadFirstPage(route: self.route, refreshing: true) }
+    let refresh = Task { await self.feature.loadFirstDiscoveryPage(route: self.route, refreshing: true) }
     await self.provider.pages.waitFor(2)
     XCTAssertEqual(self.feature.pageSnapshot(route: self.route).projects.map(\.id), [1, 2])
     XCTAssertEqual(self.provider.parameters[1].staffPicks, true)
@@ -64,32 +64,32 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   }
 
   func testEquivalentRefreshesShareAndNextPageAtEndReturns() async throws {
-    let first = Task { await self.feature.loadFirstPage(route: self.route) }
+    let first = Task { await self.feature.loadFirstDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(1)
     let admitted = expectation(description: "Second caller entered")
     let second = Task {
       admitted.fulfill()
-      await self.feature.loadFirstPage(route: self.route)
+      await self.feature.loadFirstDiscoveryPage(route: self.route)
     }
     await fulfillment(of: [admitted], timeout: 2)
     try self.provider.pages.finish(0, .success(self.page([])))
     await first.value
     await second.value
-    await self.feature.loadNextPage(route: self.route)
+    await self.feature.loadNextDiscoveryPage(route: self.route)
     XCTAssertEqual(self.provider.pages.count, 1)
   }
 
   func testNextPageSharesAppendsDuplicatesAndEmptyPageEnds() async throws {
-    let first = Task { await self.feature.loadFirstPage(route: self.route) }
+    let first = Task { await self.feature.loadFirstDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success(self.page([1])))
     await first.value
-    let next = Task { await self.feature.loadNextPage(route: self.route) }
+    let next = Task { await self.feature.loadNextDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(2)
     let admitted = expectation(description: "Duplicate next caller entered")
     let duplicate = Task {
       admitted.fulfill()
-      await self.feature.loadNextPage(route: self.route)
+      await self.feature.loadNextDiscoveryPage(route: self.route)
     }
     await fulfillment(of: [admitted], timeout: 2)
     XCTAssertEqual(self.provider.cursors[1], "next")
@@ -97,23 +97,23 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
     await next.value
     await duplicate.value
     XCTAssertEqual(self.feature.pageSnapshot(route: self.route).projects.map(\.id), [1, 1, 2])
-    let last = Task { await self.feature.loadNextPage(route: self.route) }
+    let last = Task { await self.feature.loadNextDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(3)
     try self.provider.pages.finish(2, .success(self.page([])))
     await last.value
     XCTAssertEqual(self.feature.pageSnapshot(route: self.route).statusText, "Loaded all results")
-    await self.feature.loadNextPage(route: self.route)
+    await self.feature.loadNextDiscoveryPage(route: self.route)
     XCTAssertEqual(self.provider.pages.count, 3)
   }
 
   func testRefreshSupersedesNoncooperativeNextPage() async throws {
-    let first = Task { await self.feature.loadFirstPage(route: self.route) }
+    let first = Task { await self.feature.loadFirstDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success(self.page([1])))
     await first.value
-    let old = Task { await self.feature.loadNextPage(route: self.route) }
+    let old = Task { await self.feature.loadNextDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(2)
-    let fresh = Task { await self.feature.loadFirstPage(route: self.route, refreshing: true) }
+    let fresh = Task { await self.feature.loadFirstDiscoveryPage(route: self.route, refreshing: true) }
     await self.provider.pages.waitFor(3)
     try self.provider.pages.finish(2, .success(self.page([9])))
     await fresh.value
@@ -123,17 +123,17 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   }
 
   func testPaginationFailureClearsRowsAndExplicitRefreshRetries() async throws {
-    let first = Task { await self.feature.loadFirstPage(route: self.route) }
+    let first = Task { await self.feature.loadFirstDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success(self.page([1])))
     await first.value
-    let failed = Task { await self.feature.loadNextPage(route: self.route) }
+    let failed = Task { await self.feature.loadNextDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(2)
     try self.provider.pages.finish(1, .failure(ErrorEnvelope.graphError("Offline")))
     await failed.value
     XCTAssertEqual(self.feature.pageSnapshot(route: self.route).statusText, "Error: Offline")
     XCTAssertTrue(self.feature.pageSnapshot(route: self.route).projects.isEmpty)
-    let retry = Task { await self.feature.loadFirstPage(route: self.route, refreshing: true) }
+    let retry = Task { await self.feature.loadFirstDiscoveryPage(route: self.route, refreshing: true) }
     await self.provider.pages.waitFor(3)
     try self.provider.pages.finish(2, .success(self.page([4])))
     await retry.value
@@ -142,9 +142,9 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
 
   func testReleaseRejectsLatePageAndIndependentRouteSurvives() async throws {
     let other = UUID()
-    let old = Task { await self.feature.loadFirstPage(route: self.route) }
+    let old = Task { await self.feature.loadFirstDiscoveryPage(route: self.route) }
     await self.provider.pages.waitFor(1)
-    let independent = Task { await self.feature.loadFirstPage(route: other) }
+    let independent = Task { await self.feature.loadFirstDiscoveryPage(route: other) }
     await self.provider.pages.waitFor(2)
     self.feature.release(route: self.route)
     try self.provider.pages.finish(0, .success(self.page([1])))
@@ -210,13 +210,13 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
 
   func testSlugAndURLSharePendingLookup() async throws {
     let first = Task {
-      try await self.feature.lookupProject(input: "owner/project", route: self.route)
+      try await self.feature.lookupRichTextExampleProject(input: "owner/project", route: self.route)
     }
     await self.provider.lookups.waitFor(1)
     let admitted = expectation(description: "URL caller entered")
     let second = Task {
       admitted.fulfill()
-      return try await self.feature.lookupProject(
+      return try await self.feature.lookupRichTextExampleProject(
         input: "https://www.kickstarter.com/projects/owner/project/rewards", route: self.route)
     }
     await fulfillment(of: [admitted], timeout: 2)
@@ -229,9 +229,9 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   }
 
   func testClearingInputCancelsOldLookupWithoutReportingNotFound() async throws {
-    let old = Task { try await self.feature.lookupProject(input: "owner/old", route: self.route) }
+    let old = Task { try await self.feature.lookupRichTextExampleProject(input: "owner/old", route: self.route) }
     await self.provider.lookups.waitFor(1)
-    let invalid = try await self.feature.lookupProject(input: "", route: self.route)
+    let invalid = try await self.feature.lookupRichTextExampleProject(input: "", route: self.route)
     XCTAssertNil(invalid)
     try self.provider.lookups.finish(0, .success(self.item))
     await self.cancelled(old)
@@ -239,9 +239,9 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   }
 
   func testChangedSlugAndReleaseRejectLateLookups() async throws {
-    let old = Task { try await self.feature.lookupProject(input: "owner/old", route: self.route) }
+    let old = Task { try await self.feature.lookupRichTextExampleProject(input: "owner/old", route: self.route) }
     await self.provider.lookups.waitFor(1)
-    let new = Task { try await self.feature.lookupProject(input: "owner/new", route: self.route) }
+    let new = Task { try await self.feature.lookupRichTextExampleProject(input: "owner/new", route: self.route) }
     await self.provider.lookups.waitFor(2)
     try self.provider.lookups.finish(0, .success(self.item))
     await self.cancelled(old)
@@ -251,10 +251,10 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   }
 
   func testSessionReplacementRejectsAllExampleResults() async throws {
-    let page = Task { await self.feature.loadFirstPage(route: self.route) }
+    let page = Task { await self.feature.loadFirstDiscoveryPage(route: self.route) }
     let list = Task { await self.feature.loadRichTextProjects(route: self.route) }
     let lookup = Task {
-      try await self.feature.lookupProject(input: "owner/project", route: self.route)
+      try await self.feature.lookupRichTextExampleProject(input: "owner/project", route: self.route)
     }
     await self.provider.pages.waitFor(1)
     await self.provider.lists.waitFor(1)
@@ -279,15 +279,15 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   var parameters: [DiscoveryParams] = []
   var cursors: [String?] = []
   var slugs: [String] = []
-  func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
+  func fetchDiscoveryPage(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
     self.parameters.append(parameters)
     self.cursors.append(cursor)
     return try await self.pages.request()
   }
-  func projects() async throws -> [DeveloperExamplesFeature.ProjectItem] {
+  func fetchRichTextExampleProjects() async throws -> [DeveloperExamplesFeature.ProjectItem] {
     try await self.lists.request()
   }
-  func project(slug: String) async throws -> DeveloperExamplesFeature.ProjectItem? {
+  func fetchRichTextExampleProject(slug: String) async throws -> DeveloperExamplesFeature.ProjectItem? {
     self.slugs.append(slug)
     return try await self.lookups.request()
   }

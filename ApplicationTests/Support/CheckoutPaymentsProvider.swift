@@ -14,23 +14,23 @@ final class CheckoutPaymentsProvider: PaymentsProvider {
     return AsyncPaymentsProvider(service: AppEnvironment.current.apiService)
   }
 
-  func intent(input: KsApi.CreatePaymentIntentInput) async throws -> PaymentIntentEnvelope {
+  func createPaymentIntent(input: KsApi.CreatePaymentIntentInput) async throws -> PaymentIntentEnvelope {
     self.paymentIntentRequests += 1
-    return try await self.provider.intent(input: input)
+    return try await self.provider.createPaymentIntent(input: input)
   }
 
-  func setup(input: KsApi.CreateSetupIntentInput) async throws -> ClientSecretEnvelope {
+  func createSetupIntent(input: KsApi.CreateSetupIntentInput) async throws -> ClientSecretEnvelope {
     self.setupIntentRequests += 1
-    return try await self.provider.setup(input: input)
+    return try await self.provider.createSetupIntent(input: input)
   }
 
-  func cards() async throws -> UserEnvelope<GraphUser> { try await self.provider.cards() }
-  func remove(id: String) async throws -> DeletePaymentMethodEnvelope {
+  func fetchSavedCards() async throws -> UserEnvelope<GraphUser> { try await self.provider.fetchSavedCards() }
+  func removePaymentMethod(id: String) async throws -> DeletePaymentMethodEnvelope {
     self.removeRequests += 1
-    return try await self.provider.remove(id: id)
+    return try await self.provider.removePaymentMethod(id: id)
   }
-  func store(secret: String) async throws -> CreatePaymentSourceEnvelope {
+  func createPaymentSource(secret: String) async throws -> CreatePaymentSourceEnvelope {
     self.storeRequests += 1
-    return try await self.provider.store(secret: secret)
+    return try await self.provider.createPaymentSource(secret: secret)
   }
 }

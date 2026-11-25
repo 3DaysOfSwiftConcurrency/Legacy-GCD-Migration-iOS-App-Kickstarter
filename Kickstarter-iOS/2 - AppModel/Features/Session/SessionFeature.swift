@@ -3,9 +3,9 @@ import KsApi
 
 @MainActor
 public protocol SessionProvider {
-  func setup() async throws -> GraphUserSetup
-  func user() async throws -> User
-  func graphUser() async throws -> User
+  func fetchGraphUserSetup() async throws -> GraphUserSetup
+  func fetchCurrentUser() async throws -> User
+  func fetchGraphUser() async throws -> User
   func clearActivityIndicator() async throws -> Int
   func registerDeviceToken(_ token: String) async throws
 }
@@ -14,9 +14,9 @@ public protocol SessionProvider {
 public struct AsyncSessionProvider: SessionProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func setup() async throws -> GraphUserSetup { try await self.service.sessionSetup() }
-  public func user() async throws -> User { try await self.service.sessionUser() }
-  public func graphUser() async throws -> User { try await self.service.sessionGraphUser() }
+  public func fetchGraphUserSetup() async throws -> GraphUserSetup { try await self.service.sessionSetup() }
+  public func fetchCurrentUser() async throws -> User { try await self.service.sessionUser() }
+  public func fetchGraphUser() async throws -> User { try await self.service.sessionGraphUser() }
   public func clearActivityIndicator() async throws -> Int { try await self.service.clearActivityIndicator() }
   public func registerDeviceToken(_ token: String) async throws {
     try await self.service.registerApplicationPushToken(token)
@@ -32,8 +32,8 @@ public final class SessionFeature {
   private struct Identity: Hashable {
     let operation: Operation
     let userID: Int?
-    let revision: Int
-    let readRevision: Int
+    let sessionGeneration: Int
+    let readInvalidationVersion: Int
   }
 
   struct Storage {
@@ -42,7 +42,7 @@ public final class SessionFeature {
     let currentUserPPOSettings: () -> PPOUserSettings?
     let updateUser: @MainActor (User) -> Void
     let login: @MainActor (AccessTokenEnvelope) -> Void
-    let updateSetup: (GraphUserSetup) -> Void
+    let applyGraphUserSetup: (GraphUserSetup) -> Void
   }
 
   private let makeProvider: () -> any SessionProvider
@@ -62,7 +62,7 @@ public final class SessionFeature {
   public var currentUserEmail: String? { self.storage.currentUserEmail() }
   public var currentUserPPOSettings: PPOUserSettings? { self.storage.currentUserPPOSettings() }
   public var generation: Int { self.sessionGeneration }
-  public var readGeneration: Int { self.userReadInvalidationVersion }
+  public var userReadGeneration: Int { self.userReadInvalidationVersion }
 
   init(
     makeProvider: @escaping () -> any SessionProvider,
@@ -86,7 +86,7 @@ public final class SessionFeature {
 
   /// Register the device against this session after the existing token debounce.
   /// The native messaging SDK receives its raw token separately at application ingress.
-  func receiveDeviceToken(_ deviceToken: Data, onRegistered: @escaping @MainActor (String) -> Void) {
+  func scheduleDeviceRegistration(for deviceToken: Data, onRegistered: @escaping @MainActor (String) -> Void) {
     self.deviceRegistrationDebounceTask?.task.cancel()
     let token = deviceToken.map { String(format: "%02.2hhx", $0 as CVarArg) }.joined()
     let debounce = self.deviceRegistrationDebounce
@@ -166,7 +166,7 @@ public final class SessionFeature {
 
   /// A completed account-affecting command requires fresh reads, without
   /// pretending that the user logged out or interrupting admitted badge writes.
-  public func invalidateReads() {
+  public func invalidateAccountReads() {
     self.setupReadInvalidationVersion += 1
     for task in self.pendingSetupReads.values { task.cancel() }
     self.invalidateUserReads()
@@ -184,7 +184,7 @@ public final class SessionFeature {
 
   /// Captures the authenticated session at admission so a completion cannot
   /// publish after logout or account replacement.
-  public func sessionBound<Value>(_ operation: @escaping @MainActor () async throws -> Value)
+  public func wrapOperationForCurrentSession<Value>(_ operation: @escaping @MainActor () async throws -> Value)
     -> @MainActor () async throws -> Value
   {
     let userID = self.currentUser?.id
@@ -228,13 +228,13 @@ public final class SessionFeature {
 
   /// Email, feature flags and backing-action metadata belong to the same session
   /// as the user. Only the shared execution commits; observers never replay it.
-  public func refreshSetup() async throws -> GraphUserSetup {
+  public func refreshGraphUserSetup() async throws -> GraphUserSetup {
     try Task.checkCancellation()
     let identity = Identity(
       operation: .user,
       userID: self.currentUser?.id,
-      revision: self.sessionGeneration,
-      readRevision: self.setupReadInvalidationVersion
+      sessionGeneration: self.sessionGeneration,
+      readInvalidationVersion: self.setupReadInvalidationVersion
     )
     let task: Task<GraphUserSetup, Error>
     if let existing = self.pendingSetupReads[identity] {
@@ -245,16 +245,16 @@ public final class SessionFeature {
         defer { self.pendingSetupReads[identity] = nil }
         do {
           try Task.checkCancellation()
-          let setup = try await provider.setup()
+          let setup = try await provider.fetchGraphUserSetup()
           try Task.checkCancellation()
-          guard self.isCurrent(userID: identity.userID, generation: identity.revision),
-                self.setupReadInvalidationVersion == identity.readRevision else { throw CancellationError() }
-          self.storage.updateSetup(setup)
+          guard self.isCurrent(userID: identity.userID, generation: identity.sessionGeneration),
+                self.setupReadInvalidationVersion == identity.readInvalidationVersion else { throw CancellationError() }
+          self.storage.applyGraphUserSetup(setup)
           return setup
         } catch {
           guard !Task.isCancelled,
-                self.isCurrent(userID: identity.userID, generation: identity.revision),
-                self.setupReadInvalidationVersion == identity.readRevision else { throw CancellationError() }
+                self.isCurrent(userID: identity.userID, generation: identity.sessionGeneration),
+                self.setupReadInvalidationVersion == identity.readInvalidationVersion else { throw CancellationError() }
           throw error
         }
       }
@@ -263,55 +263,82 @@ public final class SessionFeature {
     do {
       let setup = try await task.value
       try Task.checkCancellation()
-      guard self.isCurrent(userID: identity.userID, generation: identity.revision),
-            self.setupReadInvalidationVersion == identity.readRevision else { throw CancellationError() }
+      guard self.isCurrent(userID: identity.userID, generation: identity.sessionGeneration),
+            self.setupReadInvalidationVersion == identity.readInvalidationVersion else { throw CancellationError() }
       return setup
     } catch {
       guard !Task.isCancelled,
-            self.isCurrent(userID: identity.userID, generation: identity.revision),
-            self.setupReadInvalidationVersion == identity.readRevision else { throw CancellationError() }
+            self.isCurrent(userID: identity.userID, generation: identity.sessionGeneration),
+            self.setupReadInvalidationVersion == identity.readInvalidationVersion else { throw CancellationError() }
       throw error
     }
   }
 
-  public func refresh(_ operation: Operation = .user) async throws -> User {
+  public func refreshCurrentUser() async throws -> User {
+    try await self.refreshUserOperation(.user)
+  }
+
+  public func refreshGraphUser() async throws -> User {
+    try await self.refreshUserOperation(.graphUser)
+  }
+
+  public func clearActivityIndicatorAndRefreshUser() async throws -> User {
+    try await self.refreshUserOperation(.clearActivity)
+  }
+
+  private func refreshUserOperation(_ operation: Operation) async throws -> User {
     try Task.checkCancellation()
     let userID = self.currentUser?.id
     let generation = self.sessionGeneration
-    let readGeneration = self.userReadInvalidationVersion
+    let userReadGeneration = self.userReadInvalidationVersion
     do {
-      let user = try await self.request(operation).value
+      let user = try await self.requestUserOperation(operation).value
       try Task.checkCancellation()
       guard self.isCurrent(userID: userID, generation: generation),
-            operation == .clearActivity || self.userReadInvalidationVersion == readGeneration
+            operation == .clearActivity || self.userReadInvalidationVersion == userReadGeneration
       else { throw CancellationError() }
       return user
     } catch {
       guard !Task.isCancelled, self.isCurrent(userID: userID, generation: generation),
-            operation == .clearActivity || self.userReadInvalidationVersion == readGeneration
+            operation == .clearActivity || self.userReadInvalidationVersion == userReadGeneration
       else { throw CancellationError() }
       throw error
     }
   }
 
   @discardableResult
-  public func request(_ operation: Operation = .user) -> Task<User, Error> {
+  public func requestCurrentUser() -> Task<User, Error> {
+    self.requestUserOperation(.user)
+  }
+
+  @discardableResult
+  public func requestGraphUser() -> Task<User, Error> {
+    self.requestUserOperation(.graphUser)
+  }
+
+  /// Clears the server's activity indicator and returns the user with its updated count.
+  @discardableResult
+  public func requestClearActivityIndicator() -> Task<User, Error> {
+    self.requestUserOperation(.clearActivity)
+  }
+
+  private func requestUserOperation(_ operation: Operation) -> Task<User, Error> {
     let identity = Identity(
-      operation: operation, userID: self.currentUser?.id, revision: self.sessionGeneration,
-      readRevision: operation == .clearActivity ? 0 : self.userReadInvalidationVersion
+      operation: operation, userID: self.currentUser?.id, sessionGeneration: self.sessionGeneration,
+      readInvalidationVersion: operation == .clearActivity ? 0 : self.userReadInvalidationVersion
     )
     if let task = self.pendingUserOperations[identity] { return task }
     let provider = self.makeProvider()
     let task = Task { [self] in
       defer { self.pendingUserOperations[identity] = nil }
       try Task.checkCancellation()
-      guard self.isCurrent(userID: identity.userID, generation: identity.revision)
+      guard self.isCurrent(userID: identity.userID, generation: identity.sessionGeneration)
       else { throw CancellationError() }
       do {
         let user: User
         switch operation {
-        case .user: user = try await provider.user()
-        case .graphUser: user = try await provider.graphUser()
+        case .user: user = try await provider.fetchCurrentUser()
+        case .graphUser: user = try await provider.fetchGraphUser()
         case .clearActivity:
           guard identity.userID != nil else { throw CancellationError() }
           let count = try await provider.clearActivityIndicator()
@@ -320,19 +347,19 @@ public final class SessionFeature {
           user = current
         }
         try Task.checkCancellation()
-        guard self.isCurrent(userID: identity.userID, generation: identity.revision),
-              operation == .clearActivity || self.userReadInvalidationVersion == identity.readRevision
+        guard self.isCurrent(userID: identity.userID, generation: identity.sessionGeneration),
+              operation == .clearActivity || self.userReadInvalidationVersion == identity.readInvalidationVersion
         else { throw CancellationError() }
         if operation == .clearActivity {
           // Both root-tab and Activity callers share this execution and one commit.
-          self.commitUser(user, userID: identity.userID, generation: identity.revision)
+          self.commitUser(user, userID: identity.userID, generation: identity.sessionGeneration)
           self.invalidateUserReads()
         }
         return user
       } catch {
         // An old unauthorized response must not log out a replacement session.
-        guard !Task.isCancelled, self.isCurrent(userID: identity.userID, generation: identity.revision),
-              operation == .clearActivity || self.userReadInvalidationVersion == identity.readRevision
+        guard !Task.isCancelled, self.isCurrent(userID: identity.userID, generation: identity.sessionGeneration),
+              operation == .clearActivity || self.userReadInvalidationVersion == identity.readInvalidationVersion
         else { throw CancellationError() }
         throw error
       }

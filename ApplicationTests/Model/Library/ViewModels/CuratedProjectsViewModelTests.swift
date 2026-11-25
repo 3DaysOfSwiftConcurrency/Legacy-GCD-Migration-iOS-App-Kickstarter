@@ -62,7 +62,7 @@ final class CuratedProjectsViewModelTests: TestCase {
 
       self.viewModel.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.viewModel.waitForPresentation()
 
       // We configured the viewModel with 2 categories,
@@ -80,7 +80,7 @@ final class CuratedProjectsViewModelTests: TestCase {
       self.viewModel.configure(with: [])
       self.viewModel.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.viewModel.waitForPresentation()
 
       self.loadProjectsCount.assertDidNotEmitValue()
@@ -108,7 +108,7 @@ final class CuratedProjectsViewModelTests: TestCase {
 
       self.viewModel.configure(with: [Category.art])
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.viewModel.waitForPresentation()
 
       self.isLoading.assertValues([true, false])
@@ -125,7 +125,7 @@ final class CuratedProjectsViewModelTests: TestCase {
 
       self.viewModel.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.viewModel.waitForPresentation()
 
       self.showErrorMessage.assertValue("Something went wrong.", "Should show a generic error message")
@@ -145,7 +145,7 @@ final class CuratedProjectsViewModelTests: TestCase {
 
       self.viewModel.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.viewModel.waitForPresentation()
 
       self.showErrorMessage.assertValue("Something went wrong.", "Should show a generic error message")
@@ -162,7 +162,7 @@ final class CuratedProjectsViewModelTests: TestCase {
       self.viewModel.configure(with: [.art])
       self.viewModel.viewDidLoad()
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForRecommendationLoads()
       await self.viewModel.waitForPresentation()
 
       self.goToProjectProject.assertDidNotEmitValue()

@@ -79,8 +79,8 @@ public final class MessagesViewModel {
       do {
         let result: MessageThreadEnvelope?
         switch route {
-        case let .left(backing): result = try await messagingFeature.thread(backing: backing)
-        case let .right(thread): result = try await messagingFeature.thread(id: thread.id)
+        case let .left(backing): result = try await messagingFeature.fetchMessageThread(backing: backing)
+        case let .right(thread): result = try await messagingFeature.fetchMessageThread(id: thread.id)
         }
         if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
         else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
@@ -115,7 +115,7 @@ public final class MessagesViewModel {
     self.backingTask = Task { [weak self] in
       defer { if let self, self.backingVersion == version { self.backingTask = nil } }
       do {
-        let backing = try await messagingFeature.backing(
+        let backing = try await messagingFeature.fetchMessageBacking(
           id: envelope.messageThread.backing?.id, project: project, user: user
         )
         try Task.checkCancellation()

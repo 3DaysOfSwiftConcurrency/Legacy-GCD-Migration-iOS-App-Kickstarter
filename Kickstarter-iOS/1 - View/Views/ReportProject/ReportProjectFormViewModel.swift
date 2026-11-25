@@ -50,7 +50,7 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
   public func viewDidLoad() -> Task<Void, Never> {
     if let task = self.emailTask { return task }
     let projectReportingFeature = self.projectReportingFeature
-    let context = projectReportingFeature.context
+    let context = projectReportingFeature.currentReportingContext
     let id = UUID()
     self.emailID = id
     let task = Task { [weak self] in
@@ -61,7 +61,7 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
         guard self?.emailID == id else { return }
         self?.retrievedEmail = email
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), projectReportingFeature.context == context,
+        guard !Task.isCancelled, !(error is CancellationError), projectReportingFeature.currentReportingContext == context,
               self?.emailID == id else { return }
         self?.retrievedEmail = ""
       }
@@ -79,10 +79,10 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
       return nil
     }
     let projectReportingFeature = self.projectReportingFeature
-    let context = projectReportingFeature.context
+    let context = projectReportingFeature.currentReportingContext
     let command: Task<Void, Error>
     do {
-      command = try projectReportingFeature.submit(
+      command = try projectReportingFeature.submitProjectReport(
         .init(projectID: projectID, kind: kind, details: self.detailsText), context: context
       )
     } catch {
@@ -111,7 +111,7 @@ public final class ReportProjectFormViewModel: ReportProjectFormViewModelType,
           type: .success, message: Strings.Your_message_has_been_sent()
         ))
       } catch {
-        guard !Task.isCancelled, !(error is CancellationError), projectReportingFeature.context == context,
+        guard !Task.isCancelled, !(error is CancellationError), projectReportingFeature.currentReportingContext == context,
               self?.submissionID == id, self?.projectID == projectID,
               self?.projectFlaggingKind == kind else { return }
         self?.showFailure()

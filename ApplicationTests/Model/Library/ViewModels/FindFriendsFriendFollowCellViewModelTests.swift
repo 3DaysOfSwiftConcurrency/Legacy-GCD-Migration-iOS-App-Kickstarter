@@ -14,7 +14,7 @@ final class FindFriendsFriendFollowCellViewModelTests: TestCase {
 
   override func tearDown() async throws {
     self.feature.reset()
-    await self.feature.waitForOperations()
+    await self.feature.waitForFriendsOperations()
     try await super.tearDown()
   }
 

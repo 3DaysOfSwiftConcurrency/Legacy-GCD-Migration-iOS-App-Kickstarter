@@ -20,7 +20,7 @@ public final class ReportProjectInfoViewModel: ObservableObject {
   public func viewDidLoad() -> Task<Void, Never> {
     if let task = self.loadTask { return task }
     let projectReportingFeature = self.projectReportingFeature
-    let context = projectReportingFeature.context
+    let context = projectReportingFeature.currentReportingContext
     let id = UUID()
     self.loadID = id
     self.isLoading = true

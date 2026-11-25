@@ -4,18 +4,18 @@ import Prelude
 
 @MainActor
 public protocol RecommendationsProvider: Sendable {
-  func projects(parameters: DiscoveryParams) async throws -> [Project]
-  func category(id: String) async throws -> KsApi.Category
+  func fetchProjects(parameters: DiscoveryParams) async throws -> [Project]
+  func fetchRecommendationCategory(id: String) async throws -> KsApi.Category
 }
 
 @MainActor
 public struct AsyncRecommendationsProvider: RecommendationsProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func projects(parameters: DiscoveryParams) async throws -> [Project] {
+  public func fetchProjects(parameters: DiscoveryParams) async throws -> [Project] {
     try await self.service.discoveryPage(params: parameters).projects
   }
-  public func category(id: String) async throws -> KsApi.Category {
+  public func fetchRecommendationCategory(id: String) async throws -> KsApi.Category {
     try await self.service.recommendationCategory(id: id)
   }
 }
@@ -73,7 +73,7 @@ public final class RecommendationsFeature {
   private let sleep: @MainActor @Sendable (TimeInterval) async throws -> Void
   private var pendingLoadsByRoute: [UUID: Pending] = [:]
   private var loadedSelectionsByRoute: [UUID: Selection] = [:]
-  public func selection(route: UUID) -> Selection? { self.loadedSelectionsByRoute[route] }
+  public func loadedSelection(for route: UUID) -> Selection? { self.loadedSelectionsByRoute[route] }
   private var recommendationLoadTasks: [UUID: Task<Void, Never>] = [:]
 
   public init(
@@ -127,7 +127,7 @@ public final class RecommendationsFeature {
     for route in Array(self.pendingLoadsByRoute.keys) { self.release(route: route) }
     self.loadedSelectionsByRoute.removeAll()
   }
-  public func load(_ request: Request, route: UUID) async {
+  public func loadRecommendations(_ request: Request, route: UUID) async {
     await self.requestRecommendations(request, route: route).value
   }
 
@@ -154,9 +154,9 @@ public final class RecommendationsFeature {
         let selection: Selection?
         switch request {
         case .curated(let categories):
-          selection = try await self.curated(categories, provider: provider, delay: delay)
+          selection = try await self.loadCuratedProjects(categories, provider: provider, delay: delay)
         case .afterBacking(let project):
-          selection = try await self.alternatives(project, provider: provider, delay: delay, session: session)
+          selection = try await self.loadPostBackingAlternatives(project, provider: provider, delay: delay, session: session)
         }
         try Task.checkCancellation()
         guard self.session == session, self.pendingLoadsByRoute[route]?.id == id, let selection else { return }
@@ -171,7 +171,7 @@ public final class RecommendationsFeature {
     return task
   }
 
-  private func curated(
+  private func loadCuratedProjects(
     _ categories: [KsApi.Category], provider: any RecommendationsProvider, delay: TimeInterval
   ) async throws -> Selection? {
     guard !categories.isEmpty else { return nil }
@@ -185,7 +185,7 @@ public final class RecommendationsFeature {
           |> DiscoveryParams.lens.perPage .~ perPage
         group.addTask { @Sendable [provider, parameters, sleep] in
           let projects: [Project]
-          do { projects = try await provider.projects(parameters: parameters) }
+          do { projects = try await provider.fetchProjects(parameters: parameters) }
           catch {
             try Task.checkCancellation()
             if error is CancellationError { throw error }
@@ -204,12 +204,12 @@ public final class RecommendationsFeature {
     return Selection(projects: projects.shuffled(), category: nil)
   }
 
-  private func alternatives(
+  private func loadPostBackingAlternatives(
     _ project: Project, provider: any RecommendationsProvider, delay: TimeInterval, session: Session
   ) async throws -> Selection? {
     guard let projectCategory = project.category else { return nil }
     let id = Category.decode(id: "\(projectCategory.parentId ?? projectCategory.id)").toBase64()
-    let fetched = try await provider.category(id: id)
+    let fetched = try await provider.fetchRecommendationCategory(id: id)
     try await self.sleep(delay)
     try self.ensureRecommendationSessionIsCurrent(session)
     let category = fetched.parent ?? fetched
@@ -222,7 +222,7 @@ public final class RecommendationsFeature {
     for (index, parameters) in [Self.recommendedParameters, similar, staff].enumerated() {
       try self.ensureRecommendationSessionIsCurrent(session)
       let page: [Project]
-      do { page = try await provider.projects(parameters: parameters) }
+      do { page = try await provider.fetchProjects(parameters: parameters) }
       catch {
         try self.ensureRecommendationSessionIsCurrent(session)
         if error is CancellationError { throw error }
@@ -253,7 +253,7 @@ public final class RecommendationsFeature {
     return result
   }
 
-  public func waitForOperations() async {
+  public func waitForRecommendationLoads() async {
     while !self.recommendationLoadTasks.isEmpty {
       for task in Array(self.recommendationLoadTasks.values) { await task.value }
     }

@@ -3,8 +3,8 @@ import KsApi
 
 @MainActor
 public protocol FriendsProvider {
-  func page(cursor: String?) async throws -> FindFriendsEnvelope
-  func statistics() async throws -> FriendStatsEnvelope
+  func fetchFriendsPage(cursor: String?) async throws -> FindFriendsEnvelope
+  func fetchFriendStatistics() async throws -> FriendStatsEnvelope
   func setFollowing(userID: Int, following: Bool) async throws
   func followAll() async throws
 }
@@ -13,10 +13,10 @@ public protocol FriendsProvider {
 public struct AsyncFriendsProvider: FriendsProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func page(cursor: String?) async throws -> FindFriendsEnvelope {
+  public func fetchFriendsPage(cursor: String?) async throws -> FindFriendsEnvelope {
     try await self.service.friendsPage(cursor: cursor)
   }
-  public func statistics() async throws -> FriendStatsEnvelope {
+  public func fetchFriendStatistics() async throws -> FriendStatsEnvelope {
     try await self.service.friendStatistics()
   }
   public func setFollowing(userID: Int, following: Bool) async throws {
@@ -122,11 +122,11 @@ public final class FriendsFeature {
     self.followingCacheSession = self.session
   }
 
-  public func refresh(route: UUID) async { await self.requestPage(route: route)?.value }
-  public func loadNextPage(route: UUID) async { await self.requestPage(route: route, next: true)?.value }
+  public func refreshFriendsPage(route: UUID) async { await self.requestFriendsPage(route: route)?.value }
+  public func loadNextFriendsPage(route: UUID) async { await self.requestFriendsPage(route: route, next: true)?.value }
 
   @discardableResult
-  public func requestPage(route: UUID, next: Bool = false) -> Task<Void, Never>? {
+  public func requestFriendsPage(route: UUID, next: Bool = false) -> Task<Void, Never>? {
     let state = self.getOrCreateRouteState(for: route)
     if let pending = state.page, next || pending.cursor == nil { return pending.task }
     guard !next || state.cursor != nil else { return nil }
@@ -152,7 +152,7 @@ public final class FriendsFeature {
       do {
         if let predecessor { _ = await predecessor.result }
         try self.requireCurrent(state.session)
-        let page = try await provider.page(cursor: cursor)
+        let page = try await provider.fetchFriendsPage(cursor: cursor)
         try await self.sleep(delay)
         try self.requireCurrent(state.session)
         guard self.routes[route] === state, state.page?.id == id else { return }
@@ -170,9 +170,9 @@ public final class FriendsFeature {
     return task
   }
 
-  public func refreshStatistics(route: UUID) async { await self.requestStatistics(route: route).value }
+  public func refreshFriendStatistics(route: UUID) async { await self.requestFriendStatistics(route: route).value }
   @discardableResult
-  public func requestStatistics(route: UUID) -> Task<Void, Never> {
+  public func requestFriendStatistics(route: UUID) -> Task<Void, Never> {
     let state = self.getOrCreateRouteState(for: route)
     if let pending = state.statistics { return pending.task }
     let id = UUID()
@@ -186,7 +186,7 @@ public final class FriendsFeature {
       }
       do {
         try self.requireCurrent(state.session)
-        let statistics = try await provider.statistics()
+        let statistics = try await provider.fetchFriendStatistics()
         try await self.sleep(delay)
         try self.requireCurrent(state.session)
         guard self.routes[route] === state, state.statistics?.id == id else { return }
@@ -202,7 +202,7 @@ public final class FriendsFeature {
     return task
   }
 
-  private func request(_ command: Command) -> Task<Void, Error> {
+  private func startFollowingWrite(_ command: Command) -> Task<Void, Error> {
     let session = self.session
     let previous = self.latestFollowWriteBySession[session]
     if let previous, previous.command == command { return previous.task }
@@ -245,11 +245,11 @@ public final class FriendsFeature {
     return task
   }
 
-  private func execute(_ command: Command) async throws {
+  private func performFollowingWrite(_ command: Command) async throws {
     try Task.checkCancellation()
     let session = self.session
     do {
-      try await self.request(command).value
+      try await self.startFollowingWrite(command).value
       try self.requireCurrent(session)
     } catch {
       try self.requireCurrent(session)
@@ -259,7 +259,7 @@ public final class FriendsFeature {
 
   /// Admit a follow write synchronously; the returned task only observes it.
   func startFollowing(user: User, following: Bool) -> Task<User, Error> {
-    let command = self.request(.follow(user.id, following))
+    let command = self.startFollowingWrite(.follow(user.id, following))
     return Task {
       try await command.value
       var value = user
@@ -269,7 +269,7 @@ public final class FriendsFeature {
   }
 
   public func setFollowing(user: User, following: Bool) async throws -> User {
-    try await self.execute(.follow(user.id, following))
+    try await self.performFollowingWrite(.follow(user.id, following))
     var value = user
     value.isFriend = following
     return value
@@ -279,12 +279,12 @@ public final class FriendsFeature {
     try await self.sleep(self.responseDelaySeconds())
   }
 
-  public func followAll() async throws { try await self.execute(.all) }
+  public func followAll() async throws { try await self.performFollowingWrite(.all) }
 
   /// Admits Follow All immediately, preserving its position among account writes.
-  func startFollowAll() -> Task<Void, Error> { self.request(.all) }
+  func startFollowAll() -> Task<Void, Error> { self.startFollowingWrite(.all) }
 
-  public func waitForOperations() async {
+  public func waitForFriendsOperations() async {
     while !self.followWriteTasks.isEmpty || !self.friendsAndStatisticsReadTasks.isEmpty {
       for task in Array(self.followWriteTasks.values) { _ = await task.result }
       for task in Array(self.friendsAndStatisticsReadTasks.values) { await task.value }
