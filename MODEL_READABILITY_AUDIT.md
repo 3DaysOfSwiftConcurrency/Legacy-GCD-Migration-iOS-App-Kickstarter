@@ -13,10 +13,10 @@ across 23 Feature areas and the rest of the Model. It includes declarations in
 extensions and conditional compilation branches. Session, Activity, Help,
 ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
 DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
-Discovery, Authentication, Payments, PledgedProjects, Pledge and Rewards
-have 1,511 individual behavior, caller and naming decisions. The remaining
-1,513 rows are pending; the whole Model has **not** been declared reviewed.
-The latest Rewards closure passed Build For Testing for the app and test targets;
+Discovery, Authentication, Payments, PledgedProjects, Pledge, Rewards and
+ProjectDetails have 1,709 individual behavior, caller and naming decisions.
+The remaining 1,315 rows are pending; the whole Model has **not** been declared
+reviewed. The latest ProjectDetails closure passed Build For Testing for app and test targets;
 runtime tests remain unverified.
 
 The repaired `Library-iOS` app and `LibraryTests` compilation passed in Xcode

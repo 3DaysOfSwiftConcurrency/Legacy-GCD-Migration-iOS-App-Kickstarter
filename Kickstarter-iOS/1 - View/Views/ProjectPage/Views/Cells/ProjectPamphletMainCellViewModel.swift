@@ -154,7 +154,7 @@ final class ProjectPamphletMainCellViewModel {
     let duration = properties.deadline.map(formatting.remainingTime) ?? ("", "")
     self.onEvent?(.deadlineTitleLabelText(duration.0))
     self.onEvent?(.deadlineSubtitleLabelText(duration.1))
-    let currency = properties.currentCurrency(fallback: self.preferredCurrency())
+    let currency = properties.resolvedCurrencyCode(fallback: self.preferredCurrency())
     let conversion = properties.currency != currency
     let omitCode = currency == Project.Country.us.currencyCode
     self.onEvent?(.conversionLabelHidden(!conversion))

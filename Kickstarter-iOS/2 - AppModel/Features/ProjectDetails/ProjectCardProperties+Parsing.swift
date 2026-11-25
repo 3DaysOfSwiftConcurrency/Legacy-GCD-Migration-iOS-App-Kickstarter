@@ -17,14 +17,14 @@ public extension ProjectCardProperties {
       return nil
     }
 
-    func timestamp(from: String?) -> Foundation.Date? {
-      from
+    func date(fromUnixTimestamp value: String?) -> Foundation.Date? {
+      value
         .flatMap { timestamp in Int(timestamp) }
         .flatMap { timestamp in Date(timeIntervalSince1970: TimeInterval(timestamp)) }
     }
 
-    let launchedAt = timestamp(from: fragment.launchedAt)
-    let deadlineAt = timestamp(from: fragment.deadlineAt)
+    let launchedAt = date(fromUnixTimestamp: fragment.launchedAt)
+    let deadlineAt = date(fromUnixTimestamp: fragment.deadlineAt)
 
     self.projectID = fragment.pid
     self.image = .network(imageURL)

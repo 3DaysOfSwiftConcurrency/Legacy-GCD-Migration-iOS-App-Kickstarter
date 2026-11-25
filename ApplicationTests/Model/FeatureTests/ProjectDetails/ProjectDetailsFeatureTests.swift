@@ -49,11 +49,11 @@ final class ProjectDetailsFeatureTests: TestCase {
       if case let .relatedChanged(updatedRoute) = update, updatedRoute == route { relatedUpdates += 1 }
     }
     defer { observation.stop() }
-    let first = feature.requestRelated(route: route, projectID: "1")
-    let shared = feature.requestRelated(route: route, projectID: "1")
+    let first = feature.startRelatedProjectsLoad(route: route, projectID: "1")
+    let shared = feature.startRelatedProjectsLoad(route: route, projectID: "1")
     await provider.waitFor("related:1")
     XCTAssertEqual(provider.calls, ["related:1"])
-    let second = feature.requestRelated(route: route, projectID: "2")
+    let second = feature.startRelatedProjectsLoad(route: route, projectID: "2")
     await provider.waitFor("related:2")
     try provider.finishRelated(1, error: nil)
     await second.value
@@ -72,11 +72,11 @@ final class ProjectDetailsFeatureTests: TestCase {
     let feature = self.feature(provider)
     let route = UUID()
     provider.failAt = "related:1"
-    await feature.loadRelated(route: route, projectID: "1")
+    await feature.loadRelatedProjects(route: route, projectID: "1")
     XCTAssertNotNil(feature.relatedSnapshot(for: route).error)
     XCTAssertFalse(feature.relatedSnapshot(for: route).isLoading)
     provider.failAt = nil
-    await feature.loadRelated(route: route, projectID: "1")
+    await feature.loadRelatedProjects(route: route, projectID: "1")
     XCTAssertNil(feature.relatedSnapshot(for: route).error)
     XCTAssertTrue(feature.relatedSnapshot(for: route).projects.isEmpty)
   }
@@ -87,10 +87,10 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let firstRoute = UUID(), secondRoute = UUID()
-    let first = feature.requestRelated(route: firstRoute, projectID: "1")
-    let second = feature.requestRelated(route: secondRoute, projectID: "1")
+    let first = feature.startRelatedProjectsLoad(route: firstRoute, projectID: "1")
+    let second = feature.startRelatedProjectsLoad(route: secondRoute, projectID: "1")
     await provider.waitFor("related:1", count: 2)
-    feature.releaseRelated(route: firstRoute)
+    feature.releaseRelatedProjects(route: firstRoute)
     try provider.finishRelated(0, error: .graphError("released"))
     try provider.finishRelated(1, error: .graphError("current"))
     await first.value
@@ -107,12 +107,12 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let anonymous = feature.requestRelated(route: route, projectID: "1")
+    let anonymous = feature.startRelatedProjectsLoad(route: route, projectID: "1")
     await provider.waitFor("related:1")
     AppEnvironment.pushEnvironment(currentUser: User.template)
     defer { AppEnvironment.popEnvironment() }
     do {
-      let signedIn = feature.requestRelated(route: route, projectID: "1")
+      let signedIn = feature.startRelatedProjectsLoad(route: route, projectID: "1")
       await provider.waitFor("related:1", count: 2)
       try provider.finishRelated(0, error: .graphError("anonymous"))
       await anonymous.value
@@ -132,10 +132,10 @@ final class ProjectDetailsFeatureTests: TestCase {
     let route = UUID()
 
     await withEnvironment(currentUser: .template) {
-      let previous = feature.requestRelated(route: route, projectID: "1")
+      let previous = feature.startRelatedProjectsLoad(route: route, projectID: "1")
       await provider.waitFor("related:1")
       feature.sessionFeature.sessionChanged()
-      let current = feature.requestRelated(route: route, projectID: "1")
+      let current = feature.startRelatedProjectsLoad(route: route, projectID: "1")
       await provider.waitFor("related:1", count: 2)
 
       do {
@@ -199,7 +199,7 @@ final class ProjectDetailsFeatureTests: TestCase {
     let route = UUID()
     let task = feature.recordAttribution(route: route, projectID: "project", properties: nil)
     await provider.attributionGate.waitFor(1)
-    feature.release(route: route)
+    feature.releaseProjectPage(route: route)
     XCTAssertFalse(task.isCancelled)
     try provider.attributionGate.finish(0, .success(()))
     try await task.value
@@ -318,10 +318,10 @@ final class ProjectDetailsFeatureTests: TestCase {
         break
       }
     }
-    await feature.load(route: route, param: .id(1))
+    await feature.loadProjectPage(route: route, param: .id(1))
     XCTAssertEqual(events, ["loading", "project", "finished"])
     observation.stop()
-    await feature.load(route: UUID(), param: .id(2))
+    await feature.loadProjectPage(route: UUID(), param: .id(2))
     XCTAssertEqual(events, ["loading", "project", "finished"])
   }
 
@@ -330,15 +330,15 @@ final class ProjectDetailsFeatureTests: TestCase {
     provider.backingID = 42
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.load(route: route, param: .id(1))
+    await feature.loadProjectPage(route: route, param: .id(1))
     XCTAssertEqual(provider.calls, ["project", "backing", "rewards"])
-    let project = try XCTUnwrap(feature.snapshot(for: route).project)
+    let project = try XCTUnwrap(feature.projectPageSnapshot(for: route).project)
     XCTAssertEqual(project.name, Project.template.name)
     XCTAssertEqual(project.personalization.backing, Backing.template)
     XCTAssertEqual(project.personalization.isBacking, true)
     XCTAssertEqual(project.rewards, [Reward.noReward, Reward.template])
-    XCTAssertFalse(feature.snapshot(for: route).isLoading)
-    XCTAssertNil(feature.snapshot(for: route).error)
+    XCTAssertFalse(feature.projectPageSnapshot(for: route).isLoading)
+    XCTAssertNil(feature.projectPageSnapshot(for: route).error)
     XCTAssertEqual(provider.richTextValues, [true])
   }
 
@@ -346,9 +346,9 @@ final class ProjectDetailsFeatureTests: TestCase {
     let provider = ControlledProjectDetailsProvider()
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.load(route: route, param: .slug("example"))
+    await feature.loadProjectPage(route: route, param: .slug("example"))
     XCTAssertEqual(provider.calls, ["project", "rewards"])
-    XCTAssertEqual(feature.snapshot(for: route).project?.rewards, [Reward.noReward, Reward.template])
+    XCTAssertEqual(feature.projectPageSnapshot(for: route).project?.rewards, [Reward.noReward, Reward.template])
   }
 
   func testEnrollmentMustCompleteBeforeAnyRead() async throws {
@@ -358,13 +358,13 @@ final class ProjectDetailsFeatureTests: TestCase {
       defer { provider.releaseAll() }
       let feature = self.feature(provider)
       let route = UUID()
-      let task = feature.requestLoad(route: route, param: .id(1), secretRewardToken: "local-test-token")
+      let task = feature.startProjectPageLoad(route: route, param: .id(1), secretRewardToken: "local-test-token")
       await provider.waitFor("enroll")
       XCTAssertEqual(provider.calls, ["enroll"])
       provider.finishEnrollment()
       await task.value
       XCTAssertEqual(provider.calls, ["enroll", "project", "rewards"])
-      XCTAssertNotNil(feature.snapshot(for: route).project)
+      XCTAssertNotNil(feature.projectPageSnapshot(for: route).project)
     }
   }
 
@@ -374,22 +374,22 @@ final class ProjectDetailsFeatureTests: TestCase {
       provider.failAt = "enroll"
       let feature = self.feature(provider)
       let route = UUID()
-      await feature.load(route: route, param: .id(1), secretRewardToken: "local-test-token")
+      await feature.loadProjectPage(route: route, param: .id(1), secretRewardToken: "local-test-token")
       XCTAssertEqual(provider.calls, ["enroll"])
-      XCTAssertNotNil(feature.snapshot(for: route).error)
+      XCTAssertNotNil(feature.projectPageSnapshot(for: route).error)
       provider.failAt = nil
-      await feature.load(route: route, param: .id(1), secretRewardToken: "local-test-token")
+      await feature.loadProjectPage(route: route, param: .id(1), secretRewardToken: "local-test-token")
       XCTAssertEqual(provider.calls, ["enroll", "enroll", "project", "rewards"])
-      XCTAssertNil(feature.snapshot(for: route).error)
+      XCTAssertNil(feature.projectPageSnapshot(for: route).error)
     }
   }
 
   func testAnonymousOrEmptyTokenDoesNotEnroll() async {
     let provider = ControlledProjectDetailsProvider()
     let feature = self.feature(provider)
-    await feature.load(route: UUID(), param: .id(1), secretRewardToken: "local-test-token")
+    await feature.loadProjectPage(route: UUID(), param: .id(1), secretRewardToken: "local-test-token")
     await withEnvironment(currentUser: User.template) {
-      await feature.load(route: UUID(), param: .id(1), secretRewardToken: "")
+      await feature.loadProjectPage(route: UUID(), param: .id(1), secretRewardToken: "")
     }
     XCTAssertFalse(provider.calls.contains("enroll"))
   }
@@ -401,19 +401,19 @@ final class ProjectDetailsFeatureTests: TestCase {
       let feature = self.feature(provider)
       let route = UUID()
       provider.failAt = failure
-      await feature.load(route: route, param: .id(1))
-      XCTAssertNil(feature.snapshot(for: route).project)
-      XCTAssertNotNil(feature.snapshot(for: route).error)
+      await feature.loadProjectPage(route: route, param: .id(1))
+      XCTAssertNil(feature.projectPageSnapshot(for: route).project)
+      XCTAssertNotNil(feature.projectPageSnapshot(for: route).error)
       XCTAssertEqual(provider.calls.last, failure)
       provider.failAt = nil
-      await feature.load(route: route, param: .id(1))
-      let cached = feature.snapshot(for: route).project
+      await feature.loadProjectPage(route: route, param: .id(1))
+      let cached = feature.projectPageSnapshot(for: route).project
       XCTAssertNotNil(cached)
       provider.failAt = failure
-      await feature.load(route: route, param: .id(1))
-      XCTAssertEqual(feature.snapshot(for: route).project, cached)
-      XCTAssertNotNil(feature.snapshot(for: route).error)
-      XCTAssertFalse(feature.snapshot(for: route).isLoading)
+      await feature.loadProjectPage(route: route, param: .id(1))
+      XCTAssertEqual(feature.projectPageSnapshot(for: route).project, cached)
+      XCTAssertNotNil(feature.projectPageSnapshot(for: route).error)
+      XCTAssertFalse(feature.projectPageSnapshot(for: route).isLoading)
     }
   }
 
@@ -423,18 +423,18 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.requestLoad(route: route, param: .id(1))
+    let first = feature.startProjectPageLoad(route: route, param: .id(1))
     await provider.waitFor("project")
-    let shared = feature.requestLoad(route: route, param: .id(1))
+    let shared = feature.startProjectPageLoad(route: route, param: .id(1))
     XCTAssertEqual(provider.projects.count, 1)
-    let replacement = feature.requestLoad(route: route, param: .id(2))
+    let replacement = feature.startProjectPageLoad(route: route, param: .id(2))
     await provider.waitFor("project", count: 2)
     try provider.finishProject(1, id: 2)
     await replacement.value
     try provider.finishProject(0, id: 1)
     await first.value
     await shared.value
-    XCTAssertEqual(feature.snapshot(for: route).project?.id, 2)
+    XCTAssertEqual(feature.projectPageSnapshot(for: route).project?.id, 2)
     XCTAssertEqual(provider.calls.filter { $0 == "rewards" }.count, 1)
   }
 
@@ -445,20 +445,20 @@ final class ProjectDetailsFeatureTests: TestCase {
     let feature = self.feature(provider)
     let firstRoute = UUID()
     let secondRoute = UUID()
-    let first = feature.requestLoad(route: firstRoute, param: .id(1))
+    let first = feature.startProjectPageLoad(route: firstRoute, param: .id(1))
     await provider.waitFor("project")
-    let second = feature.requestLoad(route: secondRoute, param: .id(2))
+    let second = feature.startProjectPageLoad(route: secondRoute, param: .id(2))
     await provider.waitFor("project", count: 2)
-    feature.cancel(route: firstRoute)
+    feature.cancelProjectPageLoad(route: firstRoute)
     try provider.finishProject(0, id: 1)
     try provider.finishProject(1, id: 2)
     await first.value
     await second.value
-    XCTAssertNil(feature.snapshot(for: firstRoute).project)
-    XCTAssertNil(feature.snapshot(for: firstRoute).error)
-    XCTAssertEqual(feature.snapshot(for: secondRoute).project?.id, 2)
-    feature.release(route: secondRoute)
-    XCTAssertNil(feature.snapshot(for: secondRoute).project)
+    XCTAssertNil(feature.projectPageSnapshot(for: firstRoute).project)
+    XCTAssertNil(feature.projectPageSnapshot(for: firstRoute).error)
+    XCTAssertEqual(feature.projectPageSnapshot(for: secondRoute).project?.id, 2)
+    feature.releaseProjectPage(route: secondRoute)
+    XCTAssertNil(feature.projectPageSnapshot(for: secondRoute).project)
   }
 
   func testAccountChangeRejectsResultBeforeBackingOrRewards() async throws {
@@ -468,15 +468,15 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let task = feature.requestLoad(route: route, param: .id(1))
+    let task = feature.startProjectPageLoad(route: route, param: .id(1))
     await provider.waitFor("project")
     await withEnvironment(currentUser: User.template) {
       do { try provider.finishProject(0, id: 1) }
       catch { XCTFail("Could not complete fixture: \(error)") }
       await task.value
-      XCTAssertNil(feature.snapshot(for: route).project)
+      XCTAssertNil(feature.projectPageSnapshot(for: route).project)
       XCTAssertEqual(provider.calls, ["project"])
-      XCTAssertNil(feature.snapshot(for: route).error)
+      XCTAssertNil(feature.projectPageSnapshot(for: route).error)
     }
   }
 
@@ -489,7 +489,7 @@ final class ProjectDetailsFeatureTests: TestCase {
     let route = UUID()
 
     await withEnvironment(currentUser: .template) {
-      let task = feature.requestLoad(route: route, param: .id(1))
+      let task = feature.startProjectPageLoad(route: route, param: .id(1))
       await provider.waitFor("project")
       feature.sessionFeature.sessionChanged()
       do { try provider.finishProject(0, id: 1) }
@@ -497,9 +497,9 @@ final class ProjectDetailsFeatureTests: TestCase {
       await task.value
 
       XCTAssertEqual(provider.calls, ["project"])
-      XCTAssertNil(feature.snapshot(for: route).project)
-      XCTAssertNil(feature.snapshot(for: route).error)
-      XCTAssertFalse(feature.snapshot(for: route).isLoading)
+      XCTAssertNil(feature.projectPageSnapshot(for: route).project)
+      XCTAssertNil(feature.projectPageSnapshot(for: route).error)
+      XCTAssertFalse(feature.projectPageSnapshot(for: route).isLoading)
     }
   }
 
@@ -511,11 +511,11 @@ final class ProjectDetailsFeatureTests: TestCase {
     let feature = self.feature(provider, includeRichText: { includeRichText })
     let route = UUID()
 
-    let previous = feature.requestLoad(route: route, param: .id(1))
+    let previous = feature.startProjectPageLoad(route: route, param: .id(1))
     await provider.waitFor("project")
     XCTAssertFalse(feature.includesRichTextStory)
     includeRichText = true
-    let current = feature.requestLoad(route: route, param: .id(1))
+    let current = feature.startProjectPageLoad(route: route, param: .id(1))
     await provider.waitFor("project", count: 2)
     XCTAssertTrue(feature.includesRichTextStory)
     XCTAssertEqual(provider.richTextValues, [false, true])
@@ -524,7 +524,7 @@ final class ProjectDetailsFeatureTests: TestCase {
     await current.value
     try provider.finishProject(0, id: 1)
     await previous.value
-    XCTAssertEqual(feature.snapshot(for: route).project?.id, 2)
+    XCTAssertEqual(feature.projectPageSnapshot(for: route).project?.id, 2)
   }
 
   func testRichTextPolicyUsesInjectedSettingsFeature() {
@@ -564,16 +564,16 @@ final class ProjectDetailsFeatureTests: TestCase {
     let route = UUID()
 
     await withEnvironment(currentUser: .template) {
-      await feature.load(route: route, param: .id(1))
-      XCTAssertNotNil(feature.snapshot(for: route).project?.personalization.backing)
+      await feature.loadProjectPage(route: route, param: .id(1))
+      XCTAssertNotNil(feature.projectPageSnapshot(for: route).project?.personalization.backing)
 
       feature.sessionFeature.sessionChanged()
-      XCTAssertNil(feature.snapshot(for: route).project)
+      XCTAssertNil(feature.projectPageSnapshot(for: route).project)
 
       provider.failAt = "project"
-      await feature.load(route: route, param: .id(1))
-      XCTAssertNil(feature.snapshot(for: route).project)
-      XCTAssertNotNil(feature.snapshot(for: route).error)
+      await feature.loadProjectPage(route: route, param: .id(1))
+      XCTAssertNil(feature.projectPageSnapshot(for: route).project)
+      XCTAssertNotNil(feature.projectPageSnapshot(for: route).error)
     }
   }
 
@@ -584,7 +584,7 @@ final class ProjectDetailsFeatureTests: TestCase {
     let route = UUID()
 
     await withEnvironment(currentUser: .template) {
-      await feature.loadRelated(route: route, projectID: "1")
+      await feature.loadRelatedProjects(route: route, projectID: "1")
       XCTAssertNotNil(feature.relatedSnapshot(for: route).error)
 
       feature.sessionFeature.sessionChanged()
@@ -598,16 +598,16 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider, fast: true)
     let route = UUID()
-    let task = feature.requestLoad(route: route, param: .id(1))
+    let task = feature.startProjectPageLoad(route: route, param: .id(1))
     await provider.waitFor("base")
     await provider.waitFor("extras")
-    XCTAssertNil(feature.snapshot(for: route).project)
+    XCTAssertNil(feature.projectPageSnapshot(for: route).project)
     provider.finishBase()
     await task.value
     XCTAssertEqual(Set(provider.calls), Set(["base", "extras"]))
-    XCTAssertEqual(feature.snapshot(for: route).project?.extendedProjectProperties?.risks, "risk")
-    XCTAssertEqual(feature.snapshot(for: route).project?.extendedProjectProperties?.minimumPledgeAmount, 1)
-    XCTAssertEqual(feature.snapshot(for: route).project?.flagging, true)
+    XCTAssertEqual(feature.projectPageSnapshot(for: route).project?.extendedProjectProperties?.risks, "risk")
+    XCTAssertEqual(feature.projectPageSnapshot(for: route).project?.extendedProjectProperties?.minimumPledgeAmount, 1)
+    XCTAssertEqual(feature.projectPageSnapshot(for: route).project?.flagging, true)
   }
 
   func testFastDependencyFailuresPublishNoPartialProject() async {
@@ -616,10 +616,10 @@ final class ProjectDetailsFeatureTests: TestCase {
       provider.failAt = failure
       let feature = self.feature(provider, fast: true)
       let route = UUID()
-      await feature.load(route: route, param: .id(1))
-      XCTAssertNil(feature.snapshot(for: route).project)
-      XCTAssertNotNil(feature.snapshot(for: route).error)
-      XCTAssertFalse(feature.snapshot(for: route).isLoading)
+      await feature.loadProjectPage(route: route, param: .id(1))
+      XCTAssertNil(feature.projectPageSnapshot(for: route).project)
+      XCTAssertNotNil(feature.projectPageSnapshot(for: route).error)
+      XCTAssertFalse(feature.projectPageSnapshot(for: route).isLoading)
     }
   }
 
@@ -629,15 +629,15 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.requestLoad(route: route, param: .id(1))
+    let first = feature.startProjectPageLoad(route: route, param: .id(1))
     await provider.waitFor("project")
-    let refreshed = feature.requestLoad(route: route, param: .id(1), force: true)
+    let refreshed = feature.startProjectPageLoad(route: route, param: .id(1), force: true)
     await provider.waitFor("project", count: 2)
     try provider.finishProject(1, id: 10)
     await refreshed.value
     try provider.finishProject(0, id: 9)
     await first.value
-    XCTAssertEqual(feature.snapshot(for: route).project?.id, 10)
+    XCTAssertEqual(feature.projectPageSnapshot(for: route).project?.id, 10)
   }
 }
 
@@ -654,7 +654,7 @@ final class ControlledProjectDetailsProvider: ProjectDetailsProvider {
   var pauseRelated = false
   private var related: [CheckedContinuation<[ProjectCardProperties], Error>?] = []
 
-  func relatedProjects(projectID: String) async throws -> [ProjectCardProperties] {
+  func fetchRelatedProjects(projectID: String) async throws -> [ProjectCardProperties] {
     try self.record("related:\(projectID)")
     if self.pauseRelated {
       return try await withCheckedThrowingContinuation { self.related.append($0) }
@@ -703,12 +703,12 @@ final class ControlledProjectDetailsProvider: ProjectDetailsProvider {
     XCTAssertEqual(result, .completed)
   }
 
-  func enroll(token _: String, param _: Param) async throws {
+  func enrollSecretReward(token _: String, param _: Param) async throws {
     try self.record("enroll")
     if self.pauseEnrollment { try await withCheckedThrowingContinuation { self.enrollment = $0 } }
   }
 
-  func project(param _: Param, richText: Bool) async throws -> Project.ProjectPamphletData {
+  func fetchProjectPamphlet(param _: Param, richText: Bool) async throws -> Project.ProjectPamphletData {
     self.richTextValues.append(richText)
     try self.record("project")
     if self.pauseProjects { return try await withCheckedThrowingContinuation { self.projects.append($0) } }
@@ -717,23 +717,23 @@ final class ControlledProjectDetailsProvider: ProjectDetailsProvider {
     return Project.ProjectPamphletData(project: project, backingId: self.backingID)
   }
 
-  func backing(id _: Int) async throws -> ProjectAndBackingEnvelope {
+  func fetchProjectBacking(id _: Int) async throws -> ProjectAndBackingEnvelope {
     try self.record("backing")
     return ProjectAndBackingEnvelope(project: Project.template, backing: Backing.template)
   }
 
-  func rewards(projectID _: Int) async throws -> [Reward] {
+  func fetchProjectRewards(projectID _: Int) async throws -> [Reward] {
     try self.record("rewards")
     return [Reward.template]
   }
 
-  func base(param _: Param) async throws -> Project {
+  func fetchBaseProject(param _: Param) async throws -> Project {
     try self.record("base")
     if self.pauseBase { return try await withCheckedThrowingContinuation { self.baseContinuation = $0 } }
     return Project.template
   }
 
-  func extras(param _: Param, richText _: Bool) async throws -> ProjectPageExtraProperties {
+  func fetchProjectPageExtras(param _: Param, richText _: Bool) async throws -> ProjectPageExtraProperties {
     try self.record("extras")
     return self.extra
   }

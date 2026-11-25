@@ -2053,7 +2053,7 @@ private func discoveryProperties(
 
   result["everything"] = result.isEmpty
   result["sort"] = params.sort?.trackingString
-  result["ref_tag"] = RefTag.fromParams(params).stringTag
+  result["ref_tag"] = RefTag.fromDiscoveryParameters(params).stringTag
   result["search_term"] = params.query
   result["search_results_count"] = results
 

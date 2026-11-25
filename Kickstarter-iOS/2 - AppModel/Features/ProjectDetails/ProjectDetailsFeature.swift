@@ -6,13 +6,13 @@ import KsApi
 @MainActor
 public protocol ProjectDetailsProvider: Sendable {
   func recordAttribution(input: GraphAPI.CreateAttributionEventInput) async throws
-  func relatedProjects(projectID: String) async throws -> [ProjectCardProperties]
-  func enroll(token: String, param: Param) async throws
-  func project(param: Param, richText: Bool) async throws -> Project.ProjectPamphletData
-  func backing(id: Int) async throws -> ProjectAndBackingEnvelope
-  func rewards(projectID: Int) async throws -> [Reward]
-  func base(param: Param) async throws -> Project
-  func extras(param: Param, richText: Bool) async throws -> ProjectPageExtraProperties
+  func fetchRelatedProjects(projectID: String) async throws -> [ProjectCardProperties]
+  func enrollSecretReward(token: String, param: Param) async throws
+  func fetchProjectPamphlet(param: Param, richText: Bool) async throws -> Project.ProjectPamphletData
+  func fetchProjectBacking(id: Int) async throws -> ProjectAndBackingEnvelope
+  func fetchProjectRewards(projectID: Int) async throws -> [Reward]
+  func fetchBaseProject(param: Param) async throws -> Project
+  func fetchProjectPageExtras(param: Param, richText: Bool) async throws -> ProjectPageExtraProperties
 }
 
 @MainActor
@@ -23,32 +23,32 @@ public struct AsyncProjectDetailsProvider: ProjectDetailsProvider {
   public func recordAttribution(input: GraphAPI.CreateAttributionEventInput) async throws {
     try await self.service.recordProjectAttribution(input: input)
   }
-  public func relatedProjects(projectID: String) async throws -> [ProjectCardProperties] {
+  public func fetchRelatedProjects(projectID: String) async throws -> [ProjectCardProperties] {
     let response = try await self.service.relatedProjects(projectID: projectID)
     return response.compactMap { ProjectCardProperties($0) }
   }
 
-  public func enroll(token: String, param: Param) async throws {
+  public func enrollSecretReward(token: String, param: Param) async throws {
     try await self.service.enrollProjectSecretReward(token: token, param: param)
   }
 
-  public func project(param: Param, richText: Bool) async throws -> Project.ProjectPamphletData {
+  public func fetchProjectPamphlet(param: Param, richText: Bool) async throws -> Project.ProjectPamphletData {
     try await self.service.projectDetails(param: param, includeStoryRichText: richText)
   }
 
-  public func backing(id: Int) async throws -> ProjectAndBackingEnvelope {
+  public func fetchProjectBacking(id: Int) async throws -> ProjectAndBackingEnvelope {
     try await self.service.projectDetailsBacking(id: id)
   }
 
-  public func rewards(projectID: Int) async throws -> [Reward] {
+  public func fetchProjectRewards(projectID: Int) async throws -> [Reward] {
     try await self.service.projectDetailsRewards(projectID: projectID)
   }
 
-  public func base(param: Param) async throws -> Project {
+  public func fetchBaseProject(param: Param) async throws -> Project {
     try await self.service.projectDetailsBase(param: param)
   }
 
-  public func extras(param: Param, richText: Bool) async throws -> ProjectPageExtraProperties {
+  public func fetchProjectPageExtras(param: Param, richText: Bool) async throws -> ProjectPageExtraProperties {
     try await self.service.projectDetailsExtras(param: param, includeStoryRichText: richText)
   }
 }
@@ -192,7 +192,7 @@ public final class ProjectDetailsFeature {
   private final class RelatedPage {
     let session: RequestSession
     var snapshot = RelatedSnapshot()
-    var request: (id: UUID, projectID: String, task: Task<Void, Never>)?
+    var activeLoad: (id: UUID, projectID: String, task: Task<Void, Never>)?
 
     init(session: RequestSession) { self.session = session }
   }
@@ -206,28 +206,28 @@ public final class ProjectDetailsFeature {
     return page.snapshot
   }
 
-  public func loadRelated(route: UUID, projectID: String) async {
+  public func loadRelatedProjects(route: UUID, projectID: String) async {
     guard !Task.isCancelled else { return }
-    await self.requestRelated(route: route, projectID: projectID).value
+    await self.startRelatedProjectsLoad(route: route, projectID: projectID).value
   }
 
   func waitForRelatedProjects(route: UUID) async {
-    await self.relatedPages[route]?.request?.task.value
+    await self.relatedPages[route]?.activeLoad?.task.value
   }
 
   /// Recommendations are independent of the project's required dependencies.
   /// Equivalent requests share work; a changed project replaces only this route.
   @discardableResult
-  public func requestRelated(route: UUID, projectID: String) -> Task<Void, Never> {
+  public func startRelatedProjectsLoad(route: UUID, projectID: String) -> Task<Void, Never> {
     let sessionFeature = self.sessionFeature
     let session = RequestSession(sessionFeature)
-    if let old = self.relatedPages[route], old.session != session { self.releaseRelated(route: route) }
+    if let old = self.relatedPages[route], old.session != session { self.releaseRelatedProjects(route: route) }
     let page = self.relatedPages[route] ?? RelatedPage(session: session)
     self.relatedPages[route] = page
-    if let request = page.request, request.projectID == projectID {
+    if let request = page.activeLoad, request.projectID == projectID {
       return request.task
     }
-    page.request?.task.cancel()
+    page.activeLoad?.task.cancel()
     let requestID = UUID()
     let provider = self.makeProvider()
     if page.snapshot.projectID != projectID { page.snapshot = RelatedSnapshot(projectID: projectID) }
@@ -235,8 +235,8 @@ public final class ProjectDetailsFeature {
     page.snapshot.error = nil
     let task = Task { [weak self] in
       defer {
-        if page.request?.id == requestID {
-          page.request = nil
+        if page.activeLoad?.id == requestID {
+          page.activeLoad = nil
           page.snapshot.isLoading = false
           if !Task.isCancelled, session.isCurrent(in: sessionFeature),
              let self, self.relatedPages[route] === page {
@@ -246,28 +246,28 @@ public final class ProjectDetailsFeature {
       }
       do {
         try Self.checkSession(session, sessionFeature: sessionFeature)
-        let projects = try await provider.relatedProjects(projectID: projectID)
+        let projects = try await provider.fetchRelatedProjects(projectID: projectID)
         try Self.checkSession(session, sessionFeature: sessionFeature)
-        guard let self, self.relatedPages[route]?.request?.id == requestID else { return }
+        guard let self, self.relatedPages[route]?.activeLoad?.id == requestID else { return }
         page.snapshot.projects = projects
         page.snapshot.hasLoaded = true
       } catch is CancellationError {
         // Keep cancellation distinct from the existing visible error state.
       } catch {
         guard !Task.isCancelled, session.isCurrent(in: sessionFeature),
-              let self, self.relatedPages[route]?.request?.id == requestID else { return }
+              let self, self.relatedPages[route]?.activeLoad?.id == requestID else { return }
         let failure = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
         page.snapshot.error = failure
       }
     }
-    page.request = (requestID, projectID, task)
+    page.activeLoad = (requestID, projectID, task)
     return task
   }
 
-  public func releaseRelated(route: UUID) {
+  public func releaseRelatedProjects(route: UUID) {
     let page = self.relatedPages.removeValue(forKey: route)
-    page?.request?.task.cancel()
-    page?.request = nil
+    page?.activeLoad?.task.cancel()
+    page?.activeLoad = nil
   }
 
   public struct Snapshot {
@@ -287,7 +287,7 @@ public final class ProjectDetailsFeature {
   private final class Page {
     let session: RequestSession
     var snapshot = Snapshot()
-    var request: (id: UUID, identity: Identity, task: Task<Void, Never>)?
+    var activeLoad: (id: UUID, identity: Identity, task: Task<Void, Never>)?
 
     init(session: RequestSession) { self.session = session }
   }
@@ -382,21 +382,21 @@ public final class ProjectDetailsFeature {
     self.analytics.pledgeCTATapped(state, project)
   }
 
-  public func snapshot(for route: UUID) -> Snapshot {
+  public func projectPageSnapshot(for route: UUID) -> Snapshot {
     guard let page = self.projectPagesByRoute[route], page.session.isCurrent(in: self.sessionFeature) else {
       return Snapshot()
     }
     return page.snapshot
   }
 
-  public func load(route: UUID, param: Param, secretRewardToken: String? = nil, force: Bool = false) async {
+  public func loadProjectPage(route: UUID, param: Param, secretRewardToken: String? = nil, force: Bool = false) async {
     guard !Task.isCancelled else { return }
-    await self.requestLoad(route: route, param: param, secretRewardToken: secretRewardToken, force: force)
+    await self.startProjectPageLoad(route: route, param: param, secretRewardToken: secretRewardToken, force: force)
       .value
   }
 
   @discardableResult
-  public func requestLoad(
+  public func startProjectPageLoad(
     route: UUID, param: Param, secretRewardToken: String? = nil, force: Bool = false
   ) -> Task<Void, Never> {
     let identity = Identity(
@@ -404,13 +404,13 @@ public final class ProjectDetailsFeature {
       fast: self.useFastLoading(), richText: self.includesRichTextStory
     )
     if let old = self.projectPagesByRoute[route], old.session != identity.session {
-      old.request?.task.cancel()
+      old.activeLoad?.task.cancel()
       self.projectPagesByRoute[route] = nil
     }
     let page = self.projectPagesByRoute[route] ?? Page(session: identity.session)
     self.projectPagesByRoute[route] = page
-    if !force, let request = page.request, request.identity == identity { return request.task }
-    page.request?.task.cancel()
+    if !force, let request = page.activeLoad, request.identity == identity { return request.task }
+    page.activeLoad?.task.cancel()
     let requestID = UUID()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
@@ -420,8 +420,8 @@ public final class ProjectDetailsFeature {
     page.snapshot.error = nil
     let task = Task { [weak self] in
       defer {
-        if let self, self.projectPagesByRoute[route]?.request?.id == requestID {
-          page.request = nil
+        if let self, self.projectPagesByRoute[route]?.activeLoad?.id == requestID {
+          page.activeLoad = nil
           page.snapshot.isLoading = false
           self.emit(.loading(route, false))
         }
@@ -430,7 +430,7 @@ public final class ProjectDetailsFeature {
         try Self.checkSession(identity.session, sessionFeature: sessionFeature)
         // Keep enrollment before reads, including its existing configured delay.
         if identity.session.userID != nil, let token = identity.token, !token.isEmpty {
-          try await provider.enroll(token: token, param: param)
+          try await provider.enrollSecretReward(token: token, param: param)
           try await sleep(delay)
           try Self.checkSession(identity.session, sessionFeature: sessionFeature)
         }
@@ -439,8 +439,8 @@ public final class ProjectDetailsFeature {
           // Observe whichever dependency finishes first, so either failure
           // cancels its sibling rather than waiting in a fixed await order.
           project = try await withThrowingTaskGroup(of: ProjectPart.self) { group in
-            group.addTask { .base(try await provider.base(param: param)) }
-            group.addTask { .extras(try await provider.extras(param: param, richText: identity.richText)) }
+            group.addTask { .base(try await provider.fetchBaseProject(param: param)) }
+            group.addTask { .extras(try await provider.fetchProjectPageExtras(param: param, richText: identity.richText)) }
             var base: Project?
             var extras: ProjectPageExtraProperties?
             for try await part in group {
@@ -453,16 +453,16 @@ public final class ProjectDetailsFeature {
             return extras.addExtraProperties(toProject: base)
           }
         } else {
-          let pamphlet = try await provider.project(param: param, richText: identity.richText)
+          let pamphlet = try await provider.fetchProjectPamphlet(param: param, richText: identity.richText)
           try Self.checkSession(identity.session, sessionFeature: sessionFeature)
           var loaded = pamphlet.project
           if let backingID = pamphlet.backingId {
-            let envelope = try await provider.backing(id: backingID)
+            let envelope = try await provider.fetchProjectBacking(id: backingID)
             try Self.checkSession(identity.session, sessionFeature: sessionFeature)
             loaded.personalization.backing = envelope.backing
             loaded.personalization.isBacking = true
           }
-          let rewards = try await provider.rewards(projectID: loaded.id)
+          let rewards = try await provider.fetchProjectRewards(projectID: loaded.id)
           try Self.checkSession(identity.session, sessionFeature: sessionFeature)
           // Preserve the synthetic no-reward entry and shipping-rule data.
           loaded.rewardData.rewards = Array(loaded.rewardData.rewards.prefix(1)) + rewards
@@ -470,37 +470,37 @@ public final class ProjectDetailsFeature {
         }
         try await sleep(delay)
         try Self.checkSession(identity.session, sessionFeature: sessionFeature)
-        guard let self, self.projectPagesByRoute[route]?.request?.id == requestID else { return }
+        guard let self, self.projectPagesByRoute[route]?.activeLoad?.id == requestID else { return }
         page.snapshot.project = project
         self.emit(.completion(route, .success(project)))
       } catch is CancellationError {
         // Cancellation is not a product failure and never publishes stale data.
       } catch {
         guard !Task.isCancelled, identity.session.isCurrent(in: sessionFeature),
-              let self, self.projectPagesByRoute[route]?.request?.id == requestID else { return }
+              let self, self.projectPagesByRoute[route]?.activeLoad?.id == requestID else { return }
         let failure = (error as? ErrorEnvelope) ?? ErrorEnvelope.couldNotParseJSON
         page.snapshot.error = failure
         self.emit(.completion(route, .failure(failure)))
       }
     }
-    page.request = (requestID, identity, task)
+    page.activeLoad = (requestID, identity, task)
     self.emit(.loading(route, true))
     return task
   }
 
-  public func cancel(route: UUID) {
+  public func cancelProjectPageLoad(route: UUID) {
     guard let page = self.projectPagesByRoute[route] else { return }
-    let task = page.request?.task
-    page.request = nil
+    let task = page.activeLoad?.task
+    page.activeLoad = nil
     page.snapshot.isLoading = false
     task?.cancel()
     self.emit(.loading(route, false))
   }
 
-  public func release(route: UUID) {
-    self.releaseRelated(route: route)
+  public func releaseProjectPage(route: UUID) {
+    self.releaseRelatedProjects(route: route)
     self.attributionTasksByRoute[route] = nil
-    self.cancel(route: route)
+    self.cancelProjectPageLoad(route: route)
     self.projectPagesByRoute.removeValue(forKey: route)
   }
 

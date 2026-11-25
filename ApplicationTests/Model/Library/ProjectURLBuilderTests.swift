@@ -7,7 +7,7 @@ import XCTest
 class ProjectURLBuilderTests: XCTestCase {
   func testGetProjectBackingDetailsURL() throws {
     let baseURL = try XCTUnwrap(URL(string: "https://backing.example.invalid"))
-    let backingDetailsURL = getProjectBackingDetailsURL(with: Project.template, webBaseURL: baseURL)
+    let backingDetailsURL = projectBackingDetailsURL(for: Project.template, webBaseURL: baseURL)
     let url = "https://backing.example.invalid/projects/1/a-fun-project/backing/details"
 
     XCTAssertNotNil(backingDetailsURL)

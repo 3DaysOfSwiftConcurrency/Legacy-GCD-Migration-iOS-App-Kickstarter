@@ -186,7 +186,7 @@ extension ProjectPamphletMainCellProperties {
     self.pledged >= self.goal
   }
 
-  public func currentCurrency(fallback: String?) -> String {
+  public func resolvedCurrencyCode(fallback: String?) -> String {
     self.userCurrency ?? fallback ?? Project.Country.us.currencyCode
   }
 }

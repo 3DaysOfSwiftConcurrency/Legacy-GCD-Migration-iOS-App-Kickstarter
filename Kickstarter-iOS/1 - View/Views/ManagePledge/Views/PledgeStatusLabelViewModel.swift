@@ -241,7 +241,7 @@ private func attributedPlotErroredString(
     return nil
   }
 
-  guard let backingDetailLink = getProjectBackingDetailsURL(with: project, webBaseURL: webBaseURL) else {
+  guard let backingDetailLink = projectBackingDetailsURL(for: project, webBaseURL: webBaseURL) else {
     return nil
   }
 

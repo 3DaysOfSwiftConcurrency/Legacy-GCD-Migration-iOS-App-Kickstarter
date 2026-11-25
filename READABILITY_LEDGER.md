@@ -648,3 +648,14 @@ The first build found two missed awaited add-ons test calls; repaired both.
 `rewards-closure-2` Build For Testing exited zero with `TEST BUILD SUCCEEDED`
 for app and test targets. Runtime tests remain unverified. Remaining inventory
 decisions: 1,513.
+
+ProjectDetails checkpoint: reviewed all 198 declarations across ten Model files.
+Provider methods now name their fetched project data; project-page and related
+route APIs distinguish starting, awaiting, cancelling and releasing. Referral
+cookie cleanup, backing URL construction, discovery referral conversion, Unix
+date parsing and currency fallback also name their results. Reconciled View
+callers, API provider test doubles and focused tests. An initial helper build
+exposed dropped local argument names, and a later build caught an inferred
+`.fromParams` View caller; repaired both. `project-details-caller-6` Build For
+Testing exited zero with `TEST BUILD SUCCEEDED` for app and test targets.
+Runtime tests remain unverified. Remaining inventory decisions: 1,315.

@@ -249,8 +249,8 @@ final class ProjectPageRelatedProjectsTests: TestCase {
     XCTAssertEqual(properties.goalUsd, floor(Float(100_000) * properties.projectUsdExchangeRate))
 
     // Test currency-related properties
-    XCTAssertEqual(properties.currentCurrency(fallback: nil), "USD")
-    XCTAssertEqual(properties.currency, properties.currentCurrency(fallback: nil))
+    XCTAssertEqual(properties.resolvedCurrencyCode(fallback: nil), "USD")
+    XCTAssertEqual(properties.currency, properties.resolvedCurrencyCode(fallback: nil))
   }
 
   func testProjectPamphletMainCellProperties_GoalMet() async {
@@ -290,8 +290,8 @@ final class ProjectPageRelatedProjectsTests: TestCase {
       .projectPamphletMainCellProperties
 
     XCTAssertEqual(properties.currency, "USD")
-    XCTAssertEqual(properties.currentCurrency(fallback: nil), "USD")
-    XCTAssertEqual(properties.currentCurrency(fallback: "CAD"), "CAD")
+    XCTAssertEqual(properties.resolvedCurrencyCode(fallback: nil), "USD")
+    XCTAssertEqual(properties.resolvedCurrencyCode(fallback: "CAD"), "CAD")
   }
 
   func testProjectPamphletMainCellProperties_ZeroPledgeHandling() async {

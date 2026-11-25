@@ -369,7 +369,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
 
   public func tapped(project: Project) {
     if let parameters = self.currentNavigationParameters, let projects = self.currentNavigationProjects {
-      self.onGoToProjectPlaylist?(project, projects, .fromParams(parameters))
+      self.onGoToProjectPlaylist?(project, projects, .fromDiscoveryParameters(parameters))
     }
     if let parameters = self.currentNavigationParameters {
       self.discoveryFeature.projectCardClicked(project: project, parameters: parameters)

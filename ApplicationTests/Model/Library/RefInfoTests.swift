@@ -195,11 +195,11 @@ public final class RefTagTests: XCTestCase {
     let discoStarred = DiscoveryParams.defaults
       |> DiscoveryParams.lens.starred .~ true
 
-    XCTAssertEqual("discovery_ending_soon", RefTag.fromParams(discoSort).stringTag)
-    XCTAssertEqual("category_ending_soon", RefTag.fromParams(discoCategory).stringTag)
-    XCTAssertEqual("recs_home", RefTag.fromParams(discoRecommended).stringTag)
-    XCTAssertEqual("recommended_home", RefTag.fromParams(discoPWL).stringTag)
-    XCTAssertEqual("social_home", RefTag.fromParams(discoSocial).stringTag)
-    XCTAssertEqual("starred_home", RefTag.fromParams(discoStarred).stringTag)
+    XCTAssertEqual("discovery_ending_soon", RefTag.fromDiscoveryParameters(discoSort).stringTag)
+    XCTAssertEqual("category_ending_soon", RefTag.fromDiscoveryParameters(discoCategory).stringTag)
+    XCTAssertEqual("recs_home", RefTag.fromDiscoveryParameters(discoRecommended).stringTag)
+    XCTAssertEqual("recommended_home", RefTag.fromDiscoveryParameters(discoPWL).stringTag)
+    XCTAssertEqual("social_home", RefTag.fromDiscoveryParameters(discoSocial).stringTag)
+    XCTAssertEqual("starred_home", RefTag.fromDiscoveryParameters(discoStarred).stringTag)
   }
 }

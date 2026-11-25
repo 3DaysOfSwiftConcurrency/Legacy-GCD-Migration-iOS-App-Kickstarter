@@ -245,7 +245,7 @@ private func sortRefTagSuffix(_ sort: DiscoveryParams.Sort) -> String {
 }
 
 extension RefTag {
-  public static func fromParams(_ params: DiscoveryParams) -> RefTag {
+  public static func fromDiscoveryParameters(_ params: DiscoveryParams) -> RefTag {
     if params.category != nil {
       return .categoryWithSort(params.sort ?? .magic)
     } else if params.recommended == .some(true) {

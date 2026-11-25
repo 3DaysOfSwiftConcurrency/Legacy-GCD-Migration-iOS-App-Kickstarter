@@ -22,16 +22,16 @@ private func referralCookieName(_ project: Project) -> String {
 // Tries to extract the name of the ref tag from a cookie. It has to do double work in case the cookie
 // is accidentally encoded with a `%3F` instead of a `?`.
 private func refTagName(fromCookie cookie: HTTPCookie) -> String {
-  return cleanUp(refTagString: cookie.value)
+  return removeCookieTimestamp(fromString: cookie.value)
 }
 
 // Tries to remove cruft from a ref tag.
-public func cleanUp(refTag: RefTag) -> RefTag {
-  return RefTag(code: cleanUp(refTagString: refTag.stringTag))
+public func removeCookieTimestamp(from refTag: RefTag) -> RefTag {
+  return RefTag(code: removeCookieTimestamp(fromString: refTag.stringTag))
 }
 
 // Tries to remove cruft from a ref tag string.
-private func cleanUp(refTagString: String) -> String {
+private func removeCookieTimestamp(fromString refTagString: String) -> String {
   let escapedCookieParts = refTagString.components(separatedBy: escapedCookieSeparator)
   if let name = escapedCookieParts.first, escapedCookieParts.count == 2 {
     return String(name)

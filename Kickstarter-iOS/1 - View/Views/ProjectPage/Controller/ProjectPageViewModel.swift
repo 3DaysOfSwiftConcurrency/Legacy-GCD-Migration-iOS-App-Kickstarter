@@ -352,7 +352,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     // MARK: Similar Projects
 
     self.rewardsUseCase.onRewards = { [weak self] in
-      guard let self, let project = self.projectDetailsFeature.snapshot(for: self.projectRoute).project,
+      guard let self, let project = self.projectDetailsFeature.projectPageSnapshot(for: self.projectRoute).project,
             let config = self.configData else { return }
       self.onGoToRewards?((project, self.latestProjectRefTag, config.2))
     }
@@ -405,7 +405,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     }
     let projectID = "\(project.id)"
     if self.projectDetailsFeature.relatedSnapshot(for: self.projectRoute).projectID != projectID {
-      self.projectDetailsFeature.requestRelated(route: self.projectRoute, projectID: projectID)
+      self.projectDetailsFeature.startRelatedProjectsLoad(route: self.projectRoute, projectID: projectID)
     }
   }
 
@@ -429,8 +429,8 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
 
   private func loadProject(force: Bool) {
     guard let (projectOrParam, refInfo, token) = self.configData else { return }
-    self.requestRefTag = refInfo?.refTag.map(cleanUp(refTag:))
-    self.loadingTask = self.projectDetailsFeature.requestLoad(
+    self.requestRefTag = refInfo?.refTag.map(removeCookieTimestamp(from:))
+    self.loadingTask = self.projectDetailsFeature.startProjectPageLoad(
       route: self.projectRoute, param: projectOrParam.param.param, secretRewardToken: token, force: force
     )
   }
@@ -456,7 +456,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     Task { @MainActor in
       media.cancelPlaybackPreparations(route: route)
       media.cancelImages(route: route)
-      details.release(route: route)
+      details.releaseProjectPage(route: route)
     }
   }
 
@@ -547,12 +547,12 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     case .pledge, .viewRewards, .viewYourRewards:
       self.rewardsUseCase.openRewardsOrRequestLogin()
     case .pledgeManager:
-      guard let project = self.projectDetailsFeature.snapshot(for: self.projectRoute).project else { return }
+      guard let project = self.projectDetailsFeature.projectPageSnapshot(for: self.projectRoute).project else { return }
       self.onGoToPledgeManager?(
         self.projectDetailsFeature.redemptionURL(for: project)
       )
     case .fix, .viewBacking, .manage:
-      guard let project = self.projectDetailsFeature.snapshot(for: self.projectRoute).project,
+      guard let project = self.projectDetailsFeature.projectPageSnapshot(for: self.projectRoute).project,
             project.personalization.isBacking == true,
             let backing = project.personalization.backing else { return }
       switch pledgeDestination(project: project, backing: backing) {
@@ -640,7 +640,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   }
 
   public func userSessionChanged() {
-    self.projectDetailsFeature.releaseRelated(route: self.projectRoute)
+    self.projectDetailsFeature.releaseRelatedProjects(route: self.projectRoute)
     self.loadProject(force: true)
   }
 
