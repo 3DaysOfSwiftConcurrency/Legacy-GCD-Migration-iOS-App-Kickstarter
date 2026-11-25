@@ -255,7 +255,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       let session = pledgeFeature.sessionIdentity
       let id = UUID()
       self.createIdentity.id = id
-      let request = pledgeFeature.startCreate(data, isApplePay: isApplePay)
+      let request = pledgeFeature.startBackingCreation(data, isApplePay: isApplePay)
       processingState.setHidden(false)
       self.createTask = Task { [weak self] in
         defer {
@@ -280,7 +280,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       let session = pledgeFeature.sessionIdentity
       let id = UUID()
       self.updateIdentity.id = id
-      let request = pledgeFeature.startUpdate(data, isApplePay: isApplePay)
+      let request = pledgeFeature.startBackingUpdate(data, isApplePay: isApplePay)
       processingState.setHidden(false)
       self.updateTask = Task { [weak self] in
         defer {

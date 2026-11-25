@@ -22,7 +22,7 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Onboarding | 2 | 26 | 46 | 72 |
 | Other Model | 47 | 352 | 387 | 0 |
 | Payments | 10 | 70 | 57 | 127 |
-| Pledge | 14 | 161 | 112 | 0 |
+| Pledge | 14 | 161 | 112 | 16 |
 | PledgedProjects | 6 | 43 | 81 | 124 |
 | Profile | 2 | 21 | 27 | 48 |
 | ProjectDetails | 10 | 72 | 126 | 0 |
@@ -34,7 +34,7 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Search | 12 | 93 | 136 | 0 |
 | Session | 1 | 33 | 27 | 60 |
 | Settings | 8 | 64 | 116 | 0 |
-| **Total** | **159** | **1407** | **1617** | **1113** |
+| **Total** | **159** | **1407** | **1617** | **1129** |
 
 ## Declaration decisions
 
@@ -1168,9 +1168,9 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Features/Pledge/PledgeFeature.swift:15 | PledgeProvider | function, internal | `completeCheckout(_ input: GraphAPI.CompleteOnSessionCheckoutInput) async throws` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:16 | PledgeProvider | function, internal | `project(_ param: Param) async throws -> Project` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:17 | PledgeProvider | function, internal | `backing(_ id: Int) async throws -> Backing` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:19 | PledgeProvider | function, internal | `create(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:20 | PledgeProvider | function, internal | `update(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:21 | PledgeProvider | function, internal | `cancel(_ input: KsApi.CancelBackingInput) async throws` | Pending | Pending | Pending |
+| Features/Pledge/PledgeFeature.swift:19 | PledgeProvider | function, internal | `createBacking(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope` | Create backing via provider. | PledgeFeature command switch, controlled provider and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
+| Features/Pledge/PledgeFeature.swift:20 | PledgeProvider | function, internal | `updateBacking(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope` | Update backing via provider. | PledgeFeature command switch, controlled provider and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
+| Features/Pledge/PledgeFeature.swift:21 | PledgeProvider | function, internal | `cancelBacking(_ input: KsApi.CancelBackingInput) async throws` | Cancel backing via provider. | PledgeFeature command switch, controlled provider and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
 | Features/Pledge/PledgeFeature.swift:22 | PledgeProvider | function, internal | `received(projectID: Int, userID: Int, received: Bool) async throws -> Backing` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:27 | AsyncPledgeProvider | stored, private | `let service: any ServiceType` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:28 | AsyncPledgeProvider | initializer, public | `init(service: any ServiceType)` | Pending | Pending | Pending |
@@ -1184,9 +1184,9 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Features/Pledge/PledgeFeature.swift:57 | AsyncPledgeProvider | function, public | `completeCheckout(_ input: GraphAPI.CompleteOnSessionCheckoutInput) async throws` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:61 | AsyncPledgeProvider | function, public | `backing(_ id: Int) async throws -> Backing` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:64 | AsyncPledgeProvider | function, public | `project(_ param: Param) async throws -> Project` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:79 | AsyncPledgeProvider | function, public | `create(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:82 | AsyncPledgeProvider | function, public | `update(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:85 | AsyncPledgeProvider | function, public | `cancel(_ input: KsApi.CancelBackingInput) async throws` | Pending | Pending | Pending |
+| Features/Pledge/PledgeFeature.swift:79 | AsyncPledgeProvider | function, public | `createBacking(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope` | Submit pledge backing to API. | PledgeFeature command switch, controlled provider and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
+| Features/Pledge/PledgeFeature.swift:82 | AsyncPledgeProvider | function, public | `updateBacking(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope` | Revise pledge backing via API. | PledgeFeature command switch, controlled provider and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
+| Features/Pledge/PledgeFeature.swift:85 | AsyncPledgeProvider | function, public | `cancelBacking(_ input: KsApi.CancelBackingInput) async throws` | Cancel pledge backing via API. | PledgeFeature command switch, controlled provider and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
 | Features/Pledge/PledgeFeature.swift:88 | AsyncPledgeProvider | function, public | `received(projectID: Int, userID: Int, received: Bool) async throws -> Backing` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:100 | PledgeFeature.Platform | stored, internal | `let serverConfig: @MainActor () -> any ServerConfigType` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:101 | PledgeFeature.Platform | stored, internal | `let prepareWebRequest: @MainActor (URLRequest) -> URLRequest` | Pending | Pending | Pending |
@@ -1223,23 +1223,23 @@ property declarations: `Features/Payments/AddNewCardIntent.swift`, `Features/Rec
 | Features/Pledge/PledgeFeature.swift:229 | PledgeFeature | stored, private | `var writeRevisionBySession: [SessionIdentity: Int]` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:230 | PledgeFeature | stored, private | `var latestQueuedWriteBySession: [SessionIdentity: Pending]` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:231 | PledgeFeature | stored, private | `var pledgeWriteTasks: [UUID: Task<Value, Error>]` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:233 | PledgeFeature | function, private | `request(_ command: Command) -> Task<Value, Error>` | Pending | Pending | Pending |
+| Features/Pledge/PledgeFeature.swift:233 | PledgeFeature | function, private | `startPledgeWrite(_ command: Command) -> Task<Value, Error>` | Admit or reuse ordered financial write and return retained Task. | PledgeFeature call chain and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
 | Features/Pledge/PledgeFeature.swift:285 | PledgeFeature | function, private | `awaitAdmitted(_ command: Task<Value, Error>, session: SessionIdentity) async throws -> Value` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:296 | PledgeFeature | function, private | `execute(_ command: Command) async throws -> Value` | Pending | Pending | Pending |
+| Features/Pledge/PledgeFeature.swift:296 | PledgeFeature | function, private | `performPledgeWrite(_ command: Command) async throws -> Value` | Await admitted write and verify current session. | PledgeFeature call chain and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
 | Features/Pledge/PledgeFeature.swift:309 | PledgeFeature | function, public | `confirmAddress(backingID: String, addressID: String) async throws -> Bool` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:312 | PledgeFeature | function, public | `receipt(backingID: String, received: Bool) async throws -> Bool` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:315 | PledgeFeature | function, private | `acknowledged(_ value: Value) throws -> Bool` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:320 | PledgeFeature | function, public | `create(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:323 | PledgeFeature | function, internal | `startCreate(_ data: CreateBackingData, isApplePay: Bool) -> Task<CreateBackingEnvelope, Error>` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:327 | PledgeFeature | function, internal | `startCreate(_ input: KsApi.CreateBackingInput) -> Task<CreateBackingEnvelope, Error>` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:335 | PledgeFeature | function, public | `update(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:338 | PledgeFeature | function, internal | `startUpdate(_ data: UpdateBackingData, isApplePay: Bool) -> Task<UpdateBackingEnvelope, Error>` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:342 | PledgeFeature | function, internal | `startUpdate(_ input: KsApi.UpdateBackingInput) -> Task<UpdateBackingEnvelope, Error>` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:350 | PledgeFeature | function, public | `cancel(_ input: KsApi.CancelBackingInput) async throws` | Pending | Pending | Pending |
+| Features/Pledge/PledgeFeature.swift:320 | PledgeFeature | function, public | `createBacking(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope` | Create backing and await server envelope. | PledgeFeature call chain and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
+| Features/Pledge/PledgeFeature.swift:323 | PledgeFeature | function, internal | `startBackingCreation(_ data: CreateBackingData, isApplePay: Bool) -> Task<CreateBackingEnvelope, Error>` | Start backing creation from View data and return Task. | Pledge ViewModel and focused tests. | Rename: start and backing/receipt target name the admitted operation and returned Task. |
+| Features/Pledge/PledgeFeature.swift:327 | PledgeFeature | function, internal | `startBackingCreation(_ input: KsApi.CreateBackingInput) -> Task<CreateBackingEnvelope, Error>` | Admit backing creation input to ordered write queue. | PledgeFeature and focused tests. | Rename: start and backing/receipt target name the admitted operation and returned Task. |
+| Features/Pledge/PledgeFeature.swift:335 | PledgeFeature | function, public | `updateBacking(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope` | Update backing and await server envelope. | PledgeFeature call chain and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
+| Features/Pledge/PledgeFeature.swift:338 | PledgeFeature | function, internal | `startBackingUpdate(_ data: UpdateBackingData, isApplePay: Bool) -> Task<UpdateBackingEnvelope, Error>` | Start backing update from View data and return Task. | Pledge ViewModel and focused tests. | Rename: start and backing/receipt target name the admitted operation and returned Task. |
+| Features/Pledge/PledgeFeature.swift:342 | PledgeFeature | function, internal | `startBackingUpdate(_ input: KsApi.UpdateBackingInput) -> Task<UpdateBackingEnvelope, Error>` | Admit backing update input to ordered write queue. | PledgeFeature and focused tests. | Rename: start and backing/receipt target name the admitted operation and returned Task. |
+| Features/Pledge/PledgeFeature.swift:350 | PledgeFeature | function, public | `cancelBacking(_ input: KsApi.CancelBackingInput) async throws` | Cancel backing and await write completion. | PledgeFeature call chain and focused Feature tests. | Rename: action now identifies backing or pledge write; Task admission and awaiting are distinct. |
 | Features/Pledge/PledgeFeature.swift:354 | PledgeFeature | function, internal | `cancelWithPresentationDelay(_ input: KsApi.CancelBackingInput) async throws` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:364 | PledgeFeature | function, public | `received(projectID: Int, userID: Int, received: Bool) async throws -> Backing` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:371 | PledgeFeature | function, internal | `startReceivedForCurrentUser(project: Project, received: Bool) -> Task<Backing, Error>?` | Pending | Pending | Pending |
-| Features/Pledge/PledgeFeature.swift:385 | PledgeFeature | function, internal | `startReceived(projectID: Int, userID: Int, received: Bool) -> Task<Backing, Error>` | Pending | Pending | Pending |
+| Features/Pledge/PledgeFeature.swift:385 | PledgeFeature | function, internal | `startRewardReceivedUpdate(projectID: Int, userID: Int, received: Bool) -> Task<Backing, Error>` | Start reward receipt write and return Backing Task. | Feature toggle helper and focused tests. | Rename: start and backing/receipt target name the admitted operation and returned Task. |
 | Features/Pledge/PledgeFeature.swift:392 | PledgeFeature | function, public | `openCheckout(_ input: KsApi.CreateCheckoutInput) async throws     -> CreateCheckoutEnvelope` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:397 | PledgeFeature | function, internal | `startOpenCheckout(_ data: PledgeViewData) -> Task<CreateCheckoutEnvelope, Error>` | Pending | Pending | Pending |
 | Features/Pledge/PledgeFeature.swift:410 | PledgeFeature | function, internal | `checkoutID(from value: String) -> String` | Pending | Pending | Pending |

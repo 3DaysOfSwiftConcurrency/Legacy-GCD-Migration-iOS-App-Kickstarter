@@ -75,8 +75,8 @@ final class PledgeFeatureTests: TestCase {
 
   func testEquivalentCreateSharesPendingWriteAndPreservesSCACheckout() async throws {
     let input = self.createInput()
-    let first = self.feature.startCreate(input)
-    let duplicate = self.feature.startCreate(input)
+    let first = self.feature.startBackingCreation(input)
+    let duplicate = self.feature.startBackingCreation(input)
     await self.provider.creates.waitFor(1)
     XCTAssertEqual(self.provider.createInputs, [input])
     try self.provider.creates.finish(0, .success(self.created()))
@@ -88,9 +88,9 @@ final class PledgeFeatureTests: TestCase {
   func testDistinctCreateInputsQueueRatherThanShare() async throws {
     let firstInput = self.createInput(amount: "10.00")
     let secondInput = self.createInput(amount: "20.00")
-    let first = Task { try await self.feature.create(firstInput) }
+    let first = Task { try await self.feature.createBacking(firstInput) }
     await self.provider.creates.waitFor(1)
-    let second = Task { try await self.feature.create(secondInput) }
+    let second = Task { try await self.feature.createBacking(secondInput) }
     await Task.yield()
     try self.provider.creates.finish(0, .success(self.created()))
     await self.provider.creates.waitFor(2)
@@ -104,9 +104,9 @@ final class PledgeFeatureTests: TestCase {
     let updateInput = self.updateInput()
     let cancelInput = KsApi.CancelBackingInput(
       backingId: "backing", cancellationReason: "fixture note")
-    let update = self.feature.startUpdate(updateInput)
+    let update = self.feature.startBackingUpdate(updateInput)
     await self.provider.updates.waitFor(1)
-    let cancel = Task { try await self.feature.cancel(cancelInput) }
+    let cancel = Task { try await self.feature.cancelBacking(cancelInput) }
     await Task.yield()
     XCTAssertEqual(self.provider.cancellations.count, 0)
     try self.provider.updates.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -123,7 +123,7 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testCancelledWaiterDoesNotAbandonAdmittedCreate() async throws {
-    let waiter = self.feature.startCreate(self.createInput())
+    let waiter = self.feature.startBackingCreation(self.createInput())
     await self.provider.creates.waitFor(1)
     waiter.cancel()
     try self.provider.creates.finish(0, .success(self.created()))
@@ -137,7 +137,7 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testCancelledCreateWaiterDoesNotReceiveLateFailure() async throws {
-    let waiter = self.feature.startCreate(self.createInput())
+    let waiter = self.feature.startBackingCreation(self.createInput())
     await self.provider.creates.waitFor(1)
     waiter.cancel()
     try self.provider.creates.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -166,26 +166,26 @@ final class PledgeFeatureTests: TestCase {
 
   func testDuplicateCancellationSharesAndLaterExplicitRetryStartsNewRequest() async throws {
     let input = KsApi.CancelBackingInput(backingId: "backing", cancellationReason: nil)
-    let first = Task { try await self.feature.cancel(input) }
+    let first = Task { try await self.feature.cancelBacking(input) }
     await self.provider.cancellations.waitFor(1)
-    let duplicate = Task { try await self.feature.cancel(input) }
+    let duplicate = Task { try await self.feature.cancelBacking(input) }
     await Task.yield()
     try self.provider.cancellations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     for task in [first, duplicate] {
       do { try await task.value; XCTFail("Expected failure") } catch {}
     }
     XCTAssertEqual(self.provider.cancellations.count, 1)
-    let retry = Task { try await self.feature.cancel(input) }
+    let retry = Task { try await self.feature.cancelBacking(input) }
     await self.provider.cancellations.waitFor(2)
     try self.provider.cancellations.finish(1, .success(()))
     try await retry.value
   }
 
   func testRewardToggleTrueFalseTrueRetainsEveryDistinctCommand() async throws {
-    let first = self.feature.startReceived(projectID: 1, userID: 2, received: true)
-    let duplicate = self.feature.startReceived(projectID: 1, userID: 2, received: true)
-    let second = self.feature.startReceived(projectID: 1, userID: 2, received: false)
-    let third = self.feature.startReceived(projectID: 1, userID: 2, received: true)
+    let first = self.feature.startRewardReceivedUpdate(projectID: 1, userID: 2, received: true)
+    let duplicate = self.feature.startRewardReceivedUpdate(projectID: 1, userID: 2, received: true)
+    let second = self.feature.startRewardReceivedUpdate(projectID: 1, userID: 2, received: false)
+    let third = self.feature.startRewardReceivedUpdate(projectID: 1, userID: 2, received: true)
     for i in 0..<3 {
       await self.provider.receipts.waitFor(i + 1)
       try self.provider.receipts.finish(i, .success(.template))
@@ -269,8 +269,8 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testSessionChangeRejectsOldErrorAndQueuedWrite() async throws {
-    let old = self.feature.startCreate(self.createInput())
-    let queued = self.feature.startUpdate(self.updateInput())
+    let old = self.feature.startBackingCreation(self.createInput())
+    let queued = self.feature.startBackingUpdate(self.updateInput())
     await self.provider.creates.waitFor(1)
     self.session.sessionChanged()
     try self.provider.creates.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -282,10 +282,10 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testNewSessionCanProceedBeforeOldRequestSettles() async throws {
-    let old = self.feature.startCreate(self.createInput())
+    let old = self.feature.startBackingCreation(self.createInput())
     await self.provider.creates.waitFor(1)
     self.session.sessionChanged()
-    let current = self.feature.startCreate(self.createInput())
+    let current = self.feature.startBackingCreation(self.createInput())
     await self.provider.creates.waitFor(2)
     try self.provider.creates.finish(1, .success(self.created()))
     try self.provider.creates.finish(0, .success(self.created()))
@@ -295,7 +295,7 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testCanceledAsyncCallerCannotReceiveSuccessfulUpdate() async throws {
-    let caller = Task { try await self.feature.update(self.updateInput()) }
+    let caller = Task { try await self.feature.updateBacking(self.updateInput()) }
     await self.provider.updates.waitFor(1)
     caller.cancel()
     try self.provider.updates.finish(
@@ -308,7 +308,7 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testCanceledAsyncCallerDoesNotReceiveLateFailure() async throws {
-    let caller = Task { try await self.feature.update(self.updateInput()) }
+    let caller = Task { try await self.feature.updateBacking(self.updateInput()) }
     await self.provider.updates.waitFor(1)
     caller.cancel()
     try self.provider.updates.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -350,15 +350,15 @@ final class PledgeFeatureTests: TestCase {
   func testPublicDemoRejectsAllPledgeMutations() async {
     let provider = AsyncPledgeProvider(service: MockService.publicDemo())
     do {
-      _ = try await provider.create(self.createInput())
+      _ = try await provider.createBacking(self.createInput())
       XCTFail("Demo create")
     } catch {}
     do {
-      _ = try await provider.update(self.updateInput())
+      _ = try await provider.updateBacking(self.updateInput())
       XCTFail("Demo update")
     } catch {}
     do {
-      try await provider.cancel(.init(backingId: "b", cancellationReason: nil))
+      try await provider.cancelBacking(.init(backingId: "b", cancellationReason: nil))
       XCTFail("Demo cancel")
     } catch {}
     do {
@@ -713,7 +713,7 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testBackingRefreshWaitsForAdmittedMutation() async throws {
-    let write = Task { try await self.feature.cancel(.init(backingId: "b", cancellationReason: nil)) }
+    let write = Task { try await self.feature.cancelBacking(.init(backingId: "b", cancellationReason: nil)) }
     await self.provider.cancellations.waitFor(1)
     let readStarted = expectation(description: "Backing refresh started")
     let read = Task {
@@ -734,7 +734,7 @@ final class PledgeFeatureTests: TestCase {
     let route = UUID()
     let old = Task { try await self.feature.backing(route: route, id: 1) }
     await self.provider.backings.waitFor(1)
-    let write = Task { try await self.feature.cancel(.init(backingId: "b", cancellationReason: nil)) }
+    let write = Task { try await self.feature.cancelBacking(.init(backingId: "b", cancellationReason: nil)) }
     await self.provider.cancellations.waitFor(1)
     let refresh = Task { try await self.feature.backing(route: route, id: 1) }
     await self.provider.cancellations.waitFor(1)
@@ -959,15 +959,15 @@ private final class ControlledPledgeProvider: PledgeProvider {
   var receivedValues: [Bool] = []
   var receivedProjects: [Int] = []
   var receivedUsers: [Int] = []
-  func create(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope {
+  func createBacking(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope {
     self.createInputs.append(input)
     return try await self.creates.request()
   }
-  func update(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope {
+  func updateBacking(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope {
     self.updateInputs.append(input)
     return try await self.updates.request()
   }
-  func cancel(_ input: KsApi.CancelBackingInput) async throws {
+  func cancelBacking(_ input: KsApi.CancelBackingInput) async throws {
     self.cancelInputs.append(input)
     try await self.cancellations.request()
   }

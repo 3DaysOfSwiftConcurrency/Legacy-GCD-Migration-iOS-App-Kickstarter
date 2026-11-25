@@ -576,3 +576,15 @@ tests were updated together. The `pledged-projects-api-1` and final
 `pledged-card-names-2` Build For Testing runs both exited zero and reported
 `TEST BUILD SUCCEEDED` for the app and test targets. Runtime tests remain
 unverified. Remaining inventory decisions: 1,911.
+
+Pledge write API checkpoint: 16 declaration decisions in PledgeFeature.
+The provider and Feature now say `createBacking`, `updateBacking` and
+`cancelBacking`; the private queue and await paths say `startPledgeWrite` and
+`performPledgeWrite`. Task-returning entry points say
+`startBackingCreation`, `startBackingUpdate` and
+`startRewardReceivedUpdate`. Updated all focused provider conformance,
+Feature test and Pledge ViewModel callers. Both `pledge-write-names-1` and
+`pledge-task-names-2` Build For Testing runs exited zero and reported
+`TEST BUILD SUCCEEDED` for app and test targets. Remaining Pledge declarations
+and the rest of the Model still require review. Runtime tests remain
+unverified. Remaining inventory decisions: 1,895.
