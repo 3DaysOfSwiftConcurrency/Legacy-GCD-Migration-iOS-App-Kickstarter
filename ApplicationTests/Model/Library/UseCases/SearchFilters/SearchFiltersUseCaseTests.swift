@@ -110,7 +110,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.showFilters.assertDidNotEmitValue()
 
-    self.useCase.inputs.tappedButton(forFilterType: .sort)
+    self.useCase.inputs.handleFilterPillTap( .sort)
 
     self.showFilters.assertDidEmitValue()
 
@@ -141,7 +141,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.showFilters.assertDidNotEmitValue()
 
-    self.useCase.inputs.tappedButton(forFilterType: .category)
+    self.useCase.inputs.handleFilterPillTap( .category)
 
     self.showFilters.assertDidEmitValue()
 
@@ -166,7 +166,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.showFilters.assertDidNotEmitValue()
 
-    self.useCase.inputs.tappedButton(forFilterType: .projectState)
+    self.useCase.inputs.handleFilterPillTap( .projectState)
 
     self.showFilters.assertDidEmitValue()
 
@@ -191,7 +191,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.showFilters.assertDidNotEmitValue()
 
-    self.useCase.inputs.tappedButton(forFilterType: .percentRaised)
+    self.useCase.inputs.handleFilterPillTap( .percentRaised)
 
     self.showFilters.assertDidEmitValue()
 
@@ -216,7 +216,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.showFilters.assertDidNotEmitValue()
 
-    self.useCase.inputs.tappedButton(forFilterType: .allFilters)
+    self.useCase.inputs.handleFilterPillTap( .allFilters)
 
     self.showFilters.assertDidEmitValue()
 
@@ -233,7 +233,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.showFilters.assertDidNotEmitValue()
 
-    self.useCase.inputs.tappedButton(forFilterType: .location)
+    self.useCase.inputs.handleFilterPillTap( .location)
 
     self.showFilters.assertDidEmitValue()
 
@@ -257,8 +257,8 @@ final class SearchFiltersUseCaseTests: TestCase {
   func testLookupRefreshAndClearPreserveSelectedFilters() {
     self.searchFeature.filterSelection.publishInitialSelection()
     let location = threeLocations[0]
-    self.useCase.inputs.selectedFilter(.category(.rootCategory(.art)))
-    self.useCase.inputs.selectedFilter(.location(location))
+    self.useCase.inputs.selectFilter(.category(.rootCategory(.art)))
+    self.useCase.inputs.selectFilter(.location(location))
     let filters = self.useCase.uiOutputs.searchFilters
 
     self.searchFeature.publishCategories([.art, .illustration])
@@ -318,7 +318,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.showFilters.assertDidNotEmitValue()
 
-    self.useCase.inputs.tappedButton(forFilterType: .amountRaised)
+    self.useCase.inputs.handleFilterPillTap( .amountRaised)
 
     self.showFilters.assertDidEmitValue()
 
@@ -343,7 +343,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.showFilters.assertDidNotEmitValue()
 
-    self.useCase.inputs.tappedButton(forFilterType: .goal)
+    self.useCase.inputs.handleFilterPillTap( .goal)
 
     self.showFilters.assertDidEmitValue()
 
@@ -378,10 +378,10 @@ final class SearchFiltersUseCaseTests: TestCase {
     self.showFilters.assertDidNotEmitValue()
     self.assert_selectedCategory_isDefault()
 
-    self.useCase.inputs.tappedButton(forFilterType: .category)
+    self.useCase.inputs.handleFilterPillTap( .category)
     self.showFilters.assertDidEmitValue()
 
-    self.useCase.inputs.selectedFilter(.category(.rootCategory(.art)))
+    self.useCase.inputs.selectFilter(.category(.rootCategory(.art)))
 
     guard let newCategory = self.selectedCategory.lastValue else {
       XCTFail("There should be a new selected category")
@@ -397,10 +397,10 @@ final class SearchFiltersUseCaseTests: TestCase {
     self.showFilters.assertDidNotEmitValue()
     self.selectedSort.assertLastValue(.magic)
 
-    self.useCase.inputs.tappedButton(forFilterType: .sort)
+    self.useCase.inputs.handleFilterPillTap( .sort)
     self.showFilters.assertDidEmitValue()
 
-    self.useCase.inputs.selectedFilter(.sort(.endingSoon))
+    self.useCase.inputs.selectFilter(.sort(.endingSoon))
 
     guard let newSelectedSort = self.selectedSort.lastValue else {
       XCTFail("There should be a new selected sort option")
@@ -415,7 +415,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.assert_selectedProjectState_isDefault()
 
-    self.useCase.inputs.selectedFilter(.projectState(.late_pledge))
+    self.useCase.inputs.selectFilter(.projectState(.late_pledge))
 
     guard let newSelectedState = self.selectedState.lastValue else {
       XCTFail("There should be a new selected state")
@@ -430,7 +430,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.assert_selectedPercentRaisedBucket_isDefault()
 
-    self.useCase.inputs.selectedFilter(.percentRaised(.bucket_1))
+    self.useCase.inputs.selectFilter(.percentRaised(.bucket_1))
 
     guard let newSelectedBucket = self.selectedPercentRaisedBucket.lastValue else {
       XCTFail("There should be a new selected bucket")
@@ -445,7 +445,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.assert_selectedAmountRaisedBucket_isDefault()
 
-    self.useCase.inputs.selectedFilter(.amountRaised(.bucket_3))
+    self.useCase.inputs.selectFilter(.amountRaised(.bucket_3))
 
     guard let newSelectedBucket = self.selectedAmountRaisedBucket.lastValue else {
       XCTFail("There should be a new selected bucket")
@@ -462,7 +462,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     let location = threeLocations[1]
 
-    self.useCase.inputs.selectedFilter(.location(location))
+    self.useCase.inputs.selectFilter(.location(location))
 
     guard let newSelectedLocation = self.selectedLocation.lastValue else {
       XCTFail("There should be a new selected location")
@@ -481,7 +481,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     self.assert_toggles_areDefaults()
 
-    self.useCase.inputs.selectedFilter(.following(true))
+    self.useCase.inputs.selectFilter(.following(true))
     if let toggles = self.selectedToggles.lastValue {
       XCTAssertTrue(toggles.following)
       XCTAssertFalse(toggles.projectsWeLove)
@@ -491,7 +491,7 @@ final class SearchFiltersUseCaseTests: TestCase {
       XCTFail()
     }
 
-    self.useCase.inputs.selectedFilter(.projectsWeLove(true))
+    self.useCase.inputs.selectFilter(.projectsWeLove(true))
     if let toggles = self.selectedToggles.lastValue {
       XCTAssertTrue(toggles.following)
       XCTAssertTrue(toggles.projectsWeLove)
@@ -501,7 +501,7 @@ final class SearchFiltersUseCaseTests: TestCase {
       XCTFail()
     }
 
-    self.useCase.inputs.selectedFilter(.recommended(true))
+    self.useCase.inputs.selectFilter(.recommended(true))
     if let toggles = self.selectedToggles.lastValue {
       XCTAssertTrue(toggles.following)
       XCTAssertTrue(toggles.projectsWeLove)
@@ -511,7 +511,7 @@ final class SearchFiltersUseCaseTests: TestCase {
       XCTFail()
     }
 
-    self.useCase.inputs.selectedFilter(.savedProjects(true))
+    self.useCase.inputs.selectFilter(.savedProjects(true))
     if let toggles = self.selectedToggles.lastValue {
       XCTAssertTrue(toggles.following)
       XCTAssertTrue(toggles.projectsWeLove)
@@ -537,7 +537,7 @@ final class SearchFiltersUseCaseTests: TestCase {
       XCTFail("Expected sort pill to be set")
     }
 
-    self.useCase.inputs.selectedFilter(.sort(.endingSoon))
+    self.useCase.inputs.selectFilter(.sort(.endingSoon))
 
     if let sortPill = self.useCase.uiOutputs.searchFilters.sortPill {
       XCTAssertEqual(
@@ -581,7 +581,7 @@ final class SearchFiltersUseCaseTests: TestCase {
       "Category pill should have placeholder text when no category is selected"
     )
 
-    self.useCase.inputs.selectedFilter(.category(.subcategory(
+    self.useCase.inputs.selectFilter(.category(.subcategory(
       rootCategory: .art,
       subcategory: .illustration
     )))
@@ -624,7 +624,7 @@ final class SearchFiltersUseCaseTests: TestCase {
       XCTFail("Expected percent raised pill to be set")
     }
 
-    self.useCase.inputs.selectedFilter(.percentRaised(.bucket_2))
+    self.useCase.inputs.selectFilter(.percentRaised(.bucket_2))
 
     if let pill = self.useCase.uiOutputs.searchFilters.percentRaisedPill {
       XCTAssertEqual(
@@ -664,7 +664,7 @@ final class SearchFiltersUseCaseTests: TestCase {
       XCTFail("Expected percent raised pill to be set")
     }
 
-    self.useCase.inputs.selectedFilter(.amountRaised(.bucket_3))
+    self.useCase.inputs.selectFilter(.amountRaised(.bucket_3))
 
     if let pill = self.useCase.uiOutputs.searchFilters.amountRaisedPill {
       XCTAssertEqual(
@@ -706,7 +706,7 @@ final class SearchFiltersUseCaseTests: TestCase {
 
     let location = threeLocations[0]
 
-    self.useCase.inputs.selectedFilter(.location(location))
+    self.useCase.inputs.selectFilter(.location(location))
 
     if let pill = self.useCase.uiOutputs.searchFilters.locationPill {
       XCTAssertEqual(
@@ -772,7 +772,7 @@ final class SearchFiltersUseCaseTests: TestCase {
         XCTFail("Expected toggle pill to be set")
       }
 
-      self.useCase.inputs.selectedFilter(event)
+      self.useCase.inputs.selectFilter(event)
 
       if let pill = self.useCase.uiOutputs.searchFilters.pills.first(where: { $0.filterType == type }) {
         XCTAssertEqual(
@@ -805,10 +805,10 @@ final class SearchFiltersUseCaseTests: TestCase {
       self.searchFeature.filterSelection.publishInitialSelection()
       self.assert_toggles_areDefaults()
 
-      self.useCase.inputs.tappedButton(forFilterType: .following)
-      self.useCase.inputs.tappedButton(forFilterType: .projectsWeLove)
-      self.useCase.inputs.tappedButton(forFilterType: .recommended)
-      self.useCase.inputs.tappedButton(forFilterType: .saved)
+      self.useCase.inputs.handleFilterPillTap( .following)
+      self.useCase.inputs.handleFilterPillTap( .projectsWeLove)
+      self.useCase.inputs.handleFilterPillTap( .recommended)
+      self.useCase.inputs.handleFilterPillTap( .saved)
 
       if let toggles = self.selectedToggles.lastValue {
         XCTAssertTrue(toggles.following)
@@ -817,10 +817,10 @@ final class SearchFiltersUseCaseTests: TestCase {
         XCTAssertTrue(toggles.savedProjects)
       }
 
-      self.useCase.inputs.tappedButton(forFilterType: .following)
-      self.useCase.inputs.tappedButton(forFilterType: .projectsWeLove)
-      self.useCase.inputs.tappedButton(forFilterType: .recommended)
-      self.useCase.inputs.tappedButton(forFilterType: .saved)
+      self.useCase.inputs.handleFilterPillTap( .following)
+      self.useCase.inputs.handleFilterPillTap( .projectsWeLove)
+      self.useCase.inputs.handleFilterPillTap( .recommended)
+      self.useCase.inputs.handleFilterPillTap( .saved)
 
       if let toggles = self.selectedToggles.lastValue {
         XCTAssertFalse(toggles.following)
@@ -840,19 +840,19 @@ final class SearchFiltersUseCaseTests: TestCase {
       .documentarySpanish
     ])
 
-    self.useCase.inputs.selectedFilter(.category(.rootCategory(.art)))
+    self.useCase.inputs.selectFilter(.category(.rootCategory(.art)))
     self.selectedCategory.assertLastValue(.art)
 
-    self.useCase.inputs.selectedFilter(.projectState(.late_pledge))
+    self.useCase.inputs.selectFilter(.projectState(.late_pledge))
     self.selectedState.assertLastValue(.late_pledge)
 
-    self.useCase.inputs.selectedFilter(.percentRaised(.bucket_2))
+    self.useCase.inputs.selectFilter(.percentRaised(.bucket_2))
     self.selectedPercentRaisedBucket.assertLastValue(.bucket_2)
 
-    self.useCase.inputs.selectedFilter(.following(true))
-    self.useCase.inputs.selectedFilter(.projectsWeLove(true))
-    self.useCase.inputs.selectedFilter(.savedProjects(true))
-    self.useCase.inputs.selectedFilter(.recommended(true))
+    self.useCase.inputs.selectFilter(.following(true))
+    self.useCase.inputs.selectFilter(.projectsWeLove(true))
+    self.useCase.inputs.selectFilter(.savedProjects(true))
+    self.useCase.inputs.selectFilter(.recommended(true))
 
     for type in SearchFilterModalType.allCases {
       if type == .sort {
@@ -895,10 +895,10 @@ final class SearchFiltersUseCaseTests: TestCase {
     self.assert_selectedSort_isDefault()
     self.assertAllFilters_areSetToDefaults()
 
-    self.useCase.inputs.selectedFilter(.sort(.endingSoon))
+    self.useCase.inputs.selectFilter(.sort(.endingSoon))
     self.setAllFilters_toNonDefault_andAssert()
 
-    self.useCase.inputs.clearedQueryText()
+    self.useCase.inputs.resetFiltersAfterQueryCleared()
 
     self.assert_selectedSort_isDefault()
     self.assertAllFilters_areSetToDefaults()

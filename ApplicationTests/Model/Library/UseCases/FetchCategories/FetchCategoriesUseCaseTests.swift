@@ -29,8 +29,8 @@ final class FetchCategoriesUseCaseTests: TestCase {
   func testEquivalentLoadsShareOneRequest() async {
     var calls = 0
     let loader = FetchCategoriesUseCase(fetch: { calls += 1; return [.art] })
-    let first = loader.start()
-    let second = loader.start()
+    let first = loader.startCategoriesLoad()
+    let second = loader.startCategoriesLoad()
     await first.value
     await second.value
     XCTAssertEqual(calls, 1)
@@ -39,7 +39,7 @@ final class FetchCategoriesUseCaseTests: TestCase {
   func testReleaseCancelsBeforeRequestStarts() async {
     var calls = 0
     var loader: FetchCategoriesUseCase? = FetchCategoriesUseCase(fetch: { calls += 1; return [.art] })
-    let pending = loader?.start()
+    let pending = loader?.startCategoriesLoad()
     loader = nil
     await pending?.value
     XCTAssertEqual(calls, 0)
@@ -49,7 +49,7 @@ final class FetchCategoriesUseCaseTests: TestCase {
     let loader = FetchCategoriesUseCase(fetch: { [.art] })
     let observed = CategoryRecorder<[KsApi.Category]>()
     loader.onCategories = { observed.values.append($0) }
-    let pending = loader.start()
+    let pending = loader.startCategoriesLoad()
     await withEnvironment(cache: KSCache()) {
       await pending.value
       observed.assertDidNotEmitValue()
@@ -69,12 +69,12 @@ final class FetchCategoriesUseCaseTests: TestCase {
     ])
 
     await withEnvironment(apiService: MockService(fetchGraphCategoriesResult: .success(response))) {
-      self.useCase.start()
+      self.useCase.startCategoriesLoad()
 
       self.loadingIndicatorIsVisible.assertLastValue(true, "Loading should start when categories are loading")
       self.categories.assertDidNotEmitValue()
 
-      await self.useCase.load()
+      await self.useCase.loadCategories()
 
       XCTAssertEqual(self.categories.lastValue?.count, 4, "Categories in root category response should load")
       self.loadingIndicatorIsVisible.assertLastValue(false, "Loading should stop when categories are loaded")
@@ -93,7 +93,7 @@ final class FetchCategoriesUseCaseTests: TestCase {
 
     AppEnvironment.current.cache[KSCache.ksr_discoveryFiltersCategories] = cachedCategories
 
-    self.useCase.start()
+    self.useCase.startCategoriesLoad()
 
     self.loadingIndicatorIsVisible.assertDidNotEmitValue()
     self.categories.assertDidEmitValue()
@@ -108,12 +108,12 @@ final class FetchCategoriesUseCaseTests: TestCase {
       ErrorEnvelope
         .couldNotParseErrorEnvelopeJSON
     ))) {
-      self.useCase.start()
+      self.useCase.startCategoriesLoad()
 
       self.loadingIndicatorIsVisible.assertLastValue(true, "Loading should start when categories are loading")
       self.categories.assertDidNotEmitValue()
 
-      await self.useCase.load()
+      await self.useCase.loadCategories()
 
       self.categories.assertDidNotEmitValue()
       self.loadingIndicatorIsVisible.assertLastValue(false)
@@ -127,12 +127,12 @@ final class FetchCategoriesUseCaseTests: TestCase {
     ])
 
     await withEnvironment(apiService: MockService(fetchGraphCategoriesResult: .success(response))) {
-      self.useCase.start()
+      self.useCase.startCategoriesLoad()
 
       self.loadingIndicatorIsVisible.assertLastValue(true, "Loading should start when categories are loading")
       self.categories.assertDidNotEmitValue()
 
-      await self.useCase.load()
+      await self.useCase.loadCategories()
 
       self.categories.assertDidEmitValue()
       self.loadingIndicatorIsVisible.assertLastValue(false)

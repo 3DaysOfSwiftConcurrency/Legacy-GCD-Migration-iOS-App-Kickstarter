@@ -68,7 +68,7 @@ internal final class SearchFilterSelection {
     self.publishTogglesWhenInitialized(0); self.publishTogglesWhenInitialized(1); self.publishTogglesWhenInitialized(2); self.publishTogglesWhenInitialized(3)
   }
 
-  internal func clearedQueryText() {
+  internal func resetSelectionAfterQueryCleared() {
     self.resetFilters(for: .allFilters)
     self.resetFilters(for: .sort)
   }
@@ -102,7 +102,7 @@ internal final class SearchFilterSelection {
     }
   }
 
-  internal func selectedFilter(_ event: SearchFilterEvent) {
+  internal func selectFilter(_ event: SearchFilterEvent) {
     switch event {
     case let .sort(sort):
       self.selectedSortValue = sort

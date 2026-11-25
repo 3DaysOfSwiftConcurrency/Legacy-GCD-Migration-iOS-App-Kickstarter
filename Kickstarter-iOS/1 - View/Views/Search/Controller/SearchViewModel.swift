@@ -205,7 +205,7 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
     self.publishQueryText(searchText)
     // Typed empty text resets filters after query publication. Initial discovery
     // text deliberately does not: an appearance is not a user's clear command.
-    self.searchFeature.updateQuery(searchText)
+    self.searchFeature.resetFiltersWhenQueryBecomesEmpty(searchText)
   }
 
   private func publishQueryText(_ query: String) {
@@ -220,7 +220,7 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
     guard self.hasReceivedFilterSelection, let query = self.queryText else { return }
     let parameters = self.searchFeature.queryParameters(for: query)
     self.latestQueryParameters = parameters
-    self.searchTask = self.searchFeature.requestSearch(parameters: parameters)
+    self.searchTask = self.searchFeature.startSearchResultsLoad(parameters: parameters)
   }
 
   public func tapped(projectAtIndex index: Int) {
@@ -241,7 +241,7 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
 
     // A malformed navigation ID did not suppress legacy click analytics.
     if let parameters = self.latestQueryParameters {
-      self.searchFeature.projectCardClicked(
+      self.searchFeature.trackProjectCardClicked(
         project: project.analytics,
         parameters: parameters
       )
@@ -249,7 +249,7 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
   }
 
   public func viewDidLoad() {
-    self.filterOptionsTask = self.searchFeature.requestFilterOptions()
+    self.filterOptionsTask = self.searchFeature.startFilterOptionsLoad()
   }
 
   public func viewWillAppear(animated: Bool) {
@@ -276,24 +276,24 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
     guard let query = self.queryText,
           let parameters = self.latestQueryParameters,
           let count = self.appearanceResultsCount else { return }
-    self.searchFeature.searchViewed(parameters: parameters, results: query.isEmpty ? 0 : count)
+    self.searchFeature.trackSearchViewed(parameters: parameters, results: query.isEmpty ? 0 : count)
   }
 
   private func trackResultCompletion(count: Int) {
     guard let query = self.queryText, !query.isEmpty,
           let parameters = self.latestQueryParameters else { return }
-    self.searchFeature.searchViewed(parameters: parameters, results: count)
+    self.searchFeature.trackSearchViewed(parameters: parameters, results: count)
   }
 
   public func willDisplayProjectAtRow(_ row: Int, outOf totalRows: Int) {
     let isCloseToBottom = row >= totalRows - 3
     guard self.wasCloseToBottom != isCloseToBottom else { return }
     self.wasCloseToBottom = isCloseToBottom
-    if isCloseToBottom { self.pageTask = self.searchFeature.requestNextPage() }
+    if isCloseToBottom { self.pageTask = self.searchFeature.startNextSearchPageLoad() }
   }
 
   public func tappedButton(forFilterType type: SearchFilterPill.FilterType) {
-    self.searchFiltersUseCase.inputs.tappedButton(forFilterType: type)
+    self.searchFiltersUseCase.inputs.handleFilterPillTap(type)
   }
 
   public func resetFilters(for type: SearchFilterModalType) {
@@ -327,7 +327,7 @@ public final class SearchViewModel: SearchViewModelType, SearchViewModelInputs, 
   }
 
   public func searchedForLocations(_ query: String) {
-    self.locationLookupTask = self.searchFeature.requestLocations(query)
+    self.locationLookupTask = self.searchFeature.startLocationSuggestionsLoad(query)
   }
 
   public var searchFilters: SearchFilters {

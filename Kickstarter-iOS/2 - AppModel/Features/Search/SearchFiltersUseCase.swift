@@ -10,11 +10,11 @@ public protocol SearchFiltersUseCaseType {
 @MainActor
 public protocol SearchFiltersUseCaseInputs {
   /// Call this when the user taps on a button to show one of the sort options.
-  func tappedButton(forFilterType: SearchFilterPill.FilterType)
+  func handleFilterPillTap(_ type: SearchFilterPill.FilterType)
   /// Call this when the clears their query and the sort options should reset.
-  func clearedQueryText()
+  func resetFiltersAfterQueryCleared()
   /// Call this when the user updates a sort or filter option
-  func selectedFilter(_ event: SearchFilterEvent)
+  func selectFilter(_ event: SearchFilterEvent)
   /// Call this when the user taps reset on a filter modal
   func resetFilters(for: SearchFilterModalType)
 }
@@ -79,17 +79,17 @@ public final class SearchFiltersUseCase: SearchFiltersUseCaseType, SearchFilters
 
     self.lookupObservation = searchFeature.observeLookups { [weak self] update in
       switch update {
-      case let .categories(values): self?.searchFilters.update(withCategories: values)
-      case let .defaults(values): self?.searchFilters.update(withDefaultSearchLocations: values)
-      case let .suggestions(values): self?.searchFilters.update(withSuggestedLocations: values)
+      case let .categories(values): self?.searchFilters.setCategories( values)
+      case let .defaults(values): self?.searchFilters.setDefaultLocations( values)
+      case let .suggestions(values): self?.searchFilters.setSuggestedLocations( values)
       }
     }
     self.selectionObservation = selection.observe { [weak self, weak selection] change in
       guard let self, let selection else { return }
       self.initializedFilterFieldIDs.insert(change.field)
       guard self.initializedFilterFieldIDs.count == 8 else { return }
-      self.searchFilters.update(
-        withSort: selection.selectedSortValue,
+      self.searchFilters.applySelection(
+        sort: selection.selectedSortValue,
         category: selection.selectedCategoryValue,
         projectState: selection.selectedStateValue,
         percentRaisedBucket: selection.selectedPercentRaisedBucketValue,
@@ -103,7 +103,7 @@ public final class SearchFiltersUseCase: SearchFiltersUseCaseType, SearchFilters
 
 
 
-  public func tappedButton(forFilterType type: SearchFilterPill.FilterType) {
+  public func handleFilterPillTap(_ type: SearchFilterPill.FilterType) {
     if type.isToggle {
       self.toggleFilter(ofType: type)
     } else {
@@ -141,13 +141,13 @@ public final class SearchFiltersUseCase: SearchFiltersUseCaseType, SearchFilters
 
   public private(set) var searchFilters: SearchFilters
 
-  public func clearedQueryText() { self.searchFeature.updateQuery("") }
+  public func resetFiltersAfterQueryCleared() { self.searchFeature.resetFiltersWhenQueryBecomesEmpty("") }
 
   public func resetFilters(for modal: SearchFilterModalType) {
     self.searchFeature.resetFilters(modal.resetScope)
   }
 
-  public func selectedFilter(_ event: SearchFilterEvent) {
+  public func selectFilter(_ event: SearchFilterEvent) {
     self.searchFeature.selectFilter(event)
   }
 

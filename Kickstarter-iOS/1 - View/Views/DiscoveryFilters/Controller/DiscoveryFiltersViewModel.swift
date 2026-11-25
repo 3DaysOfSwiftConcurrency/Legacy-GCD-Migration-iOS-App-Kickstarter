@@ -49,7 +49,7 @@ public final class DiscoveryFiltersViewModel {
       self.prepareInitialRowIfReady()
       if let rows = self.currentTopRows { self.onTopRows?(rows, self.categoryId) }
     }
-    self.categoriesUseCase.start()
+    self.categoriesUseCase.startCategoriesLoad()
   }
   private func prepareInitialRowIfReady() {
     guard self.initialRow == nil, let row = self.configuredRow, let filters = self.initialTopFilters else { return }
@@ -91,7 +91,7 @@ public final class DiscoveryFiltersViewModel {
       params: selectableRow.params, typeContext: typeContext(from: selectableRow.params), locationContext: .discoverOverlay
     )
   }
-  func loadCategories() async { await self.categoriesUseCase.load() }
+  func loadCategories() async { await self.categoriesUseCase.loadCategories() }
   func viewDidAppear() { self.onAnimateIn?() }
 }
 

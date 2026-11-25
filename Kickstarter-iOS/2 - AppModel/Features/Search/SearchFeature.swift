@@ -143,29 +143,29 @@ public final class SearchFeature {
     self.lookupProvider = lookupProvider
   }
 
-  public func projectCardClicked(
+  public func trackProjectCardClicked(
     project: any ProjectAnalyticsProperties,
     parameters: DiscoveryParams
   ) {
     self.analytics.projectCardClicked(project, parameters)
   }
 
-  public func searchViewed(parameters: DiscoveryParams, results: Int) {
+  public func trackSearchViewed(parameters: DiscoveryParams, results: Int) {
     self.analytics.searchViewed(parameters, results)
   }
 
   /// Default choices and lookup data are loaded only on explicit screen demand.
   public func loadFilterOptions() async {
     guard !Task.isCancelled else { return }
-    await self.requestFilterOptions().value
+    await self.startFilterOptionsLoad().value
   }
 
   @discardableResult
-  internal func requestFilterOptions() -> Task<Void, Never> {
+  internal func startFilterOptionsLoad() -> Task<Void, Never> {
     if let request = self.filterOptionsRequest { return request.task }
     let id = UUID()
-    let categories = self.requestCategories()
-    let locations = self.requestDefaultLocations()
+    let categories = self.startCategoriesLoad()
+    let locations = self.startDefaultLocationsLoad()
     self.filterSelection.publishInitialSelection()
     // Both independent requests start now; a slow/failing category lookup
     // must not hold default locations hostage (or vice versa).
@@ -197,12 +197,12 @@ public final class SearchFeature {
     )
   }
 
-  public func updateQuery(_ query: String) {
-    if query.isEmpty { self.filterSelection.clearedQueryText() }
+  public func resetFiltersWhenQueryBecomesEmpty(_ query: String) {
+    if query.isEmpty { self.filterSelection.resetSelectionAfterQueryCleared() }
   }
 
   public func selectFilter(_ event: SearchFilterEvent) {
-    self.filterSelection.selectedFilter(event)
+    self.filterSelection.selectFilter(event)
   }
 
   public func resetFilters(_ scope: SearchFilterReset) {
@@ -219,16 +219,16 @@ public final class SearchFeature {
     }
   }
 
-  public func searchLocations(_ query: String) async {
+  public func loadLocationSuggestions(_ query: String) async {
     guard !Task.isCancelled else { return }
-    await self.requestLocations(query)?.value
+    await self.startLocationSuggestionsLoad(query)?.value
   }
 
   /// Clearing is a superseding command, not a separate output branch. Invalidate
   /// identity before cancellation, so late successes, errors and cleanup cannot
   /// affect the current query even if the provider ignores cancellation.
   @discardableResult
-  internal func requestLocations(_ query: String) -> Task<Void, Never>? {
+  internal func startLocationSuggestionsLoad(_ query: String) -> Task<Void, Never>? {
     if self.locationQuery == query, let request = self.suggestionsRequest { return request.task }
     self.cancelLocationSuggestions()
     self.locationQuery = query
@@ -248,7 +248,7 @@ public final class SearchFeature {
       }
       do {
         try Task.checkCancellation()
-        let locations = try await lookupProvider.fetchLocations(query: query)
+        let locations = try await lookupProvider.fetchLocationSuggestions(query: query)
         try Task.checkCancellation()
         guard let self, self.suggestionsRequest?.id == id else { return }
         self.publishSuggestedLocations(locations)
@@ -283,7 +283,7 @@ public final class SearchFeature {
     self.isLoadingSuggestions = false
   }
 
-  private func requestCategories() -> Task<Void, Never> {
+  private func startCategoriesLoad() -> Task<Void, Never> {
     if let request = self.categoryRequest { return request.task }
     self.categoryError = nil
     if let cached = self.lookupProvider.cachedCategories {
@@ -328,12 +328,12 @@ public final class SearchFeature {
     return task
   }
 
-  private func requestDefaultLocations() -> Task<Void, Never> {
+  private func startDefaultLocationsLoad() -> Task<Void, Never> {
     if let request = self.defaultLocationsRequest { return request.task }
     let id = UUID()
     self.defaultLocationsError = nil
     self.publishDefaultLocations([])
-    self.requestLocations("")
+    self.startLocationSuggestionsLoad("")
     self.isLoadingDefaultLocations = true
     let task = Task { @MainActor [weak self, lookupProvider] in
       defer {
@@ -361,21 +361,21 @@ public final class SearchFeature {
   /// Await the complete first-page operation, including delivery timing/publication.
   /// A cancelled waiter does not cancel work shared by another caller. Distinct
   /// queries and cancelSearch() are the Feature's explicit cancellation owners.
-  public func search(parameters: DiscoveryParams) async {
+  public func loadSearchResults(parameters: DiscoveryParams) async {
     guard !Task.isCancelled else { return }
-    await self.requestSearch(parameters: parameters).value
+    await self.startSearchResultsLoad(parameters: parameters).value
   }
 
-  public func loadNextPage() async {
+  public func loadNextSearchPage() async {
     guard !Task.isCancelled else { return }
-    await self.requestNextPage()?.value
+    await self.startNextSearchPageLoad()?.value
   }
 
   /// Synchronous UIKit admission preserves immediate clearing/loading. It returns
   /// the very same Feature-owned task awaited by the public async command; it
   /// neither installs a second pipeline nor starts work from an observer.
   @discardableResult
-  internal func requestSearch(parameters: DiscoveryParams) -> Task<Void, Never> {
+  internal func startSearchResultsLoad(parameters: DiscoveryParams) -> Task<Void, Never> {
     if self.parameters?.hasSameSearchInputs(as: parameters) == true,
        let request = self.pendingSearchResultRequest, request.cursor == nil {
       return request.task
@@ -388,16 +388,16 @@ public final class SearchFeature {
     self.emit(.results([]))
     let debounce = self.hasRequestedSearchResults ? self.platform.debounceSeconds() : 0
     self.hasRequestedSearchResults = true
-    return self.requestPage(parameters: parameters, cursor: nil, debounce: debounce)
+    return self.startSearchPageLoad(parameters: parameters, cursor: nil, debounce: debounce)
   }
 
   @discardableResult
-  internal func requestNextPage() -> Task<Void, Never>? {
+  internal func startNextSearchPageLoad() -> Task<Void, Never>? {
     // While the first page is loading, join it: an old query's cursor must
     // never escape into the replacement query. Repeated pages also join.
     if let request = self.pendingSearchResultRequest { return request.task }
     guard let parameters = self.parameters, let cursor = self.nextSearchPageCursor else { return nil }
-    return self.requestPage(parameters: parameters, cursor: cursor, debounce: 0)
+    return self.startSearchPageLoad(parameters: parameters, cursor: cursor, debounce: 0)
   }
 
   /// Explicit owner cancellation, not a side effect of a single waiter leaving.
@@ -405,18 +405,18 @@ public final class SearchFeature {
     let previous = self.pendingSearchResultRequest
     self.pendingSearchResultRequest = nil
     previous?.task.cancel()
-    if self.isLoading { self.setLoading(false) }
+    if self.isLoading { self.setSearchLoading(false) }
   }
 
-  private func requestPage(
+  private func startSearchPageLoad(
     parameters: DiscoveryParams, cursor: String?, debounce: TimeInterval
   ) -> Task<Void, Never> {
     let id = UUID()
     let apiDelay = self.platform.responseDelaySeconds()
     self.searchError = nil
-    self.setLoading(true)
+    self.setSearchLoading(true)
     let task = Task { @MainActor [weak self, provider, sleep] in
-      defer { self?.finishSearchResultRequest(id: id) }
+      defer { self?.finishSearchPageLoad(id: id) }
       do {
         try Task.checkCancellation()
         let response: Result<SearchPageResponse, Error>
@@ -439,7 +439,7 @@ public final class SearchFeature {
         guard let self, self.pendingSearchResultRequest?.id == id else { return }
         switch response {
         case let .success(data):
-          self.publish(data, firstPage: cursor == nil)
+          self.publishSearchPage(data, firstPage: cursor == nil)
         case let .failure(error):
           self.searchError = (error as? ErrorEnvelope) ?? .couldNotParseJSON
         }
@@ -454,7 +454,7 @@ public final class SearchFeature {
     return task
   }
 
-  private func publish(_ data: SearchPageResponse, firstPage: Bool) {
+  private func publishSearchPage(_ data: SearchPageResponse, firstPage: Bool) {
     let incoming = data.projects
     self.nextSearchPageCursor = !incoming.isEmpty && data.hasNextPage ? data.endCursor : nil
     self.totalCount = data.totalCount
@@ -470,13 +470,13 @@ public final class SearchFeature {
     self.emit(.results(self.projects))
   }
 
-  private func finishSearchResultRequest(id: UUID) {
+  private func finishSearchPageLoad(id: UUID) {
     guard self.pendingSearchResultRequest?.id == id else { return }
     self.pendingSearchResultRequest = nil
-    self.setLoading(false)
+    self.setSearchLoading(false)
   }
 
-  private func setLoading(_ loading: Bool) {
+  private func setSearchLoading(_ loading: Bool) {
     self.isLoading = loading
     self.emit(.loading(loading))
   }

@@ -210,5 +210,5 @@ private func accessibilityLabelForTitleButton(params: DiscoveryParams) -> String
 }
 
 private func string(forCategoryId id: String) -> String {
-  return RootCategory(categoryId: id).allProjectsString()
+  return RootCategory(categoryId: id).allProjectsTitle()
 }

@@ -27,12 +27,12 @@ public final class FetchCategoriesUseCase {
 
   deinit { self.categoryLoadTask?.cancel() }
 
-  public func load() async {
-    await self.start().value
+  public func loadCategories() async {
+    await self.startCategoriesLoad().value
   }
 
   @discardableResult
-  public func start() -> Task<Void, Never> {
+  public func startCategoriesLoad() -> Task<Void, Never> {
     if let categoryLoadTask = self.categoryLoadTask { return categoryLoadTask }
     let cache = self.cache()
     if let cachedCategories = cache[KSCache.ksr_discoveryFiltersCategories] as? [KsApi.Category] {

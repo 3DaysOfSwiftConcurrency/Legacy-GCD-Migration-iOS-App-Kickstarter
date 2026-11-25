@@ -670,3 +670,14 @@ audio-controller test call found by the first build and a ViewModel test using
 the old save-operation wait method. `project-media-final-5` Build For Testing
 exited zero with `TEST BUILD SUCCEEDED` for app and test targets. Runtime tests
 remain unverified. Remaining inventory decisions: 1,148.
+
+Search checkpoint: reviewed all 229 declarations across 12 Model files.
+The Feature now names first-page, next-page, categories, default locations and
+suggestion loads and distinguishes task starts from awaited work. Query clearing
+explicitly names the conditional filter reset. SearchFilters and its adapter
+name the affected selection/options, while lookup provider names suggestions
+and root category names the title returned. Reconciled View callers, Feature
+tests, lookup provider conformances and the test composition provider.
+`search-lookup-4` Build For Testing exited zero with `TEST BUILD SUCCEEDED`
+for app and test targets. Runtime tests remain unverified. Remaining inventory
+decisions: 919.

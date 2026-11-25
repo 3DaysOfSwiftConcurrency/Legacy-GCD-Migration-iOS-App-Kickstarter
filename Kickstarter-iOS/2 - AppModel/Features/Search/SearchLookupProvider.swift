@@ -7,7 +7,7 @@ public protocol SearchLookupProvider {
   func cache(categories: [KsApi.Category])
   func fetchCategories() async throws -> [KsApi.Category]
   func fetchDefaultLocations() async throws -> [Location]
-  func fetchLocations(query: String) async throws -> [Location]
+  func fetchLocationSuggestions(query: String) async throws -> [Location]
 }
 
 /// Uses the existing shared category cache and cancellation-aware API methods.
@@ -38,7 +38,7 @@ public final class AsyncSearchLookupProvider: SearchLookupProvider {
     try await self.service.fetchSearchDefaultLocations()
   }
 
-  public func fetchLocations(query: String) async throws -> [Location] {
+  public func fetchLocationSuggestions(query: String) async throws -> [Location] {
     try await self.service.fetchSearchLocations(term: query)
   }
 }

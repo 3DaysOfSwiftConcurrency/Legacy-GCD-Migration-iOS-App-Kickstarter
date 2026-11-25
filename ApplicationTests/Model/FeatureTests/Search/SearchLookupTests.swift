@@ -32,9 +32,9 @@ final class SearchLookupTests: TestCase {
   }
 
   func testClearImmediatelyRejectsLateSuccessAndAllowsSameQueryAgain() async throws {
-    let old = try XCTUnwrap(self.feature.requestLocations("Fairfax"))
+    let old = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("Fairfax"))
     await self.provider.locations.waitForCount(1)
-    await self.feature.searchLocations("")
+    await self.feature.loadLocationSuggestions("")
     XCTAssertEqual(self.feature.locationQuery, "")
     XCTAssertTrue(self.feature.suggestedLocationOptions.isEmpty)
     XCTAssertFalse(self.feature.isLoadingSuggestions)
@@ -46,7 +46,7 @@ final class SearchLookupTests: TestCase {
     XCTAssertNil(self.feature.suggestedLocationsError)
     XCTAssertTrue(self.provider.locations.cancelledAtReturn.contains(0))
 
-    let retry = try XCTUnwrap(self.feature.requestLocations("Fairfax"))
+    let retry = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("Fairfax"))
     await self.provider.locations.waitForCount(2)
     try self.provider.locations.complete(1, .success([.template]))
     await retry.value
@@ -54,9 +54,9 @@ final class SearchLookupTests: TestCase {
   }
 
   func testClearRejectsLateError() async throws {
-    let old = try XCTUnwrap(self.feature.requestLocations("old"))
+    let old = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("old"))
     await self.provider.locations.waitForCount(1)
-    await self.feature.searchLocations("")
+    await self.feature.loadLocationSuggestions("")
     try self.provider.locations.complete(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await old.value
     XCTAssertNil(self.feature.suggestedLocationsError)
@@ -65,9 +65,9 @@ final class SearchLookupTests: TestCase {
   }
 
   func testOldFailureAndCleanupCannotStopNewQuery() async throws {
-    let old = try XCTUnwrap(self.feature.requestLocations("old"))
+    let old = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("old"))
     await self.provider.locations.waitForCount(1)
-    let current = try XCTUnwrap(self.feature.requestLocations("new"))
+    let current = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("new"))
     await self.provider.locations.waitForCount(2)
     try self.provider.locations.complete(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await old.value
@@ -80,9 +80,9 @@ final class SearchLookupTests: TestCase {
   }
 
   func testNewSuccessRemainsAfterOldSuccessArrives() async throws {
-    let old = try XCTUnwrap(self.feature.requestLocations("old"))
+    let old = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("old"))
     await self.provider.locations.waitForCount(1)
-    let current = try XCTUnwrap(self.feature.requestLocations("new"))
+    let current = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("new"))
     await self.provider.locations.waitForCount(2)
     try self.provider.locations.complete(1, .success([.template]))
     await current.value
@@ -93,14 +93,14 @@ final class SearchLookupTests: TestCase {
   }
 
   func testEquivalentQuerySharesCompletionAndCancelledWaiterDoesNotCancelOwner() async throws {
-    let operation = try XCTUnwrap(self.feature.requestLocations("same"))
+    let operation = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("same"))
     await self.provider.locations.waitForCount(1)
-    let joined = try XCTUnwrap(self.feature.requestLocations("same"))
+    let joined = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("same"))
     var waiterFinished = false
     let waiterStarted = expectation(description: "waiter admitted")
     let waiter = Task { @MainActor in
       waiterStarted.fulfill()
-      await self.feature.searchLocations("same")
+      await self.feature.loadLocationSuggestions("same")
       waiterFinished = true
     }
     await fulfillment(of: [waiterStarted], timeout: 2)
@@ -117,11 +117,11 @@ final class SearchLookupTests: TestCase {
   }
 
   func testFailureRetainsPreviousSuggestionsAndRetryClearsError() async throws {
-    let first = try XCTUnwrap(self.feature.requestLocations("first"))
+    let first = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("first"))
     await self.provider.locations.waitForCount(1)
     try self.provider.locations.complete(0, .success([.template]))
     await first.value
-    let failed = try XCTUnwrap(self.feature.requestLocations("retry"))
+    let failed = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("retry"))
     await self.provider.locations.waitForCount(2)
     XCTAssertEqual(self.feature.suggestedLocationOptions, [.template])
     try self.provider.locations.complete(1, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -130,7 +130,7 @@ final class SearchLookupTests: TestCase {
     XCTAssertEqual(self.feature.suggestedLocationOptions, [.template])
     XCTAssertFalse(self.feature.isLoadingSuggestions)
 
-    let retry = try XCTUnwrap(self.feature.requestLocations("retry"))
+    let retry = try XCTUnwrap(self.feature.startLocationSuggestionsLoad("retry"))
     await self.provider.locations.waitForCount(3)
     XCTAssertNil(self.feature.suggestedLocationsError)
     try self.provider.locations.complete(2, .success([]))
@@ -139,11 +139,11 @@ final class SearchLookupTests: TestCase {
   }
 
   func testWhitespaceIsStillAQueryAndPrecancelledCommandDoesNotAdmit() async throws {
-    let cancelled = Task { @MainActor in await self.feature.searchLocations("ignored") }
+    let cancelled = Task { @MainActor in await self.feature.loadLocationSuggestions("ignored") }
     cancelled.cancel()
     await cancelled.value
     XCTAssertTrue(self.provider.locations.keys.isEmpty)
-    let whitespace = try XCTUnwrap(self.feature.requestLocations(" "))
+    let whitespace = try XCTUnwrap(self.feature.startLocationSuggestionsLoad(" "))
     await self.provider.locations.waitForCount(1)
     XCTAssertEqual(self.provider.locations.keys, [" "])
     try self.provider.locations.complete(0, .success([]))
@@ -164,8 +164,8 @@ final class SearchLookupTests: TestCase {
       }
     }
     defer { observation.stop() }
-    let first = self.feature.requestFilterOptions()
-    let duplicate = self.feature.requestFilterOptions()
+    let first = self.feature.startFilterOptionsLoad()
+    let duplicate = self.feature.startFilterOptionsLoad()
     XCTAssertEqual(defaults, [[]])
     XCTAssertEqual(suggestions, [[]])
     await self.provider.categories.waitForCount(1)
@@ -198,7 +198,7 @@ final class SearchLookupTests: TestCase {
     )
     defer { feature.cancelFilterLookups(); provider.releaseAll() }
 
-    let operation = feature.requestFilterOptions()
+    let operation = feature.startFilterOptionsLoad()
     await provider.categories.waitForCount(1)
     await provider.locations.waitForCount(1)
     try provider.categories.complete(0, .success([.art]))
@@ -211,7 +211,7 @@ final class SearchLookupTests: TestCase {
 
   func testNonemptyCategoryCacheIsImmediateAndDoesNotFetch() async throws {
     self.provider.cachedCategories = [.art, .games]
-    let operation = self.feature.requestFilterOptions()
+    let operation = self.feature.startFilterOptionsLoad()
     XCTAssertEqual(self.feature.categoryOptions, [.art, .games])
     XCTAssertFalse(self.feature.isLoadingCategories)
     await self.provider.locations.waitForCount(1)
@@ -222,7 +222,7 @@ final class SearchLookupTests: TestCase {
 
   func testEmptyCacheFetchesAndFailuresRetryIndependently() async throws {
     self.provider.cachedCategories = []
-    let first = self.feature.requestFilterOptions()
+    let first = self.feature.startFilterOptionsLoad()
     await self.provider.categories.waitForCount(1)
     await self.provider.locations.waitForCount(1)
     try self.provider.categories.complete(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -233,7 +233,7 @@ final class SearchLookupTests: TestCase {
     XCTAssertEqual(self.feature.defaultLocationOptions, [.template])
     XCTAssertEqual(self.provider.cachedCategories, [])
 
-    let retry = self.feature.requestFilterOptions()
+    let retry = self.feature.startFilterOptionsLoad()
     await self.provider.categories.waitForCount(2)
     await self.provider.locations.waitForCount(2)
     try self.provider.categories.complete(1, .success([.games]))
@@ -246,11 +246,11 @@ final class SearchLookupTests: TestCase {
   }
 
   func testCancelledOptionsCannotPublishOrOverwriteCacheAfterRetry() async throws {
-    let old = self.feature.requestFilterOptions()
+    let old = self.feature.startFilterOptionsLoad()
     await self.provider.categories.waitForCount(1)
     await self.provider.locations.waitForCount(1)
     self.feature.cancelFilterLookups()
-    let current = self.feature.requestFilterOptions()
+    let current = self.feature.startFilterOptionsLoad()
     await self.provider.categories.waitForCount(2)
     await self.provider.locations.waitForCount(2)
     try self.provider.categories.complete(0, .success([.art]))
@@ -279,7 +279,7 @@ final class SearchLookupTests: TestCase {
       cache: AppEnvironment.current.cache
     )
     let defaultValues = try await provider.fetchDefaultLocations()
-    let suggestedValues = try await provider.fetchLocations(query: "Fairfax")
+    let suggestedValues = try await provider.fetchLocationSuggestions(query: "Fairfax")
     XCTAssertEqual(defaultValues.count, 3)
     XCTAssertEqual(suggestedValues, defaultValues)
     XCTAssertEqual(suggestedValues.first?.displayableName, "Fairfax, VA")
@@ -355,7 +355,7 @@ private final class ControlledSearchLookupProvider: SearchLookupProvider {
   func cache(categories: [KsApi.Category]) { self.cachedCategories = categories }
   func fetchCategories() async throws -> [KsApi.Category] { try await self.categories.value(key: "categories") }
   func fetchDefaultLocations() async throws -> [Location] { try await self.locations.value(key: "defaults") }
-  func fetchLocations(query: String) async throws -> [Location] { try await self.locations.value(key: query) }
+  func fetchLocationSuggestions(query: String) async throws -> [Location] { try await self.locations.value(key: query) }
   func releaseAll() { self.categories.releaseAll(); self.locations.releaseAll() }
 }
 

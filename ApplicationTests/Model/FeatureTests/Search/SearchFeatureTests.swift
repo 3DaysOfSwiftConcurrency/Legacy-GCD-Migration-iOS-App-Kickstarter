@@ -24,7 +24,7 @@ final class SearchFeatureTests: TestCase {
     searchFeature.selectFilter(.sort(.newest))
     searchFeature.selectFilter(.category(.rootCategory(.art)))
     searchFeature.selectFilter(.projectsWeLove(true))
-    searchFeature.updateQuery("books")
+    searchFeature.resetFiltersWhenQueryBecomesEmpty("books")
     let parameters = searchFeature.queryParameters(for: "books")
     XCTAssertEqual(parameters.query, "books")
     XCTAssertEqual(parameters.sort, .newest)
@@ -43,7 +43,7 @@ final class SearchFeatureTests: TestCase {
     XCTAssertNil(resetParameters.category)
     XCTAssertNil(resetParameters.staffPicks) // Unselected means no API filter, not "exclude".
 
-    searchFeature.updateQuery("")
+    searchFeature.resetFiltersWhenQueryBecomesEmpty("")
     let clearedParameters = searchFeature.queryParameters(for: "")
     XCTAssertEqual(clearedParameters.sort, .magic)
     XCTAssertEqual(clearedParameters.query, "")
@@ -110,7 +110,7 @@ final class SearchFeatureTests: TestCase {
     XCTAssertEqual(parameters.staffPicks, true)
     XCTAssertEqual(parameters.social, true)
 
-    feature.updateQuery("pottery")
+    feature.resetFiltersWhenQueryBecomesEmpty("pottery")
     XCTAssertEqual(feature.queryParameters(for: "ceramics"), parameters)
     feature.toggleFilter(.recommended)
     feature.toggleFilter(.savedProjects)
@@ -138,7 +138,7 @@ final class SearchFeatureTests: TestCase {
     var expected = defaults
     expected.sort = .newest
     XCTAssertEqual(feature.queryParameters(for: ""), expected)
-    feature.updateQuery("")
+    feature.resetFiltersWhenQueryBecomesEmpty("")
     XCTAssertEqual(feature.queryParameters(for: ""), defaults)
   }
 
@@ -164,7 +164,7 @@ final class SearchFeatureTests: TestCase {
     var currentTask: Task<Void, Never>?
     let data = try self.fixture("SearchQuery_FiveResults")
 
-    currentTask = searchFeature.requestSearch(parameters: self.parameters("ceramics"))
+    currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("ceramics"))
     await provider.waitForRequestCount(1)
     XCTAssertTrue(searchFeature.isLoading)
     XCTAssertEqual(provider.requests.count, 1)
@@ -189,11 +189,11 @@ final class SearchFeatureTests: TestCase {
     )
     defer { provider.releaseAll(); feature.cancelSearch() }
 
-    let first = feature.requestSearch(parameters: self.parameters("first"))
+    let first = feature.startSearchResultsLoad(parameters: self.parameters("first"))
     await provider.waitForRequestCount(1)
     try provider.complete(0, with: self.fixture("SearchQuery_FiveResults"))
     await first.value
-    let second = feature.requestSearch(parameters: self.parameters("second"))
+    let second = feature.startSearchResultsLoad(parameters: self.parameters("second"))
     await provider.waitForRequestCount(2)
     try provider.complete(1, with: self.fixture("SearchQuery_AnotherFiveResults"))
     await second.value
@@ -211,10 +211,10 @@ final class SearchFeatureTests: TestCase {
     let oldData = try self.fixture("SearchQuery_FiveResults")
     let newData = try self.fixture("SearchQuery_AnotherFiveResults")
 
-    currentTask = searchFeature.requestSearch(parameters: self.parameters("old"))
+    currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("old"))
     let oldTask = currentTask
     await provider.waitForRequestCount(1)
-    currentTask = searchFeature.requestSearch(parameters: self.parameters("new"))
+    currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("new"))
     await provider.waitForRequestCount(2)
 
     XCTAssertEqual(provider.requests.count, 2)
@@ -232,7 +232,7 @@ final class SearchFeatureTests: TestCase {
     XCTAssertEqual(latestProjects, newData.projects?.nodes?.compactMap { $0 }.map(SearchProjectResponse.init) ?? [])
     XCTAssertFalse(searchFeature.isLoading)
 
-    currentTask = searchFeature.requestSearch(parameters: self.parameters("replacement"))
+    currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("replacement"))
     await provider.waitForRequestCount(3)
     XCTAssertTrue(searchFeature.projects.isEmpty)
     XCTAssertTrue(searchFeature.isLoading)
@@ -261,12 +261,12 @@ final class SearchFeatureTests: TestCase {
       let provider = ControlledSearchProvider()
       let feature = SearchFeature(provider: provider, sleep: { _ in })
       defer { feature.cancelSearch(); provider.releaseAll() }
-      let old = feature.requestSearch(parameters: initial)
+      let old = feature.startSearchResultsLoad(parameters: initial)
       await provider.waitForRequestCount(1)
-      let replacement = feature.requestSearch(parameters: changed)
+      let replacement = feature.startSearchResultsLoad(parameters: changed)
       XCTAssertNotEqual(old, replacement, "A GraphQL-only filter is a distinct request")
       await provider.waitForRequestCount(2)
-      XCTAssertEqual(feature.requestSearch(parameters: changed), replacement)
+      XCTAssertEqual(feature.startSearchResultsLoad(parameters: changed), replacement)
       try provider.complete(1, with: newData)
       await replacement.value
       try provider.complete(0, with: oldData)
@@ -289,11 +289,11 @@ final class SearchFeatureTests: TestCase {
     let second = try self.fixture("SearchQuery_AnotherFiveResults")
     let empty = try self.fixture("SearchQuery_EmptyResults")
 
-    currentTask = searchFeature.requestSearch(parameters: self.parameters("art"))
+    currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("art"))
     await provider.waitForRequestCount(1)
     try provider.complete(0, with: first)
     await currentTask?.value
-    currentTask = searchFeature.requestNextPage()
+    currentTask = searchFeature.startNextSearchPageLoad()
     await provider.waitForRequestCount(2)
 
     XCTAssertEqual(provider.requests.count, 2)
@@ -306,11 +306,11 @@ final class SearchFeatureTests: TestCase {
       + (second.projects?.nodes?.compactMap { $0 }.map(SearchProjectResponse.init) ?? [])
     XCTAssertEqual(searchFeature.projects, expected)
 
-    currentTask = searchFeature.requestNextPage()
+    currentTask = searchFeature.startNextSearchPageLoad()
     await provider.waitForRequestCount(3)
     try provider.complete(2, with: empty)
     await currentTask?.value
-    currentTask = searchFeature.requestNextPage()
+    currentTask = searchFeature.startNextSearchPageLoad()
 
     XCTAssertEqual(provider.requests.count, 3)
     XCTAssertEqual(searchFeature.projects, expected)
@@ -322,7 +322,7 @@ final class SearchFeatureTests: TestCase {
     let searchFeature = SearchFeature(provider: provider, sleep: { _ in })
     defer { provider.releaseAll(); searchFeature.cancelSearch() }
     var currentTask: Task<Void, Never>?
-    currentTask = searchFeature.requestSearch(parameters: self.parameters("failed"))
+    currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("failed"))
     await provider.waitForRequestCount(1)
     try provider.fail(0)
     await currentTask?.value
@@ -330,7 +330,7 @@ final class SearchFeatureTests: TestCase {
     XCTAssertFalse(searchFeature.isLoading)
     XCTAssertTrue(searchFeature.projects.isEmpty)
 
-    currentTask = searchFeature.requestSearch(parameters: self.parameters("recovered"))
+    currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("recovered"))
     await provider.waitForRequestCount(2)
     XCTAssertNil(searchFeature.searchError)
     try provider.complete(1, with: self.fixture("SearchQuery_FiveResults"))
@@ -346,13 +346,13 @@ final class SearchFeatureTests: TestCase {
     let searchFeature = SearchFeature(provider: provider, sleep: { _ in })
     defer { provider.releaseAll(); searchFeature.cancelSearch() }
     var currentTask: Task<Void, Never>?
-    currentTask = searchFeature.requestSearch(parameters: self.parameters("art"))
+    currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("art"))
     await provider.waitForRequestCount(1)
     try provider.complete(0, with: self.fixture("SearchQuery_FiveResults"))
     await currentTask?.value
     let firstPage = searchFeature.projects
 
-    currentTask = searchFeature.requestNextPage()
+    currentTask = searchFeature.startNextSearchPageLoad()
     await provider.waitForRequestCount(2)
     try provider.fail(1)
     await currentTask?.value
@@ -360,7 +360,7 @@ final class SearchFeatureTests: TestCase {
     XCTAssertNotNil(searchFeature.searchError)
     XCTAssertFalse(searchFeature.isLoading)
 
-    currentTask = searchFeature.requestNextPage()
+    currentTask = searchFeature.startNextSearchPageLoad()
     await provider.waitForRequestCount(3)
     try provider.complete(2, with: self.fixture("SearchQuery_AnotherFiveResults"))
     await currentTask?.value
@@ -378,7 +378,7 @@ final class SearchFeatureTests: TestCase {
     var completions = 0
     let first = Task {
       firstEntered.fulfill()
-      await feature.search(parameters: parameters)
+      await feature.loadSearchResults(parameters: parameters)
       completions += 1
     }
     defer { first.cancel() }
@@ -386,7 +386,7 @@ final class SearchFeatureTests: TestCase {
     await provider.waitForRequestCount(1)
     let second = Task {
       secondEntered.fulfill()
-      await feature.search(parameters: parameters)
+      await feature.loadSearchResults(parameters: parameters)
       completions += 1
     }
     defer { second.cancel() }
@@ -399,14 +399,14 @@ final class SearchFeatureTests: TestCase {
     XCTAssertEqual(completions, 2)
     XCTAssertEqual(feature.projects.count, 5)
 
-    let page = Task { await feature.loadNextPage() }
+    let page = Task { await feature.loadNextSearchPage() }
     defer { page.cancel() }
     await provider.waitForRequestCount(2)
     let duplicateEntered = expectation(description: "duplicate page waiter")
     var duplicateFinished = false
     let duplicate = Task {
       duplicateEntered.fulfill()
-      await feature.loadNextPage()
+      await feature.loadNextSearchPage()
       duplicateFinished = true
     }
     defer { duplicate.cancel() }
@@ -426,13 +426,13 @@ final class SearchFeatureTests: TestCase {
     let feature = SearchFeature(provider: provider, sleep: { _ in })
     defer { provider.releaseAll(); feature.cancelSearch() }
     let parameters = self.parameters("shared")
-    let first = Task { await feature.search(parameters: parameters) }
+    let first = Task { await feature.loadSearchResults(parameters: parameters) }
     defer { first.cancel() }
     await provider.waitForRequestCount(1)
     let entered = expectation(description: "second waiter")
     let second = Task {
       entered.fulfill()
-      await feature.search(parameters: parameters)
+      await feature.loadSearchResults(parameters: parameters)
     }
     defer { second.cancel() }
     await fulfillment(of: [entered], timeout: 2)
@@ -449,20 +449,20 @@ final class SearchFeatureTests: TestCase {
     let provider = ControlledSearchProvider()
     let feature = SearchFeature(provider: provider, sleep: { _ in })
     defer { provider.releaseAll(); feature.cancelSearch() }
-    let initial = feature.requestSearch(parameters: self.parameters("old"))
+    let initial = feature.startSearchResultsLoad(parameters: self.parameters("old"))
     await provider.waitForRequestCount(1)
     try provider.complete(0, with: self.fixture("SearchQuery_FiveResults"))
     await initial.value
-    let page = Task { await feature.loadNextPage() }
+    let page = Task { await feature.loadNextSearchPage() }
     defer { page.cancel() }
     await provider.waitForRequestCount(2)
-    let replacement = feature.requestSearch(parameters: self.parameters("new"))
+    let replacement = feature.startSearchResultsLoad(parameters: self.parameters("new"))
     await provider.waitForRequestCount(3)
     try provider.complete(1, with: self.fixture("SearchQuery_AnotherFiveResults"))
     await page.value
     XCTAssertTrue(feature.isLoading, "Old cleanup cannot clear the replacement's loading state")
     XCTAssertTrue(feature.projects.isEmpty)
-    let repeatedPage = feature.requestNextPage()
+    let repeatedPage = feature.startNextSearchPageLoad()
     XCTAssertEqual(provider.requests.count, 3, "Do not use the old cursor during replacement")
     try provider.complete(2, with: self.fixture("SearchQuery_FiveResults"))
     await replacement.value
@@ -475,7 +475,7 @@ final class SearchFeatureTests: TestCase {
     let provider = ControlledSearchProvider()
     let feature = SearchFeature(provider: provider, sleep: { _ in })
     defer { provider.releaseAll(); feature.cancelSearch() }
-    let old = feature.requestSearch(parameters: self.parameters("cancel"))
+    let old = feature.startSearchResultsLoad(parameters: self.parameters("cancel"))
     await provider.waitForRequestCount(1)
     feature.cancelSearch()
     XCTAssertFalse(feature.isLoading)
@@ -483,7 +483,7 @@ final class SearchFeatureTests: TestCase {
     await old.value
     XCTAssertTrue(feature.projects.isEmpty)
     XCTAssertNil(feature.searchError)
-    let retry = feature.requestSearch(parameters: self.parameters("cancel"))
+    let retry = feature.startSearchResultsLoad(parameters: self.parameters("cancel"))
     await provider.waitForRequestCount(2)
     try provider.complete(1, with: self.fixture("SearchQuery_FiveResults"))
     await retry.value
@@ -493,7 +493,7 @@ final class SearchFeatureTests: TestCase {
   func testAlreadyCancelledCallerDoesNotStartRequest() async {
     let provider = ControlledSearchProvider()
     let feature = SearchFeature(provider: provider)
-    let caller = Task { await feature.search(parameters: self.parameters("cancelled")) }
+    let caller = Task { await feature.loadSearchResults(parameters: self.parameters("cancelled")) }
     caller.cancel()
     await caller.value
     XCTAssertTrue(provider.requests.isEmpty)
@@ -505,14 +505,14 @@ final class SearchFeatureTests: TestCase {
     let provider = ControlledSearchProvider()
     let feature = SearchFeature(provider: provider, sleep: { _ in })
     defer { provider.releaseAll(); feature.cancelSearch() }
-    await feature.loadNextPage()
+    await feature.loadNextSearchPage()
     XCTAssertTrue(provider.requests.isEmpty)
-    let search = Task { await feature.search(parameters: self.parameters("empty")) }
+    let search = Task { await feature.loadSearchResults(parameters: self.parameters("empty")) }
     defer { search.cancel() }
     await provider.waitForRequestCount(1)
     try provider.complete(0, with: self.fixture("SearchQuery_EmptyResults"))
     await search.value
-    await feature.loadNextPage()
+    await feature.loadNextSearchPage()
     XCTAssertEqual(provider.requests.count, 1)
     XCTAssertTrue(feature.projects.isEmpty)
     XCTAssertFalse(feature.isLoading)

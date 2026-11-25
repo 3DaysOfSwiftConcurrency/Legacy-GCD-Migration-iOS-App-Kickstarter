@@ -147,11 +147,11 @@ public class SearchFilters: @MainActor ObservableObject {
     self.isLoggedIn = isLoggedIn
 
     self.pills = []
-    self.updatePills()
+    self.refreshFilterPills()
   }
 
-  func update(
-    withSort sort: DiscoveryParams.Sort,
+  func applySelection(
+    sort: DiscoveryParams.Sort,
     category: SearchFiltersCategory,
     projectState: DiscoveryParams.State,
     percentRaisedBucket: DiscoveryParams.PercentRaisedBucket?,
@@ -174,25 +174,25 @@ public class SearchFilters: @MainActor ObservableObject {
     self.showOnly.projectsWeLove = toggles.projectsWeLove
     self.showOnly.following = toggles.following
 
-    self.updatePills()
+    self.refreshFilterPills()
   }
 
-  func update(
-    withCategories categories: [KsApi.Category]
+  func setCategories(
+    _ categories: [KsApi.Category]
   ) {
     self.objectWillChange.send()
     self.category.categories = categories
   }
 
-  func update(
-    withDefaultSearchLocations locations: [Location]
+  func setDefaultLocations(
+    _ locations: [Location]
   ) {
     self.objectWillChange.send()
     self.location.defaultLocations = locations
   }
 
-  func update(
-    withSuggestedLocations locations: [Location]
+  func setSuggestedLocations(
+    _ locations: [Location]
   ) {
     self.objectWillChange.send()
     self.location.suggestedLocations = locations
@@ -221,7 +221,7 @@ public class SearchFilters: @MainActor ObservableObject {
     return self.has(filter: type)
   }
 
-  private func updatePills() {
+  private func refreshFilterPills() {
     var pills: [SearchFilterPill] = []
 
     if let sortIcon = image(named: "icon-sort")?.withRenderingMode(.alwaysTemplate) {

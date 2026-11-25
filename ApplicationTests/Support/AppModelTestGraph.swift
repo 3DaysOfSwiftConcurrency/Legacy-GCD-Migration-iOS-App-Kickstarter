@@ -35,7 +35,7 @@ final class EnvironmentSearchLookupProvider: SearchLookupProvider {
     try await AppEnvironment.current.apiService.fetchSearchDefaultLocations()
   }
 
-  func fetchLocations(query: String) async throws -> [Location] {
+  func fetchLocationSuggestions(query: String) async throws -> [Location] {
     try await AppEnvironment.current.apiService.fetchSearchLocations(term: query)
   }
 }

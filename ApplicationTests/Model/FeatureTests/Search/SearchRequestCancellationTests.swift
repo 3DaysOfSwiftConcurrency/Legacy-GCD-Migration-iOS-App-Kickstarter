@@ -187,7 +187,7 @@ final class SearchRequestCancellationTests: TestCase {
         loaded.fulfill()
       }
       defer { observation.stop() }
-      await feature.search(parameters: .defaults)
+      await feature.loadSearchResults(parameters: .defaults)
       await self.fulfillment(of: [loaded], timeout: 2)
       XCTAssertEqual(feature.projects.count, 5)
       XCTAssertNil(feature.searchError)
@@ -237,10 +237,10 @@ final class SearchRequestCancellationTests: TestCase {
       }
       var parameters = DiscoveryParams.defaults
       parameters.query = "old"
-      let firstTask = feature.requestSearch(parameters: parameters)
+      let firstTask = feature.startSearchResultsLoad(parameters: parameters)
       await self.fulfillment(of: [firstStarted], timeout: 2)
       parameters.query = "new"
-      let secondTask = feature.requestSearch(parameters: parameters)
+      let secondTask = feature.startSearchResultsLoad(parameters: parameters)
       await self.fulfillment(of: [firstCancelled, secondStarted], timeout: 2)
       guard callbacks.count == 2 else {
         XCTFail("Expected exactly two transports")

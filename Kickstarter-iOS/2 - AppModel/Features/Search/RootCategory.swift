@@ -28,7 +28,7 @@ public enum RootCategory: Int {
 }
 
 public extension RootCategory {
-  func allProjectsString() -> String {
+  func allProjectsTitle() -> String {
     switch self {
     case .art: return Strings.All_Art_Projects()
     case .comics: return Strings.All_Comics_Projects()
