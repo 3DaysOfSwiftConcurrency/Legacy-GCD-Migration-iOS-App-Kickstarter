@@ -135,7 +135,7 @@ public final class LoginToutViewModel {
 
   public func signupOrLoginWithOAuthButtonPressed() {
     self.onOAuth?()
-    self.authenticationFeature.loginInitiateButtonClicked()
+    self.authenticationFeature.trackLoginInitiateButtonClick()
   }
 
   public func userSessionStarted() { if self.isPresented == true { self.onDismiss?() } }
@@ -144,7 +144,7 @@ public final class LoginToutViewModel {
   public func viewWillAppear() {
     if !self.didTrackAppearance {
       self.didTrackAppearance = true
-      self.authenticationFeature.loginToutPageViewed()
+      self.authenticationFeature.trackLoginToutPageView()
     }
     if let intent = self.configuredIntent {
       self.onContext?(statusString(intent), intent != .generic && intent != .discoveryOnboarding)

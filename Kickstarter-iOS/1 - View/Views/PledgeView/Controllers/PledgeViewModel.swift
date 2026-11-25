@@ -113,7 +113,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     let requestState = PledgeRequestState()
     formState.onChange = { ctaState.setEnabled($0) }
 
-    self.loginSignupUseCase = authenticationFeature.makeLoginSignup(intent: .backProject)
+    self.loginSignupUseCase = authenticationFeature.makeLoginSignupUseCase(intent: .backProject)
     let login = self.loginSignupUseCase
 
     self.paymentMethodsUseCase = paymentsFeature.makePaymentMethodsSelection()
@@ -241,7 +241,7 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       ctaState.configure(data)
       formState.configure()
       requestState.configure(data)
-      login.initialDataAvailable()
+      login.publishInitialLoginState()
       paymentMethods.configure(data)
       planUseCase.updateProject(data.project)
       if let total = PledgeAmounts(data).total { planUseCase.updateTotal(total) }

@@ -13,7 +13,8 @@ across 23 Feature areas and the rest of the Model. It includes declarations in
 extensions and conditional compilation branches. Session, Activity, Help,
 ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
 DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
-Discovery have 748 individual behavior, caller and naming decisions. The remaining 2,276 rows are
+Discovery and Authentication have 862 individual behavior, caller and naming
+decisions. The remaining 2,162 rows are
 pending; the whole Model has
 **not** been declared reviewed. The latest app and test sources passed Build
 For Testing in the runner; runtime tests remain unverified.

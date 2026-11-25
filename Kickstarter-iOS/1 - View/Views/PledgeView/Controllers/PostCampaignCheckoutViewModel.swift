@@ -229,7 +229,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     let cardState = self.cardState
     let appleState = self.applePayState
 
-    self.loginSignupUseCase = authenticationFeature.makeLoginSignup(intent: .backProject)
+    self.loginSignupUseCase = authenticationFeature.makeLoginSignupUseCase(intent: .backProject)
     let login = self.loginSignupUseCase
     let openingState = PostCampaignOpeningState()
     login.onLoginState = { value in
@@ -421,7 +421,7 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     self.configureState = { data in
       ctaState.configure(data)
       openingState.configure(data)
-      login.initialDataAvailable()
+      login.publishInitialLoginState()
       paymentMethods.configure(data)
     }
     ctaState.onChange = { [weak self] in self?.onPledgeCTA?($0) }

@@ -537,3 +537,15 @@ calls. Repaired the calls, verified no old Discovery method spelling remained
 in first-party type context, then reran `discovery-repair-2` Build For Testing.
 It exited zero and reported `TEST BUILD SUCCEEDED` for app and test targets.
 Runtime tests remain unverified. Remaining inventory decisions: 2,276.
+
+Authentication Feature review: all 114 declarations across eleven files have
+decisions. Provider `login` now describes authentication across email,
+Facebook, Apple and OAuth, while `requestPasswordReset` describes sending a
+reset email. The four Feature analytics forwarders say `track`, the login/use
+case factory names its result, and the initial login-state callback names its
+publication effect. Updated Login, LoginTout and pledge ViewModels, controlled
+provider implementations, OAuth and Feature tests. A first-party stale caller
+scan identified two direct provider tests and they were repaired before the
+final `authentication-final-2` Build For Testing. It exited zero and reported
+`TEST BUILD SUCCEEDED` for app and test targets. Runtime tests remain
+unverified. Remaining inventory decisions: 2,162.

@@ -19,7 +19,7 @@ public final class LoginSignupUseCase {
     self.currentUser = currentUser
   }
 
-  public func initialDataAvailable() { self.publishLoginState() }
+  public func publishInitialLoginState() { self.publishLoginState() }
   public func goToLoginSignupTapped() { self.onLogin?(self.intent) }
   public func userSessionDidChange() {
     self.publishLoginState()

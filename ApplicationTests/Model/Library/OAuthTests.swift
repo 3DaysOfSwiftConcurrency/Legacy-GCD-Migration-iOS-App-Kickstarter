@@ -228,9 +228,9 @@ private final class OAuthFixture {
 @MainActor
 private final class OAuthControlledProvider: AuthenticationProvider {
   let gate = AccountRequestGate<AccessTokenEnvelope>()
-  func login(_: AuthenticationFeature.Credentials, code _: String?) async throws -> AccessTokenEnvelope {
+  func authenticate(_: AuthenticationFeature.Credentials, code _: String?) async throws -> AccessTokenEnvelope {
     try await self.gate.request()
   }
 
-  func resetPassword(email _: String) async throws { XCTFail("OAuth must not reset passwords") }
+  func requestPasswordReset(email _: String) async throws { XCTFail("OAuth must not reset passwords") }
 }

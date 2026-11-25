@@ -25,10 +25,10 @@ final class AuthenticationFeatureTests: XCTestCase {
       makeProvider: { AsyncAuthenticationProvider(service: MockService()) }
     )
 
-    feature.loginPageViewed()
-    feature.loginSubmitButtonClicked()
-    feature.loginToutPageViewed()
-    feature.loginInitiateButtonClicked()
+    feature.trackLoginPageView()
+    feature.trackLoginSubmitButtonClick()
+    feature.trackLoginToutPageView()
+    feature.trackLoginInitiateButtonClick()
 
     XCTAssertEqual(feature.webBaseURL, webBaseURL)
     XCTAssertEqual(feature.signInWithAppleAppID, "injected-app-id")
@@ -449,10 +449,10 @@ final class AuthenticationFeatureTests: XCTestCase {
       .apple(appID: "fixture", firstName: nil, lastName: nil, token: "fixture"),
       .oauth(code: "fixture", verifier: "fixture")
     ] {
-      do { _ = try await provider.login(credentials, code: nil); XCTFail("Demo authenticated") }
+      do { _ = try await provider.authenticate(credentials, code: nil); XCTFail("Demo authenticated") }
       catch { XCTAssertTrue(error is ErrorEnvelope) }
     }
-    do { try await provider.resetPassword(email: "person@example.invalid"); XCTFail("Demo sent reset") }
+    do { try await provider.requestPasswordReset(email: "person@example.invalid"); XCTFail("Demo sent reset") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
   }
 
@@ -500,12 +500,12 @@ private final class ControlledAuthenticationProvider: AuthenticationProvider {
   private(set) var resetEmails: [String] = []
   private(set) var credentials: [AuthenticationFeature.Credentials] = []
   private(set) var codes: [String?] = []
-  func resetPassword(email: String) async throws {
+  func requestPasswordReset(email: String) async throws {
     self.resetEmails.append(email)
     try await self.resetGate.request()
   }
 
-  func login(
+  func authenticate(
     _ credentials: AuthenticationFeature.Credentials, code: String?
   ) async throws -> AccessTokenEnvelope {
     self.credentials.append(credentials)

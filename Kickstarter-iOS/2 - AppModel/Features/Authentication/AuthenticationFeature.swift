@@ -3,9 +3,9 @@ import KsApi
 
 @MainActor
 public protocol AuthenticationProvider {
-  func login(_ credentials: AuthenticationFeature.Credentials, code: String?) async throws
+  func authenticate(_ credentials: AuthenticationFeature.Credentials, code: String?) async throws
     -> AccessTokenEnvelope
-  func resetPassword(email: String) async throws
+  func requestPasswordReset(email: String) async throws
 }
 
 @MainActor
@@ -13,7 +13,7 @@ public struct AsyncAuthenticationProvider: AuthenticationProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
 
-  public func login(
+  public func authenticate(
     _ credentials: AuthenticationFeature.Credentials, code: String?
   ) async throws -> AccessTokenEnvelope {
     switch credentials {
@@ -45,7 +45,7 @@ public struct AsyncAuthenticationProvider: AuthenticationProvider {
     }
   }
 
-  public func resetPassword(email: String) async throws {
+  public func requestPasswordReset(email: String) async throws {
     try await self.service.requestPasswordReset(email: email)
   }
 }
@@ -88,8 +88,8 @@ public final class AuthenticationFeature {
 
   public var webBaseURL: URL { self.platform.webBaseURL() }
   public var responseDelaySeconds: TimeInterval { self.platform.responseDelaySeconds() }
-  public func loginToutPageViewed() { self.platform.trackLoginToutPageViewed() }
-  public func loginInitiateButtonClicked() { self.platform.trackLoginInitiateButtonClicked() }
+  public func trackLoginToutPageView() { self.platform.trackLoginToutPageViewed() }
+  public func trackLoginInitiateButtonClick() { self.platform.trackLoginInitiateButtonClicked() }
   func oauthAuthorizationURL(codeChallenge: String, redirectScheme: String) -> URL? {
     let parameters = [
       URLQueryItem(name: "redirect_uri", value: redirectScheme),
@@ -183,7 +183,7 @@ public final class AuthenticationFeature {
     self.makeProvider = makeProvider
   }
 
-  func makeLoginSignup(intent: LoginIntent) -> LoginSignupUseCase {
+  func makeLoginSignupUseCase(intent: LoginIntent) -> LoginSignupUseCase {
     LoginSignupUseCase(withLoginIntent: intent, currentUser: { [session] in session.currentUser })
   }
 
@@ -238,11 +238,11 @@ public final class AuthenticationFeature {
 
   public var signInWithAppleAppID: String { self.platform.appleAppID() }
 
-  public func loginPageViewed() {
+  public func trackLoginPageView() {
     self.platform.trackLoginPageViewed()
   }
 
-  public func loginSubmitButtonClicked() {
+  public func trackLoginSubmitButtonClick() {
     self.platform.trackLoginSubmitButtonClicked()
   }
 
@@ -278,7 +278,7 @@ public final class AuthenticationFeature {
       let provider = self.makeProvider()
       attempt = PasswordResetRequest(email: email, task: Task {
         try Task.checkCancellation()
-        try await provider.resetPassword(email: email)
+        try await provider.requestPasswordReset(email: email)
       })
       self.passwordResetRequest = attempt
     }
@@ -315,7 +315,7 @@ public final class AuthenticationFeature {
     let provider = self.makeProvider()
     let task = Task {
       try Task.checkCancellation()
-      return try await provider.login(credentials, code: code)
+      return try await provider.authenticate(credentials, code: code)
     }
     let attempt = Attempt(
       credentials: credentials, code: code, operation: operation,
@@ -351,7 +351,7 @@ public final class AuthenticationFeature {
         if attempt.operation == .login {
           // Preserve OAuth's pre-login analytics identity, exactly once for
           // shared callers and only after a complete, current result.
-          if case .oauth = attempt.credentials { self.loginSubmitButtonClicked() }
+          if case .oauth = attempt.credentials { self.trackLoginSubmitButtonClick() }
           try self.session.establishSession(
             envelope, userID: attempt.userID, generation: attempt.generation
           )

@@ -16,14 +16,14 @@ final class LoginSignupUseCaseTests: TestCase {
     let authenticationFeature = AuthenticationFeature(
       sessionFeature: sessionFeature, makeProvider: { AsyncAuthenticationProvider(service: MockService()) }
     )
-    self.useCase = authenticationFeature.makeLoginSignup(intent: .generic)
+    self.useCase = authenticationFeature.makeLoginSignupUseCase(intent: .generic)
     self.useCase.onSessionChanged = { [weak self] in self?.sessions += 1 }
     self.useCase.onLogin = { [weak self] in self?.intents.append($0) }
     self.useCase.onLoginState = { [weak self] in self?.loginStates.append($0) }
   }
 
   func testSessionChangeNotifiesAndReportsCurrentState() {
-    self.useCase.initialDataAvailable()
+    self.useCase.publishInitialLoginState()
     self.useCase.userSessionDidChange()
     XCTAssertEqual(self.sessions, 1)
     XCTAssertEqual(self.loginStates, [false, false])
@@ -42,7 +42,7 @@ final class LoginSignupUseCaseTests: TestCase {
 
   func testInitialLoggedInState() {
     withEnvironment(currentUser: .template) {
-      self.useCase.initialDataAvailable()
+      self.useCase.publishInitialLoginState()
       XCTAssertEqual(self.loginStates, [true])
     }
   }
