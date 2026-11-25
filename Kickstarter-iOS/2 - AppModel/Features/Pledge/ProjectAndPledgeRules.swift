@@ -223,7 +223,7 @@ public struct PledgeCurrencyContext {
     )
   }
 
-  func format(
+  func formattedCurrencyAmount(
     _ amount: Any, currencyCode: String, omitCurrencyCode: Bool, roundingMode: NumberFormatter.RoundingMode = .down
   ) -> String {
     Format.formattedCurrency(
@@ -242,13 +242,13 @@ public func formattedAmountForRewardOrBacking(
   switch rewardOrBacking {
   case let .left(reward):
     let min = minPledgeAmount(forProject: project, reward: reward, launchedCountries: currency.launchedCountries)
-    return currency.format(
+    return currency.formattedCurrencyAmount(
       min,
       currencyCode: projectCurrency,
       omitCurrencyCode: project.stats.omitUSCurrencyCode
     )
   case let .right(backing):
-    return currency.format(
+    return currency.formattedCurrencyAmount(
       backing.amount,
       currencyCode: projectCurrency,
       omitCurrencyCode: project.stats.omitUSCurrencyCode
@@ -292,7 +292,7 @@ internal func sanitizedPledgeParameters(
   return (formattedPledgeTotal, rewardIds, shippingLocationId)
 }
 
-public func ksr_pledgeAmount(
+public func pledgeAmountExcludingShipping(
   _ pledgeAmount: Double,
   subtractingShippingAmount shippingAmount: Double?
 ) -> Double {
@@ -548,7 +548,7 @@ public func rounded(_ value: Float, places: Int16) -> Decimal {
  - returns: A `Double` of the shipping value. If the `Project` `Backing` object is nil,
             and `baseReward` shipping is not enabled, the value is `0.0`
  */
-public func getBaseRewardShippingTotal(
+public func baseRewardShippingTotal(
   project: Project,
   baseReward: Reward,
   shippingRule: ShippingRule?
@@ -782,7 +782,7 @@ public func estimatedShippingText(
     return estimatedShippingConversionText(for: rewards, project: project, locationId: locationId, currency: currency)
   }
 
-  let (estimatedMin, estimatedMax) = estimatedMinMax(
+  let (estimatedMin, estimatedMax) = estimatedShippingCostRange(
     from: rewards,
     locationId: locationId,
     selectedQuantities: selectedQuantities
@@ -792,14 +792,14 @@ public func estimatedShippingText(
 
   let projectCurrency = project.stats.projectCurrency
 
-  let formattedMin = currency.format(
+  let formattedMin = currency.formattedCurrencyAmount(
     estimatedMin,
     currencyCode: projectCurrency,
     omitCurrencyCode: project.stats.omitUSCurrencyCode,
     roundingMode: .halfUp
   )
 
-  let formattedMax = currency.format(
+  let formattedMax = currency.formattedCurrencyAmount(
     estimatedMax,
     currencyCode: projectCurrency,
     omitCurrencyCode: project.stats.omitUSCurrencyCode,
@@ -823,7 +823,7 @@ public func estimatedShippingConversionText(
 ) -> String? {
   guard project.stats.needsConversion else { return nil }
 
-  let (estimatedMin, estimatedMax) = estimatedMinMax(
+  let (estimatedMin, estimatedMax) = estimatedShippingCostRange(
     from: rewards,
     locationId: locationId,
     selectedQuantities: selectedQuantities
@@ -835,14 +835,14 @@ public func estimatedShippingConversionText(
   let convertedMax = estimatedMax * Double(project.stats.userCurrencyRate ?? project.stats.staticUsdRate)
   let currencyCode = project.stats.userCurrency ?? Project.Country.us.currencyCode
 
-  let formattedMin = currency.format(
+  let formattedMin = currency.formattedCurrencyAmount(
     convertedMin,
     currencyCode: currencyCode,
     omitCurrencyCode: project.stats.omitUSCurrencyCode,
     roundingMode: .halfUp
   )
 
-  let formattedMax = currency.format(
+  let formattedMax = currency.formattedCurrencyAmount(
     convertedMax,
     currencyCode: currencyCode,
     omitCurrencyCode: project.stats.omitUSCurrencyCode,
@@ -871,7 +871,7 @@ public func attributedCurrency(withProject project: Project, total: Double) -> N
   )
 }
 
-private func estimatedMinMax(
+private func estimatedShippingCostRange(
   from rewards: [Reward],
   locationId: Int,
   selectedQuantities: SelectedRewardQuantities?

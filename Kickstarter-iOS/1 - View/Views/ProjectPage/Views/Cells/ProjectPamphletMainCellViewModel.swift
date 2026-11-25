@@ -161,10 +161,10 @@ final class ProjectPamphletMainCellViewModel {
     self.onEvent?(.locationNameLabelText(properties.locationName))
     self.onEvent?(.locationStackViewHidden(properties.locationName.isEmpty))
     let amounts = pledgeAmountAndGoalAndCountry(forProperties: properties, needsConversion: conversion)
-    let pledged = formatting.currency.format(
+    let pledged = formatting.currency.formattedCurrencyAmount(
       amounts.pledgedAmount, currencyCode: amounts.currency, omitCurrencyCode: omitCode
     )
-    let goal = formatting.currency.format(
+    let goal = formatting.currency.formattedCurrencyAmount(
       amounts.goalAmount, currencyCode: amounts.currency, omitCurrencyCode: omitCode
     )
     self.onEvent?(.pledgedTitleLabelText(pledged))
@@ -254,12 +254,12 @@ private func conversionText(
   currency: PledgeCurrencyContext
 ) -> String {
   return Strings.discovery_baseball_card_stats_convert_from_pledged_of_goal(
-    pledged: currency.format(
+    pledged: currency.formattedCurrencyAmount(
       properties.pledged.amount,
       currencyCode: properties.currency,
       omitCurrencyCode: omitCode
     ),
-    goal: currency.format(
+    goal: currency.formattedCurrencyAmount(
       properties.goal.amount,
       currencyCode: properties.currency,
       omitCurrencyCode: omitCode

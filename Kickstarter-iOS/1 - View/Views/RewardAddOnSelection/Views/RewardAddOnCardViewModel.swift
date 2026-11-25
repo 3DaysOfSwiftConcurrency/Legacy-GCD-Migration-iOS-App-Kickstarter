@@ -55,7 +55,7 @@ public final class RewardAddOnCardViewModel {
       let amount = reward.minimum.addingCurrency(rule?.cost ?? 0)
         .multiplyingCurrency(Double(project.stats.userCurrencyRate ?? project.stats.staticUsdRate))
       let currency = project.stats.userCurrency ?? Project.Country.us.currencyCode
-      let formatted = currencyContext.format(
+      let formatted = currencyContext.formattedCurrencyAmount(
         amount, currencyCode: currency, omitCurrencyCode: project.stats.omitUSCurrencyCode, roundingMode: .up
       )
       conversion = Strings.About_reward_amount(reward_amount: formatted)
@@ -111,14 +111,14 @@ private func amountStringForReward(
   let projectCurrency = project.statsCurrency
 
   let min = minPledgeAmount(forProject: project, reward: reward, launchedCountries: currency.launchedCountries)
-  let amountString = currency.format(
+  let amountString = currency.formattedCurrencyAmount(
     min,
     currencyCode: projectCurrency,
     omitCurrencyCode: project.stats.omitUSCurrencyCode
   )
 
   if let shippingRule = shippingRule, shippingRule.cost > 0 {
-    let shippingAmount = currency.format(
+    let shippingAmount = currency.formattedCurrencyAmount(
       shippingRule.cost,
       currencyCode: projectCurrency,
       omitCurrencyCode: project.stats.omitUSCurrencyCode

@@ -14,10 +14,10 @@ extensions and conditional compilation branches. Session, Activity, Help,
 ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
 DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
 Discovery, Authentication, Payments, PledgedProjects and the first Pledge
-Feature declaration review has 1,298 individual behavior, caller and naming
-decisions. The remaining 1,726 rows are
+Feature declaration review has 1,386 individual behavior, caller and naming
+decisions. The remaining 1,638 rows are
 pending; the whole Model has
-**not** been declared reviewed. The latest PledgeOverTime closure passed
+**not** been declared reviewed. The latest Pledge support closure passed
 Build For Testing for the app and test targets; runtime tests remain unverified.
 
 The repaired `Library-iOS` app and `LibraryTests` compilation passed in Xcode

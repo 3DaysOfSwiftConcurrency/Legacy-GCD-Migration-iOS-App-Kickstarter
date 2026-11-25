@@ -82,7 +82,7 @@ public final class RewardCardViewModel {
     self.currentReward = reward
     let conversionText: String?
     if needsConversion(project: project) {
-      let amount = currency.format(
+      let amount = currency.formattedCurrencyAmount(
         reward.convertedMinimum,
         currencyCode: project.stats.userCurrency ?? Project.Country.us.currencyCode,
         omitCurrencyCode: project.stats.omitUSCurrencyCode,

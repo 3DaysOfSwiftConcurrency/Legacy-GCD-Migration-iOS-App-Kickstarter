@@ -627,3 +627,14 @@ Build For Testing exited zero with `TEST BUILD SUCCEEDED` for the app and
 test targets. The remaining Pledge support files still need individual
 decisions. Runtime tests remain unverified. Remaining inventory decisions:
 1,726.
+
+Pledge support completion: the final 88 declaration decisions cover currency,
+countries, destinations, installments, plan values, CTA/context presentation,
+backing input construction and all project/pledge rules. All 273 Pledge rows
+now have decisions. Renamed the currency formatter and pledge/shipping amount
+helpers to name their result; updated related ViewModels and shared function
+tests. The initial build found one `currencyContext.format` caller that the
+source scan missed; it was repaired. The final `pledge-currency-repair-8`
+Build For Testing exited zero with `TEST BUILD SUCCEEDED` for app and test
+targets. Runtime tests remain unverified. Remaining inventory decisions:
+1,638.

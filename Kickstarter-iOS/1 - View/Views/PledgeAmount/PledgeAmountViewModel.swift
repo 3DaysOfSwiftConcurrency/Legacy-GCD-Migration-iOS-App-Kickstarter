@@ -106,7 +106,7 @@ final class PledgeAmountViewModel {
     if let lastStepperInput { self.publishFeedback(for: lastStepperInput, minValue: stepperMinimum) }
     self.onEvent?(.amount((rounded, self.minimum, maxValue, valid)))
     self.onEvent?(.maxErrorHidden(self.value <= maxValue))
-    let maxPledge = config.currency.format(
+    let maxPledge = config.currency.formattedCurrencyAmount(
       maxValue, currencyCode: config.data.project.statsCurrency, omitCurrencyCode: false
     )
     let errorText = Strings.Enter_an_amount_less_than_max_pledge(max_pledge: maxPledge)

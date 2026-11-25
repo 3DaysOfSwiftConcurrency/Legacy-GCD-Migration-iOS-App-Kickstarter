@@ -489,7 +489,7 @@ final class SharedFunctionsTests: TestCase {
           |> Backing.lens.rewardId .~ reward.id
       )
 
-    let shippingTotal = getBaseRewardShippingTotal(
+    let shippingTotal = baseRewardShippingTotal(
       project: project,
       baseReward: reward,
       shippingRule: ShippingRule.template
@@ -507,7 +507,7 @@ final class SharedFunctionsTests: TestCase {
       |> Project.lens.rewardData.rewards .~ [reward]
       |> Project.lens.rewardData.addOns .~ [reward]
 
-    let shippingTotal = getBaseRewardShippingTotal(
+    let shippingTotal = baseRewardShippingTotal(
       project: project,
       baseReward: reward,
       shippingRule: ShippingRule.template
@@ -526,7 +526,7 @@ final class SharedFunctionsTests: TestCase {
       |> Project.lens.rewardData.rewards .~ [reward]
       |> Project.lens.rewardData.addOns .~ [reward]
 
-    let shippingTotal = getBaseRewardShippingTotal(
+    let shippingTotal = baseRewardShippingTotal(
       project: project,
       baseReward: reward,
       shippingRule: ShippingRule.template
@@ -977,7 +977,7 @@ final class SharedFunctionsTests: TestCase {
   }
 
   func testPledgeAmountSubtractingShippingAmount() {
-    XCTAssertEqual(ksr_pledgeAmount(700.50, subtractingShippingAmount: 100), 600.50)
+    XCTAssertEqual(pledgeAmountExcludingShipping(700.50, subtractingShippingAmount: 100), 600.50)
   }
 
   func testSelectedRewardQuantities_NoAddOns() {
