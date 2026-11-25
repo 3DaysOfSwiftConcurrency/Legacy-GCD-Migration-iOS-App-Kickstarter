@@ -418,7 +418,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       let presenter = (notification.userInfo?[UserInfoKeys.viewController] as? UIViewController)
         ?? self.rootTabBarController else { return }
     self.permissionAlertPresenter.schedule(context: context, presenter: presenter) {
-      AppModel.shared.onboardingFeature.requestNotificationAuthorization()
+      AppModel.shared.onboardingFeature.startPushNotificationRegistration()
     }
   }
 
@@ -432,7 +432,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
   private func presentLogin(with intent: LoginIntent, from root: RootTabBarViewController) {
     if let onboarding = root.presentedViewController as? UIHostingController<OnboardingView> {
       onboarding.dismiss(animated: true)
-      AppModel.shared.onboardingFeature.recordCompletion()
+      AppModel.shared.onboardingFeature.markOnboardingCompleted()
     }
 
     let controller = LoginToutViewController.configuredWith(loginIntent: intent)

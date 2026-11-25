@@ -12,7 +12,7 @@ extension DiscoveryFeature {
     guard let rawParams, let params = DiscoveryParams.decodeJSONDictionary(rawParams) else { return nil }
     let (category, subcategory) = deepLinkCategories(rawParams: rawParams)
     guard let category else { return params }
-    let envelope = try await self.rootCategories()
+    let envelope = try await self.fetchRootCategories()
     try Task.checkCancellation()
     let matchedCategory = findCategoryFromRootCategories(
       envelope: envelope, categoryParam: category, subcategoryParam: subcategory

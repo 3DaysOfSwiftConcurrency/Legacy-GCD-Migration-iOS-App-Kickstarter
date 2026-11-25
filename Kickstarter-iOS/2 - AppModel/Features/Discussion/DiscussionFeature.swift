@@ -5,39 +5,39 @@ import Prelude
 /// Read boundary shared by project comments, update comments and reply threads.
 @MainActor
 public protocol DiscussionProvider {
-  func comments(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope
-  func replies(id: String, cursor: String?) async throws -> CommentRepliesEnvelope
-  func project(param: Param) async throws -> Project
-  func update(id: Int, project: Param) async throws -> Update
-  func post(input: PostCommentInput) async throws -> Comment
-  func block(id: String) async throws -> EmptyResponseEnvelope
+  func fetchCommentsPage(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope
+  func fetchCommentRepliesPage(id: String, cursor: String?) async throws -> CommentRepliesEnvelope
+  func fetchDiscussionProject(param: Param) async throws -> Project
+  func fetchProjectUpdate(id: Int, project: Param) async throws -> Update
+  func submitDiscussionComment(input: PostCommentInput) async throws -> Comment
+  func blockDiscussionUser(id: String) async throws -> EmptyResponseEnvelope
 }
 
 @MainActor
 public struct AsyncDiscussionProvider: DiscussionProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func comments(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope {
+  public func fetchCommentsPage(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope {
     try await self.service.discussionComments(slug: slug, updateID: updateID, cursor: cursor)
   }
 
-  public func replies(id: String, cursor: String?) async throws -> CommentRepliesEnvelope {
+  public func fetchCommentRepliesPage(id: String, cursor: String?) async throws -> CommentRepliesEnvelope {
     try await self.service.discussionReplies(id: id, cursor: cursor)
   }
 
-  public func project(param: Param) async throws -> Project {
+  public func fetchDiscussionProject(param: Param) async throws -> Project {
     try await self.service.discussionProject(param: param)
   }
 
-  public func update(id: Int, project: Param) async throws -> Update {
+  public func fetchProjectUpdate(id: Int, project: Param) async throws -> Update {
     try await self.service.projectUpdate(id: id, project: project)
   }
 
-  public func post(input: PostCommentInput) async throws -> Comment {
+  public func submitDiscussionComment(input: PostCommentInput) async throws -> Comment {
     try await self.service.submitDiscussionComment(input: input)
   }
 
-  public func block(id: String) async throws -> EmptyResponseEnvelope {
+  public func blockDiscussionUser(id: String) async throws -> EmptyResponseEnvelope {
     try await self.service.blockDiscussionUser(id: id)
   }
 }
@@ -159,11 +159,11 @@ public final class DiscussionFeature {
     }
   }
 
-  public func post(
+  public func submitComment(
     operationID: String, body: String, commentableID: String, parentID: String?
   ) async throws -> Comment {
     try Task.checkCancellation()
-    let comment = try await self.requestPost(
+    let comment = try await self.startCommentSubmission(
       operationID: operationID, body: body, commentableID: commentableID, parentID: parentID
     ).value
     try Task.checkCancellation()
@@ -183,7 +183,7 @@ public final class DiscussionFeature {
       date: self.platform.now(),
       project: project, parentId: parentID, user: user, body: body
     )
-    let postTask = self.requestPost(
+    let postTask = self.startCommentSubmission(
       operationID: UUID().uuidString, body: body, commentableID: commentableID, parentID: parentID
     )
     return OptimisticPost(comment: comment, postTask: postTask)
@@ -226,7 +226,7 @@ public final class DiscussionFeature {
   }
 
   @discardableResult
-  public func requestPost(
+  public func startCommentSubmission(
     operationID: String, body: String, commentableID: String, parentID: String?
   ) -> Task<Comment, Error> {
     let key = PostIdentity(
@@ -234,7 +234,7 @@ public final class DiscussionFeature {
       parentID: parentID, userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation
     )
     // Cancelling a waiter must not cancel a mutation another caller still needs.
-    return self.requestPost(key)
+    return self.startCommentSubmission(key)
   }
 
   /// Presents a retry without tying the admitted write to the screen's lifetime.
@@ -258,7 +258,7 @@ public final class DiscussionFeature {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation) else { return }
         receive(comment.updatingStatus(to: .retrying), comment.id)
-        let result = await self.requestPost(key).result
+        let result = await self.startCommentSubmission(key).result
         try await self.sleep(delay)
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation) else { return }
@@ -281,7 +281,7 @@ public final class DiscussionFeature {
     }
   }
 
-  private func requestPost(_ key: PostIdentity) -> Task<Comment, Error> {
+  private func startCommentSubmission(_ key: PostIdentity) -> Task<Comment, Error> {
     if let task = self.commentPostTasks[key] { return task }
     let provider = self.makeProvider()
     let task = Task { [self] in
@@ -294,7 +294,7 @@ public final class DiscussionFeature {
       do {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation) else { throw CancellationError() }
-        let comment = try await provider.post(input: PostCommentInput(
+        let comment = try await provider.submitDiscussionComment(input: PostCommentInput(
           body: key.body, commentableId: key.commentableID, parentId: key.parentID
         ))
         try Task.checkCancellation()
@@ -313,17 +313,17 @@ public final class DiscussionFeature {
 
   public func blockUser(id: String) async throws -> EmptyResponseEnvelope {
     try Task.checkCancellation()
-    let result = try await self.requestBlockUser(id: id).value
+    let result = try await self.startDiscussionUserBlock(id: id).value
     try Task.checkCancellation()
     return result
   }
 
   @discardableResult
-  public func requestBlockUser(id: String) -> Task<EmptyResponseEnvelope, Error> {
-    self.requestBlock(BlockIdentity(targetID: id, userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation))
+  public func startDiscussionUserBlock(id: String) -> Task<EmptyResponseEnvelope, Error> {
+    self.startUserBlock(BlockIdentity(targetID: id, userID: self.sessionFeature.currentUser?.id, generation: self.sessionFeature.generation))
   }
 
-  private func requestBlock(_ key: BlockIdentity) -> Task<EmptyResponseEnvelope, Error> {
+  private func startUserBlock(_ key: BlockIdentity) -> Task<EmptyResponseEnvelope, Error> {
     if let task = self.authorBlockTasks[key] { return task }
     let provider = self.makeProvider()
     // Different users are independent writes, not replaceable searches.
@@ -333,7 +333,7 @@ public final class DiscussionFeature {
       do {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation) else { throw CancellationError() }
-        let response = try await provider.block(id: key.targetID)
+        let response = try await provider.blockDiscussionUser(id: key.targetID)
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation) else { throw CancellationError() }
         result = .success(response)
@@ -401,15 +401,15 @@ public final class DiscussionFeature {
     return page.snapshot
   }
 
-  public func loadFirstPage(route: UUID, source: Source, refresh: Bool = false) async {
+  public func loadFirstDiscussionPage(route: UUID, source: Source, refresh: Bool = false) async {
     guard !Task.isCancelled else { return }
-    await self.requestFirstPage(route: route, source: source, refresh: refresh).value
+    await self.startFirstDiscussionPageLoad(route: route, source: source, refresh: refresh).value
   }
 
   /// Equivalent initial reads share work. Explicit refresh/retry replaces only
   /// this route, including a page request that was still in flight.
   @discardableResult
-  public func requestFirstPage(route: UUID, source: Source, refresh: Bool = false) -> Task<Void, Never> {
+  public func startFirstDiscussionPageLoad(route: UUID, source: Source, refresh: Bool = false) -> Task<Void, Never> {
     let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
     let previous = self.discussionPagesByRoute[route]
@@ -435,24 +435,24 @@ public final class DiscussionFeature {
         self.emitPage(.page(route, [], 0))
       }
     }
-    return self.startPage(route: route, page: page, source: source, cursor: nil)
+    return self.startDiscussionPageLoad(route: route, page: page, source: source, cursor: nil)
   }
 
-  public func loadNextPage(route: UUID) async {
+  public func loadNextDiscussionPage(route: UUID) async {
     guard !Task.isCancelled else { return }
-    await self.requestNextPage(route: route)?.value
+    await self.startNextDiscussionPageLoad(route: route)?.value
   }
 
   @discardableResult
-  public func requestNextPage(route: UUID) -> Task<Void, Never>? {
+  public func startNextDiscussionPageLoad(route: UUID) -> Task<Void, Never>? {
     guard let page = self.discussionPagesByRoute[route],
           self.sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return nil }
     if let request = page.request { return request.task }
     guard let source = page.nextSource else { return nil }
-    return self.startPage(route: route, page: page, source: source, cursor: page.cursor)
+    return self.startDiscussionPageLoad(route: route, page: page, source: source, cursor: page.cursor)
   }
 
-  private func startPage(
+  private func startDiscussionPageLoad(
     route: UUID, page: PageRoute, source: Source, cursor: String?
   ) -> Task<Void, Never> {
     let provider = self.makeProvider()
@@ -480,7 +480,7 @@ public final class DiscussionFeature {
         let nextCursor: String?
         switch source {
         case let .replies(id):
-          let envelope = try await provider.replies(id: id, cursor: cursor)
+          let envelope = try await provider.fetchCommentRepliesPage(id: id, cursor: cursor)
           comments = envelope.replies
           count = envelope.totalCount
           nextCursor = envelope.cursor
@@ -493,7 +493,7 @@ public final class DiscussionFeature {
           case let .update(value): slug = nil; updateID = value
           case .replies: throw ErrorEnvelope.couldNotParseJSON
           }
-          let envelope = try await provider.comments(slug: slug, updateID: updateID, cursor: cursor)
+          let envelope = try await provider.fetchCommentsPage(slug: slug, updateID: updateID, cursor: cursor)
           comments = envelope.comments
           count = envelope.totalCount
           nextCursor = envelope.cursor
@@ -544,24 +544,24 @@ public final class DiscussionFeature {
   // Deep-link navigation owns the enclosing task and validates the session
   // across the full destination load. Keep transport in Discussion.
   func projectContext(param: Param) async throws -> Project {
-    try await self.makeProvider().project(param: param)
+    try await self.makeProvider().fetchDiscussionProject(param: param)
   }
 
   func updateContext(id: Int, project: Param) async throws -> Update {
-    try await self.makeProvider().update(id: id, project: project)
+    try await self.makeProvider().fetchProjectUpdate(id: id, project: project)
   }
 
   func initialReplies(id: String) async throws -> CommentRepliesEnvelope {
-    try await self.makeProvider().replies(id: id, cursor: nil)
+    try await self.makeProvider().fetchCommentRepliesPage(id: id, cursor: nil)
   }
 
-  public func loadUpdate(route: UUID, id: Int, project: Param) async -> Update? {
+  public func loadDiscussionUpdate(route: UUID, id: Int, project: Param) async -> Update? {
     guard !Task.isCancelled else { return nil }
-    return await self.requestUpdate(route: route, id: id, project: project).value
+    return await self.startDiscussionUpdateLoad(route: route, id: id, project: project).value
   }
 
   @discardableResult
-  public func requestUpdate(route: UUID, id: Int, project: Param) -> Task<Update?, Never> {
+  public func startDiscussionUpdateLoad(route: UUID, id: Int, project: Param) -> Task<Update?, Never> {
     let identity = UpdateIdentity(
       project: project, id: id, userID: self.sessionFeature.currentUser?.id,
       generation: self.sessionFeature.generation
@@ -580,7 +580,7 @@ public final class DiscussionFeature {
       do {
         try Task.checkCancellation()
         guard sessionFeature.isCurrent(userID: identity.userID, generation: identity.generation) else { return nil }
-        let update = try await provider.update(id: id, project: project)
+        let update = try await provider.fetchProjectUpdate(id: id, project: project)
         try Task.checkCancellation()
         guard let self, self.pendingUpdateRequestsByRoute[route]?.id == token,
               sessionFeature.isCurrent(userID: identity.userID, generation: identity.generation) else { return nil }
@@ -594,13 +594,13 @@ public final class DiscussionFeature {
     return task
   }
 
-  public func loadProject(route: UUID, param: Param) async -> Project? {
+  public func loadDiscussionProject(route: UUID, param: Param) async -> Project? {
     guard !Task.isCancelled else { return nil }
-    return await self.requestProject(route: route, param: param).value
+    return await self.startDiscussionProjectLoad(route: route, param: param).value
   }
 
   @discardableResult
-  public func requestProject(route: UUID, param: Param) -> Task<Project?, Never> {
+  public func startDiscussionProjectLoad(route: UUID, param: Param) -> Task<Project?, Never> {
     let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
     if let existing = self.pendingProjectRequestsByRoute[route], existing.param == param, existing.userID == userID,
@@ -620,7 +620,7 @@ public final class DiscussionFeature {
       do {
         try Task.checkCancellation()
         guard sessionFeature.isCurrent(userID: userID, generation: generation) else { return nil }
-        let project = try await provider.project(param: param)
+        let project = try await provider.fetchDiscussionProject(param: param)
         try Task.checkCancellation()
         guard let self, self.pendingProjectRequestsByRoute[route]?.id == token,
               sessionFeature.isCurrent(userID: userID, generation: generation) else { return nil }

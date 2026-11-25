@@ -136,7 +136,7 @@ public final class MessagesViewModel {
     let session = self.messagingFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let command = self.messagingFeature.requestMarkRead(thread)
+    let command = self.messagingFeature.startMarkingMessageThreadRead(thread)
     self.markReadTask = Task { [weak self] in
       guard case .success = await command.result, !Task.isCancelled,
             let self, self.markReadVersion == version,
@@ -174,7 +174,7 @@ public final class MessagesViewModel {
     let session = self.messagingFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let request = self.discussionFeature.requestBlockUser(id: id)
+    let request = self.discussionFeature.startDiscussionUserBlock(id: id)
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.blockTask = Task { [weak self] in
       let outcome = await request.result

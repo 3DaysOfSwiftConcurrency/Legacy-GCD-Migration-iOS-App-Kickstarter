@@ -332,17 +332,17 @@ private final class ControlledDeepLinkProvider: DiscussionProvider {
     try await self.categoriesGate.request()
   }
   func survey(id: Int) async throws -> SurveyResponse { try await self.surveys.request() }
-  func project(param: Param) async throws -> Project { try await self.projects.request() }
-  func update(id: Int, project: Param) async throws -> Update {
+  func fetchDiscussionProject(param: Param) async throws -> Project { try await self.projects.request() }
+  func fetchProjectUpdate(id: Int, project: Param) async throws -> Update {
     self.updateInputs.append((id, project))
     return try await self.updates.request()
   }
-  func comments(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope {
+  func fetchCommentsPage(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope {
     throw CancellationError()
   }
-  func post(input: PostCommentInput) async throws -> Comment { throw CancellationError() }
-  func block(id: String) async throws -> EmptyResponseEnvelope { throw CancellationError() }
-  func replies(id: String, cursor: String?) async throws -> CommentRepliesEnvelope {
+  func submitDiscussionComment(input: PostCommentInput) async throws -> Comment { throw CancellationError() }
+  func blockDiscussionUser(id: String) async throws -> EmptyResponseEnvelope { throw CancellationError() }
+  func fetchCommentRepliesPage(id: String, cursor: String?) async throws -> CommentRepliesEnvelope {
     try await self.repliesGate.request()
   }
   func releaseAll() {

@@ -95,7 +95,7 @@ public final class MessagingFeature {
   public func mailboxSnapshot(for route: UUID) -> MailboxSnapshot { self.mailboxStatesByRoute[route]?.snapshot ?? MailboxSnapshot() }
 
   @discardableResult
-  public func loadMailboxFirstPage(
+  public func startMailboxFirstPageLoad(
     route: UUID, mailbox: Mailbox, project: Project?, refresh: Bool = false
   ) -> Task<Void, Never> {
     if !refresh, let existing = self.mailboxStatesByRoute[route], existing.mailbox == mailbox,
@@ -109,7 +109,7 @@ public final class MessagingFeature {
   }
 
   @discardableResult
-  public func loadNextMailboxPage(route: UUID) -> Task<Void, Never>? {
+  public func startNextMailboxPageLoad(route: UUID) -> Task<Void, Never>? {
     guard let state = self.mailboxStatesByRoute[route], state.session == self.session else { return nil }
     if let request = state.request { return request.task }
     guard let cursor = state.cursor else { return nil }
@@ -208,7 +208,7 @@ public final class MessagingFeature {
   /// Equivalent pending submissions share the tail command. Distinct bodies
   /// queue in order per destination; failure never retries or blocks the next.
   @discardableResult
-  public func requestSend(body: String, subject: MessageSubject) -> Task<Message, Error> {
+  public func startMessageSend(body: String, subject: MessageSubject) -> Task<Message, Error> {
     let destination: Destination
     switch subject {
     case let .messageThread(thread):
@@ -243,13 +243,13 @@ public final class MessagingFeature {
 
   public func sendMessage(body: String, subject: MessageSubject) async throws -> Message {
     try Task.checkCancellation()
-    let value = try await self.requestSend(body: body, subject: subject).value
+    let value = try await self.startMessageSend(body: body, subject: subject).value
     try Task.checkCancellation()
     return value
   }
 
   @discardableResult
-  public func requestMarkRead(_ thread: MessageThread) -> Task<MessageThread, Error> {
+  public func startMarkingMessageThreadRead(_ thread: MessageThread) -> Task<MessageThread, Error> {
     let key = ReadIdentity(threadID: thread.id, session: self.session)
     if let task = self.markThreadReadTasks[key] { return task }
     let provider = self.makeProvider()

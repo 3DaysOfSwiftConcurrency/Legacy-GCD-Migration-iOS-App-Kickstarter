@@ -6,13 +6,13 @@ import UIKit
 
 @MainActor
 struct EnvironmentDiscoveryProvider: DiscoveryProvider {
-  func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
+  func fetchDiscoveryPage(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
     let service = AppEnvironment.current.apiService
     if let cursor { return try await service.discoveryPage(paginationURL: cursor) }
     return try await service.discoveryPage(params: parameters)
   }
 
-  func activitySample() async throws -> ActivityEnvelope? {
+  func fetchDiscoveryActivitySample() async throws -> ActivityEnvelope? {
     try await AppEnvironment.current.apiService.discoveryActivitySample()
   }
 }

@@ -48,11 +48,11 @@ final class AppModelTests: XCTestCase {
     )
 
     model.setApplicationActive(true)
-    await onboarding.waitForTrackingChecks()
+    await onboarding.waitForDelayedTrackingChecks()
     XCTAssertEqual(tracking.requestCount, 0)
     model.prepareNotificationAndTrackingPermissions()
     model.refreshNotificationAuthorization()
-    await onboarding.waitForTrackingChecks()
+    await onboarding.waitForDelayedTrackingChecks()
 
     XCTAssertEqual(tracking.requestCount, 1)
     XCTAssertEqual(badgeResets, 2)
@@ -529,12 +529,12 @@ private final class NoRequestSearchProvider: SearchProjectsProvider {
 
 @MainActor
 private struct NoRequestDiscoveryProvider: DiscoveryProvider {
-  func page(parameters _: DiscoveryParams, cursor _: String?) async throws -> DiscoveryEnvelope {
+  func fetchDiscoveryPage(parameters _: DiscoveryParams, cursor _: String?) async throws -> DiscoveryEnvelope {
     XCTFail("Composition must not perform requests")
     throw CancellationError()
   }
 
-  func activitySample() async throws -> ActivityEnvelope? {
+  func fetchDiscoveryActivitySample() async throws -> ActivityEnvelope? {
     XCTFail("Composition must not perform requests")
     throw CancellationError()
   }

@@ -5,8 +5,8 @@ import Prelude
 
 @MainActor
 public protocol DiscoveryProvider {
-  func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope
-  func activitySample() async throws -> ActivityEnvelope?
+  func fetchDiscoveryPage(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope
+  func fetchDiscoveryActivitySample() async throws -> ActivityEnvelope?
 }
 
 /// Uses the existing authenticated service and its native async URLSession transport.
@@ -16,12 +16,12 @@ public struct AsyncDiscoveryProvider: DiscoveryProvider {
 
   public init(service: any ServiceType) { self.service = service }
 
-  public func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
+  public func fetchDiscoveryPage(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
     if let cursor { return try await self.service.discoveryPage(paginationURL: cursor) }
     return try await self.service.discoveryPage(params: parameters)
   }
 
-  public func activitySample() async throws -> ActivityEnvelope? {
+  public func fetchDiscoveryActivitySample() async throws -> ActivityEnvelope? {
     try await self.service.discoveryActivitySample()
   }
 }
@@ -195,7 +195,7 @@ public final class DiscoveryFeature {
           |> DiscoveryParams.lens.recommended .~ true
           |> DiscoveryParams.lens.state .~ .live
           |> DiscoveryParams.lens.perPage .~ 1
-        let page = try await provider.page(parameters: parameters, cursor: nil)
+        let page = try await provider.fetchDiscoveryPage(parameters: parameters, cursor: nil)
         try Task.checkCancellation()
         return page.stats.count > 0
       } catch is CancellationError { throw CancellationError() }
@@ -345,7 +345,7 @@ public final class DiscoveryFeature {
     try await self.sleep(seconds)
   }
 
-  func rootCategories() async throws -> RootCategoriesEnvelope {
+  func fetchRootCategories() async throws -> RootCategoriesEnvelope {
     try await self.loadCategories()
   }
 
@@ -362,25 +362,25 @@ public final class DiscoveryFeature {
     self.pages[sort.rawValue]?.snapshot ?? PageSnapshot()
   }
 
-  public func refresh(sort: DiscoveryParams.Sort, parameters: DiscoveryParams) async {
+  public func refreshDiscoveryPage(sort: DiscoveryParams.Sort, parameters: DiscoveryParams) async {
     guard !Task.isCancelled else { return }
-    await self.requestRefresh(sort: sort, parameters: parameters).value
+    await self.startDiscoveryPageRefresh(sort: sort, parameters: parameters).value
   }
 
-  public func loadNextPage(sort: DiscoveryParams.Sort) async {
+  public func loadNextDiscoveryPage(sort: DiscoveryParams.Sort) async {
     guard !Task.isCancelled else { return }
-    await self.requestNextPage(sort: sort)?.value
+    await self.startNextDiscoveryPageLoad(sort: sort)?.value
   }
 
-  public func loadActivitySample(sort: DiscoveryParams.Sort) async {
+  public func loadDiscoveryActivitySample(sort: DiscoveryParams.Sort) async {
     guard !Task.isCancelled else { return }
-    await self.requestActivitySample(sort: sort).value
+    await self.startDiscoveryActivitySampleLoad(sort: sort).value
   }
 
   /// Same-input callers share work. An explicit refresh/session/environment event
   /// may force a replacement even when its filter values have not changed.
   @discardableResult
-  internal func requestRefresh(
+  internal func startDiscoveryPageRefresh(
     sort: DiscoveryParams.Sort, parameters: DiscoveryParams, force: Bool = false
   ) -> Task<Void, Never> {
     let page = self.page(for: sort)
@@ -394,20 +394,20 @@ public final class DiscoveryFeature {
     page.snapshot.parameters = parameters
     page.cursor = nil
     page.snapshot.hasMore = false
-    return self.startPage(sort: sort, page: page, parameters: parameters, cursor: nil)
+    return self.startDiscoveryPageLoad(sort: sort, page: page, parameters: parameters, cursor: nil)
   }
 
   @discardableResult
-  internal func requestNextPage(sort: DiscoveryParams.Sort) -> Task<Void, Never>? {
+  internal func startNextDiscoveryPageLoad(sort: DiscoveryParams.Sort) -> Task<Void, Never>? {
     let page = self.page(for: sort)
     guard page.userID == self.sessionFeature.currentUser?.id else { return nil }
     if let request = page.request { return request.task }
     guard let parameters = page.snapshot.parameters, let cursor = page.cursor,
           page.snapshot.hasMore else { return nil }
-    return self.startPage(sort: sort, page: page, parameters: parameters, cursor: cursor)
+    return self.startDiscoveryPageLoad(sort: sort, page: page, parameters: parameters, cursor: cursor)
   }
 
-  private func startPage(
+  private func startDiscoveryPageLoad(
     sort: DiscoveryParams.Sort, page: Page, parameters: DiscoveryParams, cursor: String?
   ) -> Task<Void, Never> {
     let id = UUID()
@@ -428,7 +428,7 @@ public final class DiscoveryFeature {
         try Task.checkCancellation()
         guard session.currentUser?.id == requestedUserID else { return }
         let response: Result<DiscoveryEnvelope, Error>
-        do { response = .success(try await provider.page(parameters: parameters, cursor: cursor)) }
+        do { response = .success(try await provider.fetchDiscoveryPage(parameters: parameters, cursor: cursor)) }
         catch is CancellationError { return }
         catch { response = .failure(error) }
         try Task.checkCancellation()
@@ -453,7 +453,7 @@ public final class DiscoveryFeature {
   }
 
   @discardableResult
-  internal func requestActivitySample(sort: DiscoveryParams.Sort) -> Task<Void, Never> {
+  internal func startDiscoveryActivitySampleLoad(sort: DiscoveryParams.Sort) -> Task<Void, Never> {
     let page = self.page(for: sort)
     page.activityRequest?.task.cancel()
     let id = UUID()
@@ -466,7 +466,7 @@ public final class DiscoveryFeature {
       do {
         try Task.checkCancellation()
         guard session.currentUser?.id == requestedUserID else { return }
-        guard let envelope = try await provider.activitySample() else { return }
+        guard let envelope = try await provider.fetchDiscoveryActivitySample() else { return }
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, page.activityRequest?.id == id,

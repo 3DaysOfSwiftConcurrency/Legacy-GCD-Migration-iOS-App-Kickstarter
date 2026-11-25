@@ -190,7 +190,7 @@ final class DiscussionFeatureTests: TestCase {
     provider.pauseWrites = true
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
-    let original = feature.requestPost(
+    let original = feature.startCommentSubmission(
       operationID: "shared",
       body: "text",
       commentableID: "project",
@@ -200,7 +200,7 @@ final class DiscussionFeatureTests: TestCase {
     let entered = expectation(description: "Second caller entered")
     let waiter = Task {
       entered.fulfill()
-      return try await feature.post(
+      return try await feature.submitComment(
         operationID: "shared",
         body: "text",
         commentableID: "project",
@@ -222,7 +222,7 @@ final class DiscussionFeatureTests: TestCase {
     provider.pauseWrites = true
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
-    let request = feature.requestBlockUser(id: "target")
+    let request = feature.startDiscussionUserBlock(id: "target")
     await provider.waitForBlocks(1)
     feature.sessionFeature.sessionChanged()
     provider.finishAllBlocks()
@@ -264,25 +264,25 @@ final class DiscussionFeatureTests: TestCase {
     provider.pauseWrites = true
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
-    let first = feature.requestPost(
+    let first = feature.startCommentSubmission(
       operationID: "attempt",
       body: "first",
       commentableID: "project",
       parentID: nil
     )
-    let duplicate = feature.requestPost(
+    let duplicate = feature.startCommentSubmission(
       operationID: "attempt",
       body: "first",
       commentableID: "project",
       parentID: nil
     )
-    let changed = feature.requestPost(
+    let changed = feature.startCommentSubmission(
       operationID: "attempt",
       body: "changed",
       commentableID: "project",
       parentID: nil
     )
-    let intentionalRepeat = feature.requestPost(
+    let intentionalRepeat = feature.startCommentSubmission(
       operationID: "another",
       body: "first",
       commentableID: "project",
@@ -306,7 +306,7 @@ final class DiscussionFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let tasks = (0..<6).map {
-      feature.requestPost(operationID: "\($0)", body: "\($0)", commentableID: "project", parentID: nil)
+      feature.startCommentSubmission(operationID: "\($0)", body: "\($0)", commentableID: "project", parentID: nil)
     }
     await provider.waitForPosts(5)
     XCTAssertEqual(provider.postInputs.count, 5)
@@ -322,7 +322,7 @@ final class DiscussionFeatureTests: TestCase {
     let provider = ControlledDiscussionProvider()
     provider.fail = true
     let feature = self.feature(provider)
-    let failed = feature.requestPost(
+    let failed = feature.startCommentSubmission(
       operationID: "retry",
       body: "kept text",
       commentableID: "update",
@@ -331,7 +331,7 @@ final class DiscussionFeatureTests: TestCase {
     if case .success = await failed.result { XCTFail("Expected failed write") }
     XCTAssertEqual(provider.postInputs.count, 1)
     provider.fail = false
-    let comment = try await feature.post(
+    let comment = try await feature.submitComment(
       operationID: "retry",
       body: "kept text",
       commentableID: "update",
@@ -374,7 +374,7 @@ final class DiscussionFeatureTests: TestCase {
     let feature = self.feature(provider)
     await withEnvironment(currentUser: .template) {
       let tasks = (0..<6).map {
-        feature.requestPost(operationID: "\($0)", body: "\($0)", commentableID: "project", parentID: nil)
+        feature.startCommentSubmission(operationID: "\($0)", body: "\($0)", commentableID: "project", parentID: nil)
       }
       await provider.waitForPosts(5)
       await withEnvironment(currentUser: nil) {
@@ -395,9 +395,9 @@ final class DiscussionFeatureTests: TestCase {
     provider.pauseWrites = true
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
-    let first = feature.requestBlockUser(id: "one")
-    let duplicate = feature.requestBlockUser(id: "one")
-    let other = feature.requestBlockUser(id: "two")
+    let first = feature.startDiscussionUserBlock(id: "one")
+    let duplicate = feature.startDiscussionUserBlock(id: "one")
+    let other = feature.startDiscussionUserBlock(id: "two")
     await provider.waitForBlocks(2)
     XCTAssertEqual(Set(provider.blockIDs), ["one", "two"])
     provider.finishAllBlocks()
@@ -411,14 +411,14 @@ final class DiscussionFeatureTests: TestCase {
     let provider = ControlledDiscussionProvider()
     let feature = self.feature(provider)
     provider.fail = true
-    if case .success = await feature.requestBlockUser(id: "target").result { XCTFail("Expected error") }
+    if case .success = await feature.startDiscussionUserBlock(id: "target").result { XCTFail("Expected error") }
     provider.fail = false
     _ = try await feature.blockUser(id: "target")
     XCTAssertEqual(provider.blockIDs, ["target", "target"])
     provider.pauseWrites = true
     defer { provider.releaseAll() }
     await withEnvironment(currentUser: .template) {
-      let task = feature.requestBlockUser(id: "late")
+      let task = feature.startDiscussionUserBlock(id: "late")
       await provider.waitForBlocks(3)
       await withEnvironment(currentUser: nil) {
         provider.finishAllBlocks()
@@ -432,16 +432,16 @@ final class DiscussionFeatureTests: TestCase {
     let feature = self.feature(provider)
     let route = UUID()
     provider.envelope.cursor = "next"
-    await feature.loadFirstPage(route: route, source: .project("original"))
-    await feature.loadNextPage(route: route)
+    await feature.loadFirstDiscussionPage(route: route, source: .project("original"))
+    await feature.loadNextDiscussionPage(route: route)
     XCTAssertEqual(provider.requests.count, 2)
     XCTAssertEqual(provider.requests[0].slug, "original")
     XCTAssertNil(provider.requests[0].cursor)
     XCTAssertEqual(provider.requests[1].slug, provider.envelope.slug)
     XCTAssertEqual(provider.requests[1].cursor, "next")
     provider.envelope.comments = []
-    await feature.loadNextPage(route: route)
-    await feature.loadNextPage(route: route)
+    await feature.loadNextDiscussionPage(route: route)
+    await feature.loadNextDiscussionPage(route: route)
     XCTAssertEqual(provider.requests.count, 3)
     XCTAssertTrue(feature.snapshot(for: route).comments.isEmpty)
     XCTAssertFalse(feature.snapshot(for: route).isLoading)
@@ -454,8 +454,8 @@ final class DiscussionFeatureTests: TestCase {
     provider.envelope.cursor = "older"
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.loadFirstPage(route: route, source: .update("42"))
-    await feature.loadNextPage(route: route)
+    await feature.loadFirstDiscussionPage(route: route, source: .update("42"))
+    await feature.loadNextDiscussionPage(route: route)
     XCTAssertEqual(provider.requests.map(\.updateID), ["42", "encoded-update"])
     XCTAssertEqual(provider.requests.map(\.cursor), [nil, "older"])
     XCTAssertTrue(provider.requests.allSatisfy { $0.slug == nil })
@@ -466,8 +466,8 @@ final class DiscussionFeatureTests: TestCase {
     provider.replyEnvelope.cursor = "previous"
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.loadFirstPage(route: route, source: .replies("root"))
-    await feature.loadNextPage(route: route)
+    await feature.loadFirstDiscussionPage(route: route, source: .replies("root"))
+    await feature.loadNextDiscussionPage(route: route)
     XCTAssertEqual(provider.replyIDs, ["root", provider.replyEnvelope.comment.id])
     XCTAssertEqual(provider.replyCursors, [nil, "previous"])
     XCTAssertEqual(feature.snapshot(for: route).totalCount, provider.replyEnvelope.totalCount)
@@ -480,12 +480,12 @@ final class DiscussionFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID(), otherRoute = UUID()
-    let first = feature.requestFirstPage(route: route, source: .project("old"))
-    let duplicate = feature.requestFirstPage(route: route, source: .project("old"))
+    let first = feature.startFirstDiscussionPageLoad(route: route, source: .project("old"))
+    let duplicate = feature.startFirstDiscussionPageLoad(route: route, source: .project("old"))
     await provider.waitForRequests(1)
-    let independent = feature.requestFirstPage(route: otherRoute, source: .project("other"))
+    let independent = feature.startFirstDiscussionPageLoad(route: otherRoute, source: .project("other"))
     await provider.waitForRequests(2)
-    let fresh = feature.requestFirstPage(route: route, source: .project("new"), refresh: true)
+    let fresh = feature.startFirstDiscussionPageLoad(route: route, source: .project("new"), refresh: true)
     await provider.waitForRequests(3)
     XCTAssertTrue(first.isCancelled)
     XCTAssertFalse(independent.isCancelled)
@@ -508,15 +508,15 @@ final class DiscussionFeatureTests: TestCase {
     provider.envelope.cursor = "retry-cursor"
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.loadFirstPage(route: route, source: .project("test"))
+    await feature.loadFirstDiscussionPage(route: route, source: .project("test"))
     let previous = feature.snapshot(for: route).comments
     provider.fail = true
-    await feature.loadNextPage(route: route)
+    await feature.loadNextDiscussionPage(route: route)
     XCTAssertNotNil(feature.snapshot(for: route).error)
     XCTAssertEqual(feature.snapshot(for: route).comments, previous)
     XCTAssertFalse(feature.snapshot(for: route).isLoading)
     provider.fail = false
-    await feature.loadNextPage(route: route)
+    await feature.loadNextDiscussionPage(route: route)
     XCTAssertEqual(provider.requests.map(\.cursor), [nil, "retry-cursor", "retry-cursor"])
     XCTAssertNil(feature.snapshot(for: route).error)
   }
@@ -527,7 +527,7 @@ final class DiscussionFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let pending = feature.requestFirstPage(route: route, source: .project("test"))
+    let pending = feature.startFirstDiscussionPageLoad(route: route, source: .project("test"))
     await provider.waitForRequests(1)
     AppEnvironment.pushEnvironment(currentUser: .template)
     defer { AppEnvironment.popEnvironment() }
@@ -535,9 +535,9 @@ final class DiscussionFeatureTests: TestCase {
     await pending.value
     XCTAssertTrue(feature.snapshot(for: route).comments.isEmpty)
     XCTAssertNil(feature.snapshot(for: route).error)
-    XCTAssertNil(feature.requestNextPage(route: route))
+    XCTAssertNil(feature.startNextDiscussionPageLoad(route: route))
     provider.pause = false
-    await feature.loadFirstPage(route: route, source: .project("test"))
+    await feature.loadFirstDiscussionPage(route: route, source: .project("test"))
     XCTAssertEqual(provider.requests.count, 2)
   }
 
@@ -548,21 +548,21 @@ final class DiscussionFeatureTests: TestCase {
     let route = UUID()
     defer { provider.releaseAll() }
     provider.envelope.cursor = "old-session"
-    await feature.loadFirstPage(route: route, source: .project("test"))
+    await feature.loadFirstDiscussionPage(route: route, source: .project("test"))
     XCTAssertFalse(feature.snapshot(for: route).comments.isEmpty)
 
     provider.pause = true
-    let pending = try XCTUnwrap(feature.requestNextPage(route: route))
+    let pending = try XCTUnwrap(feature.startNextDiscussionPageLoad(route: route))
     await provider.waitForRequests(2)
     feature.sessionFeature.sessionChanged()
     XCTAssertTrue(feature.snapshot(for: route).comments.isEmpty)
-    XCTAssertNil(feature.requestNextPage(route: route))
+    XCTAssertNil(feature.startNextDiscussionPageLoad(route: route))
     try provider.finish(0, envelope: .multipleCommentTemplate)
     await pending.value
     XCTAssertTrue(feature.snapshot(for: route).comments.isEmpty)
 
     provider.pause = false
-    await feature.loadFirstPage(route: route, source: .project("test"))
+    await feature.loadFirstDiscussionPage(route: route, source: .project("test"))
     XCTAssertEqual(provider.requests.map(\.cursor), [nil, "old-session", nil])
     XCTAssertFalse(feature.snapshot(for: route).comments.isEmpty)
   }
@@ -571,7 +571,7 @@ final class DiscussionFeatureTests: TestCase {
     let provider = ControlledDiscussionProvider()
     let feature = self.feature(provider)
     let route = UUID()
-    await feature.loadFirstPage(route: route, source: .project("test"))
+    await feature.loadFirstDiscussionPage(route: route, source: .project("test"))
     let previous = feature.snapshot(for: route).comments
     provider.missingEnvelope = true
     var pages = 0
@@ -579,7 +579,7 @@ final class DiscussionFeatureTests: TestCase {
       if case .page = update { pages += 1 }
     }
     defer { observation.stop() }
-    await feature.loadNextPage(route: route)
+    await feature.loadNextDiscussionPage(route: route)
     XCTAssertEqual(pages, 0)
     XCTAssertEqual(feature.snapshot(for: route).comments, previous)
     XCTAssertNil(feature.snapshot(for: route).error)
@@ -592,13 +592,13 @@ final class DiscussionFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let pending = feature.requestFirstPage(route: route, source: .project("test"))
+    let pending = feature.startFirstDiscussionPageLoad(route: route, source: .project("test"))
     await provider.waitForRequests(1)
     feature.release(route: route)
     XCTAssertTrue(pending.isCancelled)
     try provider.finish(0, envelope: .singleCommentTemplate)
     await pending.value
-    let cancelled = Task { await feature.loadFirstPage(route: route, source: .project("test")) }
+    let cancelled = Task { await feature.loadFirstDiscussionPage(route: route, source: .project("test")) }
     cancelled.cancel()
     await cancelled.value
     XCTAssertEqual(provider.requests.count, 1)
@@ -611,10 +611,10 @@ final class DiscussionFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.requestUpdate(route: route, id: 1, project: .id(9))
-    let duplicate = feature.requestUpdate(route: route, id: 1, project: .id(9))
+    let first = feature.startDiscussionUpdateLoad(route: route, id: 1, project: .id(9))
+    let duplicate = feature.startDiscussionUpdateLoad(route: route, id: 1, project: .id(9))
     await provider.waitForUpdates(1)
-    let second = feature.requestUpdate(route: route, id: 2, project: .id(9))
+    let second = feature.startDiscussionUpdateLoad(route: route, id: 2, project: .id(9))
     await provider.waitForUpdates(2)
     try provider.finishUpdate(1, id: 2)
     let secondValue = await second.value
@@ -634,10 +634,10 @@ final class DiscussionFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let stale = feature.requestUpdate(route: route, id: 1, project: .slug("test"))
+    let stale = feature.startDiscussionUpdateLoad(route: route, id: 1, project: .slug("test"))
     await provider.waitForUpdates(1)
     feature.sessionFeature.sessionChanged()
-    let current = feature.requestUpdate(route: route, id: 1, project: .slug("test"))
+    let current = feature.startDiscussionUpdateLoad(route: route, id: 1, project: .slug("test"))
     await provider.waitForUpdates(2)
     try provider.finishUpdate(0, id: 1)
     try provider.finishUpdate(1, id: 1)
@@ -651,11 +651,11 @@ final class DiscussionFeatureTests: TestCase {
     let provider = ControlledDiscussionProvider()
     let feature = self.feature(provider)
     let route = UUID()
-    let project = await feature.loadProject(route: route, param: .id(9))
-    let update = await feature.loadUpdate(route: route, id: 7, project: .id(9))
+    let project = await feature.loadDiscussionProject(route: route, param: .id(9))
+    let update = await feature.loadDiscussionUpdate(route: route, id: 7, project: .id(9))
     provider.fail = true
-    let failedProject = await feature.loadProject(route: route, param: .id(10))
-    let failedUpdate = await feature.loadUpdate(route: route, id: 8, project: .id(9))
+    let failedProject = await feature.loadDiscussionProject(route: route, param: .id(10))
+    let failedUpdate = await feature.loadDiscussionUpdate(route: route, id: 8, project: .id(9))
     XCTAssertNotNil(project)
     XCTAssertNil(failedProject)
     XCTAssertEqual(update?.id, 7)
@@ -673,7 +673,7 @@ private final class ControlledDiscussionProvider: DiscussionProvider {
   private var postWaits: [(Int, XCTestExpectation)] = []
   private var blockWaits: [(Int, XCTestExpectation)] = []
 
-  func post(input: PostCommentInput) async throws -> Comment {
+  func submitDiscussionComment(input: PostCommentInput) async throws -> Comment {
     self.postInputs.append(input)
     if self.pauseWrites {
       return try await withCheckedThrowingContinuation { continuation in
@@ -686,7 +686,7 @@ private final class ControlledDiscussionProvider: DiscussionProvider {
     return .template
   }
 
-  func block(id: String) async throws -> EmptyResponseEnvelope {
+  func blockDiscussionUser(id: String) async throws -> EmptyResponseEnvelope {
     self.blockIDs.append(id)
     if self.pauseWrites {
       return try await withCheckedThrowingContinuation { continuation in
@@ -754,7 +754,7 @@ private final class ControlledDiscussionProvider: DiscussionProvider {
   private var waits: [(Int, XCTestExpectation)] = []
   private var updateWaits: [(Int, XCTestExpectation)] = []
 
-  func comments(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope {
+  func fetchCommentsPage(slug: String?, updateID: String?, cursor: String?) async throws -> CommentsEnvelope {
     self.requests.append(Request(slug: slug, updateID: updateID, cursor: cursor))
     if self.missingEnvelope { throw DiscussionResponseError.missingEnvelope }
     if self.pause {
@@ -767,19 +767,19 @@ private final class ControlledDiscussionProvider: DiscussionProvider {
     return self.envelope
   }
 
-  func replies(id: String, cursor: String?) async throws -> CommentRepliesEnvelope {
+  func fetchCommentRepliesPage(id: String, cursor: String?) async throws -> CommentRepliesEnvelope {
     self.replyIDs.append(id)
     self.replyCursors.append(cursor)
     if self.fail { throw ErrorEnvelope.couldNotParseJSON }
     return self.replyEnvelope
   }
 
-  func project(param _: Param) async throws -> Project {
+  func fetchDiscussionProject(param _: Param) async throws -> Project {
     if self.fail { throw ErrorEnvelope.couldNotParseJSON }
     return .template
   }
 
-  func update(id: Int, project _: Param) async throws -> Update {
+  func fetchProjectUpdate(id: Int, project _: Param) async throws -> Update {
     self.updateIDs.append(id)
     if self.pauseUpdates {
       return try await withCheckedThrowingContinuation { continuation in

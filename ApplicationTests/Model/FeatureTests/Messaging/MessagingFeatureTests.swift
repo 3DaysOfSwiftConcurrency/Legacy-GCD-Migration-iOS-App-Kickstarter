@@ -43,7 +43,7 @@ final class MessagingFeatureTests: TestCase {
     )
     let route = UUID()
 
-    let request = feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
+    let request = feature.startMailboxFirstPageLoad(route: route, mailbox: .inbox, project: nil)
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(self.page([1])))
     await request.value
@@ -54,14 +54,14 @@ final class MessagingFeatureTests: TestCase {
 
   func testMailboxSharesPendingPagesAndPreservesConcatenation() async throws {
     let route = UUID()
-    let first = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
-    let duplicate = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
+    let first = self.feature.startMailboxFirstPageLoad(route: route, mailbox: .inbox, project: nil)
+    let duplicate = self.feature.startMailboxFirstPageLoad(route: route, mailbox: .inbox, project: nil)
     await self.provider.pages.waitFor(1)
     XCTAssertEqual(self.provider.pages.count, 1)
     try self.provider.pages.finish(0, .success(self.page([1, 2])))
     await first.value; await duplicate.value
-    let next = self.feature.loadNextMailboxPage(route: route)
-    let repeated = self.feature.loadNextMailboxPage(route: route)
+    let next = self.feature.startNextMailboxPageLoad(route: route)
+    let repeated = self.feature.startNextMailboxPageLoad(route: route)
     await self.provider.pages.waitFor(2)
     XCTAssertEqual(self.provider.cursors, [nil, "next"])
     try self.provider.pages.finish(1, .success(self.page([2, 3])))
@@ -72,27 +72,27 @@ final class MessagingFeatureTests: TestCase {
 
   func testMailboxChangeRejectsLatePageAndEmptyPageStopsPagination() async throws {
     let route = UUID()
-    let old = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
+    let old = self.feature.startMailboxFirstPageLoad(route: route, mailbox: .inbox, project: nil)
     await self.provider.pages.waitFor(1)
-    let current = self.feature.loadMailboxFirstPage(route: route, mailbox: .sent, project: nil)
+    let current = self.feature.startMailboxFirstPageLoad(route: route, mailbox: .sent, project: nil)
     await self.provider.pages.waitFor(2)
     try self.provider.pages.finish(1, .success(self.page([])))
     await current.value
     try self.provider.pages.finish(0, .success(self.page([99])))
     await old.value
     XCTAssertTrue(self.feature.mailboxSnapshot(for: route).threads.isEmpty)
-    XCTAssertNil(self.feature.loadNextMailboxPage(route: route))
+    XCTAssertNil(self.feature.startNextMailboxPageLoad(route: route))
   }
 
   func testRefreshSupersedesNextPageAndFailureAllowsExplicitRetry() async throws {
     let route = UUID()
-    let initial = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil)
+    let initial = self.feature.startMailboxFirstPageLoad(route: route, mailbox: .inbox, project: nil)
     await self.provider.pages.waitFor(1)
     try self.provider.pages.finish(0, .success(self.page([1])))
     await initial.value
-    let old = self.feature.loadNextMailboxPage(route: route)
+    let old = self.feature.startNextMailboxPageLoad(route: route)
     await self.provider.pages.waitFor(2)
-    let refresh = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil, refresh: true)
+    let refresh = self.feature.startMailboxFirstPageLoad(route: route, mailbox: .inbox, project: nil, refresh: true)
     await self.provider.pages.waitFor(3)
     try self.provider.pages.finish(2, .failure(ErrorEnvelope.couldNotParseJSON))
     await refresh.value
@@ -100,7 +100,7 @@ final class MessagingFeatureTests: TestCase {
     await old?.value
     XCTAssertNotNil(self.feature.mailboxSnapshot(for: route).error)
     XCTAssertTrue(self.feature.mailboxSnapshot(for: route).threads.isEmpty)
-    let retry = self.feature.loadMailboxFirstPage(route: route, mailbox: .inbox, project: nil, refresh: true)
+    let retry = self.feature.startMailboxFirstPageLoad(route: route, mailbox: .inbox, project: nil, refresh: true)
     await self.provider.pages.waitFor(4)
     try self.provider.pages.finish(3, .success(self.page([3])))
     await retry.value
@@ -110,9 +110,9 @@ final class MessagingFeatureTests: TestCase {
 
   func testMailboxRoutesDoNotCancelEachOther() async throws {
     let firstRoute = UUID(), secondRoute = UUID()
-    let first = self.feature.loadMailboxFirstPage(route: firstRoute, mailbox: .inbox, project: nil)
+    let first = self.feature.startMailboxFirstPageLoad(route: firstRoute, mailbox: .inbox, project: nil)
     await self.provider.pages.waitFor(1)
-    let second = self.feature.loadMailboxFirstPage(route: secondRoute, mailbox: .sent, project: .template)
+    let second = self.feature.startMailboxFirstPageLoad(route: secondRoute, mailbox: .sent, project: .template)
     await self.provider.pages.waitFor(2)
     try self.provider.pages.finish(1, .success(self.page([2])))
     try self.provider.pages.finish(0, .success(self.page([1])))
@@ -195,10 +195,10 @@ final class MessagingFeatureTests: TestCase {
 
   func testSendOrderDuplicateSharingAndDisposedObserversDoNotDropWrites() async throws {
     let subject = MessageSubject.project(id: 42, name: "Fixture")
-    let first = self.feature.requestSend(body: "A", subject: subject)
-    let duplicate = self.feature.requestSend(body: "A", subject: subject)
-    let second = self.feature.requestSend(body: "B", subject: subject)
-    let third = self.feature.requestSend(body: "A", subject: subject)
+    let first = self.feature.startMessageSend(body: "A", subject: subject)
+    let duplicate = self.feature.startMessageSend(body: "A", subject: subject)
+    let second = self.feature.startMessageSend(body: "B", subject: subject)
+    let third = self.feature.startMessageSend(body: "A", subject: subject)
     let observer = Task { _ = await first.result }
     observer.cancel()
     await self.provider.sends.waitFor(1)
@@ -216,8 +216,8 @@ final class MessagingFeatureTests: TestCase {
 
   func testFailedSendDoesNotRetryAndNextCommandCanSucceed() async throws {
     let subject = MessageSubject.project(id: 42, name: "Fixture")
-    let failed = self.feature.requestSend(body: "A", subject: subject)
-    let next = self.feature.requestSend(body: "B", subject: subject)
+    let failed = self.feature.startMessageSend(body: "A", subject: subject)
+    let next = self.feature.startMessageSend(body: "B", subject: subject)
     await self.provider.sends.waitFor(1)
     try self.provider.sends.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { _ = try await failed.value; XCTFail("Expected failure") } catch { XCTAssertTrue(error is ErrorEnvelope) }
@@ -229,8 +229,8 @@ final class MessagingFeatureTests: TestCase {
 
   func testSessionChangeRejectsLateSendAndDoesNotAdmitQueuedOldAccountCommand() async throws {
     let subject = MessageSubject.project(id: 42, name: "Fixture")
-    let first = self.feature.requestSend(body: "A", subject: subject)
-    let queued = self.feature.requestSend(body: "B", subject: subject)
+    let first = self.feature.startMessageSend(body: "A", subject: subject)
+    let queued = self.feature.startMessageSend(body: "B", subject: subject)
     await self.provider.sends.waitFor(1)
     self.session.sessionChanged()
     try self.provider.sends.finish(0, .success(.template))
@@ -242,8 +242,8 @@ final class MessagingFeatureTests: TestCase {
   }
 
   func testMarkReadSharesPendingWriteAndRejectsOldSession() async throws {
-    let first = self.feature.requestMarkRead(.template)
-    let second = self.feature.requestMarkRead(.template)
+    let first = self.feature.startMarkingMessageThreadRead(.template)
+    let second = self.feature.startMarkingMessageThreadRead(.template)
     await self.provider.reads.waitFor(1)
     XCTAssertEqual(self.provider.reads.count, 1)
     self.session.sessionChanged()

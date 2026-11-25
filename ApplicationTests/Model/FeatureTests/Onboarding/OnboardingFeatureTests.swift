@@ -87,7 +87,7 @@ final class OnboardingFeatureTests: XCTestCase {
     await fulfillment(of: [onboardingJoined], timeout: 2)
     try response.finish(0, .success(AppTrackingAuthorization.authorized.rawValue))
     let status = await onboarding.value
-    await feature.waitForTrackingChecks()
+    await feature.waitForDelayedTrackingChecks()
 
     XCTAssertEqual(status, .authorized)
     XCTAssertEqual(response.count, 1)
@@ -104,13 +104,13 @@ final class OnboardingFeatureTests: XCTestCase {
     )
     let applicationFinished = expectation(description: "Application request finishes")
     feature.onRegistrationAttempted = { applicationFinished.fulfill() }
-    feature.requestNotificationAuthorization()
+    feature.startPushNotificationRegistration()
     await response.waitFor(1)
 
     let onboardingJoined = expectation(description: "Onboarding joins the prompt")
     let onboarding = Task {
       onboardingJoined.fulfill()
-      return await feature.requestNotifications(options: [.alert, .sound, .badge])
+      return await feature.requestNotificationAuthorization(options: [.alert, .sound, .badge])
     }
     await fulfillment(of: [onboardingJoined], timeout: 2)
     onboarding.cancel()
@@ -135,9 +135,9 @@ final class OnboardingFeatureTests: XCTestCase {
     feature.setApplicationActive(true)
     await delay.waitFor(1)
     XCTAssertEqual(tracking.requestCount, 0)
-    feature.recordCompletion()
+    feature.markOnboardingCompleted()
     try delay.finish(0, .success(()))
-    await feature.waitForTrackingChecks()
+    await feature.waitForDelayedTrackingChecks()
     XCTAssertEqual(tracking.requestCount, 1)
   }
 
@@ -171,7 +171,7 @@ final class OnboardingFeatureTests: XCTestCase {
     )
     onboarding.onRegistrationAttempted = { finished.fulfill() }
 
-    onboarding.requestNotificationAuthorization()
+    onboarding.startPushNotificationRegistration()
     await self.fulfillment(of: [finished], timeout: 2)
     XCTAssertEqual(requestedOptions, [[.alert, .sound, .badge]])
     XCTAssertEqual(registrationCount, 1)
@@ -187,11 +187,11 @@ final class OnboardingFeatureTests: XCTestCase {
     )
 
     consent.setApplicationActive(true)
-    await consent.waitForTrackingChecks()
+    await consent.waitForDelayedTrackingChecks()
     XCTAssertEqual(delayCount, 0)
     consent.prepareTrackingConsent()
     consent.setApplicationActive(true)
-    await consent.waitForTrackingChecks()
+    await consent.waitForDelayedTrackingChecks()
     XCTAssertEqual(delayCount, 1)
     XCTAssertEqual(tracking.requestCount, 1)
   }
@@ -224,9 +224,9 @@ final class OnboardingFeatureTests: XCTestCase {
       authorizeNotifications: { _ in (try? await gate.request()) ?? false },
       registerNotifications: { registrations += 1 }
     )
-    let first = Task { await feature.requestNotifications(options: [.alert]) }
+    let first = Task { await feature.requestNotificationAuthorization(options: [.alert]) }
     await gate.waitFor(1)
-    let second = Task { await feature.requestNotifications(options: [.alert]) }
+    let second = Task { await feature.requestNotificationAuthorization(options: [.alert]) }
     await Task.yield()
     first.cancel()
     try gate.finish(0, .success(true))
@@ -251,9 +251,9 @@ final class OnboardingFeatureTests: XCTestCase {
       },
       registerNotifications: { registrations += 1 }
     )
-    let first = Task { await feature.requestNotifications(options: [.alert]) }
+    let first = Task { await feature.requestNotificationAuthorization(options: [.alert]) }
     await gate.waitFor(1)
-    let second = Task { await feature.requestNotifications(options: [.sound]) }
+    let second = Task { await feature.requestNotificationAuthorization(options: [.sound]) }
     await Task.yield()
     XCTAssertEqual(gate.count, 1)
     try gate.finish(0, .success(false))

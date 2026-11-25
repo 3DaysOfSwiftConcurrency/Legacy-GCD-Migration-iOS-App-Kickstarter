@@ -209,7 +209,7 @@ final class DiscoveryFeatureTests: TestCase {
     } onChange: {
       changed.fulfill()
     }
-    let request = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    let request = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     await fulfillment(of: [changed], timeout: 1)
     XCTAssertTrue(feature.snapshot(for: .magic).isLoading)
     request.cancel()
@@ -224,7 +224,7 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let request = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    let request = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     let changed = expectation(description: "Page snapshot changed")
     withObservationTracking {
@@ -253,13 +253,13 @@ final class DiscoveryFeatureTests: TestCase {
       case .activities: break
       }
     }
-    let request = feature.requestRefresh(sort: .popular, parameters: .defaults)
+    let request = feature.startDiscoveryPageRefresh(sort: .popular, parameters: .defaults)
     await provider.waitForCount(1)
     try provider.complete(0, ids: [1, 2])
     await request.value
     XCTAssertEqual(events, ["popularity:true", "popularity:2", "popularity:false"])
     observation.stop()
-    let next = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    let next = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(2)
     try provider.complete(1, ids: [3])
     await next.value
@@ -284,7 +284,7 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let command = Task { await feature.refresh(sort: .magic, parameters: .defaults) }
+    let command = Task { await feature.refreshDiscoveryPage(sort: .magic, parameters: .defaults) }
     await provider.waitForCount(1)
     XCTAssertTrue(feature.snapshot(for: .magic).isLoading)
     try provider.complete(0, ids: [1, 2])
@@ -304,7 +304,7 @@ final class DiscoveryFeatureTests: TestCase {
     let sorts: [DiscoveryParams.Sort] = [.magic, .popular, .newest, .endingSoon]
     var tasks: [Task<Void, Never>] = []
     for sort in sorts {
-      tasks.append(feature.requestRefresh(sort: sort, parameters: .defaults))
+      tasks.append(feature.startDiscoveryPageRefresh(sort: sort, parameters: .defaults))
       await provider.waitForCount(tasks.count)
     }
     for index in sorts.indices.reversed() {
@@ -322,15 +322,15 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let first = feature.requestRefresh(sort: .magic, parameters: .defaults)
-    let duplicate = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    let first = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
+    let duplicate = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     XCTAssertEqual(first, duplicate)
-    XCTAssertEqual(first, feature.requestNextPage(sort: .magic))
+    XCTAssertEqual(first, feature.startNextDiscoveryPageLoad(sort: .magic))
     await provider.waitForCount(1)
     try provider.complete(0, ids: [1])
     await first.value
-    let next = try XCTUnwrap(feature.requestNextPage(sort: .magic))
-    XCTAssertEqual(next, feature.requestNextPage(sort: .magic))
+    let next = try XCTUnwrap(feature.startNextDiscoveryPageLoad(sort: .magic))
+    XCTAssertEqual(next, feature.startNextDiscoveryPageLoad(sort: .magic))
     await provider.waitForCount(2)
     try provider.complete(1, ids: [2])
     await next.value
@@ -344,10 +344,10 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let old = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    let old = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     let changed = DiscoveryParams.defaults |> DiscoveryParams.lens.staffPicks .~ true
-    let new = feature.requestRefresh(sort: .magic, parameters: changed)
+    let new = feature.startDiscoveryPageRefresh(sort: .magic, parameters: changed)
     await provider.waitForCount(2)
     try provider.complete(0, ids: [10])
     await old.value
@@ -366,13 +366,13 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let first = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    let first = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     try provider.complete(0, ids: [1])
     await first.value
-    let page = try XCTUnwrap(feature.requestNextPage(sort: .magic))
+    let page = try XCTUnwrap(feature.startNextDiscoveryPageLoad(sort: .magic))
     await provider.waitForCount(2)
-    let refresh = feature.requestRefresh(sort: .magic, parameters: .defaults, force: true)
+    let refresh = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults, force: true)
     await provider.waitForCount(3)
     XCTAssertEqual(feature.snapshot(for: .magic).projects.map(\.id), [1])
     try provider.complete(2, ids: [3])
@@ -389,23 +389,23 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    XCTAssertNil(feature.requestNextPage(sort: .magic))
-    let first = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    XCTAssertNil(feature.startNextDiscoveryPageLoad(sort: .magic))
+    let first = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     try provider.complete(0, ids: [1, 2], cursor: "page-two")
     await first.value
-    let next = try XCTUnwrap(feature.requestNextPage(sort: .magic))
+    let next = try XCTUnwrap(feature.startNextDiscoveryPageLoad(sort: .magic))
     await provider.waitForCount(2)
     XCTAssertEqual(provider.requests[1].cursor, "page-two")
     try provider.complete(1, ids: [2, 3], cursor: "page-three")
     await next.value
     XCTAssertEqual(feature.snapshot(for: .magic).projects.map(\.id), [1, 2, 3])
-    let last = try XCTUnwrap(feature.requestNextPage(sort: .magic))
+    let last = try XCTUnwrap(feature.startNextDiscoveryPageLoad(sort: .magic))
     await provider.waitForCount(3)
     try provider.complete(2, ids: [])
     await last.value
     XCTAssertFalse(feature.snapshot(for: .magic).hasMore)
-    XCTAssertNil(feature.requestNextPage(sort: .magic))
+    XCTAssertNil(feature.startNextDiscoveryPageLoad(sort: .magic))
     XCTAssertEqual(feature.snapshot(for: .magic).projects.map(\.id), [1, 2, 3])
   }
 
@@ -416,18 +416,18 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let first = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    let first = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
     try provider.complete(0, ids: [1], cursor: "retry-me")
     await first.value
-    let next = try XCTUnwrap(feature.requestNextPage(sort: .magic))
+    let next = try XCTUnwrap(feature.startNextDiscoveryPageLoad(sort: .magic))
     await provider.waitForCount(2)
     try provider.fail(1)
     await next.value
     XCTAssertEqual(feature.snapshot(for: .magic).projects.map(\.id), [1])
     XCTAssertNotNil(feature.snapshot(for: .magic).error)
     XCTAssertFalse(feature.snapshot(for: .magic).isLoading)
-    let retry = try XCTUnwrap(feature.requestNextPage(sort: .magic))
+    let retry = try XCTUnwrap(feature.startNextDiscoveryPageLoad(sort: .magic))
     await provider.waitForCount(3)
     XCTAssertEqual(provider.requests[2].cursor, "retry-me")
     try provider.complete(2, ids: [2])
@@ -443,9 +443,9 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let magic = feature.requestRefresh(sort: .magic, parameters: .defaults)
+    let magic = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
     await provider.waitForCount(1)
-    let popular = feature.requestRefresh(sort: .popular, parameters: .defaults)
+    let popular = feature.startDiscoveryPageRefresh(sort: .popular, parameters: .defaults)
     await provider.waitForCount(2)
     feature.cancel(sort: .magic)
     XCTAssertFalse(feature.snapshot(for: .magic).isLoading)
@@ -486,16 +486,16 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let old = feature.requestActivitySample(sort: .magic)
+    let old = feature.startDiscoveryActivitySampleLoad(sort: .magic)
     await provider.waitForCount(1)
-    let new = feature.requestActivitySample(sort: .magic)
+    let new = feature.startDiscoveryActivitySampleLoad(sort: .magic)
     await provider.waitForCount(2)
     try provider.complete(1, id: 2)
     await new.value
     try provider.complete(0, id: 1)
     await old.value
     XCTAssertEqual(feature.snapshot(for: .magic).activitySample.map(\.id), [2])
-    let failure = feature.requestActivitySample(sort: .magic)
+    let failure = feature.startDiscoveryActivitySampleLoad(sort: .magic)
     await provider.waitForCount(3)
     try provider.fail(2)
     await failure.value
@@ -511,9 +511,9 @@ final class DiscoveryFeatureTests: TestCase {
       provider: provider, sleep: { _ in },
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
-    let magic = feature.requestActivitySample(sort: .magic)
+    let magic = feature.startDiscoveryActivitySampleLoad(sort: .magic)
     await provider.waitForCount(1)
-    let popular = feature.requestActivitySample(sort: .popular)
+    let popular = feature.startDiscoveryActivitySampleLoad(sort: .popular)
     await provider.waitForCount(2)
     feature.cancel(sort: .magic)
     try provider.complete(0, id: 1)
@@ -528,10 +528,10 @@ final class DiscoveryFeatureTests: TestCase {
   func testMockUsesSameDemoDiscoveryFixturesThroughNativeAsyncRoute() async throws {
     let service = MockService.publicDemo()
     let provider = AsyncDiscoveryProvider(service: service)
-    let envelope = try await provider.page(parameters: .defaults, cursor: nil)
+    let envelope = try await provider.fetchDiscoveryPage(parameters: .defaults, cursor: nil)
     XCTAssertFalse(envelope.projects.isEmpty)
     XCTAssertTrue(envelope.projects.allSatisfy { $0.name.hasPrefix("[Demo]") })
-    let next = try await provider.page(parameters: .defaults, cursor: envelope.urls.api.moreProjects)
+    let next = try await provider.fetchDiscoveryPage(parameters: .defaults, cursor: envelope.urls.api.moreProjects)
     XCTAssertFalse(next.projects.isEmpty)
   }
 
@@ -574,11 +574,11 @@ final class DiscoveryFeatureTests: TestCase {
     let firstUser = User.template |> User.lens.id .~ 1
     let secondUser = User.template |> User.lens.id .~ 2
     await withEnvironment(currentUser: firstUser) {
-      let old = feature.requestRefresh(sort: .magic, parameters: .defaults)
+      let old = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
       await provider.waitForCount(1)
       await withEnvironment(currentUser: secondUser) {
-        XCTAssertNil(feature.requestNextPage(sort: .magic), "Do not reuse another account's cursor/task")
-        let new = feature.requestRefresh(sort: .magic, parameters: .defaults)
+        XCTAssertNil(feature.startNextDiscoveryPageLoad(sort: .magic), "Do not reuse another account's cursor/task")
+        let new = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
         XCTAssertNotEqual(old, new, "Same filters under another account are not equivalent work")
         await provider.waitForCount(2)
         do { try provider.complete(0, ids: [1]) } catch { XCTFail("\(error)") }
@@ -601,7 +601,7 @@ final class DiscoveryFeatureTests: TestCase {
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     await withEnvironment(currentUser: User.template |> User.lens.id .~ 1) {
-      let old = feature.requestActivitySample(sort: .magic)
+      let old = feature.startDiscoveryActivitySampleLoad(sort: .magic)
       await provider.waitForCount(1)
       await withEnvironment(currentUser: User.template |> User.lens.id .~ 2) {
         do { try provider.complete(0, id: 1) } catch { XCTFail("\(error)") }
@@ -618,12 +618,12 @@ private final class ControlledActivityProvider: DiscoveryProvider {
   private var continuations: [CheckedContinuation<ActivityEnvelope?, Error>?] = []
   private var arrivals: [(Int, XCTestExpectation)] = []
 
-  func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
+  func fetchDiscoveryPage(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
     XCTFail("Activity commands must not load projects")
     throw CancellationError()
   }
 
-  func activitySample() async throws -> ActivityEnvelope? {
+  func fetchDiscoveryActivitySample() async throws -> ActivityEnvelope? {
     try await withCheckedThrowingContinuation { continuation in
       self.continuations.append(continuation)
       let ready = self.arrivals.filter { self.continuations.count >= $0.0 }
@@ -673,7 +673,7 @@ private final class ControlledDiscoveryProvider: DiscoveryProvider {
   private(set) var requests: [Request] = []
   private var arrivals: [(Int, XCTestExpectation)] = []
 
-  func page(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
+  func fetchDiscoveryPage(parameters: DiscoveryParams, cursor: String?) async throws -> DiscoveryEnvelope {
     // Deliberately ignore cancellation to exercise the Feature's identity guard.
     try await withCheckedThrowingContinuation { continuation in
       self.requests.append(Request(parameters: parameters, cursor: cursor, continuation: continuation))
@@ -683,7 +683,7 @@ private final class ControlledDiscoveryProvider: DiscoveryProvider {
     }
   }
 
-  func activitySample() async throws -> ActivityEnvelope? { nil }
+  func fetchDiscoveryActivitySample() async throws -> ActivityEnvelope? { nil }
 
   func waitForCount(_ count: Int) async {
     guard self.requests.count < count else { return }

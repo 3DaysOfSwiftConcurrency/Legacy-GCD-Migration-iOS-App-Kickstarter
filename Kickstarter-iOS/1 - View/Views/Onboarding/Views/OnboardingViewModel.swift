@@ -82,13 +82,13 @@ public final class OnboardingViewModel {
     let feature = self.onboardingFeature
     let version = self.completionVersion
     self.completionTask = Task { [weak self] in
-      let existing = await feature.currentNotificationStatus()
+      let existing = await feature.fetchNotificationAuthorizationStatus()
       guard !Task.isCancelled, let self, self.completionVersion == version else { return }
       guard existing != .authorized else { self.completionTask = nil; return }
       feature.trackPermissionsDialogViewed(.onboardingNotificationsDialog)
-      _ = await feature.requestNotifications(options: [.alert, .sound, .badge])
+      _ = await feature.requestNotificationAuthorization(options: [.alert, .sound, .badge])
       guard !Task.isCancelled, self.completionVersion == version else { return }
-      let status = await feature.currentNotificationStatus()
+      let status = await feature.fetchNotificationAuthorizationStatus()
       guard !Task.isCancelled, self.completionVersion == version else { return }
       self.onNotificationCompletion?(status)
     }
@@ -124,7 +124,7 @@ public final class OnboardingViewModel {
   }
 
   public func onboardingFlowEnded() {
-    self.onboardingFeature.recordCompletion()
+    self.onboardingFeature.markOnboardingCompleted()
     self.onboardingFeature.trackButtonTapped(.onboardingClose)
   }
 

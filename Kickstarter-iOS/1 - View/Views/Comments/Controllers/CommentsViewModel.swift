@@ -285,7 +285,7 @@ public final class CommentsViewModel: CommentsViewModelType,
     let route = self.route
     self.loadingTask = Task {
       await Task.yield()
-      await discussionFeature.requestFirstPage(route: route, source: source, refresh: true).value
+      await discussionFeature.startFirstDiscussionPageLoad(route: route, source: source, refresh: true).value
     }
   }
 
@@ -308,7 +308,7 @@ public final class CommentsViewModel: CommentsViewModelType,
     } else if let update = configuration.update {
       self.currentSource = .update(String(update.id))
       self.latestCommentableID = encodeToBase64("FreeformPost-\(update.id)")
-      let request = self.discussionFeature.requestProject(route: self.route, param: .id(update.projectId))
+      let request = self.discussionFeature.startDiscussionProjectLoad(route: self.route, param: .id(update.projectId))
       self.contextTask = Task { [weak self] in
         guard let project = await request.value, !Task.isCancelled,
               let self, self.contextRevision == revision else { return }
@@ -332,12 +332,12 @@ public final class CommentsViewModel: CommentsViewModelType,
   private func requestFirstPage() {
     guard let source = self.currentSource else { return }
     self.hasRequestedPage = false
-    self.loadingTask = self.discussionFeature.requestFirstPage(route: self.route, source: source, refresh: true)
+    self.loadingTask = self.discussionFeature.startFirstDiscussionPageLoad(route: self.route, source: source, refresh: true)
   }
 
   private func requestNextPage() {
     self.hasRequestedPage = true
-    self.loadingTask = self.discussionFeature.requestNextPage(route: self.route)
+    self.loadingTask = self.discussionFeature.startNextDiscussionPageLoad(route: self.route)
   }
 
   private func publishFooter(_ state: CommentTableViewFooterViewState) {
@@ -436,7 +436,7 @@ internal final class DiscussionBlockPresentation {
     let userID = feature.sessionFeature.currentUser?.id
     let generation = feature.sessionFeature.generation
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
-    let request = feature.requestBlockUser(id: id)
+    let request = feature.startDiscussionUserBlock(id: id)
     let sleep = self.sleep
     self.task = Task { @MainActor in
       let result = await request.result

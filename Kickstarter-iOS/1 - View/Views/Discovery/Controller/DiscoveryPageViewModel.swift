@@ -240,7 +240,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
   }
   private func requestFirstPage(_ parameters: DiscoveryParams) {
     guard let sort = self.currentSort else { return }
-    self.pageTask = self.discoveryFeature.requestRefresh(sort: sort, parameters: parameters, force: true)
+    self.pageTask = self.discoveryFeature.startDiscoveryPageRefresh(sort: sort, parameters: parameters, force: true)
     if self.hasWillAppeared { self.discoveryFeature.discoveryViewed(parameters: parameters) }
   }
 
@@ -384,7 +384,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
     self.hasAppeared = true
     if self.visible != true { self.visible = true; self.refreshIfInputsChanged() }
     if let sort = self.currentSort, self.discoveryFeature.user != nil {
-      self.activityTask = self.discoveryFeature.requestActivitySample(sort: sort)
+      self.activityTask = self.discoveryFeature.startDiscoveryActivitySampleLoad(sort: sort)
     }
     if self.hasReadyPersonalizationFilters { self.onShowPersonalization?(shouldShowPersonalization()) }
     self.onScrollsToTopChanged?(true)
@@ -419,7 +419,7 @@ public final class DiscoveryPageViewModel: DiscoveryPageViewModelType, Discovery
     guard self.wasCloseToBottom != closeToBottom else { return }
     self.wasCloseToBottom = closeToBottom
     guard closeToBottom, let sort = self.currentSort else { return }
-    self.pageTask = self.discoveryFeature.requestNextPage(sort: sort)
+    self.pageTask = self.discoveryFeature.startNextDiscoveryPageLoad(sort: sort)
   }
 
   private var receivedInitialVideoAvailability = false

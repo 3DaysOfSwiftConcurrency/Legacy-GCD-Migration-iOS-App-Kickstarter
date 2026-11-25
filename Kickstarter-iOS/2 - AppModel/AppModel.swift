@@ -663,7 +663,7 @@ public final class AppModel {
 
   /// Synchronous permission preparation preserves the delegate's SDK setup order.
   func prepareNotificationAndTrackingPermissions() {
-    self.onboardingFeature.prepareNotificationAuthorization()
+    self.onboardingFeature.preparePushNotificationsForLaunch()
     self.onboardingFeature.prepareTrackingConsent()
   }
 
@@ -672,7 +672,7 @@ public final class AppModel {
   }
 
   func refreshNotificationAuthorization() {
-    self.onboardingFeature.refreshNotificationAuthorization()
+    self.onboardingFeature.resetBadgeIfPushAuthorized()
   }
 
   func receiveDeviceToken(_ deviceToken: Data, onRegistered: @escaping @MainActor (String) -> Void) {

@@ -50,7 +50,7 @@ public final class MessageThreadsViewModel {
     defer { self.isNearBottom = nearBottom }
     guard nearBottom, !self.isNearBottom else { return }
     self.loadingFooterIsHidden = false
-    guard let task = self.messagingFeature.loadNextMailboxPage(route: self.route) else { return }
+    guard let task = self.messagingFeature.startNextMailboxPageLoad(route: self.route) else { return }
     self.projectResult(task)
   }
 
@@ -60,7 +60,7 @@ public final class MessageThreadsViewModel {
     guard let mailbox = self.mailbox else { return }
     if self.hadRequested { self.messageThreads = [] }
     self.hadRequested = true
-    let task = self.messagingFeature.loadMailboxFirstPage(
+    let task = self.messagingFeature.startMailboxFirstPageLoad(
       route: self.route, mailbox: mailbox, project: self.project, refresh: true
     )
     self.projectResult(task)

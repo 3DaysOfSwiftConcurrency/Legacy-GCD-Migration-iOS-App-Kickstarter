@@ -64,7 +64,7 @@ internal final class UpdateViewModel {
   }
 
   private func loadUpdate(project: Param, id: Int) {
-    let request = self.discussionFeature.requestUpdate(route: self.route, id: id, project: project)
+    let request = self.discussionFeature.startDiscussionUpdateLoad(route: self.route, id: id, project: project)
     self.updateRevision += 1
     let revision = self.updateRevision
     self.updateTask = Task { [weak self] in
@@ -82,7 +82,7 @@ internal final class UpdateViewModel {
       self.deliverProject(current, refTag: refTag, action: action)
       return
     }
-    let request = self.discussionFeature.requestProject(route: self.route, param: param)
+    let request = self.discussionFeature.startDiscussionProjectLoad(route: self.route, param: param)
     self.projectTask = Task { [weak self] in
       guard let project = await request.value, !Task.isCancelled, let self, self.projectRevision == revision else { return }
       self.deliverProject(project, refTag: refTag, action: action)

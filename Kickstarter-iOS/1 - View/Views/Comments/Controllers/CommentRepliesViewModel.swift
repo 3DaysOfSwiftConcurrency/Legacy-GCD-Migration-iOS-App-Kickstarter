@@ -218,12 +218,12 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   }
 
   public func paginateOrErrorCellWasTapped() {
-    self.loadingTask = self.discussionFeature.requestNextPage(route: self.route)
+    self.loadingTask = self.discussionFeature.startNextDiscussionPageLoad(route: self.route)
   }
 
   public func retryFirstPage() {
     guard let comment = self.latestRootComment else { return }
-    self.loadingTask = self.discussionFeature.requestFirstPage(
+    self.loadingTask = self.discussionFeature.startFirstDiscussionPageLoad(
       route: self.route, source: .replies(comment.id), refresh: true
     )
   }
@@ -256,7 +256,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
     if let (comment, id) = self.latestFailableReply { self.onLoadFailableReply?(comment, id, project) }
     self.latestRootComment = configuration.comment
     self.onLoadRootComment?(configuration.comment)
-    self.loadingTask = self.discussionFeature.requestFirstPage(
+    self.loadingTask = self.discussionFeature.startFirstDiscussionPageLoad(
       route: self.route, source: .replies(configuration.comment.id), refresh: true
     )
   }

@@ -84,7 +84,7 @@ public final class ProjectUpdatesViewModel {
 
   private func load(_ params: (projectParam: Param, updateId: Int), comments: Bool) {
     let route = comments ? self.commentsRoute : self.route
-    let request = self.discussionFeature.requestUpdate(route: route, id: params.updateId, project: params.projectParam)
+    let request = self.discussionFeature.startDiscussionUpdateLoad(route: route, id: params.updateId, project: params.projectParam)
     if comments { self.commentsRevision += 1 } else { self.updateRevision += 1 }
     let revision = comments ? self.commentsRevision : self.updateRevision
     let task = Task { [weak self] in

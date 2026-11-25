@@ -72,7 +72,7 @@ public final class MessageDialogViewModel {
     let generation = session.generation
     let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     // Admit the write immediately; canceling presentation must not cancel a sent message.
-    let command = self.messagingFeature.requestSend(body: body, subject: subject)
+    let command = self.messagingFeature.startMessageSend(body: body, subject: subject)
     let sleep = self.sleep
     self.sendTask = Task { [weak self] in
       let result = await command.result

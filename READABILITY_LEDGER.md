@@ -492,3 +492,48 @@ caller was updated. A first-party scan found no old helper calls. The runner's
 `remote-config-renames-1` Build For Testing exited zero and reported
 `TEST BUILD SUCCEEDED`; app and test targets compile. Runtime tests remain
 unverified. Remaining inventory decisions: 2,526.
+
+Onboarding review: all 72 declarations across the Feature and its legacy
+content use case have decisions. Public names now distinguish persisted
+onboarding completion, fetching notification status, requesting a system
+authorization prompt, and starting push registration. Internal launch and
+badge methods name their timing and effects. Updated AppModel, AppDelegate,
+the Onboarding ViewModel, and the Feature, AppModel and application routing
+tests. A first-party stale caller scan found only the separate AppModel-level
+`refreshNotificationAuthorization` method, which remains correctly named for
+its own delegation. The runner's `onboarding-renames-1` Build For Testing
+exited zero and reported `TEST BUILD SUCCEEDED` for app and test targets.
+Runtime tests remain unverified. Remaining inventory decisions: 2,454.
+
+Discussion Feature review: all 95 declarations have decisions. Provider names
+now distinguish comment/reply page reads, project/update context reads, comment
+submissions and user blocks. The public `post` action became `submitComment`;
+Task-returning APIs state they start comment submissions, blocks or Discussion
+page/context loads, while async counterparts say they await those reads.
+Updated the Comments, Replies, Update, ProjectUpdates and Messages ViewModels,
+both controlled provider conformances, Feature tests and deep-link tests. A
+first-party caller scan left only identically spelled methods on unrelated
+Features and the ViewModel's own pagination methods. The runner's
+`discussion-renames-1` Build For Testing exited zero and reported
+`TEST BUILD SUCCEEDED` for app and test targets. Runtime tests remain
+unverified. Remaining inventory decisions: 2,359.
+
+Messaging API refinement: the four Task-returning calls now say they start
+mailbox page loading, message sending or thread read-status changes. Updated
+the MessageThreads, MessageDialog and Messages ViewModels and focused tests;
+the old member spellings have no remaining first-party Swift callers. The
+runner's `messaging-task-name-refinement-1` Build For Testing exited zero and
+reported `TEST BUILD SUCCEEDED` for app and test targets. This revises four
+existing Messaging decisions, so the reviewed declaration count remains 665.
+
+Discovery Feature review: all 83 declarations across the Feature and deep-link
+extension have decisions. Provider methods now name Discovery page and activity
+sample reads. The awaiting page/sample APIs and Task-returning page refresh,
+pagination and activity sample APIs distinguish result loading from starting
+work. Updated DiscoveryPageViewModel, four provider conformances, focused tests
+and deep-link category loading. The initial `discovery-renames-1` build ran
+while the caller update was incomplete and reported three stale ViewModel
+calls. Repaired the calls, verified no old Discovery method spelling remained
+in first-party type context, then reran `discovery-repair-2` Build For Testing.
+It exited zero and reported `TEST BUILD SUCCEEDED` for app and test targets.
+Runtime tests remain unverified. Remaining inventory decisions: 2,276.

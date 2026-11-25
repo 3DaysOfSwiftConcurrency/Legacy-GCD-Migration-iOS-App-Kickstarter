@@ -88,13 +88,13 @@ public final class OnboardingFeature {
   }
 
   public var hasSeenOnboarding: Bool { self.completionStore().hasSeenOnboarding }
-  public func recordCompletion() { self.completionStore().hasSeenOnboarding = true }
+  public func markOnboardingCompleted() { self.completionStore().hasSeenOnboarding = true }
   public var shouldOfferOnboarding: Bool { self.shouldRequestTracking() && !self.hasSeenOnboarding }
   public var shouldRequestTrackingAuthorization: Bool {
     guard let tracking = self.tracking() else { return false }
     return tracking.advertisingIdentifier == nil && tracking.shouldRequestAuthorizationStatus()
   }
-  public func currentNotificationStatus() async -> UNAuthorizationStatus { await self.notificationStatus() }
+  public func fetchNotificationAuthorizationStatus() async -> UNAuthorizationStatus { await self.notificationStatus() }
 
   public func trackPageViewed(_ item: OnboardingItemType) { self.analytics.pageViewed(item) }
   public func trackButtonTapped(_ context: KSRAnalytics.CTAContext, item: OnboardingItemType? = nil) {
@@ -114,7 +114,7 @@ public final class OnboardingFeature {
 
   /// A system prompt is application-scoped. Equal callers share it, while a
   /// different option set waits for the admitted prompt to settle.
-  public func requestNotifications(options: UNAuthorizationOptions) async -> Bool {
+  public func requestNotificationAuthorization(options: UNAuthorizationOptions) async -> Bool {
     if let pending = self.notificationRequest, pending.options == options.rawValue {
       return await pending.task.value
     }
@@ -157,16 +157,16 @@ public final class OnboardingFeature {
     }
   }
 
-  func prepareNotificationAuthorization() {
-    self.checkPushAuthorizationForLaunch()
-    self.refreshNotificationAuthorization()
+  func preparePushNotificationsForLaunch() {
+    self.checkPushAuthorizationAtLaunch()
+    self.resetBadgeIfPushAuthorized()
   }
 
   private final class OperationState {
     var finished = false
   }
 
-  private func performPushOperation(
+  private func startTrackedPushOperation(
     _ start: (@escaping @MainActor (Bool) -> Void) -> Task<Void, Never>?,
     completion: @escaping @MainActor (Bool) -> Void
   ) {
@@ -180,14 +180,14 @@ public final class OnboardingFeature {
     if let task, !state.finished { self.pushAuthorizationTasks[id] = task }
   }
 
-  private func checkPushAuthorizationForLaunch() {
+  private func checkPushAuthorizationAtLaunch() {
     if self.hasDeniedPushAuthorization { self.triggerOnboardingIfEligible() }
-    self.performPushOperation({ completion in
+    self.startTrackedPushOperation({ completion in
       self.pushRegistration().hasAuthorizedNotifications(completion: completion)
     }) { [weak self] authorized in
       guard let self else { return }
       if authorized {
-        self.requestNotificationAuthorization()
+        self.startPushNotificationRegistration()
       } else {
         self.hasDeniedPushAuthorization = true
         self.triggerOnboardingIfEligible()
@@ -195,21 +195,21 @@ public final class OnboardingFeature {
     }
   }
 
-  func refreshNotificationAuthorization() {
-    self.performPushOperation({ completion in
+  func resetBadgeIfPushAuthorized() {
+    self.startTrackedPushOperation({ completion in
       self.pushRegistration().hasAuthorizedNotifications(completion: completion)
     }) { [weak self] authorized in
       if authorized { self?.onBadgeReset?() }
     }
   }
 
-  func requestNotificationAuthorization() {
-    self.performPushOperation({ completion in
+  func startPushNotificationRegistration() {
+    self.startTrackedPushOperation({ completion in
       self.pushRegistration().register(
         for: [.alert, .sound, .badge],
         requestAuthorization: { [weak self] options in
           guard let self else { return false }
-          return await self.requestNotifications(options: options)
+          return await self.requestNotificationAuthorization(options: options)
         },
         completion: completion
       )
@@ -269,7 +269,7 @@ public final class OnboardingFeature {
     self.trackingAuthorizationObservation = (tracking, id)
   }
 
-  func waitForTrackingChecks() async {
+  func waitForDelayedTrackingChecks() async {
     for task in Array(self.delayedTrackingCheckTasks.values) { await task.value }
   }
 }

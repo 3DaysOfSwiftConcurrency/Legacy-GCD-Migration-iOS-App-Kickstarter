@@ -292,11 +292,11 @@ final class ApplicationRoutingTests: TestCase {
     application: UIApplication?, launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) {
     self.launchAccountAndNavigation(application: application, launchOptions: launchOptions)
-    self.onboardingFeature.prepareNotificationAuthorization()
+    self.onboardingFeature.preparePushNotificationsForLaunch()
   }
 
   private func enterForeground() {
-    self.onboardingFeature.refreshNotificationAuthorization()
+    self.onboardingFeature.resetBadgeIfPushAuthorized()
     self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
   }
 
@@ -1092,7 +1092,7 @@ final class ApplicationRoutingTests: TestCase {
 
       self.launchApplication(application: UIApplication.shared, launchOptions: [:])
       self.startSession()
-      self.onboardingFeature.requestNotificationAuthorization()
+      self.onboardingFeature.startPushNotificationRegistration()
 
       self.pushRegistrationStarted.assertValueCount(1)
 
@@ -1187,7 +1187,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchApplication(application: UIApplication.shared, launchOptions: [:])
       self.startSession()
 
-      self.onboardingFeature.requestNotificationAuthorization()
+      self.onboardingFeature.startPushNotificationRegistration()
     }
   }
 
@@ -2112,7 +2112,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertEqual(appTrackingTransparency.advertisingIdentifier, "advertisingIdentifier")
@@ -2137,7 +2137,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
@@ -2162,7 +2162,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
@@ -2189,7 +2189,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
@@ -2220,7 +2220,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2251,7 +2251,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2278,7 +2278,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2304,7 +2304,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2337,7 +2337,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2372,7 +2372,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchApplication(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
       await self.settingsFeature.waitForOperations()
 
@@ -2403,7 +2403,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
@@ -2437,7 +2437,7 @@ final class ApplicationRoutingTests: TestCase {
       self.launchAccountAndNavigation(application: UIApplication.shared, launchOptions: nil)
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
-      await self.onboardingFeature.waitForTrackingChecks()
+      await self.onboardingFeature.waitForDelayedTrackingChecks()
       tracking.authorizationStatusValue = .denied
       XCTAssertEqual(self.trackingAuthorizationStatus.values, [.notDetermined, .denied])
     }
