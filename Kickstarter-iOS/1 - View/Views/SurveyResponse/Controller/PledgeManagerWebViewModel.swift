@@ -77,7 +77,7 @@ final class PledgeManagerWebViewModel {
     let route = self.updateRoute
     self.updateTask = Task { [weak self] in
       do {
-        let (project, update) = try await pledgeFeature.updateContext(route: route, param: param, updateID: updateId)
+        let (project, update) = try await pledgeFeature.fetchPledgeUpdateContext(route: route, param: param, updateID: updateId)
         guard !Task.isCancelled, let self, self.updateRevision == revision else { return }
         self.onEvent?(.presentUpdateVC(project, update))
       } catch { }

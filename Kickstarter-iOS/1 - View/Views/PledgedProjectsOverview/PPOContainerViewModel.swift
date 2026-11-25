@@ -166,7 +166,7 @@ final class PPOContainerViewModel: PPOContainerViewModelInputs, PPOContainerView
     self.tasks[id] = Task { [weak self] in
       defer { self?.tasks[id] = nil }
       do {
-        let acknowledged = try await pledgeFeature.receipt(backingID: backingId, received: rewardReceived)
+        let acknowledged = try await pledgeFeature.setRewardReceiptStatus(backingID: backingId, received: rewardReceived)
         guard !Task.isCancelled, let self, !acknowledged else { return }
         self.showReceiptFailure()
       } catch {

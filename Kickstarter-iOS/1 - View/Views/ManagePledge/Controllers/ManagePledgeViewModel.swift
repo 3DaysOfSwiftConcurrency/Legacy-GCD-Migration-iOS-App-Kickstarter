@@ -219,7 +219,7 @@ public final class ManagePledgeViewModel:
     self.backingReadIdentity.id = id
     self.backingReadTask = Task { [weak self] in
       do {
-        let backing = try await pledgeFeature.backing(route: route, id: backingID)
+        let backing = try await pledgeFeature.fetchManagedPledgeBacking(route: route, id: backingID)
         try Task.checkCancellation()
         guard pledgeFeature.sessionIdentity == session else { return }
         self?.schedulePresentation(.backingResult, after: responseDelay()) { [weak self] in
@@ -256,7 +256,7 @@ public final class ManagePledgeViewModel:
     self.projectReadIdentity.id = id
     self.projectReadTask = Task { [weak self] in
       do {
-        let project = try await pledgeFeature.project(route: route, param: param)
+        let project = try await pledgeFeature.fetchProjectWithPledgeRewards(route: route, param: param)
         try Task.checkCancellation()
         guard pledgeFeature.sessionIdentity == session else { return }
         self?.schedulePresentation(.projectResult, after: responseDelay()) { [weak self] in

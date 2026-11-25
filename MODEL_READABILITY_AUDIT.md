@@ -14,10 +14,10 @@ extensions and conditional compilation branches. Session, Activity, Help,
 ProjectReporting, Recommendations, Profile, Friends, CreatorDrafts and
 DeveloperExamples, Messaging, RemoteConfiguration, Onboarding, Discussion and
 Discovery, Authentication, Payments, PledgedProjects and the first Pledge
-write APIs have 1,129 individual behavior, caller and naming decisions. The
-remaining 1,895 rows are
+write and read APIs have 1,151 individual behavior, caller and naming decisions.
+The remaining 1,873 rows are
 pending; the whole Model has
-**not** been declared reviewed. The latest Pledge write caller closure passed
+**not** been declared reviewed. The latest Pledge read caller closure passed
 Build For Testing for the app and test targets; runtime tests remain unverified.
 
 The repaired `Library-iOS` app and `LibraryTests` compilation passed in Xcode

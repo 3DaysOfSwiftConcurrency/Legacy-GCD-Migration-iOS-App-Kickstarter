@@ -588,3 +588,15 @@ Feature test and Pledge ViewModel callers. Both `pledge-write-names-1` and
 `TEST BUILD SUCCEEDED` for app and test targets. Remaining Pledge declarations
 and the rest of the Model still require review. Runtime tests remain
 unverified. Remaining inventory decisions: 1,895.
+
+Pledge read API checkpoint: 22 more declaration decisions. Provider methods
+now name fetching the update context, project update, payment plan, managed
+backing and project with additional pledge rewards; receipt mutations name
+their write effects. The Feature's route read coordinator says
+`startPledgeRead`, its Task-returning plan API says
+`startPledgePaymentPlanFetch`, and awaiting APIs say what they fetch.
+Updated PledgeOverTime, ManagePledge, PledgeManagerWeb and overview ViewModels,
+the controlled provider and focused Feature tests. A stale caller scan and
+`pledge-read-names-3` Build For Testing completed with exit zero and
+`TEST BUILD SUCCEEDED` for the app and test targets. Runtime tests remain
+unverified. Remaining inventory decisions: 1,873.

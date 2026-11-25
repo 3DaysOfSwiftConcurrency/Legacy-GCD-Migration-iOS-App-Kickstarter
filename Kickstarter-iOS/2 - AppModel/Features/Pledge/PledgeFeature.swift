@@ -4,41 +4,41 @@ import KsApi
 
 @MainActor
 public protocol PledgeProvider {
-  func projectForUpdate(_ param: Param) async throws -> Project
-  func projectUpdate(_ id: Int, param: Param) async throws -> Update
+  func fetchProjectForUpdateContext(_ param: Param) async throws -> Project
+  func fetchProjectUpdate(_ id: Int, param: Param) async throws -> Update
   func confirmAddress(backingID: String, addressID: String) async throws -> Bool
-  func receipt(backingID: String, received: Bool) async throws -> Bool
-  func paymentPlan(slug: String, amount: String) async throws -> PledgePaymentPlan?
+  func setRewardReceiptStatus(backingID: String, received: Bool) async throws -> Bool
+  func fetchPledgePaymentPlan(slug: String, amount: String) async throws -> PledgePaymentPlan?
   func openCheckout(_ input: KsApi.CreateCheckoutInput) async throws -> CreateCheckoutEnvelope
   func validateCheckout(checkoutID: String, sourceID: String, secret: String) async throws
     -> ValidateCheckoutEnvelope
   func completeCheckout(_ input: GraphAPI.CompleteOnSessionCheckoutInput) async throws
-  func project(_ param: Param) async throws -> Project
-  func backing(_ id: Int) async throws -> Backing
+  func fetchProjectWithPledgeRewards(_ param: Param) async throws -> Project
+  func fetchManagedPledgeBacking(_ id: Int) async throws -> Backing
 
   func createBacking(_ input: KsApi.CreateBackingInput) async throws -> CreateBackingEnvelope
   func updateBacking(_ input: KsApi.UpdateBackingInput) async throws -> UpdateBackingEnvelope
   func cancelBacking(_ input: KsApi.CancelBackingInput) async throws
-  func received(projectID: Int, userID: Int, received: Bool) async throws -> Backing
+  func setPledgeRewardReceived(projectID: Int, userID: Int, received: Bool) async throws -> Backing
 }
 
 @MainActor
 public struct AsyncPledgeProvider: PledgeProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func projectForUpdate(_ param: Param) async throws -> Project {
+  public func fetchProjectForUpdateContext(_ param: Param) async throws -> Project {
     try await self.service.discussionProject(param: param)
   }
-  public func projectUpdate(_ id: Int, param: Param) async throws -> Update {
+  public func fetchProjectUpdate(_ id: Int, param: Param) async throws -> Update {
     try await self.service.projectUpdate(id: id, project: param)
   }
   public func confirmAddress(backingID: String, addressID: String) async throws -> Bool {
     try await self.service.confirmPledgeAddress(backingID: backingID, addressID: addressID)
   }
-  public func receipt(backingID: String, received: Bool) async throws -> Bool {
+  public func setRewardReceiptStatus(backingID: String, received: Bool) async throws -> Bool {
     try await self.service.setPledgeReceipt(backingID: backingID, received: received)
   }
-  public func paymentPlan(slug: String, amount: String) async throws
+  public func fetchPledgePaymentPlan(slug: String, amount: String) async throws
     -> PledgePaymentPlan?
   {
     try await self.service.pledgePaymentPlan(slug: slug, amount: amount)
@@ -58,10 +58,10 @@ public struct AsyncPledgeProvider: PledgeProvider {
   {
     try await self.service.finishPledgeCheckout(input)
   }
-  public func backing(_ id: Int) async throws -> Backing {
+  public func fetchManagedPledgeBacking(_ id: Int) async throws -> Backing {
     try await self.service.managedPledgeBacking(id: id)
   }
-  public func project(_ param: Param) async throws -> Project {
+  public func fetchProjectWithPledgeRewards(_ param: Param) async throws -> Project {
     var project = try await self.service.discussionProject(param: param)
     try Task.checkCancellation()
     let extras = try await self.service.managedPledgeRewards(projectID: project.id)
@@ -85,7 +85,7 @@ public struct AsyncPledgeProvider: PledgeProvider {
   public func cancelBacking(_ input: KsApi.CancelBackingInput) async throws {
     try await self.service.cancelPledge(input)
   }
-  public func received(projectID: Int, userID: Int, received: Bool) async throws -> Backing {
+  public func setPledgeRewardReceived(projectID: Int, userID: Int, received: Bool) async throws -> Backing {
     try await self.service.markPledgeReceived(
       projectID: projectID, userID: userID, received: received)
   }
@@ -252,7 +252,7 @@ public final class PledgeFeature {
             try await provider.confirmAddress(backingID: backingID, addressID: addressID))
         case .receipt(let backingID, let received):
           value = .acknowledged(
-            try await provider.receipt(backingID: backingID, received: received))
+            try await provider.setRewardReceiptStatus(backingID: backingID, received: received))
         case .openCheckout(let input): value = .checkout(try await provider.openCheckout(input))
         case .validateCheckout(let checkoutID, let sourceID, let secret):
           value = .validated(
@@ -268,7 +268,7 @@ public final class PledgeFeature {
           value = .canceled
         case .received(let projectID, let userID, let received):
           value = .received(
-            try await provider.received(projectID: projectID, userID: userID, received: received))
+            try await provider.setPledgeRewardReceived(projectID: projectID, userID: userID, received: received))
         }
         try self.requireCurrent(session)
         return value
@@ -309,7 +309,7 @@ public final class PledgeFeature {
   public func confirmAddress(backingID: String, addressID: String) async throws -> Bool {
     try Self.acknowledged(await self.performPledgeWrite(.confirmAddress(backingID, addressID)))
   }
-  public func receipt(backingID: String, received: Bool) async throws -> Bool {
+  public func setRewardReceiptStatus(backingID: String, received: Bool) async throws -> Bool {
     try Self.acknowledged(await self.performPledgeWrite(.receipt(backingID, received)))
   }
   private static func acknowledged(_ value: Value) throws -> Bool {
@@ -361,7 +361,7 @@ public final class PledgeFeature {
     try self.requireCurrent(session)
     try result.get()
   }
-  public func received(projectID: Int, userID: Int, received: Bool) async throws -> Backing {
+  public func setPledgeRewardReceived(projectID: Int, userID: Int, received: Bool) async throws -> Backing {
     try Self.received(
       await self.performPledgeWrite(.received(projectID: projectID, userID: userID, received: received)))
   }
@@ -542,7 +542,7 @@ public final class PledgeFeature {
   private var latestReadRequestIDsByRoute: [UUID: UUID] = [:]
   private var readTasks: [UUID: Task<Void, Never>] = [:]
 
-  private func requestRead(route: UUID, input: Read) -> PendingRead {
+  private func startPledgeRead(route: UUID, input: Read) -> PendingRead {
     let session = self.sessionIdentity
     let version = self.writeRevisionBySession[session, default: 0]
     if let pending = self.pendingReadsByRoute[route], pending.input == input, pending.session == session,
@@ -567,14 +567,14 @@ public final class PledgeFeature {
         let value: ReadValue
         switch input {
         case .updateContext(let param, let updateID):
-          let project = try await provider.projectForUpdate(param)
+          let project = try await provider.fetchProjectForUpdateContext(param)
           try self.requireCurrent(session)
-          let update = try await provider.projectUpdate(updateID, param: param)
+          let update = try await provider.fetchProjectUpdate(updateID, param: param)
           value = .updateContext(project, update)
         case .plan(let slug, let amount):
-          value = .plan(try await provider.paymentPlan(slug: slug, amount: amount))
-        case .project(let param): value = .project(try await provider.project(param))
-        case .backing(let id): value = .backing(try await provider.backing(id))
+          value = .plan(try await provider.fetchPledgePaymentPlan(slug: slug, amount: amount))
+        case .project(let param): value = .project(try await provider.fetchProjectWithPledgeRewards(param))
+        case .backing(let id): value = .backing(try await provider.fetchManagedPledgeBacking(id))
         }
         try self.requireCurrent(session)
         outcome.result = .success(value)
@@ -593,13 +593,13 @@ public final class PledgeFeature {
 
   /// A web-to-native update destination is one coherent read. Replacing or
   /// closing the route invalidates both stages, including a late project result.
-  public func updateContext(route: UUID, param: Param, updateID: Int) async throws -> (
+  public func fetchPledgeUpdateContext(route: UUID, param: Param, updateID: Int) async throws -> (
     Project, Update
   ) {
     try Task.checkCancellation()
     let session = self.sessionIdentity
     do {
-      let request = self.requestRead(route: route, input: .updateContext(param, updateID))
+      let request = self.startPledgeRead(route: route, input: .updateContext(param, updateID))
       let version = self.latestReadRequestIDsByRoute[route]
       let value = try await request.value()
       try self.requireCurrent(session)
@@ -617,9 +617,9 @@ public final class PledgeFeature {
     return (project, update)
   }
 
-  func requestPaymentPlan(route: UUID, slug: String, amount: String) -> Task<PledgePaymentPlan?, Error> {
+  func startPledgePaymentPlanFetch(route: UUID, slug: String, amount: String) -> Task<PledgePaymentPlan?, Error> {
     let session = self.sessionIdentity
-    let request = self.requestRead(route: route, input: .plan(slug, amount))
+    let request = self.startPledgeRead(route: route, input: .plan(slug, amount))
     let version = self.latestReadRequestIDsByRoute[route]
     return Task {
       do {
@@ -634,9 +634,9 @@ public final class PledgeFeature {
     }
   }
 
-  public func paymentPlan(route: UUID, slug: String, amount: String) async throws -> PledgePaymentPlan? {
+  public func fetchPledgePaymentPlan(route: UUID, slug: String, amount: String) async throws -> PledgePaymentPlan? {
     try Task.checkCancellation()
-    let command = self.requestPaymentPlan(route: route, slug: slug, amount: amount)
+    let command = self.startPledgePaymentPlanFetch(route: route, slug: slug, amount: amount)
     let result = try await command.value
     try Task.checkCancellation()
     return result
@@ -645,11 +645,11 @@ public final class PledgeFeature {
     guard case .plan(let data) = value else { throw ErrorEnvelope.couldNotParseJSON }
     return data
   }
-  public func project(route: UUID, param: Param) async throws -> Project {
+  public func fetchProjectWithPledgeRewards(route: UUID, param: Param) async throws -> Project {
     try Task.checkCancellation()
     let session = self.sessionIdentity
     do {
-      let request = self.requestRead(route: route, input: .project(param))
+      let request = self.startPledgeRead(route: route, input: .project(param))
       let version = self.latestReadRequestIDsByRoute[route]
       let value = try await request.value()
       try self.requireCurrent(session)
@@ -660,11 +660,11 @@ public final class PledgeFeature {
       throw error
     }
   }
-  public func backing(route: UUID, id: Int) async throws -> Backing {
+  public func fetchManagedPledgeBacking(route: UUID, id: Int) async throws -> Backing {
     try Task.checkCancellation()
     let session = self.sessionIdentity
     do {
-      let request = self.requestRead(route: route, input: .backing(id))
+      let request = self.startPledgeRead(route: route, input: .backing(id))
       let version = self.latestReadRequestIDsByRoute[route]
       let value = try await request.value()
       try self.requireCurrent(session)

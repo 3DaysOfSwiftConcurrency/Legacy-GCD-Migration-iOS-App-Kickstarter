@@ -71,7 +71,7 @@ public final class PledgeOverTimeUseCase {
     self.planTask?.cancel()
     let revision = UUID()
     self.paymentPlanRequestID = revision
-    let command = self.pledgeFeature.requestPaymentPlan(route: self.route, slug: project.slug, amount: amount)
+    let command = self.pledgeFeature.startPledgePaymentPlanFetch(route: self.route, slug: project.slug, amount: amount)
     self.planTask = Task { [weak self] in
       do {
         let plan = try await command.value

@@ -362,7 +362,7 @@ final class PledgeFeatureTests: TestCase {
       XCTFail("Demo cancel")
     } catch {}
     do {
-      _ = try await provider.received(projectID: 1, userID: 2, received: true)
+      _ = try await provider.setPledgeRewardReceived(projectID: 1, userID: 2, received: true)
       XCTFail("Demo received")
     } catch {}
   }
@@ -608,18 +608,18 @@ final class PledgeFeatureTests: TestCase {
 
   func testBackingReadSharesPendingRequestButRefreshesAfterCompletion() async throws {
     let route = UUID()
-    let a = Task { try await self.feature.backing(route: route, id: 1) }
+    let a = Task { try await self.feature.fetchManagedPledgeBacking(route: route, id: 1) }
     await self.provider.backings.waitFor(1)
     let secondStarted = expectation(description: "Second backing caller started")
     let b = Task {
       secondStarted.fulfill()
-      return try await self.feature.backing(route: route, id: 1)
+      return try await self.feature.fetchManagedPledgeBacking(route: route, id: 1)
     }
     await fulfillment(of: [secondStarted], timeout: 2)
     try self.provider.backings.finish(0, .success(.template))
     _ = try await a.value
     _ = try await b.value
-    let refresh = Task { try await self.feature.backing(route: route, id: 1) }
+    let refresh = Task { try await self.feature.fetchManagedPledgeBacking(route: route, id: 1) }
     await self.provider.backings.waitFor(2)
     try self.provider.backings.finish(1, .success(.template))
     _ = try await refresh.value
@@ -628,12 +628,12 @@ final class PledgeFeatureTests: TestCase {
 
   func testCanceledReadCallerCannotConsumeSharedSuccess() async throws {
     let route = UUID()
-    let canceled = Task { try await self.feature.backing(route: route, id: 1) }
+    let canceled = Task { try await self.feature.fetchManagedPledgeBacking(route: route, id: 1) }
     await self.provider.backings.waitFor(1)
     let started = expectation(description: "Shared backing caller started")
     let observer = Task {
       started.fulfill()
-      return try await self.feature.backing(route: route, id: 1)
+      return try await self.feature.fetchManagedPledgeBacking(route: route, id: 1)
     }
     await fulfillment(of: [started], timeout: 2)
     canceled.cancel()
@@ -649,12 +649,12 @@ final class PledgeFeatureTests: TestCase {
   func testSharedReadFailureReachesBothWaitersWithoutRetry() async throws {
     let route = UUID()
     let failure = ErrorEnvelope(errorMessages: ["Unavailable"], ksrCode: nil, httpCode: 503, exception: nil)
-    let first = Task { try await self.feature.backing(route: route, id: 1) }
+    let first = Task { try await self.feature.fetchManagedPledgeBacking(route: route, id: 1) }
     await self.provider.backings.waitFor(1)
     let started = expectation(description: "Second failing read started")
     let second = Task {
       started.fulfill()
-      return try await self.feature.backing(route: route, id: 1)
+      return try await self.feature.fetchManagedPledgeBacking(route: route, id: 1)
     }
     await fulfillment(of: [started], timeout: 2)
     try self.provider.backings.finish(0, .failure(failure))
@@ -673,11 +673,11 @@ final class PledgeFeatureTests: TestCase {
 
   func testChangedBackingRejectsOldResponseAndRoutesStayIndependent() async throws {
     let route = UUID()
-    let old = Task { try await self.feature.backing(route: route, id: 1) }
+    let old = Task { try await self.feature.fetchManagedPledgeBacking(route: route, id: 1) }
     await self.provider.backings.waitFor(1)
-    let current = Task { try await self.feature.backing(route: route, id: 2) }
+    let current = Task { try await self.feature.fetchManagedPledgeBacking(route: route, id: 2) }
     await self.provider.backings.waitFor(2)
-    let other = Task { try await self.feature.backing(route: UUID(), id: 3) }
+    let other = Task { try await self.feature.fetchManagedPledgeBacking(route: UUID(), id: 3) }
     await self.provider.backings.waitFor(3)
     try self.provider.backings.finish(0, .success(.template))
     try self.provider.backings.finish(1, .success(.template))
@@ -693,7 +693,7 @@ final class PledgeFeatureTests: TestCase {
 
   func testProjectReleaseAndAccountChangeSuppressLateReadErrors() async throws {
     let route = UUID()
-    let old = Task { try await self.feature.project(route: route, param: .id(1)) }
+    let old = Task { try await self.feature.fetchProjectWithPledgeRewards(route: route, param: .id(1)) }
     await self.provider.projects.waitFor(1)
     self.feature.releaseRead(route: route)
     try self.provider.projects.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -701,7 +701,7 @@ final class PledgeFeatureTests: TestCase {
       _ = try await old.value
       XCTFail("Released route")
     } catch { XCTAssertTrue(error is CancellationError) }
-    let next = Task { try await self.feature.project(route: route, param: .id(2)) }
+    let next = Task { try await self.feature.fetchProjectWithPledgeRewards(route: route, param: .id(2)) }
     await self.provider.projects.waitFor(2)
     self.session.sessionChanged()
     self.feature.reset()
@@ -718,7 +718,7 @@ final class PledgeFeatureTests: TestCase {
     let readStarted = expectation(description: "Backing refresh started")
     let read = Task {
       readStarted.fulfill()
-      return try await self.feature.backing(route: UUID(), id: 1)
+      return try await self.feature.fetchManagedPledgeBacking(route: UUID(), id: 1)
     }
     defer { read.cancel() }
     await fulfillment(of: [readStarted], timeout: 2)
@@ -732,11 +732,11 @@ final class PledgeFeatureTests: TestCase {
 
   func testRefreshAfterMutationDoesNotJoinAnOlderPendingBackingRead() async throws {
     let route = UUID()
-    let old = Task { try await self.feature.backing(route: route, id: 1) }
+    let old = Task { try await self.feature.fetchManagedPledgeBacking(route: route, id: 1) }
     await self.provider.backings.waitFor(1)
     let write = Task { try await self.feature.cancelBacking(.init(backingId: "b", cancellationReason: nil)) }
     await self.provider.cancellations.waitFor(1)
-    let refresh = Task { try await self.feature.backing(route: route, id: 1) }
+    let refresh = Task { try await self.feature.fetchManagedPledgeBacking(route: route, id: 1) }
     await self.provider.cancellations.waitFor(1)
     try self.provider.cancellations.finish(0, .success(()))
     try await write.value
@@ -770,11 +770,11 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testOverviewReceiptChangesAreOrderedAndDuplicatesShare() async throws {
-    let first = Task { try await self.feature.receipt(backingID: "B", received: true) }
+    let first = Task { try await self.feature.setRewardReceiptStatus(backingID: "B", received: true) }
     await self.provider.overviewReceipts.waitFor(1)
-    let duplicate = Task { try await self.feature.receipt(backingID: "B", received: true) }
+    let duplicate = Task { try await self.feature.setRewardReceiptStatus(backingID: "B", received: true) }
     await Task.yield()
-    let next = Task { try await self.feature.receipt(backingID: "B", received: false) }
+    let next = Task { try await self.feature.setRewardReceiptStatus(backingID: "B", received: false) }
     await Task.yield()
     XCTAssertEqual(self.provider.receiptInputs.map { $0.1 }, [true])
     try self.provider.overviewReceipts.finish(0, .success(true))
@@ -799,9 +799,9 @@ final class PledgeFeatureTests: TestCase {
   }
   func testPaymentPlanAmountChangeRejectsOldResult() async throws {
     let route = UUID()
-    let old = Task { try await self.feature.paymentPlan(route: route, slug: "project", amount: "10.00") }
+    let old = Task { try await self.feature.fetchPledgePaymentPlan(route: route, slug: "project", amount: "10.00") }
     await self.provider.plans.waitFor(1)
-    let latest = Task { try await self.feature.paymentPlan(route: route, slug: "project", amount: "20.00") }
+    let latest = Task { try await self.feature.fetchPledgePaymentPlan(route: route, slug: "project", amount: "20.00") }
     await self.provider.plans.waitFor(2)
     try self.provider.plans.finish(1, .success(PledgePaymentPlan(amountIsPledgeOverTimeEligible: true, paymentIncrements: [])))
     try self.provider.plans.finish(0, .success(PledgePaymentPlan(amountIsPledgeOverTimeEligible: false, paymentIncrements: [])))
@@ -814,8 +814,8 @@ final class PledgeFeatureTests: TestCase {
 
   func testPaymentPlanEquivalentPendingSharesAndReleaseSuppressesBothObservers() async throws {
     let route = UUID()
-    let first = self.feature.requestPaymentPlan(route: route, slug: "project", amount: "10.00")
-    let duplicate = self.feature.requestPaymentPlan(route: route, slug: "project", amount: "10.00")
+    let first = self.feature.startPledgePaymentPlanFetch(route: route, slug: "project", amount: "10.00")
+    let duplicate = self.feature.startPledgePaymentPlanFetch(route: route, slug: "project", amount: "10.00")
     await self.provider.plans.waitFor(1)
     self.feature.releaseRead(route: route)
     try self.provider.plans.finish(0, .success(PledgePaymentPlan(amountIsPledgeOverTimeEligible: true, paymentIncrements: [])))
@@ -827,7 +827,7 @@ final class PledgeFeatureTests: TestCase {
   }
 
   func testAbsentPaymentPlanIsDeliveredAsSuccessfulAbsence() async throws {
-    let task = Task { try await self.feature.paymentPlan(route: UUID(), slug: "project", amount: "10.00") }
+    let task = Task { try await self.feature.fetchPledgePaymentPlan(route: UUID(), slug: "project", amount: "10.00") }
     await self.provider.plans.waitFor(1)
     try self.provider.plans.finish(0, .success(nil))
     let plan = try await task.value
@@ -856,7 +856,7 @@ final class PledgeFeatureTests: TestCase {
       XCTFail("Demo write accepted")
     } catch { XCTAssertNotNil(error as? ErrorEnvelope) }
     do {
-      _ = try await provider.receipt(backingID: "B", received: true)
+      _ = try await provider.setRewardReceiptStatus(backingID: "B", received: true)
       XCTFail("Demo write accepted")
     } catch { XCTAssertNotNil(error as? ErrorEnvelope) }
   }
@@ -889,11 +889,11 @@ private final class ControlledPledgeProvider: PledgeProvider {
   let projectUpdates = AccountRequestGate<Update>()
   var updateProjectInputs: [Param] = []
   var projectUpdateInputs: [(Int, Param)] = []
-  func projectForUpdate(_ param: Param) async throws -> Project {
+  func fetchProjectForUpdateContext(_ param: Param) async throws -> Project {
     self.updateProjectInputs.append(param)
     return try await self.updateProjects.request()
   }
-  func projectUpdate(_ id: Int, param: Param) async throws -> Update {
+  func fetchProjectUpdate(_ id: Int, param: Param) async throws -> Update {
     self.projectUpdateInputs.append((id, param))
     return try await self.projectUpdates.request()
   }
@@ -907,11 +907,11 @@ private final class ControlledPledgeProvider: PledgeProvider {
     self.addressInputs.append((backingID, addressID))
     return try await self.addresses.request()
   }
-  func receipt(backingID: String, received: Bool) async throws -> Bool {
+  func setRewardReceiptStatus(backingID: String, received: Bool) async throws -> Bool {
     self.receiptInputs.append((backingID, received))
     return try await self.overviewReceipts.request()
   }
-  func paymentPlan(slug: String, amount: String) async throws -> PledgePaymentPlan?
+  func fetchPledgePaymentPlan(slug: String, amount: String) async throws -> PledgePaymentPlan?
   {
     self.planInputs.append((slug, amount))
     return try await self.plans.request()
@@ -941,11 +941,11 @@ private final class ControlledPledgeProvider: PledgeProvider {
     self.completionInputs.append(input)
     return try await self.completions.request()
   }
-  func project(_ param: Param) async throws -> Project {
+  func fetchProjectWithPledgeRewards(_ param: Param) async throws -> Project {
     self.projectInputs.append(param)
     return try await self.projects.request()
   }
-  func backing(_ id: Int) async throws -> Backing {
+  func fetchManagedPledgeBacking(_ id: Int) async throws -> Backing {
     self.backingInputs.append(id)
     return try await self.backings.request()
   }
@@ -971,7 +971,7 @@ private final class ControlledPledgeProvider: PledgeProvider {
     self.cancelInputs.append(input)
     try await self.cancellations.request()
   }
-  func received(projectID: Int, userID: Int, received: Bool) async throws -> Backing {
+  func setPledgeRewardReceived(projectID: Int, userID: Int, received: Bool) async throws -> Backing {
     self.receivedProjects.append(projectID)
     self.receivedUsers.append(userID)
     self.receivedValues.append(received)
@@ -998,8 +998,8 @@ private final class ControlledPledgeProvider: PledgeProvider {
 extension PledgeFeatureTests {
   func testUpdateNavigationSharesPairAndPreservesIdentity() async throws {
     let route = UUID()
-    let first = Task { try await self.feature.updateContext(route: route, param: .slug("first"), updateID: 42) }
-    let second = Task { try await self.feature.updateContext(route: route, param: .slug("first"), updateID: 42) }
+    let first = Task { try await self.feature.fetchPledgeUpdateContext(route: route, param: .slug("first"), updateID: 42) }
+    let second = Task { try await self.feature.fetchPledgeUpdateContext(route: route, param: .slug("first"), updateID: 42) }
     await self.provider.updateProjects.waitFor(1)
     XCTAssertEqual(self.provider.projectUpdates.count, 0)
     try self.provider.updateProjects.finish(0, .success(.template))
@@ -1018,9 +1018,9 @@ extension PledgeFeatureTests {
 
   func testChangedUpdateDestinationSuppressesLateProjectBeforeSecondStage() async throws {
     let route = UUID()
-    let first = Task { try await self.feature.updateContext(route: route, param: .slug("old"), updateID: 1) }
+    let first = Task { try await self.feature.fetchPledgeUpdateContext(route: route, param: .slug("old"), updateID: 1) }
     await self.provider.updateProjects.waitFor(1)
-    let second = Task { try await self.feature.updateContext(route: route, param: .slug("new"), updateID: 2) }
+    let second = Task { try await self.feature.fetchPledgeUpdateContext(route: route, param: .slug("new"), updateID: 2) }
     await self.provider.updateProjects.waitFor(2)
     try self.provider.updateProjects.finish(0, .success(.template))
     try self.provider.updateProjects.finish(1, .success(.template))
@@ -1051,7 +1051,7 @@ extension PledgeFeatureTests {
 
   func testUpdateNavigationRejectsReplacedSessionAndCanRetryAfterFailure() async throws {
     let route = UUID()
-    let first = Task { try await self.feature.updateContext(route: route, param: .id(1), updateID: 2) }
+    let first = Task { try await self.feature.fetchPledgeUpdateContext(route: route, param: .id(1), updateID: 2) }
     await self.provider.updateProjects.waitFor(1)
     self.session.sessionChanged()
     try self.provider.updateProjects.finish(0, .success(.template))
@@ -1059,7 +1059,7 @@ extension PledgeFeatureTests {
     XCTAssertEqual(self.provider.projectUpdates.count, 0)
     do { _ = try await first.value; XCTFail("Stale session update succeeded") }
     catch { XCTAssertTrue(error is CancellationError) }
-    let retry = Task { try await self.feature.updateContext(route: route, param: .id(1), updateID: 2) }
+    let retry = Task { try await self.feature.fetchPledgeUpdateContext(route: route, param: .id(1), updateID: 2) }
     await self.provider.updateProjects.waitFor(2)
     try self.provider.updateProjects.finish(1, .failure(ErrorEnvelope.couldNotParseJSON))
     await self.feature.waitForOperations()
