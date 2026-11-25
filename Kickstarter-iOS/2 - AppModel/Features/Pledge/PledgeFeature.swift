@@ -150,14 +150,14 @@ public final class PledgeFeature {
   public func isKickstarterWebRequest(_ request: URLRequest) -> Bool {
     request.url?.host() == self.platform.serverConfig().webBaseUrl.host()
   }
-  public func navigationMatch(_ request: URLRequest) -> Navigation? {
+  public func matchedNavigation(for request: URLRequest) -> Navigation? {
     let config = self.platform.serverConfig()
     return request.url.flatMap { Navigation.match($0, apiBaseURL: config.apiBaseUrl, webBaseURL: config.webBaseUrl) }
   }
   public func helpType(for url: URL) -> HelpType? {
     HelpType.helpType(from: url, baseURL: self.platform.serverConfig().webBaseUrl)
   }
-  public func helpURL(_ type: HelpType) -> String? {
+  public func helpURLString(for type: HelpType) -> String? {
     type.url(withBaseUrl: self.platform.serverConfig().webBaseUrl)?.absoluteString
   }
 
@@ -282,7 +282,7 @@ public final class PledgeFeature {
     return task
   }
 
-  private func awaitAdmitted(_ command: Task<Value, Error>, session: SessionIdentity) async throws -> Value {
+  private func awaitAdmittedPledgeWrite(_ command: Task<Value, Error>, session: SessionIdentity) async throws -> Value {
     do {
       let value = try await command.value
       try self.requireCurrent(session)
@@ -328,7 +328,7 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.create(input))
     return Task {
-      try Self.createdBackingEnvelope(await self.awaitAdmitted(command, session: session))
+      try Self.createdBackingEnvelope(await self.awaitAdmittedPledgeWrite(command, session: session))
     }
   }
 
@@ -343,7 +343,7 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.update(input))
     return Task {
-      try Self.updatedBackingEnvelope(await self.awaitAdmitted(command, session: session))
+      try Self.updatedBackingEnvelope(await self.awaitAdmittedPledgeWrite(command, session: session))
     }
   }
 
@@ -385,7 +385,7 @@ public final class PledgeFeature {
   func startRewardReceivedUpdate(projectID: Int, userID: Int, received: Bool) -> Task<Backing, Error> {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.received(projectID: projectID, userID: userID, received: received))
-    return Task { try Self.updatedRewardReceiptBacking(await self.awaitAdmitted(command, session: session)) }
+    return Task { try Self.updatedRewardReceiptBacking(await self.awaitAdmittedPledgeWrite(command, session: session)) }
   }
 
 
@@ -416,7 +416,7 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.openCheckout(input))
     return Task {
-      try Self.openedCheckoutEnvelope(await self.awaitAdmitted(command, session: session))
+      try Self.openedCheckoutEnvelope(await self.awaitAdmittedPledgeWrite(command, session: session))
     }
   }
 
@@ -433,7 +433,7 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.validateCheckout(checkoutID: checkoutID, sourceID: sourceID, secret: secret))
     return Task {
-      try Self.validatedCheckoutEnvelope(await self.awaitAdmitted(command, session: session))
+      try Self.validatedCheckoutEnvelope(await self.awaitAdmittedPledgeWrite(command, session: session))
     }
   }
 
@@ -473,7 +473,7 @@ public final class PledgeFeature {
     let session = self.sessionIdentity
     let command = self.startPledgeWrite(.completeCheckout(input))
     return Task {
-      try Self.requireCompletedCheckout(await self.awaitAdmitted(command, session: session))
+      try Self.requireCompletedCheckout(await self.awaitAdmittedPledgeWrite(command, session: session))
     }
   }
 
@@ -532,7 +532,7 @@ public final class PledgeFeature {
     let task: Task<Void, Never>
     let outcome: ReadOutcome
 
-    func value() async throws -> ReadValue {
+    func resolvedReadValue() async throws -> ReadValue {
       await self.task.value
       guard let result = self.outcome.result else { throw ErrorEnvelope.couldNotParseJSON }
       return try result.get()
@@ -601,7 +601,7 @@ public final class PledgeFeature {
     do {
       let request = self.startPledgeRead(route: route, input: .updateContext(param, updateID))
       let version = self.latestReadRequestIDsByRoute[route]
-      let value = try await request.value()
+      let value = try await request.resolvedReadValue()
       try self.requireCurrent(session)
       guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
       return try Self.projectUpdateContext(value)
@@ -623,7 +623,7 @@ public final class PledgeFeature {
     let version = self.latestReadRequestIDsByRoute[route]
     return Task {
       do {
-        let value = try await request.value()
+        let value = try await request.resolvedReadValue()
         try self.requireCurrent(session)
         guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
         return try Self.pledgePaymentPlan(value)
@@ -651,7 +651,7 @@ public final class PledgeFeature {
     do {
       let request = self.startPledgeRead(route: route, input: .project(param))
       let version = self.latestReadRequestIDsByRoute[route]
-      let value = try await request.value()
+      let value = try await request.resolvedReadValue()
       try self.requireCurrent(session)
       guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
       return try Self.pledgeProject(value)
@@ -666,7 +666,7 @@ public final class PledgeFeature {
     do {
       let request = self.startPledgeRead(route: route, input: .backing(id))
       let version = self.latestReadRequestIDsByRoute[route]
-      let value = try await request.value()
+      let value = try await request.resolvedReadValue()
       try self.requireCurrent(session)
       guard self.latestReadRequestIDsByRoute[route] == version else { throw CancellationError() }
       return try Self.managedBacking(value)

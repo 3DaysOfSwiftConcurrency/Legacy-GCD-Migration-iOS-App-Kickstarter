@@ -8,7 +8,7 @@ struct PledgeViewControllerHelpers {
   static func attributedLearnMoreText(
     pledgeFeature: PledgeFeature = AppModel.shared.pledgeFeature
   ) -> NSAttributedString? {
-    guard let trustLink = pledgeFeature.helpURL(.trust) else { return nil }
+    guard let trustLink = pledgeFeature.helpURLString(for: .trust) else { return nil }
 
     let paragraphStyle = NSMutableParagraphStyle()
     paragraphStyle.lineSpacing = 2

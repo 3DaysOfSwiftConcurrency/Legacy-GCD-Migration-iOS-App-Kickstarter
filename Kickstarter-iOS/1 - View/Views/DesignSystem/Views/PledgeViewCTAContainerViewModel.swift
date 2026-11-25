@@ -42,9 +42,9 @@ public final class PledgeViewCTAContainerViewModel {
   }
 
   func termsLinks() -> (terms: String, privacy: String, cookie: String)? {
-    guard let terms = self.pledgeFeature.helpURL(.terms),
-          let privacy = self.pledgeFeature.helpURL(.privacy),
-          let cookie = self.pledgeFeature.helpURL(.cookie) else { return nil }
+    guard let terms = self.pledgeFeature.helpURLString(for: .terms),
+          let privacy = self.pledgeFeature.helpURLString(for: .privacy),
+          let cookie = self.pledgeFeature.helpURLString(for: .cookie) else { return nil }
     return (terms, privacy, cookie)
   }
 }

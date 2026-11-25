@@ -110,7 +110,7 @@ final class PledgeManagerWebViewModel {
 private func nativeNavigationRequestForURLRequest(_ request: URLRequest, pledgeFeature: PledgeFeature)
   -> PledgeManagerNativeNatigationRequest?
 {
-  switch pledgeFeature.navigationMatch(request) {
+  switch pledgeFeature.matchedNavigation(for: request) {
   case (.project(let param, .root, let refInfo, _))?:
     return .goToProject(param: param, refTag: refInfo?.refTag)
   case (.project(let param, .pledge, _, _))?:
@@ -129,7 +129,7 @@ private func isUnpreparedSupportedRequest(request: URLRequest, pledgeFeature: Pl
 
 @MainActor
 private func isSupportedRequest(request: URLRequest, pledgeFeature: PledgeFeature) -> Bool {
-  let navigation = pledgeFeature.navigationMatch(request)
+  let navigation = pledgeFeature.matchedNavigation(for: request)
   guard case (.project(_, .pledgeManagerWebview, _, _))? = navigation else { return false }
   return true
 }

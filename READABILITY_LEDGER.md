@@ -609,3 +609,12 @@ method names the reward receipt write it starts. Updated both presentation
 ViewModels and focused tests. `pledge-extractors-4` Build For Testing exited
 zero and reported `TEST BUILD SUCCEEDED` for app and test targets. Runtime
 tests remain unverified. Remaining inventory decisions: 1,860.
+
+PledgeFeature remaining declaration review: 73 more decisions close all 124
+rows in its main Feature file. Web navigation now names the matched
+destination and help URL string; the admitted write waiter identifies pledge
+work; a pending read now says it resolves a read value. Updated related
+PledgeManagerWeb and pledge UI callers. Other Pledge files remain pending.
+`pledge-boundary-5` Build For Testing exited zero and reported
+`TEST BUILD SUCCEEDED` for app and test targets. Runtime tests remain
+unverified. Remaining inventory decisions: 1,787.
