@@ -46,7 +46,7 @@ public final class SettingsAccountViewModel {
     let settingsFeature = self.settingsFeature
     self.task = Task { [weak self, settingsFeature, sleep] in
       do {
-        let user = try await settingsFeature.accountFields(sleep: sleep)
+        let user = try await settingsFeature.loadAccountFields(sleep: sleep)
         try Task.checkCancellation()
         guard let self, self.revision == revision else { return }
         let apple = user.isAppleConnected == .some(true)

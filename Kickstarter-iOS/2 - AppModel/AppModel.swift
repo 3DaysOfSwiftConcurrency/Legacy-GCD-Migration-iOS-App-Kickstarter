@@ -658,7 +658,7 @@ public final class AppModel {
   public func applicationDidFinishLaunching() -> Task<Config, Error>? {
     guard !self.hasStartedLaunchWork else { return nil }
     self.hasStartedLaunchWork = true
-    return self.settingsFeature.requestApplicationSettingsRefresh()
+    return self.settingsFeature.startApplicationSettingsRefresh()
   }
 
   /// Synchronous permission preparation preserves the delegate's SDK setup order.
@@ -680,7 +680,7 @@ public final class AppModel {
   }
 
   public func applicationWillEnterForeground() {
-    self.settingsFeature.requestApplicationSettingsRefresh()
+    self.settingsFeature.startApplicationSettingsRefresh()
   }
 
   public func applicationDidEnterBackground(notificationCenter: NotificationCenter = .default) {
@@ -713,7 +713,7 @@ public final class AppModel {
     self.messagingFeature.resetMailboxState()
     self.pledgeFeature.reset()
     self.pledgedProjectsFeature.reset()
-    self.settingsFeature.requestApplicationSettingsRefresh()
+    self.settingsFeature.startApplicationSettingsRefresh()
   }
 
   public static func live() -> AppModel {

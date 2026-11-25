@@ -59,7 +59,7 @@ public final class SettingsNewsletterCellViewModel {
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
-      do { result = .success(try await settingsFeature.save(changes, from: user)) }
+      do { result = .success(try await settingsFeature.savePreferences(changes, from: user)) }
       catch { result = .failure(error) }
       do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }

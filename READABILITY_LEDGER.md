@@ -681,3 +681,14 @@ tests, lookup provider conformances and the test composition provider.
 `search-lookup-4` Build For Testing exited zero with `TEST BUILD SUCCEEDED`
 for app and test targets. Runtime tests remain unverified. Remaining inventory
 decisions: 919.
+
+Settings checkpoint: reviewed all 180 declarations across eight Model files.
+Provider names now state whether they save account preferences, update the
+account or fetch account email/project notification data. The Feature API
+distinguishes starting retained Tasks from awaiting account, preferences,
+verification and notification operations. Updated View callers, provider
+conformances, composition and Settings tests. Builds exposed three missed
+caller sites (two internal calls, the Thanks screen and an account-fields
+test); each was repaired. `settings-api-4` Build For Testing exited zero
+with `TEST BUILD SUCCEEDED` for app and test targets. Runtime tests remain
+unverified. Remaining inventory decisions: 739.

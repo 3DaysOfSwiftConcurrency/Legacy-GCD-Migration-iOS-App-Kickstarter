@@ -66,7 +66,7 @@ public final class SettingsNotificationCellViewModel {
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
-      do { result = .success(try await settingsFeature.save([.init(.notification(attribute), enabled)], from: user)) }
+      do { result = .success(try await settingsFeature.savePreferences([.init(.notification(attribute), enabled)], from: user)) }
       catch { result = .failure(error) }
       do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }

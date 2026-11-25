@@ -59,7 +59,7 @@ final class ChangeEmailViewModel {
     let settingsFeature = self.settingsFeature
     self.loadTask = Task { [weak self, settingsFeature, sleep] in
       do {
-        let user = try await settingsFeature.emailUser()
+        let user = try await settingsFeature.loadEmailUser()
         try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.loadRevision == revision else { return }

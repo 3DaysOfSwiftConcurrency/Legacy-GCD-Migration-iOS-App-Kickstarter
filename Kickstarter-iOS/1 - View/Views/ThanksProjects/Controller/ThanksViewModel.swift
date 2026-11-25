@@ -107,7 +107,7 @@ final class ThanksViewModel {
     let sleep = self.sleep
     self.newsletterTask = Task { [weak self] in
       do {
-        let updated = try await settings.save([.init(.newsletter(.games), true)], from: user)
+        let updated = try await settings.savePreferences([.init(.newsletter(.games), true)], from: user)
         try await sleep(delay)
         try Task.checkCancellation()
         self?.onEvent?(.updateUserInEnvironment(updated))

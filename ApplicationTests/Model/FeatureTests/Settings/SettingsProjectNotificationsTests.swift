@@ -32,10 +32,10 @@ final class SettingsProjectNotificationsTests: TestCase {
     let off = ProjectNotification.template
       |> ProjectNotification.lens.email .~ false |> ProjectNotification.lens.mobile .~ false
     let on = off |> ProjectNotification.lens.email .~ true |> ProjectNotification.lens.mobile .~ true
-    let first = try self.feature.requestProjectNotificationSave(on)
-    let duplicate = try self.feature.requestProjectNotificationSave(on)
-    let second = try self.feature.requestProjectNotificationSave(off)
-    let third = try self.feature.requestProjectNotificationSave(on)
+    let first = try self.feature.startProjectNotificationSave(on)
+    let duplicate = try self.feature.startProjectNotificationSave(on)
+    let second = try self.feature.startProjectNotificationSave(off)
+    let third = try self.feature.startProjectNotificationSave(on)
     let observer = Task { _ = await first.result }
     observer.cancel()
     await self.provider.writes.waitFor(1)
@@ -85,7 +85,7 @@ final class SettingsProjectNotificationsTests: TestCase {
     let off = ProjectNotification.template
       |> ProjectNotification.lens.email .~ false |> ProjectNotification.lens.mobile .~ false
     let on = off |> ProjectNotification.lens.email .~ true |> ProjectNotification.lens.mobile .~ true
-    let save = try self.feature.requestProjectNotificationSave(on)
+    let save = try self.feature.startProjectNotificationSave(on)
     await self.provider.writes.waitFor(1)
     try self.provider.writes.finish(0, .success(on))
     _ = try await save.value
@@ -99,7 +99,7 @@ final class SettingsProjectNotificationsTests: TestCase {
 
   func testReadOvertakenByWriteCannotPublishAndFreshReadWorks() async throws {
     let source = ProjectNotification.template
-    let read = Task { try await self.feature.projectNotifications() }
+    let read = Task { try await self.feature.loadProjectNotifications() }
     await self.provider.reads.waitFor(1)
     let edit = Task { try await self.feature.saveProjectNotification(source) }
     await self.provider.writes.waitFor(1)
@@ -108,7 +108,7 @@ final class SettingsProjectNotificationsTests: TestCase {
     catch { XCTAssertTrue(error is CancellationError) }
     try self.provider.writes.finish(0, .success(source))
     _ = try await edit.value
-    let fresh = Task { try await self.feature.projectNotifications() }
+    let fresh = Task { try await self.feature.loadProjectNotifications() }
     await self.provider.reads.waitFor(2)
     try self.provider.reads.finish(1, .success([source]))
     let values = try await fresh.value
@@ -116,7 +116,7 @@ final class SettingsProjectNotificationsTests: TestCase {
   }
 
   func testOldSessionReadFailureIsSuppressed() async throws {
-    let read = Task { try await self.feature.projectNotifications() }
+    let read = Task { try await self.feature.loadProjectNotifications() }
     await self.provider.reads.waitFor(1)
     self.session.sessionChanged()
     try self.provider.reads.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -126,7 +126,7 @@ final class SettingsProjectNotificationsTests: TestCase {
 
   func testPublicDemoRejectsNotificationOperations() async {
     let provider = AsyncAccountPreferencesProvider(service: MockService.publicDemo())
-    do { _ = try await provider.projectNotifications(); XCTFail("Demo account read succeeded") }
+    do { _ = try await provider.fetchProjectNotifications(); XCTFail("Demo account read succeeded") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
     do { _ = try await provider.saveProjectNotification(.template); XCTFail("Demo write succeeded") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
@@ -174,13 +174,13 @@ private final class ControlledProjectNotificationsProvider: AccountPreferencesPr
   let reads = AccountRequestGate<[ProjectNotification]>()
   let writes = AccountRequestGate<ProjectNotification>()
   var sent: [ProjectNotification] = []
-  func projectNotifications() async throws -> [ProjectNotification] { try await self.reads.request() }
+  func fetchProjectNotifications() async throws -> [ProjectNotification] { try await self.reads.request() }
   func saveProjectNotification(_ notification: ProjectNotification) async throws -> ProjectNotification {
     self.sent.append(notification)
     return try await self.writes.request()
   }
-  func save(_: User) async throws -> User { throw CancellationError() }
-  func update(_: SettingsFeature.AccountChange) async throws -> User? { throw CancellationError() }
-  func emailUser() async throws -> GraphUser { throw CancellationError() }
+  func saveAccountPreferences(_: User) async throws -> User { throw CancellationError() }
+  func updateAccount(_: SettingsFeature.AccountChange) async throws -> User? { throw CancellationError() }
+  func fetchEmailUser() async throws -> GraphUser { throw CancellationError() }
   func verifyEmail(token _: String) async throws -> EmailVerificationResponseEnvelope { throw CancellationError() }
 }

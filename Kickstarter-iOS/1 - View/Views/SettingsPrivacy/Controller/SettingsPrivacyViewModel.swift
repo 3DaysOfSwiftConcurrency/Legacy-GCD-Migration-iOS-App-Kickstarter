@@ -84,7 +84,7 @@ public final class SettingsPrivacyViewModel {
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
-      do { result = .success(try await settingsFeature.save(changes, from: source)) }
+      do { result = .success(try await settingsFeature.savePreferences(changes, from: source)) }
       catch { result = .failure(error) }
       do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }

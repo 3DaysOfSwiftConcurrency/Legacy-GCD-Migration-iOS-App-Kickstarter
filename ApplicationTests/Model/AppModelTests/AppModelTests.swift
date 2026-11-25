@@ -193,17 +193,17 @@ final class AppModelTests: XCTestCase {
 
     try await verifyRefresh(country: "GB") {
       model.applicationWillEnterForeground()
-      _ = await model.settingsFeature.requestApplicationSettings().result
+      _ = await model.settingsFeature.startApplicationSettingsLoad().result
     }
 
     try await verifyRefresh(country: "CA", user: .template) {
       model.resetFeaturesForSessionChange()
-      _ = await model.settingsFeature.requestApplicationSettings().result
+      _ = await model.settingsFeature.startApplicationSettingsLoad().result
     }
 
     try await verifyRefresh(country: "CZ") {
       model.resetFeaturesForSessionChange()
-      _ = await model.settingsFeature.requestApplicationSettings().result
+      _ = await model.settingsFeature.startApplicationSettingsLoad().result
     }
     XCTAssertEqual(publishedCountries, ["US", "GB", "CA", "CZ"])
   }
@@ -503,7 +503,7 @@ final class AppModelTests: XCTestCase {
     let secondPledgeSession = second.pledgeFeature.sessionIdentity
     let secondPaymentsSession = second.paymentsFeature.sessionIdentity
     first.resetFeaturesForSessionChange()
-    _ = await first.settingsFeature.requestApplicationSettings().result
+    _ = await first.settingsFeature.startApplicationSettingsLoad().result
     XCTAssertEqual(first.sessionFeature.generation, 1)
     XCTAssertEqual(second.sessionFeature.generation, 0)
     XCTAssertEqual(first.pledgeFeature.sessionIdentity.generation, first.sessionFeature.generation)

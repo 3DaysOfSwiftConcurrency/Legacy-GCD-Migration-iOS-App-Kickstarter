@@ -30,7 +30,7 @@ public final class SettingsLinkPresentation {
   func updateNotification(
     name: String, enabled: Bool, onComplete: @escaping @MainActor () -> Void
   ) {
-    guard let request = self.settingsFeature.requestNotification(named: name, enabled: enabled) else { return }
+    guard let request = self.settingsFeature.startNotificationPreferenceSave(named: name, enabled: enabled) else { return }
     let session = self.settingsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
@@ -54,7 +54,7 @@ public final class SettingsLinkPresentation {
     token: String, onComplete: @escaping @MainActor (String, Bool) -> Void
   ) {
     self.verification?.task.cancel()
-    let request = self.settingsFeature.requestVerification(token: token)
+    let request = self.settingsFeature.startEmailVerification(token: token)
     let session = self.settingsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation

@@ -75,7 +75,7 @@ public final class SettingsNotificationsViewModel {
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
       do {
-        result = .success(try await settingsFeature.save([.init(.notification(.creatorDigest), frequency == .dailySummary)],
+        result = .success(try await settingsFeature.savePreferences([.init(.notification(.creatorDigest), frequency == .dailySummary)],
                                                          from: source))
       } catch { result = .failure(error) }
       do { try await sleep(delay) } catch { return }

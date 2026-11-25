@@ -48,7 +48,7 @@ public final class ProjectNotificationCellViewModel {
     let session = settingsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    guard let command = try? settingsFeature.requestProjectNotificationSave(edited) else { return }
+    guard let command = try? settingsFeature.startProjectNotificationSave(edited) else { return }
     let delay = settingsFeature.responseDelaySeconds
     let sleep = self.sleep
     self.presentation = Task { [weak self] in

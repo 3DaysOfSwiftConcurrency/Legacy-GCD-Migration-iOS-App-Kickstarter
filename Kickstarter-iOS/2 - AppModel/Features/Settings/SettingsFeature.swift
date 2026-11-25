@@ -4,11 +4,11 @@ import Prelude
 
 @MainActor
 public protocol AccountPreferencesProvider {
-  func save(_ user: User) async throws -> User
-  func projectNotifications() async throws -> [ProjectNotification]
+  func saveAccountPreferences(_ user: User) async throws -> User
+  func fetchProjectNotifications() async throws -> [ProjectNotification]
   func saveProjectNotification(_ notification: ProjectNotification) async throws -> ProjectNotification
-  func update(_ change: SettingsFeature.AccountChange) async throws -> User?
-  func emailUser() async throws -> GraphUser
+  func updateAccount(_ change: SettingsFeature.AccountChange) async throws -> User?
+  func fetchEmailUser() async throws -> GraphUser
   func verifyEmail(token: String) async throws -> EmailVerificationResponseEnvelope
 }
 
@@ -16,7 +16,7 @@ public protocol AccountPreferencesProvider {
 public struct AsyncAccountPreferencesProvider: AccountPreferencesProvider {
   private let service: any ServiceType
   public init(service: any ServiceType) { self.service = service }
-  public func save(_ user: User) async throws -> User {
+  public func saveAccountPreferences(_ user: User) async throws -> User {
     try await self.service.saveAccountPreferences(user)
   }
 
@@ -24,7 +24,7 @@ public struct AsyncAccountPreferencesProvider: AccountPreferencesProvider {
     try await self.service.confirmEmail(token: token)
   }
 
-  public func projectNotifications() async throws -> [ProjectNotification] {
+  public func fetchProjectNotifications() async throws -> [ProjectNotification] {
     try await self.service.projectNotificationSettings()
   }
 
@@ -33,9 +33,9 @@ public struct AsyncAccountPreferencesProvider: AccountPreferencesProvider {
     try await self.service.saveProjectNotification(notification)
   }
 
-  public func emailUser() async throws -> GraphUser { try await self.service.accountEmailUser() }
+  public func fetchEmailUser() async throws -> GraphUser { try await self.service.accountEmailUser() }
 
-  public func update(_ change: SettingsFeature.AccountChange) async throws -> User? {
+  public func updateAccount(_ change: SettingsFeature.AccountChange) async throws -> User? {
     switch change {
     case let .email(input): try await self.service.saveEmail(input)
     case let .password(input): try await self.service.savePassword(input)
@@ -224,7 +224,7 @@ public final class SettingsFeature {
     self.activeAccountRefreshTask = Task { [weak self] in
       guard let self else { return }
       do {
-        let user = try await self.refresh(
+        let user = try await self.performAccountRefresh(
           userID: userID, generation: generation, allowSessionRestore: authenticated
         )
         try Task.checkCancellation()
@@ -248,24 +248,24 @@ public final class SettingsFeature {
     await self.activeAccountRefreshTask?.value
   }
 
-  public func save(_ changes: [Change], from user: User) async throws -> User {
+  public func savePreferences(_ changes: [Change], from user: User) async throws -> User {
     try Task.checkCancellation()
     // Once admitted, a preference write outlives its initiating screen/waiter.
-    let value = try await self.requestPreferences(changes, from: user).value
+    let value = try await self.startPreferencesSave(changes, from: user).value
     try Task.checkCancellation()
     return value
   }
 
   /// Admit preferences immediately so callers can retain a waiter without owning the write.
   @discardableResult
-  public func requestPreferences(_ changes: [Change], from user: User) -> Task<User, Error> {
-    self.request(changes, from: user).task
+  public func startPreferencesSave(_ changes: [Change], from user: User) -> Task<User, Error> {
+    self.queuePreferenceEdits(changes, from: user).task
   }
 
   /// Notification URLs carry wire names. Convert only the requested field into
   /// an edit; never enqueue the whole user snapshot supplied by a deep link.
   @discardableResult
-  public func requestNotification(named parameter: String, enabled: Bool) -> Task<User, Error>? {
+  public func startNotificationPreferenceSave(named parameter: String, enabled: Bool) -> Task<User, Error>? {
     guard let user = self.session.currentUser else { return nil }
     let names: [String: UserAttribute.Notification] = [
       "notify_of_backings": .pledgeActivity,
@@ -289,7 +289,7 @@ public final class SettingsFeature {
     ]
     // Legacy decoding ignored unknown keys but still saved the unchanged user.
     let changes = names[parameter].map { [Change(.notification($0), enabled)] } ?? []
-    return self.requestPreferences(changes, from: user)
+    return self.startPreferencesSave(changes, from: user)
   }
 
   private func identity(for user: User) -> Account {
@@ -311,11 +311,11 @@ public final class SettingsFeature {
     return user
   }
 
-  private func request(_ changes: [Change], from source: User) -> Pending {
-    self.request(.preferences(changes), from: source)
+  private func queuePreferenceEdits(_ changes: [Change], from source: User) -> Pending {
+    self.queueAccountEdit(.preferences(changes), from: source)
   }
 
-  private func request(_ edit: Edit, from source: User) -> Pending {
+  private func queueAccountEdit(_ edit: Edit, from source: User) -> Pending {
     let account = self.identity(for: source)
     let valid = self.isCurrent(account)
     if valid, self.account != account {
@@ -341,11 +341,11 @@ public final class SettingsFeature {
         let current: User
         switch edit {
         case let .preferences(changes):
-          let response = try await provider.save(self.applying(changes, to: base))
+          let response = try await provider.saveAccountPreferences(self.applying(changes, to: base))
           guard self.isCurrent(account), response.id == source.id else { throw CancellationError() }
           current = self.applying(self.preferences(of: response), to: self.session.currentUser ?? response)
         case let .account(change):
-          let response = try await provider.update(change)
+          let response = try await provider.updateAccount(change)
           guard self.isCurrent(account), response == nil || response?.id == source.id,
                 var latest = self.session.currentUser else { throw CancellationError() }
           // Update only confirmed account fields, not a stale server copy of preferences.
@@ -380,14 +380,14 @@ public final class SettingsFeature {
   /// Admit the write synchronously so equivalent requests share and distinct
   /// requests enter the account queue in caller order. The feature owns the task.
   @discardableResult
-  public func requestAccount(_ change: AccountChange) throws -> Task<User, Error> {
+  public func startAccountUpdate(_ change: AccountChange) throws -> Task<User, Error> {
     try Task.checkCancellation()
     guard let user = self.session.currentUser else { throw CancellationError() }
-    return self.request(.account(change), from: user).task
+    return self.queueAccountEdit(.account(change), from: user).task
   }
 
   public func updateAccount(_ change: AccountChange) async throws -> User {
-    let result = try await self.requestAccount(change).value
+    let result = try await self.startAccountUpdate(change).value
     try Task.checkCancellation()
     return result
   }
@@ -396,14 +396,14 @@ public final class SettingsFeature {
   /// They do not establish a login. Distinct links queue; equivalent tails share.
   public func verifyEmail(token: String) async throws -> EmailVerificationResponseEnvelope {
     try Task.checkCancellation()
-    let task = self.requestVerification(token: token)
+    let task = self.startEmailVerification(token: token)
     let envelope = try await task.value
     try Task.checkCancellation()
     return envelope
   }
 
   @discardableResult
-  public func requestVerification(token: String) -> Task<EmailVerificationResponseEnvelope, Error> {
+  public func startEmailVerification(token: String) -> Task<EmailVerificationResponseEnvelope, Error> {
     let userID = self.session.currentUser?.id
     let generation = self.session.generation
     if let tail = self.verificationTail, tail.token == token,
@@ -468,11 +468,11 @@ public final class SettingsFeature {
     self.accountSetupRefreshRequest?.task.cancel()
   }
 
-  public func emailUser() async throws -> GraphUser {
-    try await self.readEmailUser()
+  public func loadEmailUser() async throws -> GraphUser {
+    try await self.fetchEmailUserForCurrentSession()
   }
 
-  private func readEmailUser(
+  private func fetchEmailUserForCurrentSession(
     beforeDelivery: (@MainActor () async throws -> Void)? = nil
   ) async throws -> GraphUser {
     let generation = self.session.generation
@@ -491,7 +491,7 @@ public final class SettingsFeature {
       let provider = self.makeProvider()
       task = Task { [self] in
         defer { if self.pendingEmailUserRead?.id == id { self.pendingEmailUserRead = nil } }
-        return try await provider.emailUser()
+        return try await provider.fetchEmailUser()
       }
       self.pendingEmailUserRead = (id, userID, generation, revision, task)
     }
@@ -512,33 +512,33 @@ public final class SettingsFeature {
     return try result.get()
   }
 
-  public func accountFields(sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+  public func loadAccountFields(sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
     if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
   }) async throws -> GraphUser {
-    try await self.readEmailUser {
+    try await self.fetchEmailUserForCurrentSession {
       try await sleep(self.responseDelaySeconds)
     }
   }
 
   /// Start a session-bound refresh immediately; the caller may cancel this read.
   @discardableResult
-  public func requestAccountRefresh(allowSessionRestore: Bool = false) -> Task<User, Error> {
+  public func startAccountRefresh(allowSessionRestore: Bool = false) -> Task<User, Error> {
     let id = UUID()
     let generation = self.session.generation
     let userID = self.session.currentUser?.id
     let task = Task { [self] in
       defer { self.accountRefreshTasks[id] = nil }
-      return try await self.refresh(userID: userID, generation: generation, allowSessionRestore: allowSessionRestore)
+      return try await self.performAccountRefresh(userID: userID, generation: generation, allowSessionRestore: allowSessionRestore)
     }
     self.accountRefreshTasks[id] = task
     return task
   }
 
   public func refreshAccount() async throws -> User {
-    try await self.refresh(userID: self.session.currentUser?.id, generation: self.session.generation)
+    try await self.performAccountRefresh(userID: self.session.currentUser?.id, generation: self.session.generation)
   }
 
-  private func refresh(
+  private func performAccountRefresh(
     userID: Int?,
     generation: Int,
     allowSessionRestore: Bool = false
@@ -574,7 +574,7 @@ public final class SettingsFeature {
 
   // MARK: Project notification settings
 
-  public func projectNotifications() async throws -> [ProjectNotification] {
+  public func loadProjectNotifications() async throws -> [ProjectNotification] {
     let userID = self.session.currentUser?.id
     let generation = self.session.generation
     guard userID != nil else { throw CancellationError() }
@@ -587,7 +587,7 @@ public final class SettingsFeature {
     guard self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
     let provider = self.makeProvider()
     do {
-      let values = try await provider.projectNotifications()
+      let values = try await provider.fetchProjectNotifications()
       try Task.checkCancellation()
       guard revision == self.notificationWriteRevision,
             self.session.isCurrent(userID: userID, generation: generation) else { throw CancellationError() }
@@ -601,7 +601,7 @@ public final class SettingsFeature {
 
   public func saveProjectNotification(_ notification: ProjectNotification) async throws -> ProjectNotification {
     try Task.checkCancellation()
-    let pending = try self.notificationRequest(notification)
+    let pending = try self.queueProjectNotificationWrite(notification)
     let result = try await pending.task.value
     try Task.checkCancellation()
     guard self.session.isCurrent(userID: pending.userID, generation: pending.generation)
@@ -609,7 +609,7 @@ public final class SettingsFeature {
     return result
   }
 
-  private func notificationRequest(_ notification: ProjectNotification) throws -> NotificationWrite {
+  private func queueProjectNotificationWrite(_ notification: ProjectNotification) throws -> NotificationWrite {
     guard let userID = self.session.currentUser?.id else { throw CancellationError() }
     let generation = self.session.generation
     let tail = self.latestNotificationWriteByID[notification.id]
@@ -665,8 +665,8 @@ public final class SettingsFeature {
   }
 
   /// Admits an ordered write synchronously. Canceling a screen's observer does not cancel it.
-  func requestProjectNotificationSave(_ notification: ProjectNotification) throws -> Task<ProjectNotification, Error> {
-    try self.notificationRequest(notification).task
+  func startProjectNotificationSave(_ notification: ProjectNotification) throws -> Task<ProjectNotification, Error> {
+    try self.queueProjectNotificationWrite(notification).task
   }
 
   /// Waits for owned executions, not presentation scheduler delays.

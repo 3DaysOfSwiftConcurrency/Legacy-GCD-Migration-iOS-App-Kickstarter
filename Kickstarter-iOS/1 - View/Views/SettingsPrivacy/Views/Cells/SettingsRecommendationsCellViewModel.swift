@@ -44,7 +44,7 @@ public final class SettingsRecommendationsCellViewModel {
       defer { self?.tasks[id] = nil }
       let result: Result<User, Error>
       do {
-        result = .success(try await settingsFeature.save([.init(.privacy(.recommendations), !on)], from: source))
+        result = .success(try await settingsFeature.savePreferences([.init(.privacy(.recommendations), !on)], from: source))
       } catch {
         result = .failure(error)
       }

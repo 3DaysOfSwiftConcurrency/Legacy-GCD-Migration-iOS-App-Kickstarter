@@ -140,9 +140,9 @@ final class SettingsFeatureTests: XCTestCase {
     initial.features = [Feature.segment.rawValue: true, "removed_server_flag": true]
     let fixture = ApplicationSettingsFixture(configuration: initial)
     defer { fixture.responses.releaseAll() }
-    let prefetch = fixture.feature.requestApplicationSettings()
+    let prefetch = fixture.feature.startApplicationSettingsLoad()
     await fixture.responses.waitFor(1)
-    let refresh = fixture.feature.requestApplicationSettingsRefresh()
+    let refresh = fixture.feature.startApplicationSettingsRefresh()
     XCTAssertTrue(fixture.appliedConfigurations.isEmpty)
     XCTAssertTrue(fixture.feature.setConfigurationFlag(.segment, enabled: false))
     var incoming = Config.template
@@ -163,10 +163,10 @@ final class SettingsFeatureTests: XCTestCase {
   func testResetApplicationSettingsRejectsOldRefreshAndAllowsCurrentRefresh() async throws {
     let fixture = ApplicationSettingsFixture()
     defer { fixture.responses.releaseAll() }
-    let old = fixture.feature.requestApplicationSettingsRefresh()
+    let old = fixture.feature.startApplicationSettingsRefresh()
     await fixture.responses.waitFor(1)
     fixture.feature.resetApplicationSettings()
-    let current = fixture.feature.requestApplicationSettingsRefresh()
+    let current = fixture.feature.startApplicationSettingsRefresh()
     await fixture.responses.waitFor(2)
     var previous = Config.template
     previous.countryCode = "CA"
@@ -229,7 +229,7 @@ final class SettingsFeatureTests: XCTestCase {
         let before = try XCTUnwrap(fixture.user)
         var expected = try XCTUnwrap(before.notifications.encode() as? [String: Bool])
         expected[parameter] = enabled
-        let request = try XCTUnwrap(fixture.feature.requestNotification(named: parameter, enabled: enabled))
+        let request = try XCTUnwrap(fixture.feature.startNotificationPreferenceSave(named: parameter, enabled: enabled))
         await fixture.provider.gate.waitFor(index + 1)
         let sent = try XCTUnwrap(fixture.provider.sent.last)
         XCTAssertEqual(sent.notifications.encode() as? [String: Bool], expected, parameter)
@@ -245,9 +245,9 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
-    let newsletter = fixture.feature.requestPreferences([.init(.newsletter(.games), true)], from: user)
-    let notification = try XCTUnwrap(fixture.feature.requestNotification(named: "notify_mobile_of_messages", enabled: true))
-    let laterNewsletter = fixture.feature.requestPreferences([.init(.newsletter(.games), false)], from: user)
+    let newsletter = fixture.feature.startPreferencesSave([.init(.newsletter(.games), true)], from: user)
+    let notification = try XCTUnwrap(fixture.feature.startNotificationPreferenceSave(named: "notify_mobile_of_messages", enabled: true))
+    let laterNewsletter = fixture.feature.startPreferencesSave([.init(.newsletter(.games), false)], from: user)
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.succeed(0)
     await fixture.provider.gate.waitFor(2)
@@ -268,13 +268,13 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let original = try XCTUnwrap(fixture.user)
-    let request = try XCTUnwrap(fixture.feature.requestNotification(named: "unrecognized", enabled: true))
+    let request = try XCTUnwrap(fixture.feature.startNotificationPreferenceSave(named: "unrecognized", enabled: true))
     await fixture.provider.gate.waitFor(1)
     XCTAssertEqual(fixture.provider.sent[0].notifications, original.notifications)
     try fixture.provider.succeed(0)
     _ = try await request.value
     fixture.user = nil
-    let signedOut = fixture.feature.requestNotification(named: "notify_of_messages", enabled: true)
+    let signedOut = fixture.feature.startNotificationPreferenceSave(named: "notify_of_messages", enabled: true)
     XCTAssertNil(signedOut)
     await fixture.feature.waitForOperations()
     XCTAssertEqual(fixture.provider.sent.count, 1)
@@ -284,7 +284,7 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     fixture.user = nil
     defer { fixture.provider.gate.releaseAll() }
-    let request = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: .template)
+    let request = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: .template)
     do { _ = try await request.value; XCTFail("Signed-out write must fail") }
     catch { XCTAssertTrue(error is CancellationError) }
     XCTAssertEqual(fixture.provider.sent.count, 0)
@@ -293,7 +293,7 @@ final class SettingsFeatureTests: XCTestCase {
 
   func testDemoPreferencesCannotPretendToSave() async {
     let provider = AsyncAccountPreferencesProvider(service: MockService.publicDemo())
-    do { _ = try await provider.save(.template); XCTFail("Demo unexpectedly saved account data") }
+    do { _ = try await provider.saveAccountPreferences(.template); XCTFail("Demo unexpectedly saved account data") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
   }
 
@@ -301,8 +301,8 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let original = try XCTUnwrap(fixture.user)
-    let first = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: original)
-    let second = fixture.feature.requestPreferences([.init(.notification(.messages), true)], from: original)
+    let first = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: original)
+    let second = fixture.feature.startPreferencesSave([.init(.notification(.messages), true)], from: original)
     await fixture.provider.gate.waitFor(1)
     XCTAssertEqual(fixture.provider.sent.count, 1)
     try fixture.provider.succeed(0)
@@ -322,10 +322,10 @@ final class SettingsFeatureTests: XCTestCase {
     defer { fixture.provider.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
     let changes: [SettingsFeature.Change] = [.init(.newsletter(.arts), true)]
-    let a = fixture.feature.requestPreferences(changes, from: user)
-    let duplicate = fixture.feature.requestPreferences(changes, from: user)
-    let b = fixture.feature.requestPreferences([.init(.newsletter(.arts), false)], from: user)
-    let c = fixture.feature.requestPreferences(changes, from: user)
+    let a = fixture.feature.startPreferencesSave(changes, from: user)
+    let duplicate = fixture.feature.startPreferencesSave(changes, from: user)
+    let b = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), false)], from: user)
+    let c = fixture.feature.startPreferencesSave(changes, from: user)
     for index in 0..<3 {
       await fixture.provider.gate.waitFor(index + 1)
       XCTAssertEqual(fixture.provider.sent[index].newsletters.arts, index != 1)
@@ -343,8 +343,8 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
-    let a = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: user)
-    let b = fixture.feature.requestPreferences([.init(.notification(.messages), true)], from: user)
+    let a = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: user)
+    let b = fixture.feature.startPreferencesSave([.init(.notification(.messages), true)], from: user)
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.gate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await fixture.provider.gate.waitFor(2)
@@ -353,7 +353,7 @@ final class SettingsFeatureTests: XCTestCase {
     XCTAssertNotNil(fixture.feature.lastError)
     try fixture.provider.succeed(1)
     _ = try await b.value
-    let retry = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: user)
+    let retry = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: user)
     await fixture.provider.gate.waitFor(3)
     try fixture.provider.succeed(2)
     _ = try await retry.value
@@ -365,7 +365,7 @@ final class SettingsFeatureTests: XCTestCase {
   func testCanceledPresentationDoesNotAbandonAdmittedWrite() async throws {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
-    let request = fixture.feature.requestPreferences(
+    let request = fixture.feature.startPreferencesSave(
       [.init(.privacy(.following), false)], from: try XCTUnwrap(fixture.user)
     )
     let waiter = Task {
@@ -387,7 +387,7 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
-    let task = Task { try await fixture.feature.save([.init(.privacy(.following), false)], from: user) }
+    let task = Task { try await fixture.feature.savePreferences([.init(.privacy(.following), false)], from: user) }
     await fixture.provider.gate.waitFor(1)
     task.cancel()
     try fixture.provider.succeed(0)
@@ -400,8 +400,8 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
-    let a = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: user)
-    let b = fixture.feature.requestPreferences([.init(.notification(.messages), true)], from: user)
+    let a = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: user)
+    let b = fixture.feature.startPreferencesSave([.init(.notification(.messages), true)], from: user)
     await fixture.provider.gate.waitFor(1)
     fixture.user = nil
     fixture.session.sessionChanged()
@@ -419,10 +419,10 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
-    let old = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: user)
+    let old = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: user)
     await fixture.provider.gate.waitFor(1)
     fixture.session.sessionChanged()
-    let new = fixture.feature.requestPreferences([.init(.notification(.messages), true)], from: user)
+    let new = fixture.feature.startPreferencesSave([.init(.notification(.messages), true)], from: user)
     await fixture.provider.gate.waitFor(2)
     try fixture.provider.succeed(1)
     try fixture.provider.gate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -437,7 +437,7 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
-    let request = fixture.feature.requestPreferences(SettingsFeature.Change.allNewsletters(true), from: user)
+    let request = fixture.feature.startPreferencesSave(SettingsFeature.Change.allNewsletters(true), from: user)
     await fixture.provider.gate.waitFor(1)
     let sent = try XCTUnwrap(fixture.provider.sent.first)
     for newsletter in Newsletter.allCases {
@@ -462,7 +462,7 @@ final class SettingsFeatureTests: XCTestCase {
     let user = try XCTUnwrap(fixture.user)
     let read = Task { try await feature.refreshAccount() }
     await users.gate.waitFor(1)
-    let write = feature.requestPreferences([.init(.newsletter(.arts), true)], from: user)
+    let write = feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: user)
     defer { read.cancel() }
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.succeed(0)
@@ -482,7 +482,7 @@ final class SettingsFeatureTests: XCTestCase {
     var source = try XCTUnwrap(fixture.user)
     source.id += 1
     defer { fixture.provider.gate.releaseAll() }
-    let request = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: source)
+    let request = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: source)
     do { _ = try await request.value; XCTFail("Wrong-account write must fail") }
     catch { XCTAssertTrue(error is CancellationError) }
     XCTAssertEqual(fixture.provider.sent.count, 0)
@@ -493,12 +493,12 @@ final class SettingsFeatureTests: XCTestCase {
     let fixture = PreferencesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let user = try XCTUnwrap(fixture.user)
-    let first = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: user)
+    let first = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: user)
     await fixture.provider.gate.waitFor(1)
     var wrong = user
     wrong.id += 1
-    let rejected = fixture.feature.requestPreferences([.init(.newsletter(.weekly), true)], from: wrong)
-    let next = fixture.feature.requestPreferences([.init(.notification(.messages), true)], from: user)
+    let rejected = fixture.feature.startPreferencesSave([.init(.newsletter(.weekly), true)], from: wrong)
+    let next = fixture.feature.startPreferencesSave([.init(.notification(.messages), true)], from: user)
     try fixture.provider.succeed(0)
     await fixture.provider.gate.waitFor(2)
     XCTAssertEqual(fixture.provider.sent[1].newsletters.arts, true)
@@ -537,7 +537,7 @@ extension SettingsFeatureTests {
   func testEmailLookupRejectsResultAfterSessionReplacement() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.emails.releaseAll() }
-    let read = Task { try await fixture.feature.emailUser() }
+    let read = Task { try await fixture.feature.loadEmailUser() }
     await fixture.provider.emails.waitFor(1)
     fixture.session.sessionChanged()
     try fixture.provider.emails.finish(0, .success(.template))
@@ -552,7 +552,7 @@ extension SettingsFeatureTests {
   func testDisposedAccountFieldsReadCannotPublishLateValue() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.emails.releaseAll() }
-    let read = Task { try await fixture.feature.accountFields(sleep: { _ in }) }
+    let read = Task { try await fixture.feature.loadAccountFields(sleep: { _ in }) }
     await fixture.provider.emails.waitFor(1)
     read.cancel()
     try fixture.provider.emails.finish(0, .success(.template))
@@ -567,10 +567,10 @@ extension SettingsFeatureTests {
   func testEmailLookupSharesAndAccountEditRejectsLateResult() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.emails.releaseAll(); fixture.provider.gate.releaseAll() }
-    let first = Task { try await fixture.feature.emailUser() }
-    let second = Task { try await fixture.feature.emailUser() }
+    let first = Task { try await fixture.feature.loadEmailUser() }
+    let second = Task { try await fixture.feature.loadEmailUser() }
     await fixture.provider.emails.waitFor(1)
-    _ = try fixture.feature.requestAccount(.email(.init(
+    _ = try fixture.feature.startAccountUpdate(.email(.init(
       email: "new@example.invalid",
       currentPassword: "fixture"
     )))
@@ -594,7 +594,7 @@ extension SettingsFeatureTests {
       makeProvider: { fixture.provider }
     )
     let read = Task {
-      try await feature.accountFields { seconds in
+      try await feature.loadAccountFields { seconds in
         XCTAssertEqual(seconds, 2.5)
         try await delay.request()
       }
@@ -663,9 +663,9 @@ extension SettingsFeatureTests {
   func testEquivalentAccountWritesShareAndDistinctCommandsRemainOrdered() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll() }
-    let first = try fixture.feature.requestAccount(.currency("GBP"))
-    let duplicate = try fixture.feature.requestAccount(.currency("GBP"))
-    let next = try fixture.feature.requestAccount(.currency("EUR"))
+    let first = try fixture.feature.startAccountUpdate(.currency("GBP"))
+    let duplicate = try fixture.feature.startAccountUpdate(.currency("GBP"))
+    let next = try fixture.feature.startAccountUpdate(.currency("EUR"))
     await fixture.provider.gate.waitFor(1)
     XCTAssertEqual(fixture.provider.commands, [.currency("GBP")])
     try fixture.provider.gate.finish(0, .success(nil))
@@ -687,8 +687,8 @@ extension SettingsFeatureTests {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let source = try XCTUnwrap(fixture.user)
-    _ = try fixture.feature.requestAccount(.currency("GBP"))
-    let preference = fixture.feature.requestPreferences([.init(.newsletter(.arts), true)], from: source)
+    _ = try fixture.feature.startAccountUpdate(.currency("GBP"))
+    let preference = fixture.feature.startPreferencesSave([.init(.newsletter(.arts), true)], from: source)
     await fixture.provider.gate.waitFor(1)
     XCTAssertEqual(fixture.provider.preferences.count, 0)
     try fixture.provider.gate.finish(0, .success(nil))
@@ -702,8 +702,8 @@ extension SettingsFeatureTests {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll() }
     let original = fixture.user?.chosenCurrency
-    let failure = try fixture.feature.requestAccount(.currency("GBP"))
-    let next = try fixture.feature.requestAccount(.currency("EUR"))
+    let failure = try fixture.feature.startAccountUpdate(.currency("GBP"))
+    let next = try fixture.feature.startAccountUpdate(.currency("EUR"))
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.gate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await fixture.provider.gate.waitFor(2)
@@ -725,7 +725,7 @@ extension SettingsFeatureTests {
   func testDisposedObserverDoesNotAbandonAdmittedAccountWrite() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll() }
-    let admitted = try fixture.feature.requestAccount(.currency("GBP"))
+    let admitted = try fixture.feature.startAccountUpdate(.currency("GBP"))
     let waiter = Task { _ = try await admitted.value; try Task.checkCancellation() }
     await fixture.provider.gate.waitFor(1)
     waiter.cancel()
@@ -739,8 +739,8 @@ extension SettingsFeatureTests {
   func testReplacedSessionSuppressesAcceptedWriteAndDoesNotDispatchQueuedWrite() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll() }
-    let first = try fixture.feature.requestAccount(.currency("GBP"))
-    let queued = try fixture.feature.requestAccount(.currency("EUR"))
+    let first = try fixture.feature.startAccountUpdate(.currency("GBP"))
+    let queued = try fixture.feature.startAccountUpdate(.currency("EUR"))
     await fixture.provider.gate.waitFor(1)
     fixture.session.sessionChanged() // Even re-login as the same account is a new identity.
     try fixture.provider.gate.finish(0, .success(nil))
@@ -782,8 +782,8 @@ extension SettingsFeatureTests {
   func testRefreshWaitsForAccountWriteBeforeFetchingAndCommitting() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll(); fixture.readProvider.gate.releaseAll() }
-    _ = try fixture.feature.requestAccount(.currency("GBP"))
-    let refresh = fixture.feature.requestAccountRefresh()
+    _ = try fixture.feature.startAccountUpdate(.currency("GBP"))
+    let refresh = fixture.feature.startAccountRefresh()
     defer { refresh.cancel() }
     await fixture.provider.gate.waitFor(1)
     XCTAssertEqual(fixture.readProvider.gate.count, 0)
@@ -801,9 +801,9 @@ extension SettingsFeatureTests {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll(); fixture.readProvider.gate.releaseAll() }
     let stale = try XCTUnwrap(fixture.user)
-    let refresh = fixture.feature.requestAccountRefresh()
+    let refresh = fixture.feature.startAccountRefresh()
     await fixture.readProvider.gate.waitFor(1)
-    _ = try fixture.feature.requestAccount(.currency("GBP"))
+    _ = try fixture.feature.startAccountUpdate(.currency("GBP"))
     defer { refresh.cancel() }
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.gate.finish(0, .success(nil))
@@ -832,7 +832,7 @@ private final class AccountWritesFixture {
 
 @MainActor
 private final class ControlledAccountWritesProvider: AccountPreferencesProvider {
-  func projectNotifications() async throws -> [ProjectNotification] { throw CancellationError() }
+  func fetchProjectNotifications() async throws -> [ProjectNotification] { throw CancellationError() }
   func saveProjectNotification(_: ProjectNotification) async throws -> ProjectNotification { throw CancellationError() }
   let verifications = AccountRequestGate<EmailVerificationResponseEnvelope>()
   let emails = AccountRequestGate<GraphUser>()
@@ -843,26 +843,26 @@ private final class ControlledAccountWritesProvider: AccountPreferencesProvider 
   let gate = AccountRequestGate<User?>()
   var commands: [SettingsFeature.AccountChange] = []
   var preferences: [User] = []
-  func update(_ change: SettingsFeature.AccountChange) async throws -> User? {
+  func updateAccount(_ change: SettingsFeature.AccountChange) async throws -> User? {
     self.commands.append(change)
     return try await self.gate.request()
   }
 
-  func save(_ user: User) async throws -> User { self.preferences.append(user); return user }
-  func emailUser() async throws -> GraphUser { try await self.emails.request() }
+  func saveAccountPreferences(_ user: User) async throws -> User { self.preferences.append(user); return user }
+  func fetchEmailUser() async throws -> GraphUser { try await self.emails.request() }
 }
 
 @MainActor
 private final class ControlledPreferencesProvider: AccountPreferencesProvider {
-  func projectNotifications() async throws -> [ProjectNotification] { throw CancellationError() }
+  func fetchProjectNotifications() async throws -> [ProjectNotification] { throw CancellationError() }
   func saveProjectNotification(_: ProjectNotification) async throws -> ProjectNotification { throw CancellationError() }
   func verifyEmail(token _: String) async throws
     -> EmailVerificationResponseEnvelope { throw CancellationError() }
-  func update(_: SettingsFeature.AccountChange) async throws -> User? { throw CancellationError() }
-  func emailUser() async throws -> GraphUser { throw CancellationError() }
+  func updateAccount(_: SettingsFeature.AccountChange) async throws -> User? { throw CancellationError() }
+  func fetchEmailUser() async throws -> GraphUser { throw CancellationError() }
   let gate = AccountRequestGate<User>()
   var sent: [User] = []
-  func save(_ user: User) async throws -> User {
+  func saveAccountPreferences(_ user: User) async throws -> User {
     self.sent.append(user)
     return try await self.gate.request()
   }

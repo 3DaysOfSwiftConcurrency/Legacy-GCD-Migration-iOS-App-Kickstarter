@@ -19,7 +19,7 @@ public final class ProjectNotificationsViewModel {
     let settingsFeature = self.settingsFeature
     self.loadingTask = Task { [weak self] in
       do {
-        let values = try await settingsFeature.projectNotifications()
+        let values = try await settingsFeature.loadProjectNotifications()
         try Task.checkCancellation()
         self?.projectNotifications = values
         self?.onNotifications?(values)
