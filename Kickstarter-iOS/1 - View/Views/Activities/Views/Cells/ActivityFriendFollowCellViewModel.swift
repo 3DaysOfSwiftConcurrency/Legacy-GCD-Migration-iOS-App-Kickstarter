@@ -34,13 +34,13 @@ public final class ActivityFriendFollowCellViewModel {
     let friendsFeature = self.friendsFeature
     let generation = friendsFeature.sessionFeature.generation
     let userID = friendsFeature.sessionFeature.currentUser?.id
-    let task = friendsFeature.startFollowing(user: friend, following: true)
+    let task = friendsFeature.startFollowingStatusUpdate(user: friend, following: true)
     self.observation?.cancel()
     self.observation = Task { [weak self] in
       do {
         let result = try await task.value
         guard let self else { return }
-        try await friendsFeature.waitForResponseDelivery()
+        try await friendsFeature.waitForResponsePresentationDelay()
         try Task.checkCancellation()
         guard self.friend?.id == result.id, friendsFeature.sessionFeature.generation == generation,
               friendsFeature.sessionFeature.currentUser?.id == userID else { return }

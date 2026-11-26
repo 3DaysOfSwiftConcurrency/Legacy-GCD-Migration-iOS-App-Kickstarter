@@ -19,7 +19,7 @@ extension AppModel {
         if let user { update(.user(user)) }
         // A synchronous consumer may replace the session while handling the user update.
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        self.discoveryFeature.refreshRecommendationAvailability {
+        self.discoveryFeature.startRecommendationAvailabilityRefresh {
           update(.recommendationsAvailable($0))
         }
       case let .failure(error):

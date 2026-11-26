@@ -71,7 +71,7 @@ public final class DiscussionFeature {
   public func helpType(for url: URL) -> HelpType? {
     HelpType.helpType(from: url, baseURL: self.platform.serverConfig().webBaseUrl)
   }
-  public func helpURL(_ type: HelpType) -> String? {
+  public func helpURLString(_ type: HelpType) -> String? {
     type.url(withBaseUrl: self.platform.serverConfig().webBaseUrl)?.absoluteString
   }
 
@@ -177,7 +177,7 @@ public final class DiscussionFeature {
 
   /// Admit the write before publishing an optimistic comment, so a dismissed
   /// presentation cannot prevent the server operation from starting.
-  func beginPost(project: Project, commentableID: String, parentID: String?, user: User, body: String) -> OptimisticPost {
+  func startCommentSubmissionWithOptimisticValue(project: Project, commentableID: String, parentID: String?, user: User, body: String) -> OptimisticPost {
     let comment = Comment.failableComment(
       withId: self.platform.optimisticCommentID(),
       date: self.platform.now(),
@@ -192,13 +192,13 @@ public final class DiscussionFeature {
   /// The write is admitted before the optimistic value is delivered. Cancelling
   /// the presentation stops delivery but does not cancel the server operation.
   @discardableResult
-  func beginPresentedPost(
+  func startCommentPostWithStatusUpdates(
     project: Project, commentableID: String, parentID: String?, user: User, body: String,
     receive: @escaping (Comment, String) -> Void
   ) -> Task<Void, Never> {
     let userID = self.sessionFeature.currentUser?.id
     let generation = self.sessionFeature.generation
-    let submission = self.beginPost(
+    let submission = self.startCommentSubmissionWithOptimisticValue(
       project: project, commentableID: commentableID, parentID: parentID, user: user, body: body
     )
     receive(submission.comment, submission.comment.id)
@@ -241,7 +241,7 @@ public final class DiscussionFeature {
   /// Capture the session before the first presentation delay so an old comment
   /// can never be submitted under a newly signed-in account.
   @discardableResult
-  func beginRetry(
+  func startCommentRetryWithStatusUpdates(
     comment: Comment, commentableID: String, parentID: String?,
     receive: @escaping (Comment, String) -> Void
   ) -> Task<Void, Never> {

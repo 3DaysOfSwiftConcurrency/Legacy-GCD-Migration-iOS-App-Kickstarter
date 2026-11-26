@@ -173,9 +173,9 @@ final class FriendsFeatureTests: TestCase {
 
   func testEquivalentPendingWritesShareButOppositeWritesRunInOrder() async throws {
     let user = Self.user(9)
-    let a = self.feature.startFollowing(user: user, following: true)
-    let b = self.feature.startFollowing(user: user, following: true)
-    let c = self.feature.startFollowing(user: user, following: false)
+    let a = self.feature.startFollowingStatusUpdate(user: user, following: true)
+    let b = self.feature.startFollowingStatusUpdate(user: user, following: true)
+    let c = self.feature.startFollowingStatusUpdate(user: user, following: false)
     await self.provider.writes.waitFor(1)
     XCTAssertEqual(self.provider.operations, ["9:true"])
     try self.provider.writes.finish(0, .success(()))
@@ -192,10 +192,10 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testCancelledObserverDoesNotCancelAdmittedWriteOrDuplicateRetry() async throws {
-    let old = self.feature.startFollowing(user: Self.user(1), following: true)
+    let old = self.feature.startFollowingStatusUpdate(user: Self.user(1), following: true)
     await self.provider.writes.waitFor(1)
     old.cancel()
-    let next = self.feature.startFollowing(user: Self.user(1), following: true)
+    let next = self.feature.startFollowingStatusUpdate(user: Self.user(1), following: true)
     try self.provider.writes.finish(0, .success(()))
     _ = try await next.value
     await self.feature.waitForFriendsOperations()
@@ -204,8 +204,8 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testFailedWriteDoesNotPoisonQueueOrCacheAndIsNotAutomaticallyRetried() async throws {
-    let first = self.feature.startFollowing(user: Self.user(1), following: true)
-    let next = self.feature.startFollowing(user: Self.user(2), following: true)
+    let first = self.feature.startFollowingStatusUpdate(user: Self.user(1), following: true)
+    let next = self.feature.startFollowingStatusUpdate(user: Self.user(2), following: true)
     await self.provider.writes.waitFor(1)
     try self.provider.writes.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await self.provider.writes.waitFor(2)
@@ -218,11 +218,11 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testNewSessionRejectsOldQueuedWriteAndOldCacheCommit() async throws {
-    let first = self.feature.startFollowing(user: Self.user(1), following: true)
-    let queued = self.feature.startFollowing(user: Self.user(2), following: true)
+    let first = self.feature.startFollowingStatusUpdate(user: Self.user(1), following: true)
+    let queued = self.feature.startFollowingStatusUpdate(user: Self.user(2), following: true)
     await self.provider.writes.waitFor(1)
     self.session.sessionChanged()
-    let current = self.feature.startFollowing(user: Self.user(3), following: true)
+    let current = self.feature.startFollowingStatusUpdate(user: Self.user(3), following: true)
     await self.provider.writes.waitFor(2)
     try self.provider.writes.finish(1, .success(()))
     try self.provider.writes.finish(0, .success(()))
@@ -237,7 +237,7 @@ final class FriendsFeatureTests: TestCase {
   func testFollowAllIsOrderedAndInvalidatesOldPageBeforeRefresh() async throws {
     let page = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.pages.waitFor(1)
-    let follow = self.feature.startFollowing(user: Self.user(1), following: true)
+    let follow = self.feature.startFollowingStatusUpdate(user: Self.user(1), following: true)
     let all = self.feature.startFollowAll()
     defer { follow.cancel(); all.cancel() }
     await self.provider.writes.waitFor(1)
@@ -257,7 +257,7 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testNewReadWaitsForAdmittedWriteAndUsesSharedFollowState() async throws {
-    let follow = self.feature.startFollowing(user: Self.user(1), following: true)
+    let follow = self.feature.startFollowingStatusUpdate(user: Self.user(1), following: true)
     defer { follow.cancel() }
     let page = self.feature.startFriendsPageLoad(route: self.route)
     await self.provider.writes.waitFor(1)

@@ -67,9 +67,9 @@ public final class ProjectReportingFeature {
   public func fetchReportOptions(context: Context) async throws -> [ReportProjectInfoListItem] {
     try self.ensureReportingSessionIsCurrent(context)
     do {
-      let result = try await self.makeProvider().fetchReportOptions()
+      let reportOptions = try await self.makeProvider().fetchReportOptions()
       try self.ensureReportingSessionIsCurrent(context)
-      return result
+      return reportOptions
     } catch {
       try self.ensureReportingSessionIsCurrent(context)
       throw error
@@ -78,9 +78,9 @@ public final class ProjectReportingFeature {
   public func fetchReportingEmail(context: Context) async throws -> String? {
     try self.ensureReportingSessionIsCurrent(context)
     do {
-      let result = try await self.makeProvider().fetchReportingEmail()
+      let reportingEmail = try await self.makeProvider().fetchReportingEmail()
       try self.ensureReportingSessionIsCurrent(context)
-      return result
+      return reportingEmail
     } catch {
       try self.ensureReportingSessionIsCurrent(context)
       throw error

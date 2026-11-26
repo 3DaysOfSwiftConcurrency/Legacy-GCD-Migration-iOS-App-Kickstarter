@@ -110,13 +110,13 @@ public final class ProjectDetailsFeature {
   public func helpType(for url: URL) -> HelpType? {
     HelpType.helpType(from: url, baseURL: self.webBaseURL)
   }
-  public func helpURL(_ type: HelpType) -> String? {
+  public func helpURLString(_ type: HelpType) -> String? {
     type.url(withBaseUrl: self.webBaseURL)?.absoluteString
   }
   public func recordThirdPartyEvent(_ input: KsApi.TriggerThirdPartyEventInput) {
     self.platform.recordThirdPartyEvent(input)
   }
-  public func redemptionURL(for project: Project) -> String {
+  public func redemptionURLString(for project: Project) -> String {
     self.webBaseURL.absoluteString + project.redemptionPageUrl
   }
   public let discussionFeature: DiscussionFeature
@@ -137,7 +137,7 @@ public final class ProjectDetailsFeature {
   /// callbacks share its task; there is no automatic retry or global deduplication.
   /// Once sent, the event settles independently of the screen's lifetime.
   @discardableResult
-  public func recordAttribution(
+  public func startProjectPageViewAttribution(
     route: UUID, projectID: String, properties: String?
   ) -> Task<Void, Error> {
     if let existing = self.attributionTasksByRoute[route] { return existing }
@@ -161,7 +161,7 @@ public final class ProjectDetailsFeature {
     return task
   }
 
-  public func waitForAttribution() async {
+  public func waitForProjectPageViewAttribution() async {
     while !self.inFlightAttributionTasks.isEmpty {
       for task in Array(self.inFlightAttributionTasks.values) { _ = await task.result }
     }

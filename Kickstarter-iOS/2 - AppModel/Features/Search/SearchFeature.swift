@@ -360,7 +360,7 @@ public final class SearchFeature {
 
   /// Await the complete first-page operation, including delivery timing/publication.
   /// A cancelled waiter does not cancel work shared by another caller. Distinct
-  /// queries and cancelSearch() are the Feature's explicit cancellation owners.
+  /// queries and cancelSearchResultsLoad() are the Feature's explicit cancellation owners.
   public func loadSearchResults(parameters: DiscoveryParams) async {
     guard !Task.isCancelled else { return }
     await self.startSearchResultsLoad(parameters: parameters).value
@@ -380,7 +380,7 @@ public final class SearchFeature {
        let request = self.pendingSearchResultRequest, request.cursor == nil {
       return request.task
     }
-    self.cancelSearch()
+    self.cancelSearchResultsLoad()
     self.parameters = parameters
     self.nextSearchPageCursor = nil
     self.completedPageCount = 0
@@ -401,7 +401,7 @@ public final class SearchFeature {
   }
 
   /// Explicit owner cancellation, not a side effect of a single waiter leaving.
-  public func cancelSearch() {
+  public func cancelSearchResultsLoad() {
     let previous = self.pendingSearchResultRequest
     self.pendingSearchResultRequest = nil
     previous?.task.cancel()

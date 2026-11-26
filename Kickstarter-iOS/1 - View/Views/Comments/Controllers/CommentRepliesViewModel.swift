@@ -162,7 +162,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
     guard comment.status == .failed, self.retryTasks[comment.id] == nil,
           let project = self.latestProject, self.latestRootComment != nil else { return }
     let commentableID = self.update.map { encodeToBase64("FreeformPost-\($0.id)") } ?? project.graphID
-    let task = self.discussionFeature.beginRetry(comment: comment, commentableID: commentableID, parentID: comment.parentId) { [weak self] replacement, id in
+    let task = self.discussionFeature.startCommentRetryWithStatusUpdates(comment: comment, commentableID: commentableID, parentID: comment.parentId) { [weak self] replacement, id in
       guard let self else { return }
       self.latestFailableReply = (replacement, id)
       if let project = self.latestProject { self.onLoadFailableReply?(replacement, id, project) }
@@ -183,7 +183,7 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
           let user = self.composerUser else { return }
     let commentableID = self.update.map { encodeToBase64("FreeformPost-\($0.id)") } ?? project.graphID
     let id = UUID()
-    let task = self.discussionFeature.beginPresentedPost(
+    let task = self.discussionFeature.startCommentPostWithStatusUpdates(
       project: project, commentableID: commentableID, parentID: root.id, user: user, body: text
     ) { [weak self] comment, replacementID in
       guard let self else { return }

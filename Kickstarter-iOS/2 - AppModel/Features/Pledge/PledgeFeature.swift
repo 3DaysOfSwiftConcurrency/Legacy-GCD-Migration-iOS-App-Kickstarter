@@ -407,8 +407,8 @@ public final class PledgeFeature {
     ))
   }
 
-  static func checkoutID(from value: String) -> String {
-    guard let decoded = decodeBase64(value), let range = decoded.range(of: "Checkout-") else { return value }
+  static func checkoutID(from encodedOrPlainID: String) -> String {
+    guard let decoded = decodeBase64(encodedOrPlainID), let range = decoded.range(of: "Checkout-") else { return encodedOrPlainID }
     return String(decoded[range.upperBound...])
   }
 

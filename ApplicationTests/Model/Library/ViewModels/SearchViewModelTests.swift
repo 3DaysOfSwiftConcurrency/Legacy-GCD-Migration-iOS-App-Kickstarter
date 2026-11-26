@@ -54,7 +54,7 @@ internal final class SearchViewModelTests: TestCase {
 
   override func tearDown() async throws {
     MainActor.assumeIsolated {
-      self.searchFeature.cancelSearch()
+      self.searchFeature.cancelSearchResultsLoad()
       self.searchFeature.cancelFilterLookups()
       self.delay.releaseAll()
     }

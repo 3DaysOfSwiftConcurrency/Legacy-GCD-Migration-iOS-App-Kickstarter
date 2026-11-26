@@ -82,14 +82,14 @@ final class DiscoveryFeatureTests: TestCase {
     let feature = DiscoveryFeature(provider: provider, sessionFeature: session)
     var results: [Bool] = []
 
-    let old = feature.refreshRecommendationAvailability { results.append($0) }
+    let old = feature.startRecommendationAvailabilityRefresh { results.append($0) }
     await provider.waitForCount(1)
     session.sessionChanged()
     try provider.complete(0, ids: [1])
     await old.value
     XCTAssertEqual(results, [])
 
-    let current = feature.refreshRecommendationAvailability { results.append($0) }
+    let current = feature.startRecommendationAvailabilityRefresh { results.append($0) }
     await provider.waitForCount(2)
     try provider.fail(1)
     await current.value
@@ -124,7 +124,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(provider: provider, sessionFeature: session)
-    let refresh = feature.refreshRecommendationAvailability { _ in XCTFail("Obsolete delivery") }
+    let refresh = feature.startRecommendationAvailabilityRefresh { _ in XCTFail("Obsolete delivery") }
     session.sessionChanged()
     await refresh.value
     XCTAssertTrue(provider.requests.isEmpty)
@@ -138,7 +138,7 @@ final class DiscoveryFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(provider: provider, sessionFeature: session)
     var results: [Bool] = []
-    let refresh = feature.refreshRecommendationAvailability { results.append($0) }
+    let refresh = feature.startRecommendationAvailabilityRefresh { results.append($0) }
     await refresh.value
     XCTAssertEqual(results, [false])
     XCTAssertTrue(provider.requests.isEmpty)

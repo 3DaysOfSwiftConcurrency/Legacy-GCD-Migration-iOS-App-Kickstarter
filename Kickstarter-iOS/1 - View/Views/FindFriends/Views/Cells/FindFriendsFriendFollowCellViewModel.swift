@@ -59,7 +59,7 @@ public final class FindFriendsFriendFollowCellViewModel {
     let friendsFeature = self.friendsFeature
     let generation = friendsFeature.sessionFeature.generation
     let sessionUser = friendsFeature.sessionFeature.currentUser?.id
-    let command = friendsFeature.startFollowing(user: friend, following: following)
+    let command = friendsFeature.startFollowingStatusUpdate(user: friend, following: following)
     if following { self.followObservation?.cancel(); self.enableFollowButton = false }
     else { self.unfollowObservation?.cancel(); self.enableUnfollowButton = false }
     self.onChange?()
@@ -69,7 +69,7 @@ public final class FindFriendsFriendFollowCellViewModel {
         guard let self, !Task.isCancelled else { return }
         if following { self.enableFollowButton = true } else { self.enableUnfollowButton = true }
         self.onChange?()
-        try await friendsFeature.waitForResponseDelivery()
+        try await friendsFeature.waitForResponsePresentationDelay()
         try Task.checkCancellation()
         guard self.friend?.id == updated.id, friendsFeature.sessionFeature.generation == generation,
               friendsFeature.sessionFeature.currentUser?.id == sessionUser else { return }

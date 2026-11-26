@@ -14,10 +14,12 @@ rows now has a recorded naming and behavior decision, including the Feature
 boundary and the rest of AppModel. Source locations, signatures and owners
 were reconciled against the final SwiftSyntax scan; the declaration count
 remains 3,024. Conditional compilation branches are included. The final
-app/test target Build For Testing result is recorded in the ledger. A subsequent
-independent pass clarified cancellation names in Discovery and configuration
-settings and passed another complete Build For Testing. Runtime
-tests remain unverified. This is a naming audit, not a guarantee that every
+app/test target Build For Testing result is recorded in the ledger. Subsequent independent passes clarified cancellation scope, asynchronous
+operations, comment status delivery, URL string results and the values returned
+by Model fetches. The final no-change pass reconciled the same 3,024 source
+declarations against the review inventory and found no additional naming edits.
+The final complete Build For Testing result is recorded in the ledger. Runtime
+tests remain unverified because this process cannot connect to CoreSimulatorService. This is a naming audit, not a guarantee that every
 reader will agree with each judgment; further naming issues can still be
 raised as concrete examples.
 
@@ -28,10 +30,10 @@ outside this compile verification.
 
 ## Findings from the first implementation review
 
-These were candidates at the start of the audit. Their final decisions and
-current names are recorded in the reconciled declaration inventory.
+These were candidates at the start of the audit. They have been resolved; their
+final decisions and current names are recorded in the reconciled declaration inventory.
 
-| Location | Current API | Observed behavior | Candidate direction |
+| Location | Original API at first audit | Observed behavior | Candidate direction |
 | --- | --- | --- | --- |
 | `Features/Discussion/DiscussionFeature.swift:11,32` | `DiscussionProvider.update(id:project:)` | Calls `service.projectUpdate` and **reads** a project update for a discussion. The verb can be mistaken for a write. | `fetchProjectUpdate(id:project:)`, together with the provider implementation and its consumers. |
 | `Features/Discussion/DiscussionFeature.swift:12,35` | `post(input:)` | Submits a comment using `submitDiscussionComment`. | Name the comment submission explicitly, subject to provider and call-site review. |

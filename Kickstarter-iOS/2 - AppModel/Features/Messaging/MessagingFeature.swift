@@ -162,25 +162,25 @@ public final class MessagingFeature {
     guard !query.isEmpty else { return [] }
     let session = self.session
     try self.ensureMessagingSessionIsCurrent(session)
-    let value = try await self.makeProvider().searchMessageThreads(query: query, project: project)
+    let threadsEnvelope = try await self.makeProvider().searchMessageThreads(query: query, project: project)
     try self.ensureMessagingSessionIsCurrent(session)
-    return value.messageThreads
+    return threadsEnvelope.messageThreads
   }
 
   public func fetchMessageThread(id: Int) async throws -> MessageThreadEnvelope? {
     let session = self.session
     try self.ensureMessagingSessionIsCurrent(session)
-    let value = try await self.makeProvider().fetchMessageThread(id: id)
+    let threadEnvelope = try await self.makeProvider().fetchMessageThread(id: id)
     try self.ensureMessagingSessionIsCurrent(session)
-    return value
+    return threadEnvelope
   }
 
   public func fetchMessageThread(backing: Backing) async throws -> MessageThreadEnvelope? {
     let session = self.session
     try self.ensureMessagingSessionIsCurrent(session)
-    let value = try await self.makeProvider().fetchMessageThread(backing: backing)
+    let threadEnvelope = try await self.makeProvider().fetchMessageThread(backing: backing)
     try self.ensureMessagingSessionIsCurrent(session)
-    return value
+    return threadEnvelope
   }
 
   public func fetchMessageBacking(id: Int?, project: Project, user: User) async throws -> Backing {

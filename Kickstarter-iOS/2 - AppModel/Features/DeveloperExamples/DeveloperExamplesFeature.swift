@@ -217,7 +217,7 @@ public final class DeveloperExamplesFeature {
 
   public func lookupRichTextExampleProject(input: String, route: UUID) async throws -> ProjectItem? {
     guard let slug = Self.extractSlug(from: input) else {
-      self.cancelLookup(route: route)
+      self.cancelRichTextProjectLookup(route: route)
       return nil
     }
     let session = self.session
@@ -225,7 +225,7 @@ public final class DeveloperExamplesFeature {
     if let pending = self.pendingProjectLookupsByRoute[route], pending.slug == slug, pending.session == session {
       work = pending
     } else {
-      self.cancelLookup(route: route)
+      self.cancelRichTextProjectLookup(route: route)
       let provider = self.makeProvider()
       work = LookupWork(session: session, slug: slug)
       self.pendingProjectLookupsByRoute[route] = work
@@ -253,7 +253,7 @@ public final class DeveloperExamplesFeature {
     guard let result = work.result else { throw CancellationError() }
     return try result.get()
   }
-  public func cancelLookup(route: UUID) {
+  public func cancelRichTextProjectLookup(route: UUID) {
     self.pendingProjectLookupsByRoute.removeValue(forKey: route)?.task?.cancel()
     self.latestLookupIDsByRoute[route] = nil
   }
@@ -268,7 +268,7 @@ public final class DeveloperExamplesFeature {
       work.task.cancel()
       self.richTextSnapshotsByRoute[route] = RichTextSnapshot(isLoading: false)
     }
-    self.cancelLookup(route: route)
+    self.cancelRichTextProjectLookup(route: route)
   }
   public func release(route: UUID) {
     self.cancelExampleLoads(route: route)

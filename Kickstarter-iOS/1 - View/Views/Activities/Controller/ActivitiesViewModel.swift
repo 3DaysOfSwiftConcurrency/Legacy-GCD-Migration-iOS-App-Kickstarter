@@ -149,7 +149,7 @@ final class ActivitiesViewModel {
     switch operation {
     case .user: request = sessionFeature.startCurrentUserFetch()
     case .graphUser: request = sessionFeature.startGraphUserFetch()
-    case .clearActivity: request = sessionFeature.startClearActivityIndicator()
+    case .clearActivity: request = sessionFeature.startActivityIndicatorClearAndUserRefresh()
     }
     let task = Task { [weak self] in
       defer {

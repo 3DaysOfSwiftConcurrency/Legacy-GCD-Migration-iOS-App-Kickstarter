@@ -755,3 +755,30 @@ found clear action names and made no changes. The current 3,024-declaration
 name inventory has no pending decisions. Runtime tests were not executed;
 existing build warnings remain. The completed CFA migration ledger was left
 unchanged.
+
+
+Iterative naming closure (26 November 2026): renewed the public Feature and
+supporting Model review after the preceding final pass. Clarified a follow or
+unfollow Task, response-presentation delays, an activity-indicator clear that
+returns a refreshed user, recommendation availability Task start, search-result
+and image-load cancellation, and the rich-text project lookup cancellation.
+Made project-page-view attribution and comment post/retry status updates
+explicit. Methods returning URL strings now name the representation, and the
+survey method names its fetch. Renamed a few ambiguous local fetch results to
+the actual report options, reporting email, thread envelopes and project page;
+the checkout ID decoder now names its encoded-or-plain input. All first-party
+callers in Model, View and tests were reconciled. The first build found a
+trailing-closure AppModel caller omitted by a `name(` search; it and four
+Discovery tests were repaired and the complete build rerun. Subsequent
+`naming-iteration-2` through `naming-iteration-7` Build For Testing requests
+exited 0 with `TEST BUILD SUCCEEDED` for `Library-iOS` and its test target.
+
+A further independent, no-edit pass inspected the surviving short/generic
+Feature APIs in owner and return-type context, Task-returning APIs, predicate
+names, URL return types, and names of values at the Model boundary. SwiftSyntax
+re-enumeration at the settled source finds 3,024 declarations and 3,024
+matching inventory rows, zero signature-name mismatches and zero unresolved
+review markers. It found no additional actionable renames. The final source
+build is `naming-iteration-7` (exit 0); existing warnings remain. Focused
+runtime tests could not run here: `simctl` cannot connect to CoreSimulatorService
+from this process. The completed CFA migration ledger was not changed.

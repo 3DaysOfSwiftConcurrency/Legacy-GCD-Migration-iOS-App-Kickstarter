@@ -318,7 +318,7 @@ public final class SessionFeature {
 
   /// Clears the server's activity indicator and returns the user with its updated count.
   @discardableResult
-  public func startClearActivityIndicator() -> Task<User, Error> {
+  public func startActivityIndicatorClearAndUserRefresh() -> Task<User, Error> {
     self.startUserOperation(.clearActivity)
   }
 

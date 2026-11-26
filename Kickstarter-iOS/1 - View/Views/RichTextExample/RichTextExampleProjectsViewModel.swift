@@ -62,7 +62,7 @@ internal final class RichTextExampleProjectsViewModel {
     self.lookupID = nil
     self.submittedInput = nil
     self.slugError = false
-    self.developerExamplesFeature.cancelLookup(route: self.route)
+    self.developerExamplesFeature.cancelRichTextProjectLookup(route: self.route)
   }
   func suspend() {
     self.clearLookup()

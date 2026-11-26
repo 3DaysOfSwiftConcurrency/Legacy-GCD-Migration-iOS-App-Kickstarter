@@ -159,8 +159,8 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.attributionGate.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.recordAttribution(route: route, projectID: "project", properties: "{\"ref\":\"search\"}")
-    let duplicate = feature.recordAttribution(route: route, projectID: "project", properties: "changed")
+    let first = feature.startProjectPageViewAttribution(route: route, projectID: "project", properties: "{\"ref\":\"search\"}")
+    let duplicate = feature.startProjectPageViewAttribution(route: route, projectID: "project", properties: "changed")
     await provider.attributionGate.waitFor(1)
     let input = try XCTUnwrap(provider.attributions.first)
     XCTAssertEqual(input.eventName, AttributionTracking.AttributionEvent.projectPageViewed.rawValue)
@@ -169,7 +169,7 @@ final class ProjectDetailsFeatureTests: TestCase {
     try provider.attributionGate.finish(0, .success(()))
     try await first.value
     try await duplicate.value
-    try await feature.recordAttribution(route: route, projectID: "project", properties: nil).value
+    try await feature.startProjectPageViewAttribution(route: route, projectID: "project", properties: nil).value
     XCTAssertEqual(provider.attributions.count, 1)
   }
 
@@ -179,12 +179,12 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.attributionGate.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let first = feature.recordAttribution(route: route, projectID: "project", properties: nil)
+    let first = feature.startProjectPageViewAttribution(route: route, projectID: "project", properties: nil)
     await provider.attributionGate.waitFor(1)
     try provider.attributionGate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { try await first.value; XCTFail("Expected failure") } catch {}
-    do { try await feature.recordAttribution(route: route, projectID: "project", properties: nil).value; XCTFail("Must retain failure") } catch {}
-    let other = feature.recordAttribution(route: UUID(), projectID: "project", properties: nil)
+    do { try await feature.startProjectPageViewAttribution(route: route, projectID: "project", properties: nil).value; XCTFail("Must retain failure") } catch {}
+    let other = feature.startProjectPageViewAttribution(route: UUID(), projectID: "project", properties: nil)
     await provider.attributionGate.waitFor(2)
     try provider.attributionGate.finish(1, .success(()))
     try await other.value
@@ -197,19 +197,19 @@ final class ProjectDetailsFeatureTests: TestCase {
     defer { provider.attributionGate.releaseAll() }
     let feature = self.feature(provider)
     let route = UUID()
-    let task = feature.recordAttribution(route: route, projectID: "project", properties: nil)
+    let task = feature.startProjectPageViewAttribution(route: route, projectID: "project", properties: nil)
     await provider.attributionGate.waitFor(1)
     feature.releaseProjectPage(route: route)
     XCTAssertFalse(task.isCancelled)
     try provider.attributionGate.finish(0, .success(()))
     try await task.value
-    await feature.waitForAttribution()
+    await feature.waitForProjectPageViewAttribution()
   }
 
   func testSessionChangeBeforeAttributionDispatchPreventsSending() async {
     let provider = ControlledProjectDetailsProvider()
     let feature = self.feature(provider)
-    let task = feature.recordAttribution(route: UUID(), projectID: "project", properties: nil)
+    let task = feature.startProjectPageViewAttribution(route: UUID(), projectID: "project", properties: nil)
     feature.sessionFeature.sessionChanged()
     do { try await task.value; XCTFail("Obsolete account") }
     catch { XCTAssertTrue(error is CancellationError) }

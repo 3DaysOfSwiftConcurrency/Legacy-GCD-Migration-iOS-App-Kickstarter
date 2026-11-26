@@ -207,7 +207,7 @@ public final class CommentsViewModel: CommentsViewModelType,
   public func didSelectComment(_ comment: Comment) {
     guard comment.status == .failed, self.retryTasks[comment.id] == nil,
           let commentableID = self.latestCommentableID else { return }
-    let task = self.discussionFeature.beginRetry(comment: comment, commentableID: commentableID, parentID: nil) { [weak self] replacement, id in
+    let task = self.discussionFeature.startCommentRetryWithStatusUpdates(comment: comment, commentableID: commentableID, parentID: nil) { [weak self] replacement, id in
       self?.applyComment(replacement, replacing: id)
     }
     self.retryTasks[comment.id] = task
@@ -225,7 +225,7 @@ public final class CommentsViewModel: CommentsViewModelType,
     guard let project = self.latestPostingProject, let commentableID = self.latestCommentableID,
           let user = self.postingUser else { return }
     let id = UUID()
-    let task = self.discussionFeature.beginPresentedPost(
+    let task = self.discussionFeature.startCommentPostWithStatusUpdates(
       project: project, commentableID: commentableID, parentID: nil, user: user, body: text
     ) { [weak self] comment, replacementID in
       self?.applyComment(comment, replacing: replacementID)

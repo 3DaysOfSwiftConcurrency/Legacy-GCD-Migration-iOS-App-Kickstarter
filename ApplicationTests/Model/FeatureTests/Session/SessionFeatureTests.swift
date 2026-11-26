@@ -261,8 +261,8 @@ final class SessionFeatureTests: XCTestCase {
       makeProvider: { provider }, currentUser: { user },
       updateUser: { user = $0; commits += 1 }
     )
-    let first = feature.startClearActivityIndicator()
-    let duplicate = feature.startClearActivityIndicator()
+    let first = feature.startActivityIndicatorClearAndUserRefresh()
+    let duplicate = feature.startActivityIndicatorClearAndUserRefresh()
     await provider.badges.waitFor(1)
     user?.chosenCurrency = "GBP"
     let readRevision = feature.userReadGeneration
@@ -286,14 +286,14 @@ final class SessionFeatureTests: XCTestCase {
       makeProvider: { provider }, currentUser: { user },
       updateUser: { user = $0; commits += 1 }
     )
-    let failed = feature.startClearActivityIndicator()
+    let failed = feature.startActivityIndicatorClearAndUserRefresh()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { _ = try await failed.value; XCTFail("Expected failure") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
     XCTAssertEqual(user?.unseenActivityCount, 7)
     XCTAssertEqual(commits, 0)
-    let retry = feature.startClearActivityIndicator()
+    let retry = feature.startActivityIndicatorClearAndUserRefresh()
     await provider.badges.waitFor(2)
     try provider.badges.finish(1, .success(0))
     _ = try await retry.value
@@ -310,7 +310,7 @@ final class SessionFeatureTests: XCTestCase {
     )
     let read = feature.startCurrentUserFetch()
     await provider.users.waitFor(1)
-    let write = feature.startClearActivityIndicator()
+    let write = feature.startActivityIndicatorClearAndUserRefresh()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .success(0))
     _ = try await write.value
@@ -333,7 +333,7 @@ final class SessionFeatureTests: XCTestCase {
     )
     let setup = Task { try await feature.refreshGraphUserSetup() }
     await provider.setups.waitFor(1)
-    let badge = feature.startClearActivityIndicator()
+    let badge = feature.startActivityIndicatorClearAndUserRefresh()
     await provider.badges.waitFor(1)
     try provider.badges.finish(0, .success(0))
     _ = try await badge.value
@@ -525,8 +525,8 @@ final class SessionFeatureTests: XCTestCase {
     defer { provider.releaseAll() }
     var user: User? = .template
     let feature = SessionFeature(makeProvider: { provider }, currentUser: { user })
-    let first = feature.startClearActivityIndicator()
-    let duplicate = feature.startClearActivityIndicator()
+    let first = feature.startActivityIndicatorClearAndUserRefresh()
+    let duplicate = feature.startActivityIndicatorClearAndUserRefresh()
     await provider.badges.waitFor(1)
     user = nil
     feature.sessionChanged()
@@ -536,7 +536,7 @@ final class SessionFeatureTests: XCTestCase {
         XCTFail("\(error)")
       }
     }
-    let denied = feature.startClearActivityIndicator()
+    let denied = feature.startActivityIndicatorClearAndUserRefresh()
     do { _ = try await denied.value; XCTFail("Logged-out mutation") } catch {}
     XCTAssertEqual(provider.badges.count, 1)
   }

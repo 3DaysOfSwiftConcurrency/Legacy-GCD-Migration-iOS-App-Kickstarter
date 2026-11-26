@@ -300,13 +300,13 @@ public final class ProfileFeature {
       do {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        let result = try await provider.fetchProfileProjectsPage(type: type, cursor: cursor)
+        let fetchedPage = try await provider.fetchProfileProjectsPage(type: type, cursor: cursor)
         try await sleep(delay)
         try Task.checkCancellation()
         guard self.projectCollectionsByType[type] === page, page.request?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        page.cursor = result.projects.isEmpty ? nil : result.cursor
-        page.snapshot.projects = cursor == nil ? result.projects : page.snapshot.projects + result.projects
+        page.cursor = fetchedPage.projects.isEmpty ? nil : fetchedPage.cursor
+        page.snapshot.projects = cursor == nil ? fetchedPage.projects : page.snapshot.projects + fetchedPage.projects
         self.publish(.projects(type, page.snapshot.projects))
       } catch {
         guard !Task.isCancelled, !(error is CancellationError), self.projectCollectionsByType[type] === page,

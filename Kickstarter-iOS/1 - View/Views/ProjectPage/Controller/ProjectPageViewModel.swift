@@ -262,7 +262,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   public func cancelImagePreparation() {
     self.imageWaiters.values.forEach { $0.task.cancel() }
     self.imageWaiters.removeAll()
-    self.projectMediaFeature.cancelImages(route: self.projectRoute)
+    self.projectMediaFeature.cancelImageLoads(route: self.projectRoute)
   }
 
   @discardableResult
@@ -413,7 +413,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     guard !self.didRecordAttribution, let project = self.latestProject,
           let (_, refInfo, _) = self.configData else { return }
     self.didRecordAttribution = true
-    self.projectDetailsFeature.recordAttribution(
+    self.projectDetailsFeature.startProjectPageViewAttribution(
       route: self.projectRoute, projectID: project.graphID,
       properties: AttributionTracking.eventParametersJSON(refInfo: refInfo)
     )
@@ -455,7 +455,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     // Finite route cleanup, with no self capture or new network operation.
     Task { @MainActor in
       media.cancelPlaybackPreparations(route: route)
-      media.cancelImages(route: route)
+      media.cancelImageLoads(route: route)
       details.releaseProjectPage(route: route)
     }
   }
@@ -549,7 +549,7 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
     case .pledgeManager:
       guard let project = self.projectDetailsFeature.projectPageSnapshot(for: self.projectRoute).project else { return }
       self.onGoToPledgeManager?(
-        self.projectDetailsFeature.redemptionURL(for: project)
+        self.projectDetailsFeature.redemptionURLString(for: project)
       )
     case .fix, .viewBacking, .manage:
       guard let project = self.projectDetailsFeature.projectPageSnapshot(for: self.projectRoute).project,

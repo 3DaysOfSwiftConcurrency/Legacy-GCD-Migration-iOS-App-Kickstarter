@@ -33,7 +33,7 @@ extension AppModel {
           rawParams, responseDelay: discoveryResponseDelay
         ))
       case let .user(_, .survey(id)):
-        destination = .survey(try await self.activityFeature.surveyURL(id: id))
+        destination = .survey(try await self.activityFeature.fetchSurveyURLString(id: id))
       case let .messages(id):
         destination = try await self.messagingFeature.fetchMessageThread(id: id).map { .message($0.messageThread) }
       case let .project(_, .pledgeManagerWebview(url), _, _):

@@ -258,7 +258,7 @@ public final class FriendsFeature {
   }
 
   /// Admit a follow write synchronously; the returned task only observes it.
-  func startFollowing(user: User, following: Bool) -> Task<User, Error> {
+  func startFollowingStatusUpdate(user: User, following: Bool) -> Task<User, Error> {
     let command = self.startFollowingWrite(.follow(user.id, following))
     return Task {
       try await command.value
@@ -275,7 +275,7 @@ public final class FriendsFeature {
     return value
   }
 
-  public func waitForResponseDelivery() async throws {
+  public func waitForResponsePresentationDelay() async throws {
     try await self.sleep(self.responseDelaySeconds())
   }
 

@@ -26,7 +26,7 @@ final class DiscussionFeatureTests: TestCase {
       makeProvider: { provider }, sleep: { delays.append($0) }
     )
     var values: [Comment] = []
-    let task = feature.beginPresentedPost(project: .template, commentableID: "project", parentID: nil, user: .template, body: "hello") { value, _ in
+    let task = feature.startCommentPostWithStatusUpdates(project: .template, commentableID: "project", parentID: nil, user: .template, body: "hello") { value, _ in
       values.append(value)
     }
     XCTAssertEqual(values.count, 1)
@@ -49,7 +49,7 @@ final class DiscussionFeatureTests: TestCase {
       makeProvider: { provider }, sleep: { delays.append($0) }
     )
     var values: [Comment] = []
-    let task = feature.beginPresentedPost(project: .template, commentableID: "project", parentID: nil, user: .template, body: "hello") { value, _ in
+    let task = feature.startCommentPostWithStatusUpdates(project: .template, commentableID: "project", parentID: nil, user: .template, body: "hello") { value, _ in
       values.append(value)
     }
     await task.value
@@ -65,7 +65,7 @@ final class DiscussionFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     var values: [Comment] = []
-    let task = feature.beginPresentedPost(project: .template, commentableID: "project", parentID: nil, user: .template, body: "hello") { value, _ in
+    let task = feature.startCommentPostWithStatusUpdates(project: .template, commentableID: "project", parentID: nil, user: .template, body: "hello") { value, _ in
       values.append(value)
     }
     await provider.waitForPosts(1)
@@ -84,7 +84,7 @@ final class DiscussionFeatureTests: TestCase {
     })
     let original = Comment.template.updatingStatus(to: .failed)
     var values: [Comment] = []
-    let task = feature.beginRetry(comment: original, commentableID: "project", parentID: nil) { comment, _ in
+    let task = feature.startCommentRetryWithStatusUpdates(comment: original, commentableID: "project", parentID: nil) { comment, _ in
       values.append(comment)
     }
     await task.value
@@ -106,7 +106,7 @@ final class DiscussionFeatureTests: TestCase {
       }
     })
     var values: [Comment] = []
-    let task = feature.beginRetry(comment: .template, commentableID: "project", parentID: nil) { comment, _ in
+    let task = feature.startCommentRetryWithStatusUpdates(comment: .template, commentableID: "project", parentID: nil) { comment, _ in
       values.append(comment)
     }
     await fulfillment(of: [started], timeout: 2)
@@ -128,7 +128,7 @@ final class DiscussionFeatureTests: TestCase {
       sleep: { _ in await withCheckedContinuation { resume = $0; started.fulfill() } }
     )
     await withEnvironment(currentUser: .template) {
-      let task = feature.beginRetry(comment: .template, commentableID: "project", parentID: nil) { _, _ in }
+      let task = feature.startCommentRetryWithStatusUpdates(comment: .template, commentableID: "project", parentID: nil) { _, _ in }
       await fulfillment(of: [started], timeout: 2)
       await withEnvironment(currentUser: nil) {
         resume?.resume()
@@ -171,8 +171,8 @@ final class DiscussionFeatureTests: TestCase {
     defer { provider.releaseAll() }
     let feature = self.feature(provider)
     await withEnvironment(currentUser: .template) {
-      let first = feature.beginPost(project: .template, commentableID: "project", parentID: "parent", user: .template, body: "hello")
-      let second = feature.beginPost(project: .template, commentableID: "project", parentID: "parent", user: .template, body: "hello")
+      let first = feature.startCommentSubmissionWithOptimisticValue(project: .template, commentableID: "project", parentID: "parent", user: .template, body: "hello")
+      let second = feature.startCommentSubmissionWithOptimisticValue(project: .template, commentableID: "project", parentID: "parent", user: .template, body: "hello")
       XCTAssertEqual(first.comment.body, "hello")
       XCTAssertEqual(first.comment.parentId, "parent")
       await provider.waitForPosts(2)

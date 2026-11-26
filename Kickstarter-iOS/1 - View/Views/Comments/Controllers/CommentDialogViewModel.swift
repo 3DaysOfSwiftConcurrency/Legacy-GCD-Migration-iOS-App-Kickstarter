@@ -70,7 +70,7 @@ final class CommentDialogViewModel {
     let sessionID = feature.sessionFeature.generation
     let userID = feature.sessionFeature.currentUser?.id
     let commentableID = data.update.map { encodeToBase64("FreeformPost-\($0.id)") } ?? data.project.graphID
-    let submission = feature.beginPost(
+    let submission = feature.startCommentSubmissionWithOptimisticValue(
       project: data.project, commentableID: commentableID, parentID: nil, user: user, body: body
     )
     self.onEvent?(.loadingHidden(false))

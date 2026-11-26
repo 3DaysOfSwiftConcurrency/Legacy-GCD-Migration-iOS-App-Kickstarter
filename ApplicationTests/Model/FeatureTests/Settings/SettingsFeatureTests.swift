@@ -618,7 +618,7 @@ extension SettingsFeatureTests {
       makeProvider: { fixture.provider }
     )
 
-    try await feature.waitForResponseDelivery()
+    try await feature.waitForResponsePresentationDelay()
 
     XCTAssertEqual(delays, [2.5])
   }

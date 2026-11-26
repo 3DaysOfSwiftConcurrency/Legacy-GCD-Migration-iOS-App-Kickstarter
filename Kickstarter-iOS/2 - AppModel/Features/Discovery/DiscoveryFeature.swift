@@ -224,7 +224,7 @@ public final class DiscoveryFeature {
 
   /// Replaces the application's pending availability delivery without owning UIKit shortcuts.
   @discardableResult
-  func refreshRecommendationAvailability(onResult: @escaping @MainActor (Bool) -> Void) -> Task<Void, Never> {
+  func startRecommendationAvailabilityRefresh(onResult: @escaping @MainActor (Bool) -> Void) -> Task<Void, Never> {
     self.cancelRecommendationRefresh()
     let id = UUID()
     let user = self.sessionFeature.currentUser

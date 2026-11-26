@@ -23,7 +23,7 @@ final class CommentCellViewModel {
   func configureWith(comment: Comment, project: Project?) {
     self.comment = comment
     self.onEvent?(.authorImageURL(comment.author.isBlocked ? nil : URL(string: comment.author.imageUrl)))
-    self.onEvent?(.body(getCommentBody(comment, communityGuidelinesURL: self.discussionFeature.helpURL(.community))))
+    self.onEvent?(.body(getCommentBody(comment, communityGuidelinesURL: self.discussionFeature.helpURLString(.community))))
     self.onEvent?(.authorName(comment.author.isBlocked ? Strings.Blocked_user() : comment.author.name))
     self.publishStatus(comment.status)
     if let createdAt = comment.createdAt {

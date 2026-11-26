@@ -194,7 +194,7 @@ public final class SettingsFeature {
     self.identifyUser(user)
   }
 
-  public func waitForResponseDelivery() async throws {
+  public func waitForResponsePresentationDelay() async throws {
     try await self.responseDeliverySleep(self.responseDelaySeconds)
   }
 

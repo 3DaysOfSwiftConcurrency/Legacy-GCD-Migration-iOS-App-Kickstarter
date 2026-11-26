@@ -99,7 +99,7 @@ public final class ActivityFeature {
     self.platform.trackProjectCardClick(project)
   }
 
-  func surveyURL(id: Int) async throws -> String {
+  func fetchSurveyURLString(id: Int) async throws -> String {
     try await self.platform.loadSurvey(id).urls.web.survey
   }
 

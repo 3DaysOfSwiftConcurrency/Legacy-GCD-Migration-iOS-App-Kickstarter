@@ -50,12 +50,12 @@ final class ActivityFeatureTests: TestCase {
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(self.page([4])))
     await page?.value
-    let surveyURL = try await feature.surveyURL(id: 42)
+    let surveyURLString = try await feature.fetchSurveyURLString(id: 42)
 
     XCTAssertEqual(sleeps, [11])
     XCTAssertEqual(feature.activities.map(\.id), [4])
     XCTAssertEqual(surveyIDs, [42])
-    XCTAssertEqual(surveyURL, SurveyResponse.template.urls.web.survey)
+    XCTAssertEqual(surveyURLString, SurveyResponse.template.urls.web.survey)
     XCTAssertEqual(feature.currentApplicationBadgeNumber, 7)
   }
 

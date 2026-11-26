@@ -389,8 +389,8 @@ internal final class ProjectPageViewControllerDataSource: ValueCellDataSource {
       cell.configureWith(value: value)
     case let (cell as ReportProjectCell, value as Bool):
       cell.configureURLs(
-        prohibitedItemsURL: self.projectDetailsFeature.helpURL(.prohibitedItems) ?? "",
-        communityURL: self.projectDetailsFeature.helpURL(.community) ?? ""
+        prohibitedItemsURL: self.projectDetailsFeature.helpURLString(.prohibitedItems) ?? "",
+        communityURL: self.projectDetailsFeature.helpURLString(.community) ?? ""
       )
       cell.configureWith(value: value)
     case let (cell as SimilarProjectsTableViewCell, value as SimilarProjectsState):

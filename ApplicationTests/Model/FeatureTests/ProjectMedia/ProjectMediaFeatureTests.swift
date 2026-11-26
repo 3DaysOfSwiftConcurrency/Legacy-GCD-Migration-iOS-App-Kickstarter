@@ -202,7 +202,7 @@ final class ProjectMediaFeatureTests: TestCase {
     await gate.waitFor(1)
     let independent = feature.startImageLoad(route: UUID(), url: url)
     await gate.waitFor(2)
-    feature.cancelImages(route: route)
+    feature.cancelImageLoads(route: route)
     let replacement = feature.startImageLoad(route: route, url: url)
     await gate.waitFor(3)
     let image = UIImage()

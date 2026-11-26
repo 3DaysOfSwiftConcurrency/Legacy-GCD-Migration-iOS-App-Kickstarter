@@ -96,7 +96,7 @@ public final class ProjectMediaFeature {
     return task
   }
 
-  public func cancelImages(route: UUID) {
+  public func cancelImageLoads(route: UUID) {
     for key in self.pendingImageLoads.keys.filter({ $0.route == route }) {
       self.pendingImageLoads.removeValue(forKey: key)?.task.cancel()
     }
@@ -535,7 +535,7 @@ public final class ProjectMediaFeature {
   }
 
   public func release(route: UUID) {
-    self.cancelImages(route: route)
+    self.cancelImageLoads(route: route)
     self.cancelPlaybackPreparations(route: route)
     self.feedRequests.removeValue(forKey: route)?.task.cancel()
     self.videoFeedStatesByRoute[route] = nil
