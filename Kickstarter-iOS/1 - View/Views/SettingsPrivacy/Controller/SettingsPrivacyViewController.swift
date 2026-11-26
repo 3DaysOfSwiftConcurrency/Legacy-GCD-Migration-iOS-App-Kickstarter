@@ -7,7 +7,10 @@ import SafariServices
 import UIKit
 
 internal final class SettingsPrivacyViewController: UITableViewController {
-  internal let viewModel = SettingsPrivacyViewModel(settingsFeature: AppModel.shared.settingsFeature)
+  internal let viewModel = SettingsPrivacyViewModel(
+    settingsFeature: AppModel.shared.settingsFeature,
+    sessionFeature: AppModel.shared.sessionFeature
+  )
   fileprivate let dataSource = SettingsPrivacyDataSource()
 
   internal static func instantiate() -> SettingsPrivacyViewController {

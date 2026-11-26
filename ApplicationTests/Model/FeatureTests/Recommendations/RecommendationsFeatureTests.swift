@@ -8,6 +8,8 @@ import XCTest
 final class RecommendationsFeatureTests: XCTestCase {
   private var provider: ControlledRecommendationsProvider!
   private var feature: RecommendationsFeature!
+  private var settingsFeature: SettingsFeature!
+  private var sessionFeature: SessionFeature!
   private var configuration: Config? = .template
   private var promptStore: MockKeyValueStore!
   private let route = UUID()
@@ -19,16 +21,19 @@ final class RecommendationsFeatureTests: XCTestCase {
     self.provider = provider
     self.promptStore = promptStore
     let user = User.template |> \.stats.backedProjectsCount .~ 2
-    let settings = SettingsFeature(
-      sessionFeature: SessionFeature(
+    let sessionFeature = SessionFeature(
         makeProvider: { AsyncSessionProvider(service: MockService()) }, currentUser: { user }
-      ),
+    )
+    let settingsFeature = SettingsFeature(
+      sessionFeature: sessionFeature,
       applicationSettings: .test(readConfiguration: { [weak self] in self?.configuration }),
       makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
     )
+    self.settingsFeature = settingsFeature
+    self.sessionFeature = sessionFeature
     self.feature = RecommendationsFeature(
       platform: .test(promptStore: { promptStore }),
-      settingsFeature: settings, makeProvider: { provider }, sleep: { _ in }
+      settingsFeature: settingsFeature, makeProvider: { provider }, sleep: { _ in }
     )
   }
 
@@ -192,7 +197,11 @@ final class RecommendationsFeatureTests: XCTestCase {
   }
 
   func testClosingThanksSuppressesLateRecommendations() async throws {
-    let vm = ThanksViewModel(recommendationsFeature: self.feature)
+    let vm = ThanksViewModel(
+      recommendationsFeature: self.feature,
+      settingsFeature: self.settingsFeature,
+      sessionFeature: self.sessionFeature
+    )
     vm.configure(with: (self.project(1), .template, nil, 1))
     await self.provider.categories.waitFor(1)
     vm.closeButtonTapped()

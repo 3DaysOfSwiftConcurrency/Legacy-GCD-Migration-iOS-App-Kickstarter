@@ -17,20 +17,22 @@ final class ThanksViewModel {
   }
   var onEvent: ((Event) -> Void)?
   private let recommendationsFeature: RecommendationsFeature
+  private let settingsFeature: SettingsFeature
+  private let sessionFeature: SessionFeature
   private let route = UUID()
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var recommendationTask: Task<Void, Never>?
   private var recommendationRevision = UUID()
   private var newsletterTask: Task<Void, Never>?
   private var data: ThanksPageData?
   private var recommendedProjects: [Project]?
 
-  init(recommendationsFeature: RecommendationsFeature,
-       sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-         if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-       }) {
+  init(
+    recommendationsFeature: RecommendationsFeature, settingsFeature: SettingsFeature,
+    sessionFeature: SessionFeature
+  ) {
     self.recommendationsFeature = recommendationsFeature
-    self.sleep = sleep
+    self.settingsFeature = settingsFeature
+    self.sessionFeature = sessionFeature
   }
   deinit {
     self.recommendationTask?.cancel()
@@ -48,7 +50,7 @@ final class ThanksViewModel {
     self.recommendationRevision = revision
     let recommendationsFeature = self.recommendationsFeature
     let route = self.route
-    let session = recommendationsFeature.sessionFeature
+    let session = self.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
     let command = recommendationsFeature.startRecommendationsLoad(.afterBacking(data.project), route: route)
@@ -97,19 +99,16 @@ final class ThanksViewModel {
     }
   }
   func gamesNewsletterSignupButtonTapped() {
-    if self.recommendationsFeature.settingsFeature.requiresCurrentCountryNewsletterOptIn {
+    if self.settingsFeature.requiresCurrentCountryNewsletterOptIn {
       self.onEvent?(.showGamesNewsletterOptInAlert(Strings.profile_settings_newsletter_games()))
     }
-    guard let user = self.recommendationsFeature.sessionFeature.currentUser else { return }
+    guard let user = self.sessionFeature.currentUser else { return }
     self.newsletterTask?.cancel()
-    let settings = self.recommendationsFeature.settingsFeature
-    let delay = settings.responseDelaySeconds
-    let sleep = self.sleep
+    let settingsFeature = self.settingsFeature
     self.newsletterTask = Task { [weak self] in
       do {
-        let updated = try await settings.savePreferences([.init(.newsletter(.games), true)], from: user)
-        try await sleep(delay)
-        try Task.checkCancellation()
+        let updated = try await settingsFeature.savePreferences([.init(.newsletter(.games), true)], from: user)
+        guard !Task.isCancelled else { return }
         self?.onEvent?(.updateUserInEnvironment(updated))
       } catch { }
     }
@@ -128,7 +127,7 @@ final class ThanksViewModel {
     }
     AppEnvironment.current.appTrackingTransparency.updateAdvertisingIdentifier()
     guard let externalId = AppEnvironment.current.appTrackingTransparency.advertisingIdentifier else { return }
-    let userId = self.recommendationsFeature.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
+    let userId = self.sessionFeature.currentUser.map { "\($0.id)" } ?? ""
     var extInfo = Array(repeating: "", count: 16)
     extInfo[0] = "i2"
     extInfo[4] = AppEnvironment.current.mainBundle.platformVersion

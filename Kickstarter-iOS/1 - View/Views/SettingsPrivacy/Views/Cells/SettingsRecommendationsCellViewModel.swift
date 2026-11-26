@@ -9,17 +9,13 @@ public final class SettingsRecommendationsCellViewModel {
   public var onSaved: (() -> Void)?
   public var onError: ((String) -> Void)?
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var initialUser: User?
   private var currentUser: User?
   private var revision = 0
   private var tasks: [UUID: Task<Void, Never>] = [:]
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(settingsFeature: SettingsFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
   }
 
   public func configureWith(user: User) {
@@ -37,8 +33,6 @@ public final class SettingsRecommendationsCellViewModel {
     self.revision += 1
     let revision = self.revision
     let settingsFeature = self.settingsFeature
-    let sleep = self.sleep
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let id = UUID()
     let task = Task { [weak self] in
       defer { self?.tasks[id] = nil }
@@ -48,7 +42,6 @@ public final class SettingsRecommendationsCellViewModel {
       } catch {
         result = .failure(error)
       }
-      do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }
       switch result {
       case .success:

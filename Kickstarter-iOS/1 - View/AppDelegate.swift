@@ -28,10 +28,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       resolveDestination: { try await AppModel.shared.resolveDeepLinkDestination(for: $0, discoveryResponseDelay: $1) },
       firstRedirect: { try await AppModel.shared.resolveEmailLinkDestination(for: $0, route: $1) },
       releaseRedirect: { AppModel.shared.releaseEmailLinkResolution(for: $0) },
-      settingsLinks: SettingsLinkPresentation(
-        settingsFeature: model.settingsFeature,
-        presentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
-      ),
+      settingsFeature: model.settingsFeature,
       projectPageComposition: model.projectPageComposition,
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }

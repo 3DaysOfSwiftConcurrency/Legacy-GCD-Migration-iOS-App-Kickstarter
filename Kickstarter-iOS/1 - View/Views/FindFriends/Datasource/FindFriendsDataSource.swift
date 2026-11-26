@@ -6,10 +6,12 @@ import UIKit
 internal final class FindFriendsDataSource: ValueCellDataSource {
   private let friendsFeature: FriendsFeature
   private let settingsFeature: SettingsFeature
+  private let sessionFeature: SessionFeature
 
-  init(friendsFeature: FriendsFeature, settingsFeature: SettingsFeature) {
+  init(friendsFeature: FriendsFeature, settingsFeature: SettingsFeature, sessionFeature: SessionFeature) {
     self.friendsFeature = friendsFeature
     self.settingsFeature = settingsFeature
+    self.sessionFeature = sessionFeature
     super.init()
   }
 
@@ -53,7 +55,7 @@ internal final class FindFriendsDataSource: ValueCellDataSource {
       cell.configure(friendsFeature: self.friendsFeature)
       cell.configureWith(value: value)
     case let (cell as FindFriendsFacebookConnectCell, value as FriendsSource):
-      cell.configure(settingsFeature: self.settingsFeature)
+      cell.configure(settingsFeature: self.settingsFeature, sessionFeature: self.sessionFeature)
       cell.configureWith(value: value)
     default:
       assertionFailure("Unrecognized combo: \(cell), \(value)")

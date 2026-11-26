@@ -51,7 +51,6 @@ public final class LoginToutViewModel {
     let version = UUID()
     self.appleVersion = version
     let feature = self.authenticationFeature
-    let delay = feature.responseDelaySeconds
     self.setLoading(true)
     self.appleTask = Task { [weak self] in
       let outcome: Result<AccessTokenEnvelope, Error>
@@ -60,8 +59,7 @@ public final class LoginToutViewModel {
           appID: data.appId, firstName: data.firstName, lastName: data.lastName, token: data.token
         )))
       } catch { outcome = .failure(error) }
-      do { if delay > 0 { try await Task.sleep(for: .seconds(delay)) }; try Task.checkCancellation() }
-      catch { return }
+      guard !Task.isCancelled else { return }
       guard let self, self.appleVersion == version else { return }
       switch outcome {
       case let .success(value): self.onAppleSuccess?(value)
@@ -107,14 +105,12 @@ public final class LoginToutViewModel {
     let version = UUID()
     self.facebookVersion = version
     let feature = self.authenticationFeature
-    let delay = feature.responseDelaySeconds
     self.setLoading(true)
     self.facebookTask = Task { [weak self] in
       let outcome: Result<AccessTokenEnvelope, Error>
       do { outcome = .success(try await feature.authenticate(.facebook(token))) }
       catch { outcome = .failure(error) }
-      do { if delay > 0 { try await Task.sleep(for: .seconds(delay)) }; try Task.checkCancellation() }
-      catch { return }
+      guard !Task.isCancelled else { return }
       guard let self, self.facebookVersion == version else { return }
       switch outcome {
       case let .success(value): self.onFacebookSuccess?(value)

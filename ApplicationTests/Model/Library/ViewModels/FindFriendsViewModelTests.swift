@@ -6,11 +6,15 @@ import XCTest
 @MainActor
 final class FindFriendsViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let feature = FriendsFeature(
-    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
+  private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
+  private lazy var feature = FriendsFeature(
+    sessionFeature: self.sessionFeature,
     makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) }, sleep: { _ in }
   )
-  private lazy var vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: {})
+  private lazy var vm = FindFriendsViewModel(
+    friendsFeature: self.feature,
+    sessionFeature: self.sessionFeature
+  )
 
   override func tearDown() async throws {
     self.feature.resetForSessionChange()

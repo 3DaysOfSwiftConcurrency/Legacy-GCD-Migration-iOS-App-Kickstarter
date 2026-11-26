@@ -5,11 +5,15 @@ import XCTest
 @MainActor
 final class SettingsNewslettersViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  private let feature = SettingsFeature(
-    sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
+  private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) })
+  private lazy var feature = SettingsFeature(
+    sessionFeature: self.sessionFeature,
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = SettingsNewslettersViewModel(settingsFeature: self.feature)
+  private lazy var vm = SettingsNewslettersViewModel(
+    settingsFeature: self.feature,
+    sessionFeature: self.sessionFeature
+  )
 
   func testCachedAndIdenticalRefreshedUsersAndDelegateUpdates() async {
     let user = User.template

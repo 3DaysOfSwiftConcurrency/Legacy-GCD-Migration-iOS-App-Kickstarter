@@ -73,14 +73,6 @@ final class ApplicationRoutingTests: TestCase {
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
   private let onboardingFeature = OnboardingFeature.live(trackingDelay: { try Task.checkCancellation() })
-  private var settingsLinkDelay: @MainActor (TimeInterval) async throws -> Void = { _ in
-    try Task.checkCancellation()
-  }
-  private lazy var settingsLinks = SettingsLinkPresentation(
-    settingsFeature: self.settingsFeature,
-    presentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-    waitForPresentationDelay: { [weak self] seconds in try await self?.settingsLinkDelay(seconds) }
-  )
   private lazy var model = makeTestAppModel(
     sessionFeature: self.settingsFeature.sessionFeature,
     onboardingFeature: self.onboardingFeature,
@@ -115,7 +107,7 @@ final class ApplicationRoutingTests: TestCase {
     },
     firstRedirect: { [model = self.model] in try await model.resolveEmailLinkDestination(for: $0, route: $1) },
     releaseRedirect: { [model = self.model] in model.releaseEmailLinkResolution(for: $0) },
-    settingsLinks: self.settingsLinks,
+    settingsFeature: self.settingsFeature,
     projectPageComposition: self.model.projectPageComposition,
     serverConfig: { AppEnvironment.current.apiService.serverConfig },
     discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
@@ -1908,7 +1900,7 @@ final class ApplicationRoutingTests: TestCase {
       )
       await self.settingsFeature.waitForSettingsOperations()
 
-      await self.settingsLinks.waitForPendingSettingsLinkResponses()
+      await self.deepLinkRouter.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([true])
       self.emailVerificationCompletedMessage.assertValues(
         ["Thanks—you’ve successfully verified your email address."]
@@ -1942,7 +1934,7 @@ final class ApplicationRoutingTests: TestCase {
       )
       await self.settingsFeature.waitForSettingsOperations()
 
-      await self.settingsLinks.waitForPendingSettingsLinkResponses()
+      await self.deepLinkRouter.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([false])
       self.emailVerificationCompletedMessage.assertValues(
         ["Error Message"]
@@ -1976,7 +1968,7 @@ final class ApplicationRoutingTests: TestCase {
       )
       await self.settingsFeature.waitForSettingsOperations()
 
-      await self.settingsLinks.waitForPendingSettingsLinkResponses()
+      await self.deepLinkRouter.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([false])
       self.emailVerificationCompletedMessage.assertValues(
         ["Something went wrong, please try again."]
@@ -1993,7 +1985,7 @@ final class ApplicationRoutingTests: TestCase {
       XCTAssertTrue(self.openLink(
         application: UIApplication.shared, url: url, options: [:]
       ))
-      await self.settingsLinks.waitForPendingSettingsLinkResponses()
+      await self.deepLinkRouter.waitForOperations()
       self.notificationSettingsUpdated.assertDidNotEmitValue()
       self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
       XCTAssertEqual(AppEnvironment.current.currentUser?.notifications, original)
@@ -2001,53 +1993,6 @@ final class ApplicationRoutingTests: TestCase {
     }
   }
 
-  func testDeepLinkCompletionDoesNotReplaySavedUserAfterPresentationDelay() async throws {
-    let (stream, continuation) = AsyncStream<Void>.makeStream()
-    self.settingsLinkDelay = { _ in
-      for await _ in stream { break }
-      try Task.checkCancellation()
-    }
-    AppEnvironment.login(AccessTokenEnvelope(accessToken: "fixture-token", user: .template))
-    let url =
-      try XCTUnwrap(URL(string: "https://www.kickstarter.com/settings/notify_mobile_of_messages/true"))
-    XCTAssertTrue(self.openLink(
-      application: UIApplication.shared, url: url, options: [:]
-    ))
-    await self.settingsFeature.waitForSettingsOperations()
-    XCTAssertEqual(AppEnvironment.current.currentUser?.notifications.mobileMessages, true)
-    self.notificationSettingsUpdated.assertDidNotEmitValue()
-    var newer = try XCTUnwrap(AppEnvironment.current.currentUser)
-    newer.newsletters.games = true
-    AppEnvironment.updateCurrentUser(newer)
-    continuation.yield(())
-    continuation.finish()
-    await self.settingsLinks.waitForPendingSettingsLinkResponses()
-    self.notificationSettingsUpdated.assertValueCount(1)
-    self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
-    XCTAssertEqual(AppEnvironment.current.currentUser?.newsletters.games, true)
-  }
-
-  func testDeepLinkNotificationDoesNotReportSuccessAfterSessionReplacement() async throws {
-    let delayStarted = self.expectation(description: "Settings write reached the presentation delay")
-    let (delayGate, release) = AsyncStream<Void>.makeStream()
-    self.settingsLinkDelay = { _ in
-      delayStarted.fulfill()
-      for await _ in delayGate { break }
-    }
-
-    AppEnvironment.login(AccessTokenEnvelope(accessToken: "fixture-token", user: .template))
-    let url = try XCTUnwrap(
-      URL(string: "https://www.kickstarter.com/settings/notify_mobile_of_messages/true")
-    )
-    XCTAssertTrue(self.openLink(application: UIApplication.shared, url: url, options: [:]))
-    await self.fulfillment(of: [delayStarted], timeout: 2)
-    self.settingsFeature.sessionFeature.sessionChanged()
-    release.yield(())
-    release.finish()
-    await self.settingsLinks.waitForPendingSettingsLinkResponses()
-
-    self.notificationSettingsUpdated.assertDidNotEmitValue()
-  }
 
   func testDeepLink_UserDidUpdateNotificationSettings() async {
     self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
@@ -2087,7 +2032,7 @@ final class ApplicationRoutingTests: TestCase {
       await self.settingsFeature.waitForSettingsOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([user])
-      await self.settingsLinks.waitForPendingSettingsLinkResponses()
+      await self.deepLinkRouter.waitForOperations()
       self.notificationSettingsUpdated.assertValueCount(1)
       XCTAssertEqual(AppEnvironment.current.currentUser?.notifications, updatedUser.notifications)
     }

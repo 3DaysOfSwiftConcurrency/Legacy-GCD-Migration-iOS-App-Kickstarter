@@ -18,6 +18,7 @@ final class SettingsNotificationsViewControllerTests: TestCase {
   )
   private lazy var composition = SettingsNotificationsComposition(
     settingsFeature: self.settingsFeature,
+    sessionFeature: self.sessionFeature,
     isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
   )
 

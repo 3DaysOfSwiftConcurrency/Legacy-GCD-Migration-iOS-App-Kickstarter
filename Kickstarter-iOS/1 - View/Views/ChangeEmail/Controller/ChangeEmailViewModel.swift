@@ -23,7 +23,6 @@ final class ChangeEmailViewModel {
   }
 
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var loadTask: Task<Void, Never>?
   private var saveTask: Task<Void, Never>?
   private var verifyTask: Task<Void, Never>?
@@ -31,11 +30,8 @@ final class ChangeEmailViewModel {
   private var saveRevision = 0
   private var verifyRevision = 0
 
-  init(settingsFeature: SettingsFeature = AppModel.shared.settingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  init(settingsFeature: SettingsFeature = AppModel.shared.settingsFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
   }
 
   func stop() {
@@ -55,12 +51,10 @@ final class ChangeEmailViewModel {
     self.loadTask?.cancel()
     self.loadRevision += 1
     let revision = self.loadRevision
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let settingsFeature = self.settingsFeature
-    self.loadTask = Task { [weak self, settingsFeature, sleep] in
+    self.loadTask = Task { [weak self, settingsFeature] in
       do {
         let user = try await settingsFeature.loadEmailUser()
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.loadRevision == revision else { return }
         self.currentEmail = user.email ?? ""
@@ -81,12 +75,10 @@ final class ChangeEmailViewModel {
     self.saveRevision += 1
     let revision = self.saveRevision
     self.isLoading = true
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let settingsFeature = self.settingsFeature
-    self.saveTask = Task { [weak self, settingsFeature, sleep] in
+    self.saveTask = Task { [weak self, settingsFeature] in
       do {
         _ = try await settingsFeature.updateAccount(.email(input))
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.saveRevision == revision else { return }
         self.currentEmail = input.email
@@ -97,7 +89,6 @@ final class ChangeEmailViewModel {
         self.bannerRevision += 1
       } catch {
         guard let self, !Task.isCancelled, !(error is CancellationError), self.saveRevision == revision else { return }
-        do { try await sleep(delay); try Task.checkCancellation() } catch { return }
         guard self.saveRevision == revision else { return }
         self.newEmail = ""
         self.password = ""
@@ -112,19 +103,16 @@ final class ChangeEmailViewModel {
     self.verifyTask?.cancel()
     self.verifyRevision += 1
     let revision = self.verifyRevision
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let settingsFeature = self.settingsFeature
-    self.verifyTask = Task { [weak self, settingsFeature, sleep] in
+    self.verifyTask = Task { [weak self, settingsFeature] in
       do {
         _ = try await settingsFeature.updateAccount(.sendVerification)
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.verifyRevision == revision else { return }
         self.banner = MessageBannerViewViewModel((type: .success, message: Strings.Verification_email_sent()))
         self.bannerRevision += 1
       } catch {
         guard let self, !Task.isCancelled, !(error is CancellationError), self.verifyRevision == revision else { return }
-        do { try await sleep(delay); try Task.checkCancellation() } catch { return }
         guard self.verifyRevision == revision else { return }
         self.banner = MessageBannerViewViewModel((type: .error, message: (error as? ErrorEnvelope)?.localizedDescription ?? error.localizedDescription))
         self.bannerRevision += 1

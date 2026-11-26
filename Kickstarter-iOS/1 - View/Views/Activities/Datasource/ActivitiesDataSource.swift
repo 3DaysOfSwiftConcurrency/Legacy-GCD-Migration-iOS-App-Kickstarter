@@ -6,10 +6,12 @@ import UIKit
 internal final class ActivitiesDataSource: ValueCellDataSource {
   private let activityFeature: ActivityFeature
   private let friendsFeature: FriendsFeature
+  private let sessionFeature: SessionFeature
 
-  init(activityFeature: ActivityFeature, friendsFeature: FriendsFeature) {
+  init(activityFeature: ActivityFeature, friendsFeature: FriendsFeature, sessionFeature: SessionFeature) {
     self.activityFeature = activityFeature
     self.friendsFeature = friendsFeature
+    self.sessionFeature = sessionFeature
     super.init()
   }
 
@@ -84,7 +86,7 @@ internal final class ActivitiesDataSource: ValueCellDataSource {
     case let (cell as ActivityFriendBackingCell, activity as Activity):
       cell.configureWith(value: activity)
     case let (cell as ActivityFriendFollowCell, activity as Activity):
-      cell.configure(friendsFeature: self.friendsFeature)
+      cell.configure(friendsFeature: self.friendsFeature, sessionFeature: self.sessionFeature)
       cell.configureWith(value: activity)
     case let (cell as ActivityProjectStatusCell, activity as Activity):
       cell.configure(activityFeature: self.activityFeature)

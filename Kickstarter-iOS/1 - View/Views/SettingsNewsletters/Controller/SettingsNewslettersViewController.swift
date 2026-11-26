@@ -7,7 +7,10 @@ import UIKit
 internal final class SettingsNewslettersViewController: UIViewController {
   private var settingsFeature: SettingsFeature!
   fileprivate lazy var dataSource = SettingsNewslettersDataSource(settingsFeature: self.settingsFeature)
-  fileprivate lazy var viewModel = SettingsNewslettersViewModel(settingsFeature: self.settingsFeature)
+  fileprivate lazy var viewModel = SettingsNewslettersViewModel(
+    settingsFeature: self.settingsFeature,
+    sessionFeature: AppModel.shared.sessionFeature
+  )
 
   @IBOutlet fileprivate var tableView: UITableView!
 

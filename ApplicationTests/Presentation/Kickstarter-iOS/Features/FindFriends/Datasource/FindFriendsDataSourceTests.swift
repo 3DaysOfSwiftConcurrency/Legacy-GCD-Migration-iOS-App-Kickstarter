@@ -21,7 +21,8 @@ final class FindFriendsDataSourceTests: XCTestCase {
       sessionFeature: self.sessionFeature,
       responseDeliverySleep: { _ in },
       makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
-    )
+    ),
+    sessionFeature: self.sessionFeature
   )
   let tableView = UITableView()
 

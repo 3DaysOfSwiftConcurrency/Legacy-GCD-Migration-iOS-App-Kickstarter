@@ -17,18 +17,14 @@ public final class ChangePasswordViewModel {
   public var onFailure: ((String) -> Void)?
 
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var currentPassword = ""
   private var newPassword = ""
   private var confirmation = ""
   private var hasConfirmation = false
   private var saveTasks: [UUID: Task<Void, Never>] = [:]
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(settingsFeature: SettingsFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
   }
   public func viewDidAppear() { self.validationMessage = ""; self.onFocusCurrent?() }
   public func currentPasswordFieldTextChanged(text: String) { self.currentPassword = text; self.updateValidation(showMessage: false) }
@@ -65,13 +61,11 @@ public final class ChangePasswordViewModel {
   private func submit() {
     let input = ChangePasswordInput(currentPassword: self.currentPassword, newPassword: self.newPassword,
                                     newPasswordConfirmation: self.confirmation)
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     let id = UUID()
     self.isLoading = true
-    self.saveTasks[id] = Task { [weak self, settingsFeature, sleep] in
+    self.saveTasks[id] = Task { [weak self, settingsFeature] in
       do {
         _ = try await settingsFeature.updateAccount(.password(input))
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self else { return }
         self.saveTasks[id] = nil

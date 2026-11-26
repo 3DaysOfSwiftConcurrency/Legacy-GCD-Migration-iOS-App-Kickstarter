@@ -1,6 +1,30 @@
 # CFA migration ledger
 
-Author: Matthew Thomas. Updated 3 November 2026.
+Author: Matthew Thomas. Updated 26 November 2026.
+
+## Local Swift package duplicate-framework finding — 26 November 2026
+
+The app target and the local `KsApi` package both directly use the Kickstarter
+Prelude package. A focused PresentationTests run initially could not install the
+host app because its generated Frameworks directory contained two Prelude products
+with the same bundle identifier: `Prelude.framework` and a hashed package-product
+variant. No test executed in that failed run.
+
+Removing the project-specific DerivedData directory and resolving packages again
+rebuilt an installable app without changing package manifests, package references,
+or application source. `FindFriendsDataSourceTests.testDataSource()` then passed on
+an iPad mini (A17 Pro), iOS 18.6. This confirms stale generated products were part
+of the immediate failure; it does not prove that package structure was harmless.
+
+Finding: application-only local packages introduce an additional dependency graph,
+build-product and cache boundary. When the app and a local package share a runtime
+dependency, duplicate framework products can obscure the source of a test-install
+failure and require package-resolution diagnosis before feature work can be tested.
+That cost must be justified by a concrete boundary. New application-only code
+defaults to the main application module; retaining or adding a local Swift package
+requires an explicit ownership and final-bundle dependency review. The
+`cfa-package-simplifier` toolkit guard records this rule. No package restructuring
+is claimed by this finding.
 
 ## ReactiveSwift removal — 7 November 2026
 

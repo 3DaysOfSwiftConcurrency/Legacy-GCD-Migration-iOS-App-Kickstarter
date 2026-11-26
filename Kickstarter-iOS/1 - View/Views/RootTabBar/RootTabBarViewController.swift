@@ -35,7 +35,7 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     sessionFeature: self.composition.sessionFeature,
     profileFeature: self.composition.backerDashboard.profileFeature,
     activityFeature: self.composition.activities.activityFeature,
-    settingsFeature: self.composition.backerDashboard.settings.settingsFeature,
+    settingsFeature: self.composition.settingsFeature,
     analytics: self.composition.analytics,
     badgePresentationDelay: self.composition.badgePresentationDelay,
     isVoiceOverRunning: self.composition.isVoiceOverRunning

@@ -8,18 +8,15 @@ public final class ProjectNotificationCellViewModel {
   var onSwitch: ((Bool) -> Void)?
   var onError: ((String) -> Void)?
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
+  private let sessionFeature: SessionFeature
   private var notification: ProjectNotification?
   private var presentation: Task<Void, Never>?
   private var revision = UUID()
   private var lastSwitch: Bool?
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { delay in
-    if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-    else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
-  }) {
+  public init(settingsFeature: SettingsFeature, sessionFeature: SessionFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
+    self.sessionFeature = sessionFeature
   }
 
   private func publishSwitch(_ on: Bool) {
@@ -45,15 +42,13 @@ public final class ProjectNotificationCellViewModel {
     let revision = UUID()
     self.revision = revision
     let settingsFeature = self.settingsFeature
-    let session = settingsFeature.sessionFeature
+    let session = self.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
     guard let command = try? settingsFeature.startProjectNotificationSave(edited) else { return }
-    let delay = settingsFeature.responseDelaySeconds
-    let sleep = self.sleep
     self.presentation = Task { [weak self] in
       let result = await command.result
-      do { try await sleep(delay); try Task.checkCancellation() } catch { return }
+      guard !Task.isCancelled else { return }
       guard let self, self.revision == revision,
             session.isCurrent(userID: userID, generation: generation) else { return }
       if case let .failure(error) = result, !(error is CancellationError) {

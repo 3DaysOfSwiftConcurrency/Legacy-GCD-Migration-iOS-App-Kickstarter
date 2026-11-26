@@ -11,24 +11,22 @@ public final class SettingsNotificationsViewModel {
   public var onError: ((String) -> Void)?
   public var onManageProjects: (() -> Void)?
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
+  private let sessionFeature: SessionFeature
   private var initialUser: User?
   private var pickerHidden: Bool?
   private var reads: [UUID: Task<Void, Never>] = [:]
   private var saves: [UUID: Task<Void, Never>] = [:]
   private var revision = 0
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(settingsFeature: SettingsFeature, sessionFeature: SessionFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
+    self.sessionFeature = sessionFeature
   }
 
-  public var currentUser: User? { self.settingsFeature.sessionFeature.currentUser }
+  public var currentUser: User? { self.sessionFeature.currentUser }
 
   public func viewDidLoad() {
-    if let user = self.settingsFeature.sessionFeature.currentUser { self.displayInitial(user) }
+    if let user = self.sessionFeature.currentUser { self.displayInitial(user) }
     let id = UUID()
     let settingsFeature = self.settingsFeature
     self.reads[id] = Task { [weak self, settingsFeature] in
@@ -69,8 +67,6 @@ public final class SettingsNotificationsViewModel {
     let revision = self.revision
     let id = UUID()
     let settingsFeature = self.settingsFeature
-    let sleep = self.sleep
-    let delay = settingsFeature.responseDelaySeconds
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
@@ -78,7 +74,6 @@ public final class SettingsNotificationsViewModel {
         result = .success(try await settingsFeature.savePreferences([.init(.notification(.creatorDigest), frequency == .dailySummary)],
                                                          from: source))
       } catch { result = .failure(error) }
-      do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }
       switch result {
       case let .success(user): self.display(user)

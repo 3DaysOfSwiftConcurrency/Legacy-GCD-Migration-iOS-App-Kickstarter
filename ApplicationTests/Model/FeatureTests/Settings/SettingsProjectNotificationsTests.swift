@@ -133,7 +133,7 @@ final class SettingsProjectNotificationsTests: TestCase {
   }
 
   func testReusedCellIgnoresPreviousProjectsSaveFailure() async throws {
-    let vm = ProjectNotificationCellViewModel(settingsFeature: self.feature)
+    let vm = ProjectNotificationCellViewModel(settingsFeature: self.feature, sessionFeature: self.session)
     var errors: [String] = []
     var switches: [Bool] = []
     vm.onError = { errors.append($0) }
@@ -150,19 +150,15 @@ final class SettingsProjectNotificationsTests: TestCase {
     XCTAssertEqual(switches, [false, true, false])
   }
 
-  func testDelayedErrorCannotReachReplacementSession() async throws {
-    let delay = AccountRequestGate<Void>()
-    defer { delay.releaseAll() }
-    let vm = ProjectNotificationCellViewModel(settingsFeature: self.feature, sleep: { _ in try await delay.request() })
+  func testErrorCannotReachReplacementSession() async throws {
+    let vm = ProjectNotificationCellViewModel(settingsFeature: self.feature, sessionFeature: self.session)
     var errors: [String] = []
     vm.onError = { errors.append($0) }
     vm.configureWith(notification: .template)
     vm.notificationTapped(on: true)
     await self.provider.writes.waitFor(1)
-    try self.provider.writes.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
-    await delay.waitFor(1)
     self.session.sessionChanged()
-    try delay.finish(0, .success(()))
+    try self.provider.writes.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     await vm.waitForPresentation()
     XCTAssertEqual(errors, [])
   }

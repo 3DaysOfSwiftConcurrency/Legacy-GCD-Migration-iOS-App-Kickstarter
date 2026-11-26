@@ -11,7 +11,7 @@ public final class SettingsPrivacyViewModel {
   public var onResetFollowing: (() -> Void)?
   public var onFocusFollowing: (() -> Void)?
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
+  private let sessionFeature: SessionFeature
   private var initialUser: User?
   private var currentUser: User?
   private var rollbackUser: User?
@@ -19,15 +19,13 @@ public final class SettingsPrivacyViewModel {
   private var saves: [UUID: Task<Void, Never>] = [:]
   private var revision = 0
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(settingsFeature: SettingsFeature, sessionFeature: SessionFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
+    self.sessionFeature = sessionFeature
   }
 
   public func viewDidLoad() {
-    if let user = self.settingsFeature.sessionFeature.currentUser { self.display(user) }
+    if let user = self.sessionFeature.currentUser { self.display(user) }
     self.loadTask?.cancel()
     let settingsFeature = self.settingsFeature
     self.loadTask = Task { [weak self, settingsFeature] in
@@ -79,14 +77,11 @@ public final class SettingsPrivacyViewModel {
     let revision = self.revision
     let id = UUID()
     let settingsFeature = self.settingsFeature
-    let sleep = self.sleep
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
       do { result = .success(try await settingsFeature.savePreferences(changes, from: source)) }
       catch { result = .failure(error) }
-      do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }
       switch result {
       case let .success(user): self.onUserUpdated?(user)

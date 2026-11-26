@@ -19,7 +19,9 @@ final class CuratedProjectsViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   ), makeProvider: { AsyncRecommendationsProvider(service: AppEnvironment.current.apiService) })
-  private lazy var viewModel: CuratedProjectsViewModel = CuratedProjectsViewModel(recommendationsFeature: self.feature)
+  private lazy var viewModel: CuratedProjectsViewModel = CuratedProjectsViewModel(
+    recommendationsFeature: self.feature, sessionFeature: self.feature.sessionFeature
+  )
 
   override func setUp() async throws {
     try await super.setUp()

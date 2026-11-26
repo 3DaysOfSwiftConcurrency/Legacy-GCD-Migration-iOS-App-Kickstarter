@@ -7,11 +7,13 @@ import UIKit
 internal final class FindFriendsViewController: UITableViewController {
   private var composition: FindFriendsComposition!
   fileprivate lazy var viewModel = FindFriendsViewModel(
-    friendsFeature: self.composition.friendsFeature
+    friendsFeature: self.composition.friendsFeature,
+    sessionFeature: self.composition.sessionFeature
   )
   fileprivate lazy var dataSource = FindFriendsDataSource(
     friendsFeature: self.composition.friendsFeature,
-    settingsFeature: self.composition.settingsFeature
+    settingsFeature: self.composition.settingsFeature,
+    sessionFeature: self.composition.sessionFeature
   )
   fileprivate let loadingIndicatorView = UIActivityIndicatorView()
   fileprivate let backgroundView = UIView()

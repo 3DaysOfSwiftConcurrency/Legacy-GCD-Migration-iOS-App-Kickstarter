@@ -284,7 +284,9 @@ final class FriendsFeatureTests: TestCase {
   }
 
   func testActivityAndFindFriendsShareFollowingStateWithoutSharingCellLifetime() async throws {
-    let vm = ActivityFriendFollowCellViewModel(friendsFeature: self.feature)
+    let vm = ActivityFriendFollowCellViewModel(
+      friendsFeature: self.feature, sessionFeature: self.session
+    )
     var activity = Activity.template
     activity = activity |> Activity.lens.user .~ Self.user(1)
     vm.configureWith(activity: activity)
@@ -303,36 +305,25 @@ final class FriendsFeatureTests: TestCase {
     XCTAssertEqual(other.hideFollowButton, true)
   }
 
-  func testDelayedSuccessDoesNotReachReplacementSession() async throws {
-    let gate = AccountRequestGate<Void>()
-    defer { gate.releaseAll() }
-    let feature = FriendsFeature(
-      sessionFeature: self.session,
-      makeProvider: { self.provider },
-      sleep: { _ in try await gate.request() }
-    )
-    let vm = FindFriendsFriendFollowCellViewModel(friendsFeature: feature)
+  func testFollowCompletionDoesNotReachReplacementSession() async throws {
+    let vm = FindFriendsFriendFollowCellViewModel(friendsFeature: self.feature)
     vm.configureWith(friend: Self.user(1))
     vm.followButtonTapped()
     await self.provider.writes.waitFor(1)
-    try self.provider.writes.finish(0, .success(()))
-    await gate.waitFor(1)
     self.session.sessionChanged()
-    try gate.finish(0, .success(()))
+    try self.provider.writes.finish(0, .success(()))
     await vm.waitForObservations()
     XCTAssertEqual(vm.hideFollowButton, false)
-    XCTAssertEqual(feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, false)
+    XCTAssertEqual(self.feature.userWithCachedFollowingStatus(Self.user(1)).isFriend, false)
   }
 
-  func testFollowAllDelayedRefreshCannotStartInReplacementSession() async throws {
-    let gate = AccountRequestGate<Void>()
-    defer { gate.releaseAll() }
+  func testFollowAllRefreshCannotStartInReplacementSession() async throws {
     var currentUser = User.template
     currentUser.facebookConnected = true
     self.currentUser = currentUser
     await withEnvironment(currentUser: currentUser) {
       do {
-        let vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: { try await gate.request() })
+        let vm = FindFriendsViewModel(friendsFeature: self.feature, sessionFeature: self.session)
         vm.configureWith(source: .findFriends)
         vm.viewDidLoad()
         await self.provider.pages.waitFor(1)
@@ -342,11 +333,9 @@ final class FriendsFeatureTests: TestCase {
         await self.feature.waitForFriendsOperations()
         vm.confirmFollowAllFriends()
         await self.provider.writes.waitFor(1)
-        try self.provider.writes.finish(0, .success(()))
-        await gate.waitFor(1)
         self.provider.immediatePage = Self.page([2])
         self.session.sessionChanged()
-        try gate.finish(0, .success(()))
+        try self.provider.writes.finish(0, .success(()))
         await vm.waitForObservations()
         XCTAssertEqual(self.provider.cursors.count, 1)
       } catch { XCTFail("Unexpected fixture failure: \(error)") }
@@ -359,7 +348,7 @@ final class FriendsFeatureTests: TestCase {
     self.currentUser = user
     await withEnvironment(currentUser: user) {
       do {
-        let vm = FindFriendsViewModel(friendsFeature: self.feature, refreshDelay: {})
+        let vm = FindFriendsViewModel(friendsFeature: self.feature, sessionFeature: self.session)
         vm.viewDidLoad()
         await self.provider.pages.waitFor(1)
         await self.provider.statisticsGate.waitFor(1)

@@ -137,7 +137,9 @@ public final class CommentRepliesViewModel: CommentRepliesViewModelType,
   private let blockAnalytics = BlockUserAnalyticsContext()
   public func blockUser(id: String) {
     self.blockAnalytics.receive(userID: "\(id)")
-    self.blockPresentation.start(feature: self.discussionFeature, id: id) { [weak self] result in
+    self.blockPresentation.start(
+      feature: self.discussionFeature, sessionFeature: AppModel.shared.sessionFeature, id: id
+    ) { [weak self] result in
       guard let self else { return }
       switch result {
       case .success:

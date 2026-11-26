@@ -232,24 +232,15 @@ final class DiscussionFeatureTests: TestCase {
     XCTAssertEqual(provider.blockIDs, ["target"])
   }
 
-  func testSameAccountReauthenticationDuringBlockPresentationDelaySuppressesNotification() async {
+  func testSameAccountReauthenticationSuppressesBlockNotification() async {
     let provider = ControlledDiscussionProvider()
     let feature = self.feature(provider)
-    let entered = expectation(description: "presentation delay entered")
-    var finish: CheckedContinuation<Void, Error>?
-    let presentation = DiscussionBlockPresentation { _ in
-      try await withCheckedThrowingContinuation { continuation in
-        finish = continuation
-        entered.fulfill()
-      }
-    }
+    let presentation = DiscussionBlockPresentation()
     var successes = 0
-    presentation.start(feature: feature, id: "target") { result in
+    presentation.start(feature: feature, sessionFeature: feature.sessionFeature, id: "target") { result in
       if case .success = result { successes += 1 }
     }
-    await fulfillment(of: [entered], timeout: 2)
     feature.sessionFeature.sessionChanged()
-    finish?.resume()
     await presentation.wait()
     XCTAssertEqual(successes, 0)
     XCTAssertEqual(provider.blockIDs, ["target"])

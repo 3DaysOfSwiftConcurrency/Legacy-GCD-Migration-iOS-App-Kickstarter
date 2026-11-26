@@ -473,7 +473,11 @@ public final class ProjectPageViewModel: ProjectPageViewModelType, ProjectPageVi
   private let blockAnalytics = BlockUserAnalyticsContext()
   public func blockUser(id: Int) {
     self.blockAnalytics.receive(userID: "\(id)")
-    self.blockPresentation.start(feature: self.projectDetailsFeature.discussionFeature, id: String(id)) { [weak self] result in
+    self.blockPresentation.start(
+      feature: self.projectDetailsFeature.discussionFeature,
+      sessionFeature: AppModel.shared.sessionFeature,
+      id: String(id)
+    ) { [weak self] result in
       guard let self else { return }
       switch result {
       case .success:

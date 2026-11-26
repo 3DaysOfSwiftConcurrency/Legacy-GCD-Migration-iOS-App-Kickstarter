@@ -18,14 +18,7 @@ public final class SortPagerViewModel {
   private var selectedSort: DiscoveryParams.Sort?
   private var selectedButton: Int?
   private var lastAnimatedPage: Int?
-  private var revealTask: Task<Void, Never>?
-  private let sleep: () async throws -> Void
-
-  public init(sleep: @escaping () async throws -> Void = {
-    try await Task.sleep(for: .milliseconds(100))
-  }) {
-    self.sleep = sleep
-  }
+  public init() {}
 
   public func configureWith(sorts: [DiscoveryParams.Sort]) {
     self.sorts = sorts
@@ -80,11 +73,10 @@ public final class SortPagerViewModel {
     guard !self.didAppear else { return }
     self.didAppear = true
     if self.appeared, self.sorts != nil { self.pinSelectedIndicatorToPage?(0, false) }
-    self.revealIndicatorAfterDelay()
+    self.revealIndicator()
   }
 
   public func willRotateToInterfaceOrientation() {
-    self.revealTask?.cancel()
     self.indicatorViewIsHidden = true
   }
 
@@ -93,7 +85,7 @@ public final class SortPagerViewModel {
       let index = self.selectedSort.flatMap { sorts.firstIndex(of: $0) } ?? 0
       self.pinSelectedIndicatorToPage?(index, false)
     }
-    self.revealIndicatorAfterDelay()
+    self.revealIndicator()
   }
 
   private func setSelectedIndexIfNeeded(_ index: Int) {
@@ -102,15 +94,8 @@ public final class SortPagerViewModel {
     self.setSelectedButton?(index)
   }
 
-  private func revealIndicatorAfterDelay() {
-    self.revealTask?.cancel()
-    self.revealTask = Task { [weak self, sleep] in
-      do {
-        try await sleep()
-        try Task.checkCancellation()
-        self?.indicatorViewIsHidden = false
-      } catch { }
-    }
+  private func revealIndicator() {
+    self.indicatorViewIsHidden = false
   }
 
 }

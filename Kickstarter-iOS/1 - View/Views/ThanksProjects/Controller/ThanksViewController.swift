@@ -15,7 +15,9 @@ internal final class ThanksViewController: UIViewController, UITableViewDelegate
   @IBOutlet fileprivate var headerView: UIView!
 
   fileprivate let viewModel = ThanksViewModel(
-    recommendationsFeature: AppModel.shared.recommendationsFeature
+    recommendationsFeature: AppModel.shared.recommendationsFeature,
+    settingsFeature: AppModel.shared.settingsFeature,
+    sessionFeature: AppModel.shared.sessionFeature
   )
   fileprivate let shareViewModel = ShareViewModel()
   fileprivate let dataSource = ThanksProjectsDataSource()

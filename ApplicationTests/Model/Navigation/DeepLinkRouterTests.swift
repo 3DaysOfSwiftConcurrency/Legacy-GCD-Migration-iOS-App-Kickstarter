@@ -15,7 +15,6 @@ final class DeepLinkRouterTests: XCTestCase {
   private var discoveryDelay: TimeInterval = 0
   private var discoverySleeps: [TimeInterval] = []
   private let redirects = AccountRequestGate<URL?>()
-  private var settingsLinks: SettingsLinkPresentation!
 
   override func setUp() async throws {
     try await super.setUp()
@@ -29,7 +28,6 @@ final class DeepLinkRouterTests: XCTestCase {
         verifyEmailResult: .success(EmailVerificationResponseEnvelope(message: "Verified"))
       ))
     })
-    self.settingsLinks = SettingsLinkPresentation(settingsFeature: settings, presentationDelaySeconds: { 0 })
     self.model = makeTestAppModel(
       sessionFeature: session, settingsFeature: settings, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session, makeProvider: { provider }),
@@ -57,7 +55,7 @@ final class DeepLinkRouterTests: XCTestCase {
       resolveDestination: { try await model.resolveDeepLinkDestination(for: $0, discoveryResponseDelay: $1) },
       firstRedirect: { try await model.resolveEmailLinkDestination(for: $0, route: $1) },
       releaseRedirect: { model.releaseEmailLinkResolution(for: $0) },
-      settingsLinks: self.settingsLinks,
+      settingsFeature: settings,
       projectPageComposition: model.projectPageComposition,
       serverConfig: { ServerConfig.local },
       discoveryResponseDelay: { [weak self] in self?.discoveryDelay ?? 0 }
@@ -89,13 +87,47 @@ final class DeepLinkRouterTests: XCTestCase {
 
     XCTAssertTrue(self.router.route(url: url, route: self.route) { actions.append($0.action) })
     XCTAssertTrue(actions.isEmpty)
-    await self.settingsLinks.waitForPendingSettingsLinkResponses()
+    await self.router.waitForOperations()
     XCTAssertEqual(actions, [.emailVerificationCompleted("Verified", true)])
 
     actions.removeAll()
     XCTAssertTrue(self.router.route(url: url, route: self.route, source: .braze) { actions.append($0.action) })
-    await self.settingsLinks.waitForPendingSettingsLinkResponses()
+    await self.router.waitForOperations()
     XCTAssertTrue(actions.isEmpty)
+  }
+
+  func testNotificationFeedbackIsSuppressedWhenSessionChangesBeforeTheWriteCompletes() async throws {
+    let originalUser = User.template |> User.lens.notifications.mobileMessages .~ false
+    var currentUser: User? = originalUser
+    let writes = ControlledNotificationPreferenceProvider()
+    let session = SessionFeature(
+      makeProvider: { AsyncSessionProvider(service: MockService()) },
+      currentUser: { currentUser }, updateUser: { currentUser = $0 }
+    )
+    let settings = SettingsFeature(sessionFeature: session, makeProvider: { writes })
+    let composition = try XCTUnwrap(self.model).projectPageComposition
+    let router = DeepLinkRouter(
+      currentSession: { DeepLinkSession(userID: session.currentUser?.id, generation: session.generation) },
+      resolveDestination: { _, _ in nil }, firstRedirect: { _, _ in nil }, releaseRedirect: { _ in },
+      settingsFeature: settings, projectPageComposition: composition,
+      serverConfig: { ServerConfig.local }, discoveryResponseDelay: { 0 }
+    )
+    defer {
+      router.reset()
+      writes.releaseAll()
+    }
+    var actions: [DeepLinkRouter.Action] = []
+
+    router.route(.settings(.notifications("notify_mobile_of_messages", true)), route: self.route) {
+      actions.append($0.action)
+    }
+    await writes.waitForWrite()
+    session.sessionChanged()
+    try writes.finishWrite(with: originalUser |> User.lens.notifications.mobileMessages .~ true)
+    await router.waitForOperations()
+
+    XCTAssertTrue(actions.isEmpty)
+    XCTAssertEqual(currentUser?.notifications.mobileMessages, false)
   }
 
   func testDuplicateEmailClicksShareRedirectAndOnlyDeliverTheResolvedRouteOnce() async throws {
@@ -318,6 +350,22 @@ final class DeepLinkRouterTests: XCTestCase {
     XCTAssertEqual(self.provider.updates.count, 0)
   }
 
+}
+
+@MainActor
+private final class ControlledNotificationPreferenceProvider: AccountPreferencesProvider {
+  private let writes = AccountRequestGate<User>()
+
+  func saveAccountPreferences(_ user: User) async throws -> User { try await self.writes.request() }
+  func fetchProjectNotifications() async throws -> [ProjectNotification] { throw CancellationError() }
+  func saveProjectNotification(_: ProjectNotification) async throws -> ProjectNotification { throw CancellationError() }
+  func updateAccount(_: SettingsFeature.AccountChange) async throws -> User? { throw CancellationError() }
+  func fetchEmailUser() async throws -> GraphUser { throw CancellationError() }
+  func verifyEmail(token _: String) async throws -> EmailVerificationResponseEnvelope { throw CancellationError() }
+
+  func waitForWrite() async { await self.writes.waitFor(1) }
+  func finishWrite(with user: User) throws { try self.writes.finish(0, .success(user)) }
+  func releaseAll() { self.writes.releaseAll() }
 }
 
 @MainActor

@@ -19,7 +19,8 @@ final class ActivitiesDataSourceTests: XCTestCase {
     friendsFeature: FriendsFeature(
       sessionFeature: self.sessionFeature,
       makeProvider: { AsyncFriendsProvider(service: MockService()) }
-    )
+    ),
+    sessionFeature: self.sessionFeature
   )
   let tableView = UITableView()
 

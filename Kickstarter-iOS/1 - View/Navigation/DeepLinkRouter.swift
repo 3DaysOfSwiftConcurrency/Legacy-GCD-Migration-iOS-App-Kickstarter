@@ -91,9 +91,7 @@ public final class DeepLinkRouter {
         self.route(navigation, route: route, browserFallback: openInBrowser ? url : nil, perform: perform)
         if source == .application, navigation == .profile(.verifyEmail),
            let token = accessTokenFromUrl(url) {
-          self.settingsLinks.verifyEmail(token: token) { message, success in
-            perform(Delivery(.emailVerificationCompleted(message, success)))
-          }
+          self.verifyEmail(token: token, route: route, perform: perform)
         }
       }
     } else if openInBrowser {
@@ -133,7 +131,7 @@ public final class DeepLinkRouter {
     self.route(navigation(fromShortcutItem: shortcut), route: route, perform: perform)
   }
 
-  private func route(
+  func route(
     _ navigation: Navigation, route: UUID, browserFallback: URL? = nil, perform: @escaping ActionHandler
   ) {
     self.cancelPresentation(route: route)
@@ -155,9 +153,7 @@ public final class DeepLinkRouter {
     }
     switch navigation {
     case let .settings(.notifications(name, enabled)):
-      self.settingsLinks.saveNotificationPreference(name: name, enabled: enabled) {
-        perform(Delivery(.notificationSettingsUpdated))
-      }
+      self.saveNotificationPreference(name: name, enabled: enabled, route: route, deliver: deliver)
     case .tab(.activity): deliver(.selectActivity)
     case .tab(.search): deliver(.selectSearch)
     case .tab(.me): deliver(.selectProfile)
@@ -178,13 +174,15 @@ public final class DeepLinkRouter {
   private let resolveDestination: (Navigation, TimeInterval) async throws -> DeepLinkDestination?
   private let firstRedirect: (URL, UUID) async throws -> URL?
   private let releaseRedirect: (UUID) -> Void
-  private let settingsLinks: SettingsLinkPresentation
+  private let settingsFeature: SettingsFeature
   private let serverConfig: () -> ServerConfigType
   private let discoveryResponseDelay: () -> TimeInterval
   private let projectPageComposition: ProjectPageComposition
   private var destinations: [UUID: (navigation: Navigation, request: Pending<DeepLinkDestination?>)] = [:]
   private var destinationTasks: [UUID: Task<DeepLinkDestination?, Error>] = [:]
   private var presentations: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
+  /// The router owns only route-bound feedback. SettingsFeature owns the admitted write.
+  private var settingsOutcomeTasks: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
   private var deliveryIDs: [UUID: UUID] = [:]
   private var redirects: [UUID: (url: URL, session: DeepLinkSession, id: UUID)] = [:]
   private var redirectTasks: [UUID: Task<Void, Never>] = [:]
@@ -194,7 +192,7 @@ public final class DeepLinkRouter {
     resolveDestination: @escaping (Navigation, TimeInterval) async throws -> DeepLinkDestination?,
     firstRedirect: @escaping (URL, UUID) async throws -> URL?,
     releaseRedirect: @escaping (UUID) -> Void,
-    settingsLinks: SettingsLinkPresentation,
+    settingsFeature: SettingsFeature,
     projectPageComposition: ProjectPageComposition,
     serverConfig: @escaping () -> ServerConfigType,
     discoveryResponseDelay: @escaping () -> TimeInterval
@@ -203,7 +201,7 @@ public final class DeepLinkRouter {
     self.resolveDestination = resolveDestination
     self.firstRedirect = firstRedirect
     self.releaseRedirect = releaseRedirect
-    self.settingsLinks = settingsLinks
+    self.settingsFeature = settingsFeature
     self.projectPageComposition = projectPageComposition
     self.serverConfig = serverConfig
     self.discoveryResponseDelay = discoveryResponseDelay
@@ -257,6 +255,7 @@ public final class DeepLinkRouter {
   public func release(route: UUID) {
     self.deliveryIDs[route] = nil
     self.cancelPresentation(route: route)
+    self.cancelSettingsOutcome(route: route)
     self.destinations.removeValue(forKey: route)?.request.task.cancel()
     if let redirect = self.redirects.removeValue(forKey: route) {
       self.redirectTasks[redirect.id]?.cancel()
@@ -317,6 +316,55 @@ public final class DeepLinkRouter {
     self.presentations.removeValue(forKey: route)?.task.cancel()
   }
 
+  private func saveNotificationPreference(
+    name: String, enabled: Bool, route: UUID,
+    deliver: @escaping @MainActor (Action) -> Void
+  ) {
+    guard let request = self.settingsFeature.startNotificationPreferenceSave(named: name, enabled: enabled) else { return }
+    self.startSettingsOutcome(route: route) {
+      _ = try await request.value
+      deliver(.notificationSettingsUpdated)
+    }
+  }
+
+  private func verifyEmail(token: String, route: UUID, perform: @escaping ActionHandler) {
+    let deliver = self.makeDelivery(for: route, perform: perform)
+    let request = self.settingsFeature.startEmailVerification(token: token)
+    self.startSettingsOutcome(route: route) {
+      do {
+        let response = try await request.value
+        deliver(.emailVerificationCompleted(response.message, true))
+      } catch is CancellationError {
+        return
+      } catch {
+        let message = (error as? ErrorEnvelope)?.errorMessages.first
+          ?? Strings.Something_went_wrong_please_try_again()
+        deliver(.emailVerificationCompleted(message, false))
+      }
+    }
+  }
+
+  private func startSettingsOutcome(
+    route: UUID, operation: @escaping @MainActor () async throws -> Void
+  ) {
+    self.cancelSettingsOutcome(route: route)
+    let id = UUID()
+    let task = Task { [weak self] in
+      defer {
+        if self?.settingsOutcomeTasks[route]?.id == id { self?.settingsOutcomeTasks[route] = nil }
+      }
+      do {
+        try await operation()
+        try Task.checkCancellation()
+      } catch { /* Failed, cancelled or obsolete settings work does not present feedback. */ }
+    }
+    self.settingsOutcomeTasks[route] = (id, task)
+  }
+
+  private func cancelSettingsOutcome(route: UUID) {
+    self.settingsOutcomeTasks.removeValue(forKey: route)?.task.cancel()
+  }
+
   private func makeDelivery(for route: UUID, perform: @escaping ActionHandler) -> @MainActor (Action) -> Void {
     let id = UUID()
     let session = self.session
@@ -333,16 +381,19 @@ public final class DeepLinkRouter {
 
   public func reset() {
     let routes = Set(self.destinations.keys).union(self.presentations.keys)
+      .union(self.settingsOutcomeTasks.keys)
       .union(self.redirects.keys).union(self.deliveryIDs.keys)
     for route in routes {
       self.release(route: route)
     }
   }
   public func waitForOperations() async {
-    while !self.destinationTasks.isEmpty || !self.presentations.isEmpty || !self.redirectTasks.isEmpty
+    while !self.destinationTasks.isEmpty || !self.presentations.isEmpty || !self.settingsOutcomeTasks.isEmpty
+      || !self.redirectTasks.isEmpty
     {
       for task in Array(self.destinationTasks.values) { _ = await task.result }
       for presentation in Array(self.presentations.values) { await presentation.task.value }
+      for outcome in Array(self.settingsOutcomeTasks.values) { await outcome.task.value }
       for redirect in Array(self.redirectTasks.values) { await redirect.value }
     }
   }

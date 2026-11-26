@@ -38,8 +38,8 @@ final class SortPagerViewModelTests: TestCase {
     XCTAssertEqual(pinned.map(\.1), [false, true])
   }
 
-  func testRotationPinsCurrentPageAndRevealsAfterDelay() async {
-    let vm = SortPagerViewModel(sleep: {})
+  func testRotationPinsCurrentPageAndRevealsIndicator() {
+    let vm = SortPagerViewModel()
     var pinned: [(Int, Bool)] = []
     vm.pinSelectedIndicatorToPage = { pinned.append(($0, $1)) }
     vm.configureWith(sorts: [.magic, .popular])
@@ -48,8 +48,6 @@ final class SortPagerViewModelTests: TestCase {
     vm.select(sort: .popular)
     vm.willRotateToInterfaceOrientation()
     vm.didRotateFromInterfaceOrientation()
-    XCTAssertTrue(vm.indicatorViewIsHidden)
-    await Task.yield()
     XCTAssertFalse(vm.indicatorViewIsHidden)
     XCTAssertEqual(pinned.map(\.0), [1, 1])
     XCTAssertEqual(pinned.map(\.1), [true, false])

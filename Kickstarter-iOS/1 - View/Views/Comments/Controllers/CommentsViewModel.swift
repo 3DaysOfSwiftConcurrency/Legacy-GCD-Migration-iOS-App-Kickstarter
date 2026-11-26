@@ -177,7 +177,9 @@ public final class CommentsViewModel: CommentsViewModelType,
   private let blockAnalytics = BlockUserAnalyticsContext()
   public func blockUser(id: String) {
     self.blockAnalytics.receive(userID: "\(id)")
-    self.blockPresentation.start(feature: self.discussionFeature, id: id) { [weak self] result in
+    self.blockPresentation.start(
+      feature: self.discussionFeature, sessionFeature: AppModel.shared.sessionFeature, id: id
+    ) { [weak self] result in
       guard let self else { return }
       switch result {
       case .success:
@@ -427,31 +429,23 @@ private func commentsReplacingCommentById(
 @MainActor
 internal final class DiscussionBlockPresentation {
   private var task: Task<Void, Never>?
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
-  init(sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) { self.sleep = sleep }
-  func start(feature: DiscussionFeature, id: String, deliver: @escaping (Result<EmptyResponseEnvelope, ErrorEnvelope>) -> Void) {
+  func start(
+    feature: DiscussionFeature, sessionFeature: SessionFeature, id: String,
+    deliver: @escaping (Result<EmptyResponseEnvelope, ErrorEnvelope>) -> Void
+  ) {
     self.task?.cancel()
-    let userID = feature.sessionFeature.currentUser?.id
-    let generation = feature.sessionFeature.generation
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
+    let userID = sessionFeature.currentUser?.id
+    let generation = sessionFeature.generation
     let request = feature.startDiscussionUserBlock(id: id)
-    let sleep = self.sleep
     self.task = Task { @MainActor in
       let result = await request.result
-      do {
-        try Task.checkCancellation()
-        try await sleep(delay)
-        try Task.checkCancellation()
-        guard feature.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        switch result {
-        case let .success(value): deliver(.success(value))
-        case let .failure(error):
-          guard !(error is CancellationError) else { return }
-          deliver(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))
-        }
-      } catch { /* A replaced or released screen must not receive a late result. */ }
+      guard !Task.isCancelled, sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
+      switch result {
+      case let .success(value): deliver(.success(value))
+      case let .failure(error):
+        guard !(error is CancellationError) else { return }
+        deliver(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))
+      }
     }
   }
   func wait() async { await self.task?.value }

@@ -18,7 +18,8 @@ internal final class SettingsViewControllerTests: TestCase {
       makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) },
       sleep: { _ in }
     ),
-    settingsFeature: self.settingsFeature
+    settingsFeature: self.settingsFeature,
+    sessionFeature: self.sessionFeature
   )
   private lazy var settingsFeature = SettingsFeature(
     sessionFeature: self.sessionFeature,
@@ -30,6 +31,7 @@ internal final class SettingsViewControllerTests: TestCase {
     findFriends: self.findFriendsComposition,
     notifications: SettingsNotificationsComposition(
       settingsFeature: self.settingsFeature,
+      sessionFeature: self.sessionFeature,
       isVoiceOverRunning: { false }
     )
   )

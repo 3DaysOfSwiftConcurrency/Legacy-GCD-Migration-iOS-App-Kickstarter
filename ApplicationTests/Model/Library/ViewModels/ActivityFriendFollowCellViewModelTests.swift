@@ -15,7 +15,9 @@ final class ActivityFriendFollowCellViewModelTests: TestCase {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncFriendsProvider(service: AppEnvironment.current.apiService)
     }, sleep: { _ in })
-  private lazy var vm = ActivityFriendFollowCellViewModel(friendsFeature: self.feature)
+  private lazy var vm = ActivityFriendFollowCellViewModel(
+    friendsFeature: self.feature, sessionFeature: self.feature.sessionFeature
+  )
   override func tearDown() async throws {
     self.feature.resetForSessionChange()
     await self.feature.waitForFriendsOperations()

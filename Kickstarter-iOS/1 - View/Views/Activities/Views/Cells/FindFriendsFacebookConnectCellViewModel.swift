@@ -15,15 +15,17 @@ public final class FindFriendsFacebookConnectCellViewModel {
   public var onConnected: (() -> Void)?
   public var onError: ((AlertError) -> Void)?
   private let settingsFeature: SettingsFeature
+  private let sessionFeature: SessionFeature
   private var task: Task<Void, Never>?
   private var revision = 0
 
-  public init(settingsFeature: SettingsFeature) {
+  public init(settingsFeature: SettingsFeature, sessionFeature: SessionFeature) {
     self.settingsFeature = settingsFeature
+    self.sessionFeature = sessionFeature
   }
   public func configureWith(source: FriendsSource) {
     self.hideCloseButton = source == .findFriends
-    if let type = Self.connectionType(user: self.settingsFeature.sessionFeature.currentUser) {
+    if let type = Self.connectionType(user: self.sessionFeature.currentUser) {
       self.title = type.titleText
       self.subtitle = type.subtitleText
       self.buttonTitle = type.buttonText
@@ -47,15 +49,12 @@ public final class FindFriendsFacebookConnectCellViewModel {
         try Task.checkCancellation()
         guard self?.revision == revision else { return }
         self?.isLoading = false
-        try await settingsFeature.waitForResponsePresentationDelay()
-        try Task.checkCancellation()
         guard let self, self.revision == revision else { return }
         NotificationCenter.default.post(name: .ksr_userUpdated, object: nil)
         self.onConnected?()
       } catch {
         guard let self, !Task.isCancelled, !(error is CancellationError), self.revision == revision else { return }
         self.isLoading = false
-        do { try await settingsFeature.waitForResponsePresentationDelay(); try Task.checkCancellation() } catch { return }
         guard self.revision == revision else { return }
         let envelope = error as? ErrorEnvelope ?? .couldNotParseJSON
         switch envelope.ksrCode {

@@ -13,7 +13,6 @@ public final class SettingsNotificationCellViewModel {
   public var onError: ((String) -> Void)?
   public var onUserUpdated: ((User) -> Void)?
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var user: User?
   private var initialEmail: Bool?
   private var initialPush: Bool?
@@ -22,11 +21,8 @@ public final class SettingsNotificationCellViewModel {
   private var revision = 0
   private var saves: [UUID: Task<Void, Never>] = [:]
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(settingsFeature: SettingsFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
   }
 
   public func configure(with value: SettingsNotificationCellValue) {
@@ -61,14 +57,11 @@ public final class SettingsNotificationCellViewModel {
     let revision = self.revision
     let id = UUID()
     let settingsFeature = self.settingsFeature
-    let sleep = self.sleep
-    let delay = settingsFeature.responseDelaySeconds
     self.saves[id] = Task { [weak self] in
       defer { self?.saves[id] = nil }
       let result: Result<User, Error>
       do { result = .success(try await settingsFeature.savePreferences([.init(.notification(attribute), enabled)], from: user)) }
       catch { result = .failure(error) }
-      do { try await sleep(delay) } catch { return }
       guard let self, self.revision == revision else { return }
       switch result {
       case let .success(user): self.onUserUpdated?(user)

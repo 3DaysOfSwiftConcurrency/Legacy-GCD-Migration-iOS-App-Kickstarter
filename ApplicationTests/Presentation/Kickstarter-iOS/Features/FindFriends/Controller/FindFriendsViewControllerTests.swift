@@ -21,7 +21,8 @@ internal final class FindFriendsViewControllerTests: TestCase {
       sessionFeature: self.sessionFeature,
       responseDeliverySleep: { _ in },
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
-    )
+    ),
+    sessionFeature: self.sessionFeature
   )
 
   override func setUp() async throws {

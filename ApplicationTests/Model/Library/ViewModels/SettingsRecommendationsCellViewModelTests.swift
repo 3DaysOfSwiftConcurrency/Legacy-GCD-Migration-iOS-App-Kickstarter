@@ -12,7 +12,7 @@ final class SettingsRecommendationsCellViewModelTests: TestCase {
     }),
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = SettingsRecommendationsCellViewModel(settingsFeature: self.feature, sleep: { _ in })
+  private lazy var vm = SettingsRecommendationsCellViewModel(settingsFeature: self.feature)
 
   override func setUp() async throws {
     try await super.setUp()

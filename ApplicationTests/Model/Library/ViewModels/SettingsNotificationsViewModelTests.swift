@@ -11,7 +11,9 @@ final class SettingsNotificationsViewModelTests: TestCase {
     identifyUser: { [weak self] in self?.identifiedUsers.append($0) },
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = SettingsNotificationsViewModel(settingsFeature: self.feature, sleep: { _ in })
+  private lazy var vm = SettingsNotificationsViewModel(
+    settingsFeature: self.feature, sessionFeature: self.feature.sessionFeature
+  )
 
   override func setUp() async throws {
     try await super.setUp()

@@ -18,7 +18,6 @@ public final class CreatePasswordViewModel {
   public var onFailure: ((String) -> Void)?
 
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var password: String?
   private var confirmation: String?
   private var appeared = false
@@ -26,11 +25,8 @@ public final class CreatePasswordViewModel {
   private var saveTask: Task<Void, Never>?
   private var revision = 0
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(settingsFeature: SettingsFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
   }
   public func viewDidAppear() {
     self.appeared = true
@@ -76,12 +72,10 @@ public final class CreatePasswordViewModel {
     self.revision += 1
     let revision = self.revision
     let input = CreatePasswordInput(password: password, passwordConfirmation: confirmation)
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.isLoading = true
-    self.saveTask = Task { [weak self, settingsFeature, sleep] in
+    self.saveTask = Task { [weak self, settingsFeature] in
       do {
         _ = try await settingsFeature.updateAccount(.initialPassword(input))
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.revision == revision else { return }
         self.isLoading = false

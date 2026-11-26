@@ -15,7 +15,9 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
     sessionFeature: self.session,
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = ProjectNotificationCellViewModel(settingsFeature: self.feature)
+  private lazy var vm = ProjectNotificationCellViewModel(
+    settingsFeature: self.feature, sessionFeature: self.session
+  )
   private let projectName = NotificationRecorder<String>()
   private let notificationOn = NotificationRecorder<Bool>()
   private let notifyDelegateOfSaveError = NotificationRecorder<String>()

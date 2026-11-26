@@ -161,15 +161,18 @@ public struct PledgeCheckoutComposition {
 public struct ActivityComposition {
   public let activityFeature: ActivityFeature
   public let friendsFeature: FriendsFeature
+  public let sessionFeature: SessionFeature
   public let projectPage: ProjectPageComposition
 
   public init(
     activityFeature: ActivityFeature,
     friendsFeature: FriendsFeature,
+    sessionFeature: SessionFeature,
     projectPage: ProjectPageComposition
   ) {
     self.activityFeature = activityFeature
     self.friendsFeature = friendsFeature
+    self.sessionFeature = sessionFeature
     self.projectPage = projectPage
   }
 }
@@ -268,15 +271,18 @@ public struct DiscoveryCardPresentation {
 
 public struct CuratedProjectsComposition {
   public let recommendationsFeature: RecommendationsFeature
+  public let sessionFeature: SessionFeature
   public let projectMediaFeature: ProjectMediaFeature
   public let cardPresentation: DiscoveryCardPresentation
 
   public init(
     recommendationsFeature: RecommendationsFeature,
+    sessionFeature: SessionFeature,
     projectMediaFeature: ProjectMediaFeature,
     cardPresentation: DiscoveryCardPresentation
   ) {
     self.recommendationsFeature = recommendationsFeature
+    self.sessionFeature = sessionFeature
     self.projectMediaFeature = projectMediaFeature
     self.cardPresentation = cardPresentation
   }
@@ -285,10 +291,12 @@ public struct CuratedProjectsComposition {
 public struct FindFriendsComposition {
   public let friendsFeature: FriendsFeature
   public let settingsFeature: SettingsFeature
+  public let sessionFeature: SessionFeature
 
-  public init(friendsFeature: FriendsFeature, settingsFeature: SettingsFeature) {
+  public init(friendsFeature: FriendsFeature, settingsFeature: SettingsFeature, sessionFeature: SessionFeature) {
     self.friendsFeature = friendsFeature
     self.settingsFeature = settingsFeature
+    self.sessionFeature = sessionFeature
   }
 }
 
@@ -310,13 +318,16 @@ public struct SettingsComposition {
 
 public struct SettingsNotificationsComposition {
   public let settingsFeature: SettingsFeature
+  public let sessionFeature: SessionFeature
   public let isVoiceOverRunning: () -> Bool
 
   public init(
     settingsFeature: SettingsFeature,
+    sessionFeature: SessionFeature,
     isVoiceOverRunning: @escaping () -> Bool
   ) {
     self.settingsFeature = settingsFeature
+    self.sessionFeature = sessionFeature
     self.isVoiceOverRunning = isVoiceOverRunning
   }
 }
@@ -339,6 +350,7 @@ public struct BackerDashboardComposition {
 
 public struct RootTabComposition {
   public let sessionFeature: SessionFeature
+  public let settingsFeature: SettingsFeature
   public let backerDashboard: BackerDashboardComposition
   public let activities: ActivityComposition
   public let search: SearchComposition
@@ -350,6 +362,7 @@ public struct RootTabComposition {
 
   public init(
     sessionFeature: SessionFeature,
+    settingsFeature: SettingsFeature,
     backerDashboard: BackerDashboardComposition,
     activities: ActivityComposition,
     search: SearchComposition,
@@ -360,6 +373,7 @@ public struct RootTabComposition {
     pledgedProjects: PledgedProjectsComposition
   ) {
     self.sessionFeature = sessionFeature
+    self.settingsFeature = settingsFeature
     self.backerDashboard = backerDashboard
     self.activities = activities
     self.search = search
@@ -448,6 +462,7 @@ public final class AppModel {
     ActivityComposition(
       activityFeature: self.activityFeature,
       friendsFeature: self.friendsFeature,
+      sessionFeature: self.sessionFeature,
       projectPage: self.projectPageComposition
     )
   }
@@ -485,6 +500,7 @@ public final class AppModel {
       videoFeed: self.videoFeedComposition,
       curatedProjects: CuratedProjectsComposition(
         recommendationsFeature: self.recommendationsFeature,
+        sessionFeature: self.sessionFeature,
         projectMediaFeature: self.projectMediaFeature,
         cardPresentation: cardPresentation
       ),
@@ -497,7 +513,8 @@ public final class AppModel {
   public var findFriendsComposition: FindFriendsComposition {
     FindFriendsComposition(
       friendsFeature: self.friendsFeature,
-      settingsFeature: self.settingsFeature
+      settingsFeature: self.settingsFeature,
+      sessionFeature: self.sessionFeature
     )
   }
 
@@ -512,6 +529,7 @@ public final class AppModel {
   public var settingsNotificationsComposition: SettingsNotificationsComposition {
     SettingsNotificationsComposition(
       settingsFeature: self.settingsFeature,
+      sessionFeature: self.sessionFeature,
       isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
     )
   }
@@ -527,6 +545,7 @@ public final class AppModel {
   public var curatedProjectsComposition: CuratedProjectsComposition {
     CuratedProjectsComposition(
       recommendationsFeature: self.recommendationsFeature,
+      sessionFeature: self.sessionFeature,
       projectMediaFeature: self.projectMediaFeature,
       cardPresentation: self.discoveryCardPresentation
     )
@@ -566,6 +585,7 @@ public final class AppModel {
   public var rootTabComposition: RootTabComposition {
     RootTabComposition(
       sessionFeature: self.sessionFeature,
+      settingsFeature: self.settingsFeature,
       backerDashboard: self.backerDashboardComposition,
       activities: self.activityComposition,
       search: self.searchComposition,

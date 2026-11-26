@@ -15,14 +15,16 @@ public final class CuratedProjectsViewModel {
   var onProjects: (([Project]) -> Void)?
   var onError: ((String) -> Void)?
   private let recommendationsFeature: RecommendationsFeature
+  private let sessionFeature: SessionFeature
   private let route = UUID()
   private var categories: [KsApi.Category]?
   private var loaded = false
   private var revision = UUID()
   @ObservationIgnored private var presentation: Task<Void, Never>?
 
-  public init(recommendationsFeature: RecommendationsFeature) {
+  public init(recommendationsFeature: RecommendationsFeature, sessionFeature: SessionFeature) {
     self.recommendationsFeature = recommendationsFeature
+    self.sessionFeature = sessionFeature
   }
 
   public func configure(with categories: [KsApi.Category]) {
@@ -44,7 +46,7 @@ public final class CuratedProjectsViewModel {
     self.revision = revision
     let recommendationsFeature = self.recommendationsFeature
     let route = self.route
-    let session = recommendationsFeature.sessionFeature
+    let session = self.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
     let command = recommendationsFeature.startRecommendationsLoad(.curated(categories), route: route)

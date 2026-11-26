@@ -9,7 +9,7 @@ final class FacebookConfirmationViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncAuthenticationProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = FacebookConfirmationViewModel(authenticationFeature: self.feature, sleep: { _ in })
+  private lazy var vm = FacebookConfirmationViewModel(authenticationFeature: self.feature)
 
   func testInitialStateAndNewsletterToggle() {
     self.vm.email("kittens@example.com")

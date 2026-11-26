@@ -26,9 +26,11 @@ internal final class ActivityFriendFollowCell: UITableViewCell, ValueCell {
     if let url = viewModel.friendImageURL { self.friendImageView.ksr_setImageWithURL(url) }
   }
 
-  func configure(friendsFeature: FriendsFeature) {
+  func configure(friendsFeature: FriendsFeature, sessionFeature: SessionFeature) {
     guard self.viewModel == nil else { return }
-    let viewModel = ActivityFriendFollowCellViewModel(friendsFeature: friendsFeature)
+    let viewModel = ActivityFriendFollowCellViewModel(
+      friendsFeature: friendsFeature, sessionFeature: sessionFeature
+    )
     self.viewModel = viewModel
     viewModel.onChange = { [weak self, weak viewModel] in
       guard let self, let hidden = viewModel?.hideFollowButton else { return }

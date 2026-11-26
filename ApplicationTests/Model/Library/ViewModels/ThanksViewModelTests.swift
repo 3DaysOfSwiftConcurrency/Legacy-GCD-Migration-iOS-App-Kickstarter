@@ -29,7 +29,11 @@ final class ThanksViewModelTests: TestCase {
       responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
     ), settingsFeature: self.settingsFeature,
     makeProvider: { AsyncRecommendationsProvider(service: AppEnvironment.current.apiService) })
-  private lazy var vm: ThanksViewModel = ThanksViewModel(recommendationsFeature: self.feature, sleep: { _ in try Task.checkCancellation() })
+  private lazy var vm: ThanksViewModel = ThanksViewModel(
+    recommendationsFeature: self.feature,
+    settingsFeature: self.settingsFeature,
+    sessionFeature: self.settingsFeature.sessionFeature
+  )
   private let categoryEnvelope = CategoryEnvelope(node: .template)
 
   private let backedProjectText = ThanksRecorder<String>()
@@ -225,7 +229,11 @@ final class ThanksViewModelTests: TestCase {
         "Newsletter pref saved"
       )
 
-      let secondVM = ThanksViewModel(recommendationsFeature: self.feature, sleep: { _ in try Task.checkCancellation() })
+      let secondVM = ThanksViewModel(
+        recommendationsFeature: self.feature,
+        settingsFeature: self.settingsFeature,
+        sessionFeature: self.settingsFeature.sessionFeature
+      )
       let secondShowRatingAlert = ThanksRecorder<()>()
       let secondShowGamesNewsletterAlert = ThanksRecorder<()>()
       secondVM.onEvent = { event in

@@ -10,7 +10,8 @@ internal final class SettingsNotificationsViewController: UIViewController {
 
   private var composition: SettingsNotificationsComposition!
   private lazy var viewModel = SettingsNotificationsViewModel(
-    settingsFeature: self.composition.settingsFeature
+    settingsFeature: self.composition.settingsFeature,
+    sessionFeature: self.composition.sessionFeature
   )
   private lazy var dataSource = SettingsNotificationsDataSource(
     settingsFeature: self.composition.settingsFeature
@@ -76,7 +77,8 @@ internal final class SettingsNotificationsViewController: UIViewController {
 
   fileprivate func goToManageProjectNotifications() {
     let vc = ProjectNotificationsViewController.instantiate(
-      settingsFeature: self.composition.settingsFeature
+      settingsFeature: self.composition.settingsFeature,
+      sessionFeature: self.composition.sessionFeature
     )
     self.navigationController?.pushViewController(vc, animated: true)
   }

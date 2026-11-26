@@ -37,9 +37,12 @@ internal final class FindFriendsFacebookConnectCell: UITableViewCell, ValueCell 
     viewModel.configureWith(source: value)
   }
 
-  internal func configure(settingsFeature: SettingsFeature) {
+  internal func configure(settingsFeature: SettingsFeature, sessionFeature: SessionFeature) {
     guard self.viewModel == nil else { return }
-    let viewModel = FindFriendsFacebookConnectCellViewModel(settingsFeature: settingsFeature)
+    let viewModel = FindFriendsFacebookConnectCellViewModel(
+      settingsFeature: settingsFeature,
+      sessionFeature: sessionFeature
+    )
     self.viewModel = viewModel
     self.observeState()
     viewModel.onAttemptLogin = { [weak self] in self?.attemptFacebookLogin() }

@@ -14,18 +14,13 @@ public final class FacebookConfirmationViewModel {
   public var onHelp: ((HelpType) -> Void)?
 
   private let authenticationFeature: AuthenticationFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var token = ""
   private var signupTask: Task<Void, Never>?
   private var revision = 0
   public var webBaseURL: URL { self.authenticationFeature.webBaseURL }
 
-  public init(authenticationFeature: AuthenticationFeature,
-              sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-                if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-              }) {
+  public init(authenticationFeature: AuthenticationFeature) {
     self.authenticationFeature = authenticationFeature
-    self.sleep = sleep
   }
 
   public func viewDidLoad() { self.sendNewsletters = false }
@@ -42,22 +37,18 @@ public final class FacebookConfirmationViewModel {
     self.revision += 1
     let revision = self.revision
     let credentials = AuthenticationFeature.Credentials.facebookSignup(self.token, sendNewsletters: self.sendNewsletters)
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.isLoading = true
-    self.signupTask = Task { [weak self, authenticationFeature, sleep] in
+    self.signupTask = Task { [weak self, authenticationFeature] in
       do {
         _ = try await authenticationFeature.authenticate(credentials)
         try Task.checkCancellation()
         guard self?.revision == revision else { return }
         self?.isLoading = false
-        try await sleep(delay)
-        try Task.checkCancellation()
         guard self?.revision == revision else { return }
         self?.onSignupSuccess?()
       } catch {
         guard let self, !Task.isCancelled, !(error is CancellationError), self.revision == revision else { return }
         self.isLoading = false
-        do { try await sleep(delay); try Task.checkCancellation() } catch { return }
         guard self.revision == revision else { return }
         self.onSignupError?((error as? ErrorEnvelope)?.errorMessages.first ?? Strings.facebook_confirmation_could_not_log_in())
       }

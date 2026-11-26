@@ -42,9 +42,12 @@ internal final class ProjectNotificationCell: UITableViewCell, ValueCell {
     _ = self.notificationSwitch |> settingsSwitchStyle
   }
 
-  internal func configure(settingsFeature: SettingsFeature) {
+  internal func configure(settingsFeature: SettingsFeature, sessionFeature: SessionFeature) {
     guard self.viewModel == nil else { return }
-    let viewModel = ProjectNotificationCellViewModel(settingsFeature: settingsFeature)
+    let viewModel = ProjectNotificationCellViewModel(
+      settingsFeature: settingsFeature,
+      sessionFeature: sessionFeature
+    )
     self.viewModel = viewModel
     viewModel.onName = { [weak self] name in
       self?.nameLabel.text = name

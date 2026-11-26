@@ -49,7 +49,8 @@ final class CuratedProjectsViewController: UIViewController {
       cardPresentation: composition.cardPresentation
     )
     controller.viewModel = CuratedProjectsViewModel(
-      recommendationsFeature: composition.recommendationsFeature
+      recommendationsFeature: composition.recommendationsFeature,
+      sessionFeature: composition.sessionFeature
     )
     return controller
   }

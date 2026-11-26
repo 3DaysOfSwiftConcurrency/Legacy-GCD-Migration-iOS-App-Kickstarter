@@ -47,7 +47,9 @@ internal final class ProjectNotificationsViewControllerTests: TestCase {
         apiService: service,
         language: language
       ) {
-        let vc = ProjectNotificationsViewController.instantiate(settingsFeature: self.settingsFeature)
+        let vc = ProjectNotificationsViewController.instantiate(
+          settingsFeature: self.settingsFeature, sessionFeature: self.settingsFeature.sessionFeature
+        )
         let (parent, _) = traitControllers(device: device, orientation: .portrait, child: vc)
 
 

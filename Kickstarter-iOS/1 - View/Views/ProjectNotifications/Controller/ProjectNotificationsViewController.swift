@@ -6,12 +6,19 @@ import UIKit
 
 internal final class ProjectNotificationsViewController: UITableViewController {
   private var settingsFeature: SettingsFeature!
+  private var sessionFeature: SessionFeature!
   fileprivate lazy var viewModel = ProjectNotificationsViewModel(settingsFeature: self.settingsFeature)
-  fileprivate lazy var dataSource = ProjectNotificationsDataSource(settingsFeature: self.settingsFeature)
+  fileprivate lazy var dataSource = ProjectNotificationsDataSource(
+    settingsFeature: self.settingsFeature,
+    sessionFeature: self.sessionFeature
+  )
 
-  internal static func instantiate(settingsFeature: SettingsFeature) -> ProjectNotificationsViewController {
+  internal static func instantiate(
+    settingsFeature: SettingsFeature, sessionFeature: SessionFeature
+  ) -> ProjectNotificationsViewController {
     let viewController = Storyboard.Settings.instantiate(ProjectNotificationsViewController.self)
     viewController.settingsFeature = settingsFeature
+    viewController.sessionFeature = sessionFeature
     return viewController
   }
 
