@@ -21,7 +21,7 @@ final class PledgeFeatureTests: TestCase {
     self.session.sessionChanged()
     self.feature.resetForSessionChange()
     self.provider.releaseAll()
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     try await super.tearDown()
   }
 
@@ -194,7 +194,7 @@ final class PledgeFeatureTests: TestCase {
     _ = try await duplicate.value
     _ = try await second.value
     _ = try await third.value
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     XCTAssertEqual(self.provider.receivedValues, [true, false, true])
     XCTAssertEqual(self.provider.receivedProjects, [1, 1, 1])
     XCTAssertEqual(self.provider.receivedUsers, [2, 2, 2])
@@ -602,7 +602,7 @@ final class PledgeFeatureTests: TestCase {
     } catch is CancellationError {} catch {
       XCTFail("Expected cancellation after session change: \(error)")
     }
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     XCTAssertEqual(self.provider.completions.count, 0)
   }
 
@@ -793,7 +793,7 @@ final class PledgeFeatureTests: TestCase {
       _ = try await task.value
       XCTFail("Cancelled caller must not receive a result")
     } catch { XCTAssertTrue(error is CancellationError) }
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     XCTAssertEqual(self.provider.addressInputs.count, 1)
     XCTAssertEqual(self.provider.addressInputs.first?.1, "A")
   }
@@ -1007,7 +1007,7 @@ extension PledgeFeatureTests {
     XCTAssertEqual(self.provider.projectUpdateInputs.map { $0.0 }, [42])
     XCTAssertEqual(self.provider.projectUpdateInputs.map { $0.1 }, [.slug("first")])
     try self.provider.projectUpdates.finish(0, .success(.template))
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     let firstValue = try await first.value
     let secondValue = try await second.value
     XCTAssertEqual(firstValue.0.id, Project.template.id)
@@ -1027,7 +1027,7 @@ extension PledgeFeatureTests {
     await self.provider.projectUpdates.waitFor(1)
     XCTAssertEqual(self.provider.projectUpdateInputs.map { $0.0 }, [2])
     try self.provider.projectUpdates.finish(0, .success(.template))
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     do { _ = try await first.value; XCTFail("Obsolete update reached the screen") }
     catch { XCTAssertTrue(error is CancellationError) }
     _ = try await second.value
@@ -1045,7 +1045,7 @@ extension PledgeFeatureTests {
     await self.provider.projectUpdates.waitFor(1)
     vm.closeButtonTapped()
     try self.provider.projectUpdates.finish(0, .success(.template))
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     XCTAssertEqual(navigation, 0)
   }
 
@@ -1055,14 +1055,14 @@ extension PledgeFeatureTests {
     await self.provider.updateProjects.waitFor(1)
     self.session.sessionChanged()
     try self.provider.updateProjects.finish(0, .success(.template))
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     XCTAssertEqual(self.provider.projectUpdates.count, 0)
     do { _ = try await first.value; XCTFail("Stale session update succeeded") }
     catch { XCTAssertTrue(error is CancellationError) }
     let retry = Task { try await self.feature.fetchPledgeUpdateContext(route: route, param: .id(1), updateID: 2) }
     await self.provider.updateProjects.waitFor(2)
     try self.provider.updateProjects.finish(1, .failure(ErrorEnvelope.couldNotParseJSON))
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
     do { _ = try await retry.value; XCTFail("Expected update lookup failure") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
     XCTAssertEqual(self.provider.projectUpdates.count, 0)

@@ -303,7 +303,7 @@ public final class CommentsViewModel: CommentsViewModelType,
     if let project = configuration.project {
       self.currentSource = .project(project.slug)
       self.latestCommentableID = project.graphID
-      self.discussionFeature.cancelProject(route: self.route)
+      self.discussionFeature.cancelDiscussionProjectLoad(route: self.route)
       self.receiveProject(project)
     } else if let update = configuration.update {
       self.currentSource = .update(String(update.id))

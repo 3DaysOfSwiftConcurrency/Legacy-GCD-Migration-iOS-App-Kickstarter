@@ -12,7 +12,7 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
   private func advancePayments(by interval: DispatchTimeInterval = .seconds(0)) async {
     await self.vm.waitForOperations()
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
     await self.paymentsFeature.waitForPaymentOperations()
     await self.vm.waitForOperations()
   }
@@ -136,7 +136,7 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       self.vm.inputs.viewDidLoad()
       XCTAssertEqual(shipping, ["$2-$7"])
       XCTAssertEqual(hidden, [false])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
     }
   }
@@ -158,7 +158,7 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       XCTAssertEqual(hidden, [true])
       XCTAssertEqual(shipping.count, 1)
       XCTAssertNil(shipping.first ?? nil)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
     }
   }
@@ -169,9 +169,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
     self.vm.inputs.termsOfUseTapped(with: .terms)
 
     self.showWebHelp.assertValues([HelpType.terms])
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
     await self.paymentsFeature.waitForPaymentOperations()
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testShowWebHelpLearnMore() async {
@@ -180,9 +180,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
     self.vm.inputs.pledgeDisclaimerViewDidTapLearnMore()
 
     self.showWebHelp.assertValues([HelpType.trust])
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
     await self.paymentsFeature.waitForPaymentOperations()
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   // MARK: - Stripe
@@ -215,9 +215,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       self.configureStripeIntegrationPublishableKey.assertValues([
         Secrets.StripePublishableKey.staging
       ])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -248,9 +248,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       self.configureStripeIntegrationPublishableKey.assertValues([
         Secrets.StripePublishableKey.production
       ])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -299,9 +299,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -350,9 +350,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -404,9 +404,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -464,9 +464,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -504,9 +504,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -536,9 +536,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       self.vm.inputs.applePayButtonTapped()
       await self.runPayments()
       self.processingViewIsHidden.assertLastValue(false)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -569,9 +569,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       await self.runPayments()
       // Processing view starts hidden and should stay hidden.
       self.processingViewIsHidden.assertDidNotEmitValue()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -647,9 +647,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 1)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -691,9 +691,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
       XCTAssertEqual(self.paymentsProvider.setupIntentRequests, 0)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -779,13 +779,13 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       self.checkoutComplete.assertDidNotEmitValue()
 
       self.vm.inputs.confirmPaymentSuccessful(clientSecret: "super-secret")
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
 
       self.checkoutComplete.assertDidEmitValue()
       self.processingViewIsHidden.assertLastValue(true)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -839,9 +839,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       self.validateCheckoutSuccess.assertDidNotEmitValue()
       self.processingViewIsHidden.assertValues([false, true])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -896,9 +896,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       self.checkoutComplete.assertDidNotEmitValue()
       self.processingViewIsHidden.assertLastValue(true)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -939,9 +939,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       self.configurePledgeViewCTAContainerViewIsLoggedIn.assertValues([true, true])
       self.configurePledgeViewCTAContainerViewIsEnabled.assertValues([false, true])
       self.configurePledgeViewCTAContainerViewContext.assertValues([.latePledge, .latePledge])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -970,9 +970,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       self.configurePledgeViewCTAContainerViewIsLoggedIn.assertLastValue(true)
       self.configurePledgeViewCTAContainerViewIsEnabled.assertLastValue(false)
       self.configurePledgeViewCTAContainerViewContext.assertValues([.latePledge])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -1001,9 +1001,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       self.configurePledgeViewCTAContainerViewIsLoggedIn.assertLastValue(false)
       self.configurePledgeViewCTAContainerViewIsEnabled.assertLastValue(false)
       self.configurePledgeViewCTAContainerViewContext.assertValues([.latePledge])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -1029,9 +1029,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
 
       self.goToLoginSignup.assertDidEmitValue()
       self.checkoutError.assertDidNotEmitValue()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 
@@ -1097,9 +1097,9 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       await self.runPayments()
 
       XCTAssertEqual(self.paymentsProvider.paymentIntentRequests, 1)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
       await self.paymentsFeature.waitForPaymentOperations()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
   }
 }

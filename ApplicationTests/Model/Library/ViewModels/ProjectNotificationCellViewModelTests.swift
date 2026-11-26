@@ -31,7 +31,7 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
   }
 
   override func tearDown() async throws {
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     try await super.tearDown()
   }
 
@@ -41,7 +41,7 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
     self.notificationOn.assertValues([false], "Notification off by default.")
 
     self.vm.notificationTapped(on: true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     await self.vm.waitForPresentation()
     self.notificationOn.assertValues([false, true], "Notification turned on.")
 
@@ -67,19 +67,19 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
     self.notificationOn.assertValues([false], "Notification off by default.")
 
     self.vm.notificationTapped(on: true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     await self.vm.waitForPresentation()
     self.notificationOn.assertValues([false, true], "Notification turned on.")
     self.notifyDelegateOfSaveError.assertDidNotEmitValue("Notification saved.")
 
     self.vm.notificationTapped(on: true)
     self.notificationOn.assertValues([false, true], "Notification unchanged.")
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     await self.vm.waitForPresentation()
     self.notificationOn.assertValues([false, true], "Notification unchanged.")
 
     self.vm.notificationTapped(on: false)
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     await self.vm.waitForPresentation()
     self.notificationOn.assertValues([false, true, false], "Notification turned off.")
     self.notifyDelegateOfSaveError.assertDidNotEmitValue("Notification preference saved successfully.")
@@ -101,7 +101,7 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
       self.vm.notificationTapped(on: true)
       self.notificationOn.assertValues([false, true], "Notification immediately turned on on tap.")
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForSettingsOperations()
       await self.vm.waitForPresentation()
       self.notifyDelegateOfSaveError.assertValueCount(1, "Updating notification errored.")
       self.notificationOn.assertValues([false, true, false], "Notification was not successfully saved.")
@@ -112,7 +112,7 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
         "Notification immediately turned on on tap."
       )
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForSettingsOperations()
       await self.vm.waitForPresentation()
       self.notifyDelegateOfSaveError.assertValueCount(2, "Updating notification errored.")
       self.notificationOn.assertValues(
@@ -126,7 +126,7 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
         "Notification immediately turned on on tap."
       )
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForSettingsOperations()
       await self.vm.waitForPresentation()
       self.notifyDelegateOfSaveError.assertValueCount(3, "Updating notification errored.")
       self.notificationOn.assertValues(
@@ -152,7 +152,7 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
       self.vm.notificationTapped(on: true)
       self.notificationOn.assertValues([false, true], "Notification immediately turned on on tap.")
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForSettingsOperations()
       await self.vm.waitForPresentation()
       self.notifyDelegateOfSaveError.assertValueCount(1, "Updating notification errored.")
       self.notificationOn.assertValues([false, true, false], "Notification was not successfully saved.")
@@ -164,7 +164,7 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
       self.vm.notificationTapped(on: true)
       self.notificationOn.assertValues([false, true, false, true], "Notification immediately turned on.")
 
-      await self.feature.waitForOperations()
+      await self.feature.waitForSettingsOperations()
       await self.vm.waitForPresentation()
       self.notificationOn.assertValues(
         [false, true, false, true, false],
@@ -185,7 +185,7 @@ internal final class ProjectNotificationCellViewModelTests: TestCase {
       "Notification turned on on tap."
     )
 
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     await self.vm.waitForPresentation()
     self.notificationOn.assertValues(
       [false, true, false, true, false, true],

@@ -78,7 +78,7 @@ internal final class UpdateViewModel {
     self.projectRevision += 1
     let revision = self.projectRevision
     if param == .id(current.id) || param == .slug(current.slug) {
-      self.discussionFeature.cancelProject(route: self.route)
+      self.discussionFeature.cancelDiscussionProjectLoad(route: self.route)
       self.deliverProject(current, refTag: refTag, action: action)
       return
     }

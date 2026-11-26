@@ -25,5 +25,5 @@ internal final class PaginationExampleViewModel {
   func load() async { await self.developerExamplesFeature.loadFirstDiscoveryPage(route: self.route) }
   func refresh() async { await self.developerExamplesFeature.loadFirstDiscoveryPage(route: self.route, refreshing: true) }
   func loadNextPage() async { await self.developerExamplesFeature.loadNextDiscoveryPage(route: self.route) }
-  func suspend() { self.developerExamplesFeature.suspend(route: self.route) }
+  func suspend() { self.developerExamplesFeature.cancelExampleLoads(route: self.route) }
 }

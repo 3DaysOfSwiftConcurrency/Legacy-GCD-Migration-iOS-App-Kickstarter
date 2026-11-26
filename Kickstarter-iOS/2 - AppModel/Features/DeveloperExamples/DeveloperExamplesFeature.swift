@@ -262,7 +262,7 @@ public final class DeveloperExamplesFeature {
     work.task.cancel()
     self.paginationSnapshotsByRoute[route] = work.previous
   }
-  public func suspend(route: UUID) {
+  public func cancelExampleLoads(route: UUID) {
     self.cancelDiscoveryPageLoad(route: route)
     if let work = self.pendingRichTextLoads.removeValue(forKey: route) {
       work.task.cancel()
@@ -271,7 +271,7 @@ public final class DeveloperExamplesFeature {
     self.cancelLookup(route: route)
   }
   public func release(route: UUID) {
-    self.suspend(route: route)
+    self.cancelExampleLoads(route: route)
     self.paginationSnapshotsByRoute[route] = nil
     self.richTextSnapshotsByRoute[route] = nil
     self.richTextListSessionsByRoute[route] = nil

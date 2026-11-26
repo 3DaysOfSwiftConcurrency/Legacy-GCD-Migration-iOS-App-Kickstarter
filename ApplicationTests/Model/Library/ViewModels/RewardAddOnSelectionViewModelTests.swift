@@ -36,7 +36,7 @@ final class RewardAddOnSelectionViewModelTests: TestCase {
     rewardsFeature: self.feature
   )
   private func advanceAddOns() async {
-    await self.feature.waitForAddOns()
+    await self.feature.waitForAddOnOperations()
 
   }
 

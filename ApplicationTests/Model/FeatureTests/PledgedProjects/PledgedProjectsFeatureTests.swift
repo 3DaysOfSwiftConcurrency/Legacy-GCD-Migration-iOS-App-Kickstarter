@@ -35,7 +35,7 @@ final class PledgedProjectsFeatureTests: TestCase {
   override func tearDown() async throws {
     self.feature.resetForSessionChange()
     self.provider.gate.releaseAll()
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgedProjectsPageLoads()
     self.subscription = nil
     try await super.tearDown()
   }

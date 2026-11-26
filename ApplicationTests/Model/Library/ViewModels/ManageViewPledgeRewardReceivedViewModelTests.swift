@@ -11,7 +11,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
 
   private func advancePledges(by interval: DispatchTimeInterval = .seconds(0)) async {
     await self.vm.waitForObservation()
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   override var requiresSnapshotReferenceSimulator: Bool { false }
@@ -50,7 +50,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
 
     XCTAssertEqual(self.vm.estimatedDeliveryDateLabelAttributedText?.string, "Estimated delivery October 2016")
     XCTAssertEqual(self.vm.estimatedShippingAttributedText?.string, "Estimated Shipping About $1-$10")
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testRewardReceived_NotReceived() async {
@@ -73,7 +73,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     self.vm.viewDidLoad()
 
     XCTAssertEqual(self.vm.rewardReceived, false)
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testRewardReceived_Received() async {
@@ -96,7 +96,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     self.vm.viewDidLoad()
 
     XCTAssertEqual(self.vm.rewardReceived, true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testRewardReceived_Toggle() async {
@@ -132,9 +132,9 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
       await self.advancePledges(by: AppEnvironment.current.apiDelayInterval)
 
       XCTAssertEqual(self.vm.rewardReceived, false)
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgeOperations()
     }
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testRapidToggleKeepsLatestDisplayedResult() async {
@@ -148,7 +148,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
       self.vm.rewardReceivedToggleTapped(isOn: true)
       self.vm.rewardReceivedToggleTapped(isOn: false)
       await self.vm.waitForObservation()
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgeOperations()
       XCTAssertFalse(self.vm.rewardReceived)
     }
   }
@@ -181,7 +181,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
       model.viewDidLoad()
       model.rewardReceivedToggleTapped(isOn: true)
       await model.waitForObservation()
-      await delayedFeature.waitForOperations()
+      await delayedFeature.waitForPledgeOperations()
 
       XCTAssertEqual(delays, 1)
       XCTAssertFalse(model.rewardReceived)
@@ -238,7 +238,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     await self.advancePledges()
 
     XCTAssertEqual(self.vm.rewardReceivedHidden, true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testRewardReceivedHidden_Pledged() async {
@@ -264,7 +264,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     await self.advancePledges()
 
     XCTAssertEqual(self.vm.rewardReceivedHidden, true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testRewardReceivedHidden_Preauth() async {
@@ -290,7 +290,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     await self.advancePledges()
 
     XCTAssertEqual(self.vm.rewardReceivedHidden, true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testRewardReceivedHidden_Canceled() async {
@@ -316,7 +316,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     await self.advancePledges()
 
     XCTAssertEqual(self.vm.rewardReceivedHidden, true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testRewardReceivedHidden_Collected() async {
@@ -342,7 +342,7 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     await self.advancePledges()
 
     XCTAssertEqual(self.vm.rewardReceivedHidden, true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 
   func testPledgeDisclaimerViewHidden() async {
@@ -368,6 +368,6 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     await self.advancePledges()
 
     XCTAssertEqual(self.vm.pledgeDisclaimerViewHidden, true)
-    await self.feature.waitForOperations()
+    await self.feature.waitForPledgeOperations()
   }
 }

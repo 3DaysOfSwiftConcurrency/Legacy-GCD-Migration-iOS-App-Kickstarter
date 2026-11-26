@@ -24,7 +24,7 @@ final class SettingsProjectNotificationsTests: TestCase {
   override func tearDown() async throws {
     self.provider.reads.releaseAll()
     self.provider.writes.releaseAll()
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     try await super.tearDown()
   }
 
@@ -48,7 +48,7 @@ final class SettingsProjectNotificationsTests: TestCase {
     XCTAssertEqual(self.provider.sent.map(\.email), [true, false, true])
     try self.provider.writes.finish(2, .success(on))
     for command in [first, duplicate, second, third] { _ = try await command.value }
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     XCTAssertTrue(self.feature.cachedProjectNotification(off).email)
     XCTAssertTrue(self.feature.cachedProjectNotification(off).mobile)
   }
@@ -144,7 +144,7 @@ final class SettingsProjectNotificationsTests: TestCase {
     let other = ProjectNotification.template |> ProjectNotification.lens.id .~ 222
     vm.configureWith(notification: other)
     try self.provider.writes.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
-    await self.feature.waitForOperations()
+    await self.feature.waitForSettingsOperations()
     await vm.waitForPresentation()
     XCTAssertEqual(errors, [])
     XCTAssertEqual(switches, [false, true, false])

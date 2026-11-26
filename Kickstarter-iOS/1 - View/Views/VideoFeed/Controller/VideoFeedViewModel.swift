@@ -108,7 +108,7 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
   /// Called each time the feed reappears.
   /// Reconciles the save button's state for when users save projects from a presented project page (when tapping the CTA).
   public func viewWillAppear() {
-    self.projectMediaFeature.reconcileSavedProjects(route: self.route)
+    self.projectMediaFeature.applyCachedSaveStatesToFeed(route: self.route)
   }
 
   /// Called after login completes. Fires any save that was deferred due to a pending login.
@@ -217,6 +217,6 @@ public final class VideoFeedViewModel: VideoFeedViewModelType {
   }
 
   func waitForSaves() async {
-    await self.projectMediaFeature.waitForSaves(route: self.route)
+    await self.projectMediaFeature.waitForFeedSaveTasks(route: self.route)
   }
 }

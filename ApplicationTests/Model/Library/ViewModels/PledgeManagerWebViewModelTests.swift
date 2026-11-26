@@ -249,7 +249,7 @@ final class PledgeManagerWebViewModelTests: TestCase {
 
       self.vm.fetchUpdateVCData(param: .slug(project.slug), updateId: updateId)
       await self.vm.waitForUpdate()
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgeOperations()
 
       self.dismissViewController.assertDidNotEmitValue()
       self.presentUpdateVC.assertValueCount(1)

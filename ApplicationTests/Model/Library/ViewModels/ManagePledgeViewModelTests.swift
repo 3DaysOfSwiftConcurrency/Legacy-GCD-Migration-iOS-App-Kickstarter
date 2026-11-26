@@ -44,18 +44,18 @@ private final class ManagePledgeTestClock {
 @MainActor
 internal final class ManagePledgeViewModelTests: TestCase {
   private func advancePledges(by interval: DispatchTimeInterval = .seconds(0)) async {
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
     await (self.vm as? ManagePledgeViewModel)?.waitForReads()
     self.clock.advance(by: interval.searchDelaySeconds)
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
     await (self.vm as? ManagePledgeViewModel)?.waitForReads()
     self.clock.advance(by: 0)
   }
   private func runPledges() async {
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
     await (self.vm as? ManagePledgeViewModel)?.waitForReads()
     self.clock.run()
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
     await (self.vm as? ManagePledgeViewModel)?.waitForReads()
     self.clock.run()
   }
@@ -182,9 +182,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.title.assertValues(["Manage your pledge"])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testLoadsWhenConfiguredAfterViewDidLoad() async {
@@ -200,9 +200,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.configureWith((Param.slug("project-slug"), Param.id(1)))
       await self.advancePledges()
       self.title.assertValues(["Manage your pledge"])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testRefreshAfterSameUserSessionReplacementLoadsNewProjectAndBacking() async {
@@ -378,9 +378,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.title.assertValue("Your pledge")
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testConfigurePaymentMethodViewController() async {
@@ -413,9 +413,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.configurePaymentMethodView.assertLastValue(pledgePaymentMethodViewData)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testConfigurePaymentMethodViewController_showFixPayment() async {
@@ -450,9 +450,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.configurePaymentMethodView.assertLastValue(pledgePaymentMethodViewData)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testConfigurePaymentMethodViewController_showFixPayment_noPaymentMethod() async {
@@ -490,9 +490,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.configurePaymentMethodView.assertLastValue(pledgePaymentMethodViewData)
       self.paymentMethodViewHidden.assertLastValue(false)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testConfigurePaymentMethodViewController_PlotError() async {
@@ -530,9 +530,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.configurePaymentMethodView.assertLastValue(pledgePaymentMethodViewData)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testConfigurePaymentMethodViewController_plotAuthenticationRequired() async {
@@ -570,9 +570,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.configurePaymentMethodView.assertLastValue(pledgePaymentMethodViewData)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testConfigurePledgeSummaryViewController() async {
@@ -640,9 +640,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.configurePledgeSummaryView.assertValues([pledgeViewSummaryData])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testloadProjectAndRewardsIntoDataSource() async {
@@ -670,9 +670,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.loadProjectAndRewardsIntoDataSourceProject.assertValue(project)
       self.loadProjectAndRewardsIntoDataSourceReward.assertValue([Reward.template])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testMenuButtonTapped_WhenProject_IsLive() async {
@@ -704,9 +704,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
           ManagePledgeAlertAction.cancelPledge,
         ]
       ])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testMenuButtonTapped_WhenProject_IsLive_doesNotInclude_updatePledge() async {
@@ -738,9 +738,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
           ManagePledgeAlertAction.cancelPledge,
         ]
       ])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testMenuButtonTapped_WhenProject_IsSuccessful_CreatorContext() async {
@@ -767,9 +767,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.menuButtonTapped()
 
       self.showActionSheetMenuWithOptions.assertValues([[.viewRewards]])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testMenuButtonTapped_WhenProject_IsNotLive() async {
@@ -794,9 +794,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.menuButtonTapped()
 
       self.showActionSheetMenuWithOptions.assertValues([[.viewRewards, .contactCreator]])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testMenuButtonTapped_WhenProject_IsLive_BackingStatus_IsPreAuth() async {
@@ -823,9 +823,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.menuButtonTapped()
 
       self.showActionSheetMenuWithOptions.assertValues([[.contactCreator]])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testMenuButtonTapped_WhenProject_IsLive_BackingStatus_IsPreAuth_CreatorContext() async {
@@ -854,9 +854,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.menuButtonTapped()
 
       self.showActionSheetMenuWithOptions.assertValues([[.viewRewards]])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func
@@ -896,9 +896,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
           ManagePledgeAlertAction.cancelPledge,
         ]
       ])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func
@@ -938,9 +938,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
           ManagePledgeAlertAction.cancelPledge,
         ]
       ])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testGoToCancelPledge() async {
@@ -972,9 +972,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       XCTAssertEqual(self.goToCancelPledge.values.map { $0.backingId }, [expectedId])
       XCTAssertEqual(self.goToCancelPledge.values.map { $0.pledgeAmount }, [expectedAmount])
       self.showErrorBannerWithMessage.assertDidNotEmitValue()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testBackingNotCancelable() async {
@@ -1006,9 +1006,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.goToCancelPledge.assertDidNotEmitValue()
       self.showErrorBannerWithMessage.assertValues([errorBannerMessage])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testGoToChangePaymentMethod() async {
@@ -1052,9 +1052,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       )
 
       self.goToChangePaymentMethod.assertValues([data])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testGoToContactCreator() async {
@@ -1080,9 +1080,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.goToContactCreatorSubject.assertValues([.project(id: project.id, name: project.name)])
       self.goToContactCreatorContext.assertValues([.backerModal])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testGoToRewards() async {
@@ -1104,9 +1104,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.menuOptionSelected(with: .chooseAnotherReward)
 
       self.goToRewards.assertValues([Project.template])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testGoToRewards_WithRewardDataIncludingLocalPickup_Success() async {
@@ -1141,9 +1141,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
         self.goToRewards.lastValue?.rewards.first?.localPickup,
         .canada
       )
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testNotifyDelegateManagePledgeViewControllerFinishedWithMessage_CancellingPledge() async {
@@ -1165,9 +1165,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.notifyDelegateManagePledgeViewControllerFinishedWithMessage
         .assertValues(["You cancelled your pledge."])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testNotifyDelegateManagePledgeViewControllerFinishedWithMessage_UpdatingPledge() async {
@@ -1189,9 +1189,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.notifyDelegateManagePledgeViewControllerFinishedWithMessage
         .assertValues([], "The delegate doesn't send message when updating a pledge.")
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPledgeViewControllerDidUpdatePledge() async {
@@ -1332,7 +1332,7 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
       self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[.noReward]])
       self.title.assertValues(["Manage your pledge"])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
 
     let mockService2 = MockService(
@@ -1369,9 +1369,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       XCTAssertEqual([rewardReceivedWithData.last], [expectedRewardReceivedData])
 
       self.title.assertValues(["Manage your pledge", "Manage your pledge"])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testFixPaymentTrackingEvents() async {
@@ -1394,9 +1394,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.fixButtonTapped()
 
       XCTAssertEqual(["Page Viewed"], self.segmentTrackingClient.events)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testRefreshing_ProjectAndBackingErrorsThenSuccess() async {
@@ -1495,11 +1495,11 @@ internal final class ManagePledgeViewModelTests: TestCase {
           "Something went wrong, please try again.", "Something went wrong, please try again.",
         ])
         self.loadPullToRefreshHeaderView.assertValueCount(2)
-        await self.pledgeFeature.waitForOperations()
+        await self.pledgeFeature.waitForPledgeOperations()
       }
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testRefreshing_BackingErrorThenSuccess() async {
@@ -1601,11 +1601,11 @@ internal final class ManagePledgeViewModelTests: TestCase {
         self.rightBarButtonItemHidden.assertValues([true, false])
         self.showErrorBannerWithMessage.assertValues(["Something went wrong, please try again."])
         self.loadPullToRefreshHeaderView.assertValueCount(1)
-        await self.pledgeFeature.waitForOperations()
+        await self.pledgeFeature.waitForPledgeOperations()
       }
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testRefreshing_BackingSuccessThenError() async {
@@ -1793,11 +1793,11 @@ internal final class ManagePledgeViewModelTests: TestCase {
         self.rightBarButtonItemHidden.assertValues([true, false])
         self.showErrorBannerWithMessage.assertValues(["Something went wrong, please try again."])
         self.loadPullToRefreshHeaderView.assertDidNotEmitValue()
-        await self.pledgeFeature.waitForOperations()
+        await self.pledgeFeature.waitForPledgeOperations()
       }
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testRefreshing_ProjectId_NilBackingId() async {
@@ -1870,9 +1870,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.rightBarButtonItemHidden.assertValues([true, false])
       self.showErrorBannerWithMessage.assertDidNotEmitValue()
       self.loadPullToRefreshHeaderView.assertDidNotEmitValue()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testFixButtonTapped() async {
@@ -1915,9 +1915,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       )
 
       self.goToFixPaymentMethod.assertValues([data])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPaymentMethodViewHidden_UserIsCreatorOfProject() async {
@@ -1944,9 +1944,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.paymentMethodViewHidden.assertLastValue(true)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPaymentMethodViewHidden_UserIsNotCreatorOfProject() async {
@@ -1973,9 +1973,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.paymentMethodViewHidden.assertLastValue(false)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPaymentMethodViewHidden_NoPaymentMethod() async {
@@ -1999,9 +1999,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.paymentMethodViewHidden.assertLastValue(true)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPledgeDetailsSectionLabelText_UserIsNotCreatorOfProject() async {
@@ -2028,9 +2028,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.pledgeDetailsSectionLabelText.assertValues(["Your pledge details"])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPledgeDetailsSectionLabelText_UserIsCreatorOfProject() async {
@@ -2057,9 +2057,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.pledgeDetailsSectionLabelText.assertValues(["Pledge details"])
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPlotPaymentScheduleView_IsHiddenWhenThereIsNoPaymentIncrements() async {
@@ -2086,9 +2086,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.plotPaymentScheduleViewHidden.assertValue(true)
       self.configurePlotPaymentScheduleView.assertDidNotEmitValue()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPledgeDisclaimerViewHidden_Shipping_UserIsCreatorOfProject() async {
@@ -2120,9 +2120,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       }
 
       XCTAssertTrue(pledgeDisclaimerViewHidden)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPledgeDisclaimerViewHidden_NoShipping_UserIsNotCreatorOfProject() async {
@@ -2178,9 +2178,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       }
 
       XCTAssertTrue(pledgeDisclaimerViewHidden)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPledgeDisclaimerViewHidden_Shipping_UserIsNotCreatorOfProject() async {
@@ -2212,9 +2212,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
       }
 
       XCTAssertFalse(pledgeDisclaimerViewHidden)
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   func testPlotPaymentScheduleView_IsVisible() async {
@@ -2242,9 +2242,9 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
       self.plotPaymentScheduleViewHidden.assertValue(false)
       self.configurePlotPaymentScheduleView.assertDidEmitValue()
-      await self.pledgeFeature.waitForOperations()
+      await self.pledgeFeature.waitForPledgeOperations()
     }
-    await self.pledgeFeature.waitForOperations()
+    await self.pledgeFeature.waitForPledgeOperations()
   }
 
   // MARK: - Helpers

@@ -594,7 +594,7 @@ extension RewardsFeatureTests {
     vm.inputs.viewDidLoad()
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.gate.finish(0, .success([reward]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(cards.count, 1)
     project.id += 1
     project.slug = "replacement"
@@ -603,7 +603,7 @@ extension RewardsFeatureTests {
     XCTAssertEqual(
       cards.count, 1, "Changing configuration must not redraw old add-ons in the new project")
     try fixture.provider.gate.finish(1, .success([reward]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(cards.count, 2)
     XCTAssertEqual(cards.last?.project.id, project.id)
   }
@@ -626,7 +626,7 @@ extension RewardsFeatureTests {
     await fixture.provider.gate.waitFor(1)
     task.cancel()
     try fixture.provider.gate.finish(0, .success([.template]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(completions, 0)
   }
 
@@ -647,14 +647,14 @@ extension RewardsFeatureTests {
     }
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.gate.finish(0, .success([.template]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(values, 2)
     XCTAssertEqual(fixture.provider.gate.count, 1)
     let refresh = fixture.start(route) { _ in }
     defer { refresh.cancel() }
     await fixture.provider.gate.waitFor(2)
     try fixture.provider.gate.finish(1, .success([]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
   }
 
   func testChangedAddOnLocationRejectsLateOldResponseAndOtherRouteSurvives() async throws {
@@ -683,7 +683,7 @@ extension RewardsFeatureTests {
     try fixture.provider.gate.finish(2, .success([.template]))
     try fixture.provider.gate.finish(1, .success([]))
     try fixture.provider.gate.finish(0, .success([.template]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(old, 0)
     XCTAssertEqual(new, 1)
     XCTAssertEqual(other, 1)
@@ -701,7 +701,7 @@ extension RewardsFeatureTests {
     await fixture.provider.gate.waitFor(1)
     fixture.feature.releaseAddOns(route: route)
     try fixture.provider.gate.finish(0, .success([.template]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     let second = fixture.start(route) {
       if case .success = $0 { values += 1 } else { XCTFail("Unexpected request error") }
     }
@@ -712,7 +712,7 @@ extension RewardsFeatureTests {
     await fixture.provider.gate.waitFor(2)
     fixture.session.sessionChanged()
     try fixture.provider.gate.finish(1, .success([.template]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(values, 0)
   }
 
@@ -725,7 +725,7 @@ extension RewardsFeatureTests {
     let first = fixture.start(route) { if case .failure = $0 { errors += 1 } }
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.gate.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(errors, 1)
     XCTAssertEqual(fixture.provider.gate.count, 1)
     let retry = fixture.start(route) {
@@ -737,7 +737,7 @@ extension RewardsFeatureTests {
     }
     await fixture.provider.gate.waitFor(2)
     try fixture.provider.gate.finish(1, .success(nil))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(values, 1, "A successful nil response retains the bonus-only behavior")
   }
 
@@ -747,7 +747,7 @@ extension RewardsFeatureTests {
     let first = fixture.start(UUID(), shipping: .template) { _ in }
     await fixture.provider.gate.waitFor(1)
     try fixture.provider.gate.finish(0, .success([]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     let second = fixture.start(UUID()) { _ in }
     defer {
       first.cancel()
@@ -755,7 +755,7 @@ extension RewardsFeatureTests {
     }
     await fixture.provider.gate.waitFor(2)
     try fixture.provider.gate.finish(1, .success([]))
-    await fixture.feature.waitForAddOns()
+    await fixture.feature.waitForAddOnOperations()
     XCTAssertEqual(fixture.provider.fastIDs, [fixture.reward.id, fixture.reward.id])
     XCTAssertEqual(
       fixture.provider.countries,

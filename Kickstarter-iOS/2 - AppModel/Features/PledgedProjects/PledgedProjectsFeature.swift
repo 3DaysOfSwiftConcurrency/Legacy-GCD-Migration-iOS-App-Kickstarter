@@ -268,7 +268,7 @@ public final class PledgedProjectsFeature {
       route.snapshots.send(.unloaded)
     }
   }
-  public func waitForOperations() async {
+  public func waitForPledgedProjectsPageLoads() async {
     while !self.pageLoadTasks.isEmpty {
       for task in Array(self.pageLoadTasks.values) { await task.value }
     }

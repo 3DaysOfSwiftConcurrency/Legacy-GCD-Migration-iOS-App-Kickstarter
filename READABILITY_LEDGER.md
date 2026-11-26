@@ -738,3 +738,20 @@ callers and the SwiftSyntax inventory. `readability-final-audit-1` Build For
 Testing exited zero with `TEST BUILD SUCCEEDED` for the app and test targets.
 Runtime tests remain unverified; existing warnings remain. The completed CFA
 migration ledger was not changed.
+
+Final Feature boundary pass (26 November 2026): inspected the public Feature
+operations again against their implementations and callers. Renamed the
+DeveloperExamples cancellation entry point to `cancelExampleLoads`, the
+Discussion and Rewards project-load cancellation entry points to identify the
+resource, and the ProjectMedia feed save wait/cache reconciliation methods to
+name their exact effects. The Pledge, PledgedProjects, Rewards add-on and Settings
+wait methods now name the work they await. Updated View and test callers,
+including locally named Feature instances in ViewModel tests. The first two
+Build For Testing attempts exposed missed Settings and Pledge test callers;
+repaired them immediately. The settled tree passed `feature-public-final-3`
+Build For Testing (`Library-iOS` app and test targets, exit 0,
+`TEST BUILD SUCCEEDED`). A remaining review of Task-returning Feature APIs
+found clear action names and made no changes. The current 3,024-declaration
+name inventory has no pending decisions. Runtime tests were not executed;
+existing build warnings remain. The completed CFA migration ledger was left
+unchanged.

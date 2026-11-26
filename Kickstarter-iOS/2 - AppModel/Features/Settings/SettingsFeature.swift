@@ -670,7 +670,7 @@ public final class SettingsFeature {
   }
 
   /// Waits for owned executions, not presentation scheduler delays.
-  func waitForOperations() async {
+  func waitForSettingsOperations() async {
     while !self.accountRefreshTasks.isEmpty || self.accountSetupRefreshRequest != nil || !self.accountWriteTasks.isEmpty || !self.verificationWrites.isEmpty || self
       .pendingEmailUserRead != nil || !self.notificationWrites.isEmpty {
       for task in Array(self.notificationWrites.values) { _ = await task.result }

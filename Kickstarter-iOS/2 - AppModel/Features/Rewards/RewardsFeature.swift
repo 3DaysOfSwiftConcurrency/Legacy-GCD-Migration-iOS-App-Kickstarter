@@ -418,7 +418,7 @@ public final class RewardsFeature {
     return task
   }
 
-  public func cancel(route: UUID) {
+  public func cancelProjectRewardsLoad(route: UUID) {
     guard let entry = self.rewardCollectionByRoute[route] else { return }
     let task = entry.activeLoad?.task
     entry.activeLoad = nil
@@ -427,7 +427,7 @@ public final class RewardsFeature {
   }
 
   public func release(route: UUID) {
-    self.cancel(route: route)
+    self.cancelProjectRewardsLoad(route: route)
     self.rewardCollectionByRoute.removeValue(forKey: route)
   }
 
@@ -559,7 +559,7 @@ public final class RewardsFeature {
     self.addOnsVersions[route] = nil
     self.addOnsRequests.removeValue(forKey: route)?.task.cancel()
   }
-  public func waitForAddOns() async {
+  public func waitForAddOnOperations() async {
     while !self.addOnsTasks.isEmpty || !self.addOnsObservers.isEmpty {
       for task in Array(self.addOnsTasks.values) { _ = await task.result }
       for task in Array(self.addOnsObservers.values) { await task.value }

@@ -276,7 +276,7 @@ final class SettingsFeatureTests: XCTestCase {
     fixture.user = nil
     let signedOut = fixture.feature.startNotificationPreferenceSave(named: "notify_of_messages", enabled: true)
     XCTAssertNil(signedOut)
-    await fixture.feature.waitForOperations()
+    await fixture.feature.waitForSettingsOperations()
     XCTAssertEqual(fixture.provider.sent.count, 1)
   }
 
@@ -672,7 +672,7 @@ extension SettingsFeatureTests {
     await fixture.provider.gate.waitFor(2)
     XCTAssertEqual(fixture.user?.chosenCurrency, "GBP")
     try fixture.provider.gate.finish(1, .success(nil))
-    await fixture.feature.waitForOperations()
+    await fixture.feature.waitForSettingsOperations()
     XCTAssertEqual(fixture.user?.chosenCurrency, "EUR")
     XCTAssertEqual(fixture.commits, 2)
     let firstUser = try await first.value
@@ -709,7 +709,7 @@ extension SettingsFeatureTests {
     await fixture.provider.gate.waitFor(2)
     XCTAssertEqual(fixture.user?.chosenCurrency, original)
     try fixture.provider.gate.finish(1, .success(nil))
-    await fixture.feature.waitForOperations()
+    await fixture.feature.waitForSettingsOperations()
     do { _ = try await failure.value; XCTFail("Expected account write failure") }
     catch { XCTAssertTrue(error is ErrorEnvelope) }
     let nextUser = try await next.value
@@ -730,7 +730,7 @@ extension SettingsFeatureTests {
     await fixture.provider.gate.waitFor(1)
     waiter.cancel()
     try fixture.provider.gate.finish(0, .success(nil))
-    await fixture.feature.waitForOperations()
+    await fixture.feature.waitForSettingsOperations()
     XCTAssertEqual(fixture.user?.chosenCurrency, "GBP")
     do { _ = try await waiter.value; XCTFail("Cancelled waiter returned a value") }
     catch { XCTAssertTrue(error is CancellationError) }
@@ -744,7 +744,7 @@ extension SettingsFeatureTests {
     await fixture.provider.gate.waitFor(1)
     fixture.session.sessionChanged() // Even re-login as the same account is a new identity.
     try fixture.provider.gate.finish(0, .success(nil))
-    await fixture.feature.waitForOperations()
+    await fixture.feature.waitForSettingsOperations()
     XCTAssertEqual(fixture.provider.commands.count, 1)
     XCTAssertEqual(fixture.commits, 0)
     for task in [first, queued] {
@@ -810,7 +810,7 @@ extension SettingsFeatureTests {
     try fixture.readProvider.gate.finish(0, .success(stale)) // Transport ignores cancellation.
     do { _ = try await refresh.value; XCTFail("Stale refresh must not return") }
     catch { XCTAssertTrue(error is CancellationError) }
-    await fixture.feature.waitForOperations()
+    await fixture.feature.waitForSettingsOperations()
     XCTAssertEqual(fixture.user?.chosenCurrency, "GBP")
     XCTAssertEqual(fixture.commits, 1)
   }

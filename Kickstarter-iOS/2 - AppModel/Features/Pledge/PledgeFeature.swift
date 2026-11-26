@@ -696,7 +696,7 @@ public final class PledgeFeature {
     // In-flight writes settle. Old queued writes fail their generation check
     // before provider admission; a new account has its own queue.
   }
-  public func waitForOperations() async {
+  public func waitForPledgeOperations() async {
     while !self.pledgeWriteTasks.isEmpty || !self.readTasks.isEmpty {
       for task in Array(self.readTasks.values) { await task.value }
       for task in Array(self.pledgeWriteTasks.values) { _ = await task.result }

@@ -57,7 +57,7 @@ final class ThanksViewModelTests: TestCase {
     self.feature.resetForSessionChange()
     await self.feature.waitForRecommendationLoads()
       await self.vm.waitForRecommendations()
-    await self.settingsFeature.waitForOperations()
+    await self.settingsFeature.waitForSettingsOperations()
     try await super.tearDown()
   }
 
@@ -97,7 +97,7 @@ final class ThanksViewModelTests: TestCase {
       let original = AppEnvironment.current.currentUser?.newsletters.games
       self.vm.gamesNewsletterSignupButtonTapped()
       await self.vm.waitForNewsletter()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
       self.updateUserInEnvironment.assertDidNotEmitValue()
       self.postUserUpdatedNotification.assertDidNotEmitValue()
       XCTAssertEqual(AppEnvironment.current.currentUser?.newsletters.games, original)
@@ -271,7 +271,7 @@ final class ThanksViewModelTests: TestCase {
       self.vm.gamesNewsletterSignupButtonTapped()
 
       await self.vm.waitForNewsletter()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.updateUserInEnvironment.assertValueCount(1)
       self.showGamesNewsletterOptInAlert.assertValueCount(0, "Opt-in alert does not emit")
@@ -328,7 +328,7 @@ final class ThanksViewModelTests: TestCase {
       )
 
       await self.vm.waitForNewsletter()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       XCTAssertEqual(
         ["Page Viewed"],

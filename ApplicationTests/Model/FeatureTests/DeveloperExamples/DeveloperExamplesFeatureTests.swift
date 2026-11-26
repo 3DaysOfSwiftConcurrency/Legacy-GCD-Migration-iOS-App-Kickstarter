@@ -167,7 +167,7 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
     try self.provider.lists.finish(0, .success([self.item]))
     await first.value
     await second.value
-    self.feature.suspend(route: self.route)
+    self.feature.cancelExampleLoads(route: self.route)
     await self.feature.loadRichTextProjects(route: self.route)
     XCTAssertEqual(self.provider.lists.count, 1)
     XCTAssertEqual(self.feature.richTextSnapshot(route: self.route).projects, [self.item])
@@ -197,7 +197,7 @@ final class DeveloperExamplesFeatureTests: XCTestCase {
   func testSuspendedListIgnoresLateErrorAndCanReopen() async throws {
     let old = Task { await self.feature.loadRichTextProjects(route: self.route) }
     await self.provider.lists.waitFor(1)
-    self.feature.suspend(route: self.route)
+    self.feature.cancelExampleLoads(route: self.route)
     let new = Task { await self.feature.loadRichTextProjects(route: self.route) }
     await self.provider.lists.waitFor(2)
     try self.provider.lists.finish(1, .success([self.item]))

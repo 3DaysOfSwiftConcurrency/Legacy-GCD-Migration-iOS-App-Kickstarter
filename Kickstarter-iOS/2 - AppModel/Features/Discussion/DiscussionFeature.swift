@@ -640,7 +640,7 @@ public final class DiscussionFeature {
     self.pendingProjectRequestsByRoute.removeValue(forKey: route)?.task.cancel()
   }
 
-  public func cancelProject(route: UUID) {
+  public func cancelDiscussionProjectLoad(route: UUID) {
     self.pendingProjectRequestsByRoute.removeValue(forKey: route)?.task.cancel()
   }
 }

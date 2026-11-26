@@ -66,6 +66,6 @@ internal final class RichTextExampleProjectsViewModel {
   }
   func suspend() {
     self.clearLookup()
-    self.developerExamplesFeature.suspend(route: self.route)
+    self.developerExamplesFeature.cancelExampleLoads(route: self.route)
   }
 }

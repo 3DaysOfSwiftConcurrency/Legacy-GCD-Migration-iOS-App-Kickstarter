@@ -95,7 +95,7 @@ class PPOViewModelTests: XCTestCase {
       fetchPledgedProjectsResult: Result.success(try GraphAPI.FetchPledgedProjectsQuery.fakeData())
     )) { () async in
       self.viewModel.viewDidAppear()
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgedProjectsPageLoads()
     }
 
     await fulfillment(of: [expectation], timeout: 2)
@@ -128,7 +128,7 @@ class PPOViewModelTests: XCTestCase {
     )) { () async in
       self.viewModel.viewDidAppear()
       self.viewModel.viewDidAppear() // This should not trigger another load
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgedProjectsPageLoads()
     }
 
     await fulfillment(of: [expectation], timeout: 2)
@@ -166,7 +166,7 @@ class PPOViewModelTests: XCTestCase {
         .success(try GraphAPI.FetchPledgedProjectsQuery.fakeData(cursors: 1...3))
     )) { () async in
       self.viewModel.viewDidAppear() // Initial load
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgedProjectsPageLoads()
     }
 
     await fulfillment(of: [initialLoadExpectation], timeout: 2)
@@ -221,7 +221,7 @@ class PPOViewModelTests: XCTestCase {
         .success(try GraphAPI.FetchPledgedProjectsQuery.fakeData(cursors: 1...3))
     )) { () async in
       self.viewModel.viewDidAppear() // Initial load
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgedProjectsPageLoads()
     }
 
     await fulfillment(of: [initialLoadExpectation], timeout: 2)
@@ -293,7 +293,7 @@ class PPOViewModelTests: XCTestCase {
       ))
     )) { () async in
       self.viewModel.viewDidAppear() // Initial load
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgedProjectsPageLoads()
     }
 
     await fulfillment(of: [initialLoadExpectation], timeout: 2)
@@ -479,7 +479,7 @@ class PPOViewModelTests: XCTestCase {
       ))
     )) { () async in
       self.viewModel.viewDidAppear()
-      await self.feature.waitForOperations()
+      await self.feature.waitForPledgedProjectsPageLoads()
     }
 
     await fulfillment(of: [expectation], timeout: 2)

@@ -177,7 +177,7 @@ final class ApplicationRoutingTests: TestCase {
     self.discoveryFeature.cancelRecommendationRefresh()
     self.deepLinkRouter.reset()
     await self.deepLinkRouter.waitForOperations()
-    await self.settingsFeature.waitForOperations()
+    await self.settingsFeature.waitForSettingsOperations()
     self.messagingFeature.resetMailboxState()
     await self.messagingFeature.waitForMessagingOperations()
     try await super.tearDown()
@@ -194,7 +194,7 @@ final class ApplicationRoutingTests: TestCase {
     await self.messagingFeature.waitForMessagingOperations()
     self.messageThreads.assertValueCount(1)
     XCTAssertEqual(self.messageThreads.lastValue?.id, MessageThread.template.id)
-    await self.settingsFeature.waitForOperations()
+    await self.settingsFeature.waitForSettingsOperations()
   }
 
   private var accountRefreshUpdateHandler: @MainActor (AppModel.AccountRefreshUpdate) -> Void {
@@ -366,7 +366,7 @@ final class ApplicationRoutingTests: TestCase {
       launchOptions: [:]
     )
     await self.settingsFeature.waitForScheduledAccountRefresh()
-    await self.settingsFeature.waitForOperations()
+    await self.settingsFeature.waitForSettingsOperations()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user])
     self.postNotificationName.assertDidNotEmitValue()
@@ -378,7 +378,7 @@ final class ApplicationRoutingTests: TestCase {
 
     self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
     await self.settingsFeature.waitForScheduledAccountRefresh()
-    await self.settingsFeature.waitForOperations()
+    await self.settingsFeature.waitForSettingsOperations()
 
     self.updateCurrentUserInEnvironment.assertValues([env.user, env.user])
     self.postNotificationName.assertValues([.ksr_userUpdated])
@@ -400,7 +400,7 @@ final class ApplicationRoutingTests: TestCase {
         launchOptions: [:]
       )
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([.template])
       self.postNotificationName.assertDidNotEmitValue()
@@ -428,7 +428,7 @@ final class ApplicationRoutingTests: TestCase {
         launchOptions: [:]
       )
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
       self.forceLogout.assertValueCount(1)
@@ -781,7 +781,7 @@ final class ApplicationRoutingTests: TestCase {
         options: [:]
       )
       XCTAssertTrue(result)
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .art
       await self.deepLinkRouter.waitForOperations()
@@ -807,7 +807,7 @@ final class ApplicationRoutingTests: TestCase {
         options: [:]
       )
       XCTAssertTrue(result)
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .none
       await self.deepLinkRouter.waitForOperations()
@@ -842,7 +842,7 @@ final class ApplicationRoutingTests: TestCase {
         options: [:]
       )
       XCTAssertTrue(result)
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .tabletopGames
       await self.deepLinkRouter.waitForOperations()
@@ -877,7 +877,7 @@ final class ApplicationRoutingTests: TestCase {
         options: [:]
       )
       XCTAssertTrue(result)
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .games
       await self.deepLinkRouter.waitForOperations()
@@ -909,7 +909,7 @@ final class ApplicationRoutingTests: TestCase {
         options: [:]
       )
       XCTAssertTrue(result)
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .art
         |> DiscoveryParams.lens.sort .~ .magic
@@ -942,7 +942,7 @@ final class ApplicationRoutingTests: TestCase {
         options: [:]
       )
       XCTAssertTrue(result)
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .none
         |> DiscoveryParams.lens.sort .~ .magic
@@ -983,7 +983,7 @@ final class ApplicationRoutingTests: TestCase {
         options: [:]
       )
       XCTAssertTrue(result)
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       let params = .defaults |> DiscoveryParams.lens.category .~ .tabletopGames
         |> DiscoveryParams.lens.sort .~ .magic
@@ -1098,7 +1098,7 @@ final class ApplicationRoutingTests: TestCase {
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.model.sessionFeature.waitForDeviceRegistration()
       await self.deepLinkRouter.waitForOperations()
@@ -1130,7 +1130,7 @@ final class ApplicationRoutingTests: TestCase {
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.model.sessionFeature.waitForDeviceRegistration()
       await self.deepLinkRouter.waitForOperations()
@@ -1161,7 +1161,7 @@ final class ApplicationRoutingTests: TestCase {
 
       self.receiveDeviceToken("token".data(using: .utf8)!)
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.model.sessionFeature.waitForDeviceRegistration()
       await self.deepLinkRouter.waitForOperations()
@@ -1199,7 +1199,7 @@ final class ApplicationRoutingTests: TestCase {
       )
       self.receiveDeviceToken("deadbeef".data(using: .utf8)!)
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.model.sessionFeature.waitForDeviceRegistration()
       await self.deepLinkRouter.waitForOperations()
@@ -1483,7 +1483,7 @@ final class ApplicationRoutingTests: TestCase {
 
     self.setApplicationShortcutItems.assertValues([])
     await self.settingsFeature.waitForScheduledAccountRefresh()
-    await self.settingsFeature.waitForOperations()
+    await self.settingsFeature.waitForSettingsOperations()
 
     await self.deepLinkRouter.waitForOperations()
     await self.discoveryFeature.waitForRecommendationRefresh()
@@ -1491,7 +1491,7 @@ final class ApplicationRoutingTests: TestCase {
 
     self.model.refreshAccountAndCheckSetup(delivering: self.accountRefreshUpdateHandler)
     await self.settingsFeature.waitForScheduledAccountRefresh()
-    await self.settingsFeature.waitForOperations()
+    await self.settingsFeature.waitForSettingsOperations()
 
     await self.deepLinkRouter.waitForOperations()
     await self.discoveryFeature.waitForRecommendationRefresh()
@@ -1517,7 +1517,7 @@ final class ApplicationRoutingTests: TestCase {
 
       self.setApplicationShortcutItems.assertValues([])
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.deepLinkRouter.waitForOperations()
       await self.discoveryFeature.waitForRecommendationRefresh()
@@ -1541,7 +1541,7 @@ final class ApplicationRoutingTests: TestCase {
 
       self.setApplicationShortcutItems.assertValues([])
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.deepLinkRouter.waitForOperations()
       await self.discoveryFeature.waitForRecommendationRefresh()
@@ -1906,7 +1906,7 @@ final class ApplicationRoutingTests: TestCase {
         url: url,
         options: [:]
       )
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.settingsLinks.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([true])
@@ -1940,7 +1940,7 @@ final class ApplicationRoutingTests: TestCase {
         url: url,
         options: [:]
       )
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.settingsLinks.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([false])
@@ -1974,7 +1974,7 @@ final class ApplicationRoutingTests: TestCase {
         url: url,
         options: [:]
       )
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       await self.settingsLinks.waitForOperations()
       self.emailVerificationCompletedSuccess.assertValues([false])
@@ -2013,7 +2013,7 @@ final class ApplicationRoutingTests: TestCase {
     XCTAssertTrue(self.openLink(
       application: UIApplication.shared, url: url, options: [:]
     ))
-    await self.settingsFeature.waitForOperations()
+    await self.settingsFeature.waitForSettingsOperations()
     XCTAssertEqual(AppEnvironment.current.currentUser?.notifications.mobileMessages, true)
     self.notificationSettingsUpdated.assertDidNotEmitValue()
     var newer = try XCTUnwrap(AppEnvironment.current.currentUser)
@@ -2064,7 +2064,7 @@ final class ApplicationRoutingTests: TestCase {
         launchOptions: [:]
       )
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([user])
 
@@ -2083,8 +2083,8 @@ final class ApplicationRoutingTests: TestCase {
 
       self.updateCurrentUserInEnvironment.assertValues([user])
 
-      await self.settingsFeature.waitForOperations()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([user])
       await self.settingsLinks.waitForOperations()
@@ -2113,7 +2113,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       XCTAssertEqual(appTrackingTransparency.advertisingIdentifier, "advertisingIdentifier")
       XCTAssertEqual(appTrackingTransparency.requestCount, 1)
@@ -2138,7 +2138,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
       XCTAssertEqual(appTrackingTransparency.requestCount, 0)
@@ -2163,7 +2163,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
       XCTAssertEqual(appTrackingTransparency.requestCount, 0)
@@ -2190,7 +2190,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
       XCTAssertEqual(appTrackingTransparency.requestCount, 0)
@@ -2222,7 +2222,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
@@ -2253,7 +2253,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
     }
@@ -2280,7 +2280,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
     }
@@ -2306,7 +2306,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.triggerOnboardingFlow.assertValueCount(0)
     }
@@ -2339,7 +2339,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
       XCTAssertEqual(appTrackingTransparency.advertisingIdentifier, "advertisingIdentifier")
@@ -2374,7 +2374,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
       await self.settingsFeature.waitForScheduledAccountRefresh()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       self.pushRegistrationStarted.assertValueCount(0)
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
@@ -2404,7 +2404,7 @@ final class ApplicationRoutingTests: TestCase {
       self.onboardingFeature.prepareTrackingConsent()
       self.onboardingFeature.setApplicationActive(true)
       await self.onboardingFeature.waitForDelayedTrackingChecks()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       XCTAssertNil(appTrackingTransparency.advertisingIdentifier)
       XCTAssertEqual(appTrackingTransparency.requestCount, 0)
@@ -2566,7 +2566,7 @@ final class ApplicationRoutingTests: TestCase {
       XCTAssertNil(AppEnvironment.current.currentUserEmail)
 
       self.startSession()
-      await self.settingsFeature.waitForOperations()
+      await self.settingsFeature.waitForSettingsOperations()
 
       XCTAssertEqual(AppEnvironment.current.currentUserEmail, "user@example.com")
 

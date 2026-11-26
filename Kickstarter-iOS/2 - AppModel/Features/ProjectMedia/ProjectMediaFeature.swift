@@ -416,12 +416,12 @@ public final class ProjectMediaFeature {
     self.videoFeedStatesByRoute[route]?.saveFailedItemID = nil
   }
 
-  public func waitForSaves(route: UUID) async {
+  public func waitForFeedSaveTasks(route: UUID) async {
     let tasks = self.feedSaveTasksByRoute[route]?.values.map(\.task) ?? []
     for task in tasks { await task.value }
   }
 
-  public func reconcileSavedProjects(route: UUID) {
+  public func applyCachedSaveStatesToFeed(route: UUID) {
     self.resetSaveCacheForCurrentSession()
     guard let feed = self.videoFeedStatesByRoute[route] else { return }
     for index in feed.items.indices {
