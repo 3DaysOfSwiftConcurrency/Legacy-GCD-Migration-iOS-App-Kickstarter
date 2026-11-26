@@ -2,6 +2,18 @@
 
 Maintained by Matthew Thomas.
 
+## View phase (open)
+
+The Model declaration audit closed at `e5c71e8d8` before the View phase began.
+View callers edited during Model renames were not counted as reviewed View
+declarations. The new [View audit](VIEW_READABILITY_AUDIT.md) inventories 599
+Swift files and 11,640 declarations. Its first Settings link presentation
+slice has nine decisions and reconciled callers. `view-settings-1` Build For
+Testing exited 0 with `TEST BUILD SUCCEEDED` for the app and test targets at
+the final source revision, verifying this slice. Runtime routing tests have
+not executed in this restricted process. There are 11,631 View declarations
+remaining to review, so the View phase remains open.
+
 This is a separate, behaviour-preserving readability programme. It does not
 reopen or replace the completed CFA migration ledger.
 

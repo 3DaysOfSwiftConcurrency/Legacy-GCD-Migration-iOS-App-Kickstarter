@@ -29,7 +29,7 @@ final class DeepLinkRouterTests: XCTestCase {
         verifyEmailResult: .success(EmailVerificationResponseEnvelope(message: "Verified"))
       ))
     })
-    self.settingsLinks = SettingsLinkPresentation(settingsFeature: settings, responseDelay: { 0 })
+    self.settingsLinks = SettingsLinkPresentation(settingsFeature: settings, presentationDelaySeconds: { 0 })
     self.model = makeTestAppModel(
       sessionFeature: session, settingsFeature: settings, messagingFeature: messaging,
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session, makeProvider: { provider }),
@@ -89,12 +89,12 @@ final class DeepLinkRouterTests: XCTestCase {
 
     XCTAssertTrue(self.router.route(url: url, route: self.route) { actions.append($0.action) })
     XCTAssertTrue(actions.isEmpty)
-    await self.settingsLinks.waitForOperations()
+    await self.settingsLinks.waitForPendingSettingsLinkResponses()
     XCTAssertEqual(actions, [.emailVerificationCompleted("Verified", true)])
 
     actions.removeAll()
     XCTAssertTrue(self.router.route(url: url, route: self.route, source: .braze) { actions.append($0.action) })
-    await self.settingsLinks.waitForOperations()
+    await self.settingsLinks.waitForPendingSettingsLinkResponses()
     XCTAssertTrue(actions.isEmpty)
   }
 

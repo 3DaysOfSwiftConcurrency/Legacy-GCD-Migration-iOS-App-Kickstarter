@@ -30,7 +30,7 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
       releaseRedirect: { AppModel.shared.releaseEmailLinkResolution(for: $0) },
       settingsLinks: SettingsLinkPresentation(
         settingsFeature: model.settingsFeature,
-        responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+        presentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
       ),
       projectPageComposition: model.projectPageComposition,
       serverConfig: { AppEnvironment.current.apiService.serverConfig },

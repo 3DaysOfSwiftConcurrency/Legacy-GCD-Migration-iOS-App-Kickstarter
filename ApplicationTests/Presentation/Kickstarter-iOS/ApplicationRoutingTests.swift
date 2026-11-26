@@ -78,8 +78,8 @@ final class ApplicationRoutingTests: TestCase {
   }
   private lazy var settingsLinks = SettingsLinkPresentation(
     settingsFeature: self.settingsFeature,
-    responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-    sleep: { [weak self] seconds in try await self?.settingsLinkDelay(seconds) }
+    presentationDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
+    waitForPresentationDelay: { [weak self] seconds in try await self?.settingsLinkDelay(seconds) }
   )
   private lazy var model = makeTestAppModel(
     sessionFeature: self.settingsFeature.sessionFeature,
@@ -1908,7 +1908,7 @@ final class ApplicationRoutingTests: TestCase {
       )
       await self.settingsFeature.waitForSettingsOperations()
 
-      await self.settingsLinks.waitForOperations()
+      await self.settingsLinks.waitForPendingSettingsLinkResponses()
       self.emailVerificationCompletedSuccess.assertValues([true])
       self.emailVerificationCompletedMessage.assertValues(
         ["Thanks—you’ve successfully verified your email address."]
@@ -1942,7 +1942,7 @@ final class ApplicationRoutingTests: TestCase {
       )
       await self.settingsFeature.waitForSettingsOperations()
 
-      await self.settingsLinks.waitForOperations()
+      await self.settingsLinks.waitForPendingSettingsLinkResponses()
       self.emailVerificationCompletedSuccess.assertValues([false])
       self.emailVerificationCompletedMessage.assertValues(
         ["Error Message"]
@@ -1976,7 +1976,7 @@ final class ApplicationRoutingTests: TestCase {
       )
       await self.settingsFeature.waitForSettingsOperations()
 
-      await self.settingsLinks.waitForOperations()
+      await self.settingsLinks.waitForPendingSettingsLinkResponses()
       self.emailVerificationCompletedSuccess.assertValues([false])
       self.emailVerificationCompletedMessage.assertValues(
         ["Something went wrong, please try again."]
@@ -1993,7 +1993,7 @@ final class ApplicationRoutingTests: TestCase {
       XCTAssertTrue(self.openLink(
         application: UIApplication.shared, url: url, options: [:]
       ))
-      await self.settingsLinks.waitForOperations()
+      await self.settingsLinks.waitForPendingSettingsLinkResponses()
       self.notificationSettingsUpdated.assertDidNotEmitValue()
       self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
       XCTAssertEqual(AppEnvironment.current.currentUser?.notifications, original)
@@ -2021,7 +2021,7 @@ final class ApplicationRoutingTests: TestCase {
     AppEnvironment.updateCurrentUser(newer)
     continuation.yield(())
     continuation.finish()
-    await self.settingsLinks.waitForOperations()
+    await self.settingsLinks.waitForPendingSettingsLinkResponses()
     self.notificationSettingsUpdated.assertValueCount(1)
     self.updateCurrentUserInEnvironment.assertDidNotEmitValue()
     XCTAssertEqual(AppEnvironment.current.currentUser?.newsletters.games, true)
@@ -2044,7 +2044,7 @@ final class ApplicationRoutingTests: TestCase {
     self.settingsFeature.sessionFeature.sessionChanged()
     release.yield(())
     release.finish()
-    await self.settingsLinks.waitForOperations()
+    await self.settingsLinks.waitForPendingSettingsLinkResponses()
 
     self.notificationSettingsUpdated.assertDidNotEmitValue()
   }
@@ -2087,7 +2087,7 @@ final class ApplicationRoutingTests: TestCase {
       await self.settingsFeature.waitForSettingsOperations()
 
       self.updateCurrentUserInEnvironment.assertValues([user])
-      await self.settingsLinks.waitForOperations()
+      await self.settingsLinks.waitForPendingSettingsLinkResponses()
       self.notificationSettingsUpdated.assertValueCount(1)
       XCTAssertEqual(AppEnvironment.current.currentUser?.notifications, updatedUser.notifications)
     }

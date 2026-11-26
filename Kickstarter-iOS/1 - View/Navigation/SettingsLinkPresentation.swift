@@ -5,29 +5,29 @@ import KsApi
 @MainActor
 public final class SettingsLinkPresentation {
   private let settingsFeature: SettingsFeature
-  private let responseDelay: () -> TimeInterval
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
-  private var notificationTasks: [UUID: Task<Void, Never>] = [:]
-  private var verification: (id: UUID, task: Task<Void, Never>)?
+  private let presentationDelaySeconds: () -> TimeInterval
+  private let waitForPresentationDelay: @MainActor (TimeInterval) async throws -> Void
+  private var notificationSaveTasks: [UUID: Task<Void, Never>] = [:]
+  private var emailVerification: (id: UUID, task: Task<Void, Never>)?
 
   public init(
     settingsFeature: SettingsFeature,
-    responseDelay: @escaping () -> TimeInterval,
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
+    presentationDelaySeconds: @escaping () -> TimeInterval,
+    waitForPresentationDelay: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
       if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
     }
   ) {
     self.settingsFeature = settingsFeature
-    self.responseDelay = responseDelay
-    self.sleep = sleep
+    self.presentationDelaySeconds = presentationDelaySeconds
+    self.waitForPresentationDelay = waitForPresentationDelay
   }
 
   deinit {
-    self.notificationTasks.values.forEach { $0.cancel() }
-    self.verification?.task.cancel()
+    self.notificationSaveTasks.values.forEach { $0.cancel() }
+    self.emailVerification?.task.cancel()
   }
 
-  func updateNotification(
+  func saveNotificationPreference(
     name: String, enabled: Bool, onComplete: @escaping @MainActor () -> Void
   ) {
     guard let request = self.settingsFeature.startNotificationPreferenceSave(named: name, enabled: enabled) else { return }
@@ -35,14 +35,14 @@ public final class SettingsLinkPresentation {
     let userID = session.currentUser?.id
     let generation = session.generation
     let operation = session.wrapOperationForCurrentSession { try await request.value }
-    let delay = self.sleep
-    let seconds = self.responseDelay()
+    let waitForPresentationDelay = self.waitForPresentationDelay
+    let seconds = self.presentationDelaySeconds()
     let id = UUID()
-    self.notificationTasks[id] = Task { [weak self] in
-      defer { self?.notificationTasks[id] = nil }
+    self.notificationSaveTasks[id] = Task { [weak self] in
+      defer { self?.notificationSaveTasks[id] = nil }
       do {
         _ = try await operation()
-        try await delay(seconds)
+        try await waitForPresentationDelay(seconds)
         try Task.checkCancellation()
         guard session.isCurrent(userID: userID, generation: generation) else { return }
         onComplete()
@@ -53,24 +53,24 @@ public final class SettingsLinkPresentation {
   func verifyEmail(
     token: String, onComplete: @escaping @MainActor (String, Bool) -> Void
   ) {
-    self.verification?.task.cancel()
+    self.emailVerification?.task.cancel()
     let request = self.settingsFeature.startEmailVerification(token: token)
     let session = self.settingsFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
     let operation = session.wrapOperationForCurrentSession { try await request.value }
-    let delay = self.sleep
-    let seconds = self.responseDelay()
+    let waitForPresentationDelay = self.waitForPresentationDelay
+    let seconds = self.presentationDelaySeconds()
     let id = UUID()
     let task = Task { [weak self] in
       defer {
-        if self?.verification?.id == id { self?.verification = nil }
+        if self?.emailVerification?.id == id { self?.emailVerification = nil }
       }
       let result: Result<EmailVerificationResponseEnvelope, Error>
       do { result = .success(try await operation()) }
       catch { result = .failure(error) }
       do {
-        try await delay(seconds)
+        try await waitForPresentationDelay(seconds)
         try Task.checkCancellation()
         guard session.isCurrent(userID: userID, generation: generation) else { return }
         switch result {
@@ -82,11 +82,11 @@ public final class SettingsLinkPresentation {
         }
       } catch { /* A newer request or owner cancellation suppresses presentation. */ }
     }
-    self.verification = (id, task)
+    self.emailVerification = (id, task)
   }
 
-  func waitForOperations() async {
-    for task in Array(self.notificationTasks.values) { await task.value }
-    await self.verification?.task.value
+  func waitForPendingSettingsLinkResponses() async {
+    for task in Array(self.notificationSaveTasks.values) { await task.value }
+    await self.emailVerification?.task.value
   }
 }

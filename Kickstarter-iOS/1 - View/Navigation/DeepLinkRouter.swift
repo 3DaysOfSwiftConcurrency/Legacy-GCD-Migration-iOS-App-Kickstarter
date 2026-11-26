@@ -155,7 +155,7 @@ public final class DeepLinkRouter {
     }
     switch navigation {
     case let .settings(.notifications(name, enabled)):
-      self.settingsLinks.updateNotification(name: name, enabled: enabled) {
+      self.settingsLinks.saveNotificationPreference(name: name, enabled: enabled) {
         perform(Delivery(.notificationSettingsUpdated))
       }
     case .tab(.activity): deliver(.selectActivity)
