@@ -447,7 +447,7 @@ final class DiscoveryFeatureTests: TestCase {
     await provider.waitForCount(1)
     let popular = feature.startDiscoveryPageRefresh(sort: .popular, parameters: .defaults)
     await provider.waitForCount(2)
-    feature.cancel(sort: .magic)
+    feature.cancelDiscoveryLoads(sort: .magic)
     XCTAssertFalse(feature.snapshot(for: .magic).isLoading)
     XCTAssertTrue(feature.snapshot(for: .popular).isLoading)
     try provider.complete(0, ids: [1])
@@ -515,7 +515,7 @@ final class DiscoveryFeatureTests: TestCase {
     await provider.waitForCount(1)
     let popular = feature.startDiscoveryActivitySampleLoad(sort: .popular)
     await provider.waitForCount(2)
-    feature.cancel(sort: .magic)
+    feature.cancelDiscoveryLoads(sort: .magic)
     try provider.complete(0, id: 1)
     try provider.complete(1, id: 2)
     await magic.value

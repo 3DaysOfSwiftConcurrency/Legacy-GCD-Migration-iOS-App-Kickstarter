@@ -121,7 +121,7 @@ extension SettingsFeature {
     return settings.configuration.startConfigurationRefresh()
   }
 
-  public func resetApplicationSettings() { self.applicationSettings?.configuration.reset() }
+  public func cancelPendingApplicationSettingsLoad() { self.applicationSettings?.configuration.cancelPendingConfigurationLoad() }
 
   @discardableResult
   public func activateRemoteSettings(client: any RemoteConfigClientType) -> Task<Void, Error> {

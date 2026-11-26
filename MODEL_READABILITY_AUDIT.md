@@ -14,7 +14,9 @@ rows now has a recorded naming and behavior decision, including the Feature
 boundary and the rest of AppModel. Source locations, signatures and owners
 were reconciled against the final SwiftSyntax scan; the declaration count
 remains 3,024. Conditional compilation branches are included. The final
-app/test target Build For Testing result is recorded in the ledger. Runtime
+app/test target Build For Testing result is recorded in the ledger. A subsequent
+independent pass clarified cancellation names in Discovery and configuration
+settings and passed another complete Build For Testing. Runtime
 tests remain unverified. This is a naming audit, not a guarantee that every
 reader will agree with each judgment; further naming issues can still be
 raised as concrete examples.

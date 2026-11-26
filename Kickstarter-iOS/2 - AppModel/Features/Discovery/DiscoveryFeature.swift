@@ -486,7 +486,7 @@ public final class DiscoveryFeature {
 
   /// Owner-driven cancellation invalidates identity before cancelling transport.
   /// Merely hiding a retained feed does not cancel it (legacy behaviour).
-  public func cancel(sort: DiscoveryParams.Sort) {
+  public func cancelDiscoveryLoads(sort: DiscoveryParams.Sort) {
     guard let page = self.pages[sort.rawValue] else { return }
     let request = page.request
     let activity = page.activityRequest

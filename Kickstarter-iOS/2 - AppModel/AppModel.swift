@@ -703,7 +703,7 @@ public final class AppModel {
     self.settingsFeature.cancelScheduledAccountRefresh()
     self.authenticationFeature.cancelAllEmailRedirects()
     self.discoveryFeature.resetRecommendationAvailability()
-    self.settingsFeature.resetApplicationSettings()
+    self.settingsFeature.cancelPendingApplicationSettingsLoad()
     self.developerExamplesFeature.resetForSessionChange()
     self.creatorDraftsFeature.resetForSessionChange()
     self.recommendationsFeature.resetForSessionChange()

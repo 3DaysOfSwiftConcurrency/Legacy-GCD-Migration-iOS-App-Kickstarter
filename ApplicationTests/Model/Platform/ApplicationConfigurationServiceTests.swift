@@ -63,7 +63,7 @@ final class ApplicationConfigurationServiceTests: XCTestCase {
     )
     let old = service.startConfigurationRefresh()
     await gate.waitFor(1)
-    service.reset()
+    service.cancelPendingConfigurationLoad()
     let current = service.startConfigurationRefresh()
     await gate.waitFor(2)
     try gate.finish(0, .success(.template))

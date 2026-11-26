@@ -64,7 +64,7 @@ public final class ApplicationConfigurationService {
     return task
   }
 
-  public func reset() {
+  public func cancelPendingConfigurationLoad() {
     self.pendingConfigurationRequest?.task.cancel()
     self.pendingConfigurationRequest = nil
   }

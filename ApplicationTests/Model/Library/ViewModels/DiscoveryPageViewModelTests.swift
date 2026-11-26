@@ -51,7 +51,7 @@ internal final class DiscoveryPageViewModelTests: TestCase {
 
   override func tearDown() async throws {
     for sort in [DiscoveryParams.Sort.magic, .popular, .newest, .endingSoon] {
-      self.feature.cancel(sort: sort)
+      self.feature.cancelDiscoveryLoads(sort: sort)
     }
     await self.vm.pageTask?.value
     await self.vm.activityTask?.value

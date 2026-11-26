@@ -165,7 +165,7 @@ final class SettingsFeatureTests: XCTestCase {
     defer { fixture.responses.releaseAll() }
     let old = fixture.feature.startApplicationSettingsRefresh()
     await fixture.responses.waitFor(1)
-    fixture.feature.resetApplicationSettings()
+    fixture.feature.cancelPendingApplicationSettingsLoad()
     let current = fixture.feature.startApplicationSettingsRefresh()
     await fixture.responses.waitFor(2)
     var previous = Config.template

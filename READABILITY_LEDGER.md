@@ -725,3 +725,16 @@ three Swift files without declarations, with zero pending decisions. The
 `TEST BUILD SUCCEEDED` for the `Library-iOS` app and `LibraryTests` targets.
 Warnings remain; runtime tests were not executed. The completed migration
 ledger was left unchanged. Remaining inventory decisions: 0.
+
+Independent final naming check (26 November 2026): after the 3,024-row
+inventory closed, inspected remaining public Model APIs for generic verbs and
+compared them with their actual effects. `DiscoveryFeature.cancel(sort:)`
+cancelled both the page and activity-sample loads; it is now
+`cancelDiscoveryLoads(sort:)`. `SettingsFeature.resetApplicationSettings()`
+only cancelled a pending configuration read; it is now
+`cancelPendingApplicationSettingsLoad()`, delegating to the service's renamed
+`cancelPendingConfigurationLoad()`. Reconciled the AppModel, ViewModel and test
+callers and the SwiftSyntax inventory. `readability-final-audit-1` Build For
+Testing exited zero with `TEST BUILD SUCCEEDED` for the app and test targets.
+Runtime tests remain unverified; existing warnings remain. The completed CFA
+migration ledger was not changed.
