@@ -205,7 +205,8 @@ extension SettingsViewController {
     switch cellType {
     case .account:
       return SettingsAccountViewController.instantiate(
-        settingsFeature: self.composition.settingsFeature
+        settingsFeature: self.composition.settingsFeature,
+        sessionFeature: self.composition.sessionFeature
       )
     case .help:
       return HelpViewController.instantiate()

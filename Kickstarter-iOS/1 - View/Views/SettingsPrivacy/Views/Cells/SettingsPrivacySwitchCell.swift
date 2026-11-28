@@ -49,9 +49,17 @@ final class SettingsPrivacySwitchCell: UITableViewCell, ValueCell, NibLoading {
       |> \.accessibilityHint .~ "\(value.cellType.primaryDescription), \(value.cellType.secondaryDescription)"
   }
 
-  override func bindStyles() {
-    super.bindViewModel()
+  override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    self.applyStyles()
+  }
 
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
+
+  private func applyStyles() {
     _ = self
       |> UIView.lens.backgroundColor .~ LegacyColors.ksr_support_100.uiColor()
 

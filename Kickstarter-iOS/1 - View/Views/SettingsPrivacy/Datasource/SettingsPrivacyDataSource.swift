@@ -24,6 +24,12 @@ public struct SettingsPrivacySwitchCellValue {
 }
 
 internal final class SettingsPrivacyDataSource: ValueCellDataSource {
+  private let settingsFeature: SettingsFeature
+
+  internal init(settingsFeature: SettingsFeature) {
+    self.settingsFeature = settingsFeature
+  }
+
   internal func load(user: User) {
     let followingCellValue = SettingsPrivacyStaticCellValue(cellType: .following, user: user)
 
@@ -81,6 +87,7 @@ internal final class SettingsPrivacyDataSource: ValueCellDataSource {
     case let (cell as SettingsFollowCell, value as SettingsPrivacyStaticCellValue):
       cell.configureWith(value: value)
     case let (cell as SettingsPrivacyRecommendationCell, value as SettingsPrivacyStaticCellValue):
+      cell.configure(settingsFeature: self.settingsFeature)
       cell.configureWith(value: value)
     case let (
       cell as SettingsPrivacyDeleteOrRequestCell,

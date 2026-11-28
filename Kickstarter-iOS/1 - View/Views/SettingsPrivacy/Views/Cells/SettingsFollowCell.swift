@@ -42,9 +42,17 @@ internal final class SettingsFollowCell: UITableViewCell, ValueCell {
       |> \.accessibilityHint .~ value.cellType.description
   }
 
-  internal override func bindStyles() {
-    super.bindStyles()
+  internal override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    self.applyStyles()
+  }
 
+  internal override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
+
+  private func applyStyles() {
     _ = self
       |> baseTableViewCellStyle()
       |> UITableViewCell.lens.contentView.layoutMargins %~~ { _, cell in

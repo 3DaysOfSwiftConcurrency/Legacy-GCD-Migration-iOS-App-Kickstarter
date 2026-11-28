@@ -6,7 +6,9 @@ import Observation
 import UIKit
 
 internal final class SettingsPrivacyRecommendationCell: UITableViewCell, ValueCell {
-  fileprivate let viewModel = SettingsRecommendationsCellViewModel(settingsFeature: AppModel.shared.settingsFeature)
+  typealias Value = SettingsPrivacyStaticCellValue
+
+  fileprivate var viewModel: SettingsRecommendationsCellViewModel?
 
   @IBOutlet fileprivate var recommendationsLabel: UILabel!
   @IBOutlet fileprivate var recommendationsSwitch: UISwitch!
@@ -24,16 +26,31 @@ internal final class SettingsPrivacyRecommendationCell: UITableViewCell, ValueCe
     }
   }
 
+  internal func configure(settingsFeature: SettingsFeature) {
+    self.configureViewModel(settingsFeature: settingsFeature)
+  }
+
   internal func configureWith(value: SettingsPrivacyStaticCellValue) {
-    self.viewModel.configureWith(user: value.user)
-    if let isOn = self.viewModel.recommendationsOn { self.recommendationsSwitch.isOn = isOn }
+    precondition(self.viewModel != nil, "Configure SettingsFeature before configuring the recommendation cell.")
+    let viewModel = self.viewModel!
+    viewModel.configureWith(user: value.user)
+    if let isOn = viewModel.recommendationsOn { self.recommendationsSwitch.isOn = isOn }
 
     _ = self.recommendationsSwitch
       |> \.accessibilityHint .~ value.cellType.description
   }
 
-  internal override func bindStyles() {
-    super.bindStyles()
+  internal override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    self.applyStyles()
+  }
+
+  internal override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
+
+  private func applyStyles() {
     _ = self
       |> baseTableViewCellStyle()
       |> UITableViewCell.lens.contentView.layoutMargins %~~ { _, cell in
@@ -53,23 +70,25 @@ internal final class SettingsPrivacyRecommendationCell: UITableViewCell, ValueCe
       |> UILabel.lens.text %~ { _ in Strings.Recommendations() }
   }
 
-  internal override func bindViewModel() {
-    super.bindViewModel()
-    self.viewModel.onSaved = {
+  private func configureViewModel(settingsFeature: SettingsFeature) {
+    guard self.viewModel == nil else { return }
+    let viewModel = SettingsRecommendationsCellViewModel(settingsFeature: settingsFeature)
+    viewModel.onSaved = {
       NotificationCenter.default.post(name: .ksr_recommendationsSettingChanged, object: nil)
     }
+    self.viewModel = viewModel
     self.observeRecommendations()
   }
 
   private func observeRecommendations() {
     withObservationTracking {
-      if let isOn = self.viewModel.recommendationsOn { self.recommendationsSwitch.isOn = isOn }
+      if let isOn = self.viewModel?.recommendationsOn { self.recommendationsSwitch.isOn = isOn }
     } onChange: { [weak self] in
       Task { @MainActor [weak self] in self?.observeRecommendations() }
     }
   }
 
   @IBAction func recommendationsSwitch(_ recommendationsSwitch: UISwitch) {
-    self.viewModel.recommendationsTapped(on: recommendationsSwitch.isOn)
+    self.viewModel?.recommendationsTapped(on: recommendationsSwitch.isOn)
   }
 }

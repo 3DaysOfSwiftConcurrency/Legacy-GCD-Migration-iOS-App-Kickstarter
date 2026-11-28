@@ -12,11 +12,15 @@ final class SettingsAccountViewController: UIViewController, MessageBannerViewCo
   internal var messageBannerViewController: MessageBannerViewController?
 
   private var settingsFeature: SettingsFeature!
+  private var sessionFeature: SessionFeature!
   fileprivate lazy var viewModel = SettingsAccountViewModel(settingsFeature: self.settingsFeature)
 
-  internal static func instantiate(settingsFeature: SettingsFeature) -> SettingsAccountViewController {
+  internal static func instantiate(
+    settingsFeature: SettingsFeature, sessionFeature: SessionFeature
+  ) -> SettingsAccountViewController {
     let viewController = Storyboard.Settings.instantiate(SettingsAccountViewController.self)
     viewController.settingsFeature = settingsFeature
+    viewController.sessionFeature = sessionFeature
     return viewController
   }
 
@@ -189,7 +193,10 @@ extension SettingsAccountViewController {
     case .paymentMethods:
       return PaymentMethodSettingsViewController.instantiate()
     case .privacy:
-      return SettingsPrivacyViewController.instantiate()
+      return SettingsPrivacyViewController.instantiate(
+        settingsFeature: self.settingsFeature,
+        sessionFeature: self.sessionFeature
+      )
     case .currency:
       let vc = SelectCurrencyViewController.instantiate(settingsFeature: self.settingsFeature)
       vc.configure(with: currency)

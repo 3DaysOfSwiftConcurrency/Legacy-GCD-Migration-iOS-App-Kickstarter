@@ -24,9 +24,17 @@ internal final class SettingsPrivacyStaticCell: UITableViewCell, ValueCell {
       |> UILabel.lens.numberOfLines .~ 0
   }
 
-  override func bindStyles() {
-    super.bindStyles()
+  override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    self.applyStyles()
+  }
 
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
+
+  private func applyStyles() {
     _ = self
       |> baseTableViewCellStyle()
       |> UITableViewCell.lens.backgroundColor .~ LegacyColors.ksr_support_100.uiColor()

@@ -7,14 +7,21 @@ import SafariServices
 import UIKit
 
 internal final class SettingsPrivacyViewController: UITableViewController {
-  internal let viewModel = SettingsPrivacyViewModel(
-    settingsFeature: AppModel.shared.settingsFeature,
-    sessionFeature: AppModel.shared.sessionFeature
+  private var settingsFeature: SettingsFeature!
+  private var sessionFeature: SessionFeature!
+  internal lazy var viewModel = SettingsPrivacyViewModel(
+    settingsFeature: self.settingsFeature,
+    sessionFeature: self.sessionFeature
   )
-  fileprivate let dataSource = SettingsPrivacyDataSource()
+  fileprivate lazy var dataSource = SettingsPrivacyDataSource(settingsFeature: self.settingsFeature)
 
-  internal static func instantiate() -> SettingsPrivacyViewController {
-    return Storyboard.SettingsPrivacy.instantiate(SettingsPrivacyViewController.self)
+  internal static func instantiate(
+    settingsFeature: SettingsFeature, sessionFeature: SessionFeature
+  ) -> SettingsPrivacyViewController {
+    let viewController = Storyboard.SettingsPrivacy.instantiate(SettingsPrivacyViewController.self)
+    viewController.settingsFeature = settingsFeature
+    viewController.sessionFeature = sessionFeature
+    return viewController
   }
 
   internal override func viewDidLoad() {

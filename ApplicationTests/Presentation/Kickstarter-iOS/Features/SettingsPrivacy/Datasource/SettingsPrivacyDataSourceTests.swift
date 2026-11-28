@@ -8,7 +8,14 @@ import XCTest
 
 @MainActor
 final class SettingsPrivacyDataSourceTests: XCTestCase {
-  private let dataSource = SettingsPrivacyDataSource()
+  private let dataSource = SettingsPrivacyDataSource(
+    settingsFeature: SettingsFeature(
+      sessionFeature: SessionFeature(
+        makeProvider: { AsyncSessionProvider(service: MockService()) }
+      ),
+      makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
+    )
+  )
   private let tableView = UITableView(frame: .zero)
 
   func testConfigureRows_NonCreator() {
