@@ -53,6 +53,18 @@ public struct AsyncAccountPreferencesProvider: AccountPreferencesProvider {
 /// session user at dispatch, so stale cells cannot undo another screen's edits.
 @MainActor
 public final class SettingsFeature {
+  /// Application-owned reactions to confirmed settings changes. The feature
+  /// reports the semantic event without depending on UIKit or NotificationCenter.
+  public struct Events {
+    let localePreferencesChanged: @MainActor () -> Void
+
+    public init(localePreferencesChanged: @escaping @MainActor () -> Void) {
+      self.localePreferencesChanged = localePreferencesChanged
+    }
+
+    public static let none = Self(localePreferencesChanged: {})
+  }
+
   /// Commands contain credentials only for their admitted lifetime, never in evidence or persistent state.
   public enum AccountChange: Equatable {
     case email(ChangeEmailInput)
@@ -129,6 +141,7 @@ public final class SettingsFeature {
   private let hasStoredCredentials: @MainActor () -> Bool
   private let applicationVersion: @MainActor () -> String
   private let identifyUser: @MainActor (User) -> Void
+  private let events: Events
   private var accountRefreshDebounceTask: Task<Void, Never>?
   private var activeAccountRefreshTask: Task<Void, Never>?
   private var account: Account?
@@ -164,6 +177,7 @@ public final class SettingsFeature {
     hasStoredCredentials: @escaping @MainActor () -> Bool = { false },
     applicationVersion: @escaping @MainActor () -> String = { "" },
     identifyUser: @escaping @MainActor (User) -> Void = { _ in },
+    events: Events = .none,
     makeProvider: @escaping () -> any AccountPreferencesProvider
   ) {
     self.session = sessionFeature
@@ -171,6 +185,7 @@ public final class SettingsFeature {
     self.hasStoredCredentials = hasStoredCredentials
     self.applicationVersion = applicationVersion
     self.identifyUser = identifyUser
+    self.events = events
     self.makeProvider = makeProvider
   }
 
@@ -343,6 +358,7 @@ public final class SettingsFeature {
         }
         self.session.commitUser(current, userID: account.id, generation: account.generation)
         self.session.invalidateAccountReads()
+        if case .account(.currency(_)) = edit { self.events.localePreferencesChanged() }
         self.lastError = nil
         result = .success(current)
       } catch {

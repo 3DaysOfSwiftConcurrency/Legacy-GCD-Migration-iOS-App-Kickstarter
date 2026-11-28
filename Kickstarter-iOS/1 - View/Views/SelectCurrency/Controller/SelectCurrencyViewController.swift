@@ -103,6 +103,7 @@ final class SelectCurrencyViewController: UIViewController, MessageBannerViewCon
       if self.viewModel.isLoading { self.saveButtonView?.startAnimating() }
       else { self.saveButtonView?.stopAnimating() }
       self.saveButtonView?.setIsEnabled(isEnabled: self.viewModel.saveButtonIsEnabled)
+      self.tableView.isUserInteractionEnabled = self.viewModel.isSelectionEnabled
     } onChange: { [weak self] in
       Task { @MainActor [weak self] in self?.observeSaveState() }
     }
@@ -115,8 +116,6 @@ final class SelectCurrencyViewController: UIViewController, MessageBannerViewCon
       with: .success,
       message: Strings.Got_it_your_changes_have_been_saved()
     )
-
-    NotificationCenter.default.post(name: .ksr_userLocalePreferencesChanged, object: nil)
   }
 
   // MARK: - Actions

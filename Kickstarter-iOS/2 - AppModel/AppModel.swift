@@ -753,6 +753,9 @@ public final class AppModel {
       hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
       applicationVersion: { AppEnvironment.current.mainBundle.appVersionString },
       identifyUser: { AppEnvironment.current.identify(user: $0) },
+      events: .init(localePreferencesChanged: {
+        NotificationCenter.default.post(name: .ksr_userLocalePreferencesChanged, object: nil)
+      }),
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
     )
     let messagingFeature = MessagingFeature(

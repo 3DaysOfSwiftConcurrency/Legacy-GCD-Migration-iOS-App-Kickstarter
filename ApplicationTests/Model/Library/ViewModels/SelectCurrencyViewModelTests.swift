@@ -30,9 +30,14 @@ final class SelectCurrencyViewModelTests: TestCase {
       XCTAssertTrue(self.vm.currencyRows[index].selected)
       self.vm.saveButtonTapped()
       XCTAssertTrue(self.vm.isLoading)
+      XCTAssertFalse(self.vm.saveButtonIsEnabled)
+      XCTAssertFalse(self.vm.isSelectionEnabled)
+      self.vm.didSelectCurrency(atIndex: currencies(orderedBySelected: .USD).firstIndex(of: .EUR)!)
+      XCTAssertTrue(self.vm.currencyRows[index].selected)
       await self.vm.waitForSave()
       XCTAssertFalse(self.vm.isLoading)
       XCTAssertFalse(self.vm.saveButtonIsEnabled)
+      XCTAssertTrue(self.vm.isSelectionEnabled)
       XCTAssertEqual(successes, 1)
     }
   }

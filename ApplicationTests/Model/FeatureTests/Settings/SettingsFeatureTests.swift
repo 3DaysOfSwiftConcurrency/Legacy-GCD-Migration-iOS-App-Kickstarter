@@ -638,6 +638,16 @@ extension SettingsFeatureTests {
     XCTAssertEqual(nextUser.chosenCurrency, "EUR")
   }
 
+  func testConfirmedCurrencyWriteEmitsOneApplicationEvent() async throws {
+    let fixture = AccountWritesFixture()
+    defer { fixture.provider.gate.releaseAll() }
+    let save = try fixture.feature.startAccountUpdate(.currency("GBP"))
+    await fixture.provider.gate.waitFor(1)
+    try fixture.provider.gate.finish(0, .success(nil))
+    _ = try await save.value
+    XCTAssertEqual(fixture.localePreferenceChanges, 1)
+  }
+
   func testAccountAndPreferenceWritesUseOneQueue() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.gate.releaseAll() }
@@ -775,6 +785,7 @@ extension SettingsFeatureTests {
 private final class AccountWritesFixture {
   var user: User? = .template
   var commits = 0
+  var localePreferenceChanges = 0
   let provider = ControlledAccountWritesProvider()
   let readProvider = ControlledPreferencesReadProvider()
   lazy var session = SessionFeature(
@@ -782,7 +793,11 @@ private final class AccountWritesFixture {
     currentUser: { [weak self] in self?.user },
     updateUser: { [weak self] in self?.user = $0; self?.commits += 1 }
   )
-  lazy var feature = SettingsFeature(sessionFeature: self.session, makeProvider: { self.provider })
+  lazy var feature = SettingsFeature(
+    sessionFeature: self.session,
+    events: .init(localePreferencesChanged: { [weak self] in self?.localePreferenceChanges += 1 }),
+    makeProvider: { self.provider }
+  )
 }
 
 @MainActor

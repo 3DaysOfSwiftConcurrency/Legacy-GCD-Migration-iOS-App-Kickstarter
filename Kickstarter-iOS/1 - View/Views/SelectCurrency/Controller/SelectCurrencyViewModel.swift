@@ -12,7 +12,8 @@ public struct SelectedCurrencyData: Equatable {
 public final class SelectCurrencyViewModel {
   public private(set) var currencyRows: [SelectedCurrencyData] = []
   public private(set) var isLoading = false
-  public private(set) var saveButtonIsEnabled = false
+  public var saveButtonIsEnabled: Bool { self.selected != self.saved && !self.isLoading }
+  public var isSelectionEnabled: Bool { !self.isLoading }
   public var onSuccess: (() -> Void)?
   public var onFailure: ((String) -> Void)?
   private let settingsFeature: SettingsFeature
@@ -40,18 +41,15 @@ public final class SelectCurrencyViewModel {
     self.selected = initial
     self.ordered = currencies(orderedBySelected: initial)
     self.currencyRows = selectedCurrencyData(with: self.ordered, selected: initial)
-    self.saveButtonIsEnabled = false
   }
   public func didSelectCurrency(atIndex index: Int) {
-    guard self.ordered.indices.contains(index) else { return }
+    guard self.isSelectionEnabled, self.ordered.indices.contains(index) else { return }
     let currency = self.ordered[index]
     self.selected = currency
     self.currencyRows = selectedCurrencyData(with: self.ordered, selected: currency)
-    self.saveButtonIsEnabled = currency != self.saved
   }
   public func saveButtonTapped() {
     guard let currency = self.selected, self.saveButtonIsEnabled else { return }
-    self.saveTask?.cancel()
     self.revision += 1
     let revision = self.revision
     self.isLoading = true
@@ -62,7 +60,6 @@ public final class SelectCurrencyViewModel {
         guard let self, self.revision == revision else { return }
         self.isLoading = false
         self.saved = currency
-        self.saveButtonIsEnabled = self.selected != currency
         self.onSuccess?()
       } catch {
         guard let self, !Task.isCancelled, !(error is CancellationError), self.revision == revision else { return }

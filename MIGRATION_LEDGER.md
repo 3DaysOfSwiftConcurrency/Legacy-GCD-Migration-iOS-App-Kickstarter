@@ -6115,8 +6115,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "revision": "14b9cb30f949824d3e4ece52690d1bc71eb2cff9",
     "dirty": false
   },
-  "phase": "completed",
-  "nextAction": "Migration completion evidence is recorded.",
+  "phase": "audit",
+  "nextAction": "Classify SelectCurrency’s remaining UIKit setup and navigation boundary, then select the next smallest presentation responsibility before replacing any UIKit renderer.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6404,6 +6404,22 @@ compliance. Swift packages, target identifiers and existing history are unchange
       "kind": "human-architecture-review",
       "outcome": "passed",
       "summary": "Re-reviewed the fresh 62-lead CFA inspector output against the prior complete semantic review. The new source difference is only deterministic waiting in PledgeViewModelTests; it preserves the existing stale-session assertion and changes no production ownership, lifecycle or Feature coordination. The final Library-iOS reference-device run passed 2,500/2,500. No unresolved CFA violation remains in the defined Kickstarter scope."
+    },
+    {
+      "id": "presentation-baseline",
+      "revision": "0b3db814b6e67469b8749a5421ece354036b7970",
+      "sourceFingerprint": "3763bd07a4cfd0bd3f46f5fef0d8401d87a0aac0c6dceccb2fd89770719729cf",
+      "kind": "presentation-migration-audit",
+      "outcome": "observed",
+      "summary": "Inspected 2120 Swift files. Lead occurrences {\"composition-reach-through\":105,\"legacy-presentation-hook\":667,\"lifecycle-named-api\":264,\"method-swizzle\":6,\"presentation-notification\":43,\"uikit-controller\":155}. These are source-review leads, not defect or ownership verdicts."
+    },
+    {
+      "id": "presentation-view-baseline",
+      "revision": "0b3db814b6e67469b8749a5421ece354036b7970",
+      "sourceFingerprint": "3763bd07a4cfd0bd3f46f5fef0d8401d87a0aac0c6dceccb2fd89770719729cf",
+      "kind": "presentation-migration-audit",
+      "outcome": "observed",
+      "summary": "Inspected 599 Swift files under Kickstarter-iOS/1 - View. Lead occurrences {\"composition-reach-through\":101,\"legacy-presentation-hook\":662,\"lifecycle-named-api\":264,\"method-swizzle\":6,\"presentation-notification\":33,\"uikit-controller\":145}. These are source-review leads, not defect or ownership verdicts."
     }
   ],
   "attempts": [
@@ -6538,20 +6554,26 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Ran the CFA architecture inspector and migration project analysis.",
       "result": "Recorded scanner leads as review candidates; scanner output is not a conformance verdict."
+    },
+    {
+      "action": "Ran the UIKit-to-SwiftUI presentation audit.",
+      "result": "Recorded lifecycle, swizzle, composition, and notification leads for semantic ownership review before any renderer replacement."
+    },
+    {
+      "action": "Ran the UIKit-to-SwiftUI presentation audit.",
+      "result": "Recorded lifecycle, swizzle, composition, and notification leads for semantic ownership review before any renderer replacement."
+    },
+    {
+      "action": "Scoped the UIKit-to-SwiftUI presentation audit to the production View layer.",
+      "result": "Recorded UIKit lifecycle, swizzle, composition, and notification leads as review evidence; no renderer was replaced."
+    },
+    {
+      "action": "Extracted the confirmed currency-change application event from the UIKit controller and locked the screen while its save is pending.",
+      "result": "SettingsFeature now emits the composed event after a confirmed currency write; the ViewModel owns deterministic pending state; focused SelectCurrency tests (2) and the new SettingsFeature event test (1) passed."
     }
   ],
   "blocker": null,
-  "completionGate": {
-    "baseline": "migration-engine-acceptance-audit",
-    "build": "final-kickstarter-simulator-build",
-    "tests": "full-library-suite-reference-passed",
-    "behaviourRegression": "lifecycle-and-example-ownership-verification",
-    "primitiveInventory": "final-cfa-compliance-audit",
-    "navigatorReview": "view-model-test-organization-post-audit",
-    "hybridReview": "presentation-boundary-and-app-target-semantic-review",
-    "finalCfaAudit": "reference-runtime-final-cfa-audit",
-    "humanArchitectureReview": "reference-runtime-final-human-review"
-  },
+  "completionGate": null,
   "continuation": {
     "host": "codex",
     "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47",
