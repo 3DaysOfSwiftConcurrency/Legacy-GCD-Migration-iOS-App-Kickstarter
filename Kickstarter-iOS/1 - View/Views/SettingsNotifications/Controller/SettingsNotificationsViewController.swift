@@ -40,12 +40,17 @@ internal final class SettingsNotificationsViewController: UIViewController {
     self.tableView.register(nib: .SettingsNotificationPickerCell)
     self.tableView.registerHeaderFooter(nib: .SettingsHeaderView)
 
+    self.applyStyles()
+    self.configureBindings()
     self.viewModel.viewDidLoad()
   }
 
-  internal override func bindStyles() {
-    super.bindStyles()
+  internal override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
 
+  private func applyStyles() {
     _ = self
       |> baseControllerStyle()
       |> UIViewController.lens.title %~ { _ in Strings.profile_settings_navbar_title_notifications() }
@@ -58,9 +63,7 @@ internal final class SettingsNotificationsViewController: UIViewController {
       |> \.isAccessibilityElement .~ true
   }
 
-  internal override func bindViewModel() {
-    super.bindViewModel()
-
+  private func configureBindings() {
     self.viewModel.onPickerHidden = { [weak self] in self?.animatePickerView(isHidden: $0) }
     self.viewModel.onPickerSelection = { [weak self] frequency in
       self?.emailFrequencyPickerView.selectRow(frequency.rawValue, inComponent: 0, animated: false)

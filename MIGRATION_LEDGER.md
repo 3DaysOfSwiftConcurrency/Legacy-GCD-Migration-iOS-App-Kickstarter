@@ -6590,6 +6590,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Made SettingsPrivacy controller lifecycle setup explicit instead of relying on global bindViewModel/bindStyles swizzling.",
       "result": "SettingsPrivacy now configures bindings/styles in viewDidLoad and refreshes styles explicitly for trait changes; its focused regression cycle passed 7 tests."
+    },
+    {
+      "action": "Made SettingsNotifications controller lifecycle setup explicit instead of relying on global bindViewModel/bindStyles swizzling.",
+      "result": "SettingsNotifications now configures bindings/styles in viewDidLoad and refreshes styles explicitly for trait changes; its focused regression cycle passed 7 tests."
     }
   ],
   "blocker": null,
@@ -6601,8 +6605,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "active": {
       "token": "5a5da34c-893f-4767-8540-38a383caeb8c",
       "claimedAt": "2026-11-28T12:01:46.923Z",
-      "heartbeatAt": "2026-11-28T12:07:38.411Z",
-      "expiresAt": "2026-11-28T12:37:38.411Z"
+      "heartbeatAt": "2026-11-28T12:11:00.005Z",
+      "expiresAt": "2026-11-28T12:41:00.005Z"
     }
   }
 }
