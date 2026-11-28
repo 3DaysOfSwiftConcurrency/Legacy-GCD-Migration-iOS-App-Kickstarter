@@ -26,11 +26,16 @@ final class HelpViewController: UIViewController {
     self.dataSource.configureRows()
 
     self.tableView.reloadData()
+    self.applyStyles()
+    self.configureBindings()
   }
 
-  override func bindStyles() {
-    super.bindStyles()
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
 
+  private func applyStyles() {
     _ = self
       |> settingsViewControllerStyle
       |> UIViewController.lens.title %~ { _ in Strings.profile_settings_about_title() }
@@ -40,9 +45,7 @@ final class HelpViewController: UIViewController {
       |> settingsTableViewSeparatorStyle
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
-
+  private func configureBindings() {
     self.helpViewModel.onMailCompose = { [weak self] in
         let controller = MFMailComposeViewController.support()
         controller.mailComposeDelegate = self

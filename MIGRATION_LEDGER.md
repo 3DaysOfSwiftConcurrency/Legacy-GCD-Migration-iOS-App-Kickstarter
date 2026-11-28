@@ -6622,6 +6622,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Removed SettingsNewsletters cell style-hook dependencies.",
       "result": "Newsletter cells now apply their existing styles directly when added to the hierarchy and on trait changes; direct feature configuration and newsletter update behavior remain unchanged. Focused regression cycle passed 7 tests with 0 failures and test-host integrity passed."
+    },
+    {
+      "action": "Removed HelpViewController’s global lifecycle-hook dependency.",
+      "result": "Help now configures styles and callbacks explicitly in viewDidLoad and refreshes styles for trait changes; mail-composer and web-help presentation behavior remain unchanged. Focused regression cycle passed 4 tests with 0 failures and test-host integrity passed."
     }
   ],
   "blocker": null,
@@ -6633,8 +6637,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "active": {
       "token": "5a5da34c-893f-4767-8540-38a383caeb8c",
       "claimedAt": "2026-11-28T12:01:46.923Z",
-      "heartbeatAt": "2026-11-28T12:46:45.650Z",
-      "expiresAt": "2026-11-28T13:16:45.650Z"
+      "heartbeatAt": "2026-11-28T12:49:18.146Z",
+      "expiresAt": "2026-11-28T13:19:18.146Z"
     }
   }
 }
