@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "objective": "Complete the authorised Kickstarter migration cleanup by removing every artificial response delay and injected sleep seam while preserving intentional UI-owned timings and CFA ownership.",
   "acceptanceCriteria": "Every candidate is classified; artificial response waits and test timing seams are removed; intentional UI timings are documented; affected tests complete deterministically; focused and final audit checks pass without changing product behaviour, snapshots, root controller, or test windows.",
-  "nextAction": "No further task work is required.",
-  "state": "completed",
+  "nextAction": "Delegated to authoritative migration ledger: MIGRATION_LEDGER.md",
+  "state": "replaced",
   "evidence": [
     "SearchFeature’s injected sleep seam and obsolete manual-delay tests were removed while genuine query debounce remains feature-owned. Test-host integrity passed; xcodebuild App Unit Tests SearchFeatureTests passed 21 tests, 0 failures on the pinned iPad mini (A17 Pro), iOS 18.6 simulator.",
     "DiscussionFeature delays of 1 and 3 seconds govern visible optimistic-comment, failure, retrying, and retry-success status presentation. They are intentional UI timing, but the Feature exposes an injected sleep closure solely for tests, including continuation-based timing gates.",
@@ -22,7 +22,8 @@
     "Final repository scan found no remaining injected sleep closures, responseDelay tunnels, refreshDebounce, trackingDelay, or deviceRegistrationDebounce parameters. It did find two equivalent injected next-turn timing controls: VideoFeedAudioController.nextTurn and VideoFeedDeferredActivation.nextTurn. Final completion is therefore deferred until those are classified and cleaned.",
     "VideoFeedAudioController and VideoFeedDeferredActivation retain their intentional one-turn UI scheduling internally with Task.yield and no longer expose injected nextTurn closures. Focused xcodebuild App Unit Tests VideoFeedAudioControllerTests and VideoFeedObservationTests passed 17 tests, 0 failures. Remaining duration-injection candidates are PledgeShippingLocationViewModel.dismissDelay and WatchProjectViewModel.saveDebounce, both used by tests to bypass time.",
     "PledgeShippingLocationViewModel retains its fixed 300-millisecond picker-settling presentation delay internally; WatchProjectViewModel retains its fixed 500-millisecond save coalescing debounce internally. Neither accepts a configurable duration now. xcodebuild App Unit Tests PledgeShippingLocationViewModelTests and WatchProjectViewModelTests passed 24 tests, 0 failures on the pinned iPad mini (A17 Pro), iOS 18.6 simulator.",
-    "Final repository-wide seam scan and git diff check found no injected sleep closures, responseDelay tunnels, configurable refresh/tracking/device-registration debounce closures, injected next-turn controls, or configurable dismiss/save timing seams. Retained product-owned timings are: Search input debounce; Onboarding consent deferral; Session and Settings refresh coalescing; Discussion visible-status presentation; permission-alert settling; message banner/toast/share-sheet visibility; video failure windows; picker settling; watch-save coalescing; and UIKit/layout next-turn scheduling. make verify-test-host-integrity passed. All affected focused suites previously completed successfully without changing snapshots, root controller, or test windows."
+    "Final repository-wide seam scan and git diff check found no injected sleep closures, responseDelay tunnels, configurable refresh/tracking/device-registration debounce closures, injected next-turn controls, or configurable dismiss/save timing seams. Retained product-owned timings are: Search input debounce; Onboarding consent deferral; Session and Settings refresh coalescing; Discussion visible-status presentation; permission-alert settling; message banner/toast/share-sheet visibility; video failure windows; picker settling; watch-save coalescing; and UIKit/layout next-turn scheduling. make verify-test-host-integrity passed. All affected focused suites previously completed successfully without changing snapshots, root controller, or test windows.",
+    "Delegated completed generic task to active migration ledger at MIGRATION_LEDGER.md."
   ],
   "blocker": null,
   "continuation": {
@@ -30,5 +31,13 @@
     "threadId": "01a220bb-3dd3-7d40-9410-2eb359a5484d",
     "pending": null,
     "active": null
+  },
+  "authority": {
+    "authority": "migration-ledger",
+    "ledger": "MIGRATION_LEDGER.md",
+    "token": "5a5da34c-893f-4767-8540-38a383caeb8c",
+    "threadId": "01a1ec8a-2227-7471-91d6-276b0a781c47",
+    "nextAction": "Continue replacing global swizzle dependencies screen-by-screen with explicit UIKit lifecycle ownership before selecting a SwiftUI renderer pilot.",
+    "claimCommand": "node orchestrator-state.mjs claim-continuation MIGRATION_LEDGER.md --token 5a5da34c-893f-4767-8540-38a383caeb8c"
   }
 }

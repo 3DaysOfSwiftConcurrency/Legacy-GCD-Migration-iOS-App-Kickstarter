@@ -27,20 +27,23 @@ internal final class SettingsPrivacyViewController: UITableViewController {
     self.tableView.tableHeaderView = UIView(frame: CGRect(x: 0, y: 0, width: 0, height: Styles.grid(4)))
     self.tableView.tableHeaderView?.backgroundColor = LegacyColors.ksr_support_100.uiColor()
 
+    self.applyStyles()
+    self.configureBindings()
     self.viewModel.viewDidLoad()
   }
 
-  internal override func bindStyles() {
-    super.bindStyles()
+  internal override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
 
+  private func applyStyles() {
     _ = self
       |> UITableViewController.lens.view.backgroundColor .~ LegacyColors.ksr_support_100.uiColor()
       |> UITableViewController.lens.title %~ { _ in Strings.Privacy() }
   }
 
-  internal override func bindViewModel() {
-    super.bindViewModel()
-
+  private func configureBindings() {
     self.viewModel.onReload = { [weak self] user in
       self?.dataSource.load(user: user)
       self?.tableView.reloadData()
