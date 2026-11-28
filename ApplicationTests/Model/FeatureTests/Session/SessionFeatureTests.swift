@@ -6,38 +6,16 @@ import XCTest
 
 @MainActor
 final class SessionFeatureTests: XCTestCase {
-  func testDeviceTokensDebounceAndRegisterTheLatestHexValue() async throws {
+  func testSessionChangeCancelsPendingDeviceRegistration() {
     let provider = ControlledSessionProvider()
     defer { provider.releaseAll() }
     let feature = SessionFeature(
-      makeProvider: { provider }, deviceRegistrationDebounce: {}, currentUser: { .template }
-    )
-    var delivered: [String] = []
-
-    feature.scheduleDeviceRegistration(for: Data([0x01, 0xff])) { delivered.append($0) }
-    feature.scheduleDeviceRegistration(for: Data([0x00, 0x0a, 0xbe])) { delivered.append($0) }
-    XCTAssertTrue(provider.registeredTokens.isEmpty)
-    await provider.registrations.waitFor(1)
-    XCTAssertEqual(provider.registeredTokens, ["000abe"])
-    try provider.registrations.finish(0, .success(()))
-    await feature.waitForDeviceRegistration()
-    XCTAssertEqual(delivered, ["000abe"])
-  }
-
-  func testSessionChangePreventsDebouncedDeviceRegistration() async throws {
-    let provider = ControlledSessionProvider()
-    let debounce = AccountRequestGate<Void>()
-    defer { provider.releaseAll(); debounce.releaseAll() }
-    let feature = SessionFeature(
-      makeProvider: { provider }, deviceRegistrationDebounce: { try await debounce.request() },
+      makeProvider: { provider },
       currentUser: { .template }
     )
 
     feature.scheduleDeviceRegistration(for: Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
-    await debounce.waitFor(1)
     feature.sessionChanged()
-    try debounce.finish(0, .success(()))
-    await feature.waitForDeviceRegistration()
     XCTAssertTrue(provider.registeredTokens.isEmpty)
   }
 
@@ -130,97 +108,6 @@ final class SessionFeatureTests: XCTestCase {
     let registered = try await retry.value
     XCTAssertEqual(registered, "synthetic-a")
     XCTAssertEqual(provider.registeredTokens, ["synthetic-a", "synthetic-a"])
-  }
-
-  func testReplacingDeviceDeliveryKeepsAdmittedWriteAndOnlyDeliversTheLatestToken() async throws {
-    let provider = ControlledSessionProvider()
-    defer { provider.releaseAll() }
-    let secondAdmitted = expectation(description: "Replacement registration admitted")
-    var admissions = 0
-    let feature = SessionFeature(
-      makeProvider: {
-        admissions += 1
-        if admissions == 2 { secondAdmitted.fulfill() }
-        return provider
-      },
-      deviceRegistrationDebounce: {}, currentUser: { .template }
-    )
-    var delivered: [String] = []
-    feature.scheduleDeviceRegistration(for: Data([0x01])) { delivered.append($0) }
-    await provider.registrations.waitFor(1)
-    feature.scheduleDeviceRegistration(for: Data([0x02])) { delivered.append($0) }
-    await fulfillment(of: [secondAdmitted], timeout: 2)
-
-    try provider.registrations.finish(0, .success(()))
-    await provider.registrations.waitFor(2)
-    XCTAssertEqual(provider.registeredTokens, ["01", "02"])
-    XCTAssertEqual(provider.registrationWasCancelled, [false])
-    XCTAssertTrue(delivered.isEmpty)
-    try provider.registrations.finish(1, .success(()))
-    await feature.waitForDeviceRegistration()
-    XCTAssertEqual(delivered, ["02"])
-  }
-
-  func testRestoringTheUserDuringDeviceDebouncePreservesRegistrationAndDelivery() async throws {
-    let provider = ControlledSessionProvider()
-    let debounce = AccountRequestGate<Void>()
-    defer { provider.releaseAll(); debounce.releaseAll() }
-    var user: User?
-    let feature = SessionFeature(
-      makeProvider: { provider }, deviceRegistrationDebounce: { try await debounce.request() },
-      currentUser: { user }, updateUser: { user = $0 }
-    )
-    let generation = feature.generation
-    var delivered: [String] = []
-    feature.scheduleDeviceRegistration(for: Data([0x01])) { delivered.append($0) }
-    await debounce.waitFor(1)
-
-    feature.commitRefreshedUser(.template, userID: nil, generation: generation, allowSessionRestore: true)
-    XCTAssertEqual(user?.id, User.template.id)
-    XCTAssertEqual(feature.generation, generation)
-    try debounce.finish(0, .success(()))
-    await provider.registrations.waitFor(1)
-    try provider.registrations.finish(0, .success(()))
-    await feature.waitForDeviceRegistration()
-    XCTAssertEqual(provider.registeredTokens, ["01"])
-    XCTAssertEqual(delivered, ["01"])
-  }
-
-  func testRestoringTheUserDuringDeviceTransportKeepsSharingAndDelivery() async throws {
-    let provider = ControlledSessionProvider()
-    defer { provider.releaseAll() }
-    var user: User?
-    let feature = SessionFeature(
-      makeProvider: { provider }, deviceRegistrationDebounce: {},
-      currentUser: { user }, updateUser: { user = $0 }
-    )
-    let generation = feature.generation
-    var delivered: [String] = []
-    feature.scheduleDeviceRegistration(for: Data([0x01])) { delivered.append($0) }
-    await provider.registrations.waitFor(1)
-
-    feature.commitRefreshedUser(.template, userID: nil, generation: generation, allowSessionRestore: true)
-    XCTAssertEqual(user?.id, User.template.id)
-    XCTAssertEqual(feature.generation, generation)
-    let duplicate = feature.startDeviceRegistration(token: "01")
-    let duplicateFinished = expectation(description: "Restored session shares device registration")
-    var duplicateResult: Result<String, Error>?
-    let observer = Task {
-      duplicateResult = await duplicate.result
-      duplicateFinished.fulfill()
-    }
-    try provider.registrations.finish(0, .success(()))
-    await fulfillment(of: [duplicateFinished], timeout: 2)
-    // Release an unexpected extra transport too, so a broken sharing policy cannot hang the suite.
-    provider.releaseAll()
-    await observer.value
-    await feature.waitForDeviceRegistration()
-    guard case let .success(token)? = duplicateResult else {
-      return XCTFail("Restoring account metadata invalidated the shared registration")
-    }
-    XCTAssertEqual(token, "01")
-    XCTAssertEqual(provider.registeredTokens, ["01"])
-    XCTAssertEqual(delivered, ["01"])
   }
 
   func testObsoleteDeviceTransportFailureIsReportedAsCancellation() async throws {
@@ -352,7 +239,7 @@ final class SessionFeatureTests: XCTestCase {
     defer { provider.releaseAll() }
     var commits: [GraphUserSetup] = []
     let feature = SessionFeature(
-      makeProvider: { provider }, deviceRegistrationDebounce: {},
+      makeProvider: { provider },
       storage: .init(
         currentUser: { .template },
         currentUserEmail: { commits.last?.email },

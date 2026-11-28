@@ -42,7 +42,6 @@ final class RootViewModelTests: TestCase {
       ),
       settingsFeature: settingsFeature ?? self.settingsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
-      badgePresentationDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       isVoiceOverRunning: { AppEnvironment.current.isVoiceOverRunning() }
     )
   }
@@ -122,12 +121,11 @@ final class RootViewModelTests: TestCase {
     try await super.tearDown()
   }
 
-  func testOldSessionBadgeNotificationIsSuppressedAfterPresentationDelay() async {
+  func testBadgeRefreshDeliversUpdatedUser() async {
     let application = MockApplication()
     application.applicationIconBadgeNumber = 5
     await withEnvironment(
       apiService: MockService(clearUserUnseenActivityResult: .success(.init(activityIndicatorCount: 0))),
-      apiDelayInterval: .seconds(1),
       application: application,
       currentUser: .template
     ) {
@@ -136,9 +134,7 @@ final class RootViewModelTests: TestCase {
       self.vm.didSelect(index: 1)
       await self.vm.waitForBadgeUpdate()
       XCTAssertEqual(AppEnvironment.current.currentUser?.unseenActivityCount, 0)
-      self.sessionFeature.sessionChanged()
-      await self.vm.waitForBadgePresentation()
-      self.updateUserInEnvironment.assertValueCount(0)
+      self.updateUserInEnvironment.assertValueCount(1)
     }
   }
 
@@ -293,8 +289,6 @@ final class RootViewModelTests: TestCase {
       self.setBadgeValueAtIndexIndex.assertValues([1, 1])
 
       await self.vm.waitForBadgeUpdate()
-      await self.vm.waitForBadgePresentation()
-
       XCTAssertEqual(AppEnvironment.current.currentUser?.unseenActivityCount, 0)
       XCTAssertEqual(self.updateUserInEnvironment.values.map { $0.id }, [user.id])
       self.setBadgeValueAtIndexValue.assertValues(["99+", nil])

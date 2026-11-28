@@ -44,7 +44,6 @@ public final class OnboardingFeature {
   private var trackingRequest: Task<UInt, Never>?
   private let pushRegistration: () -> PushRegistrationType.Type
   private let tracking: () -> (any AppTrackingTransparencyType)?
-  private let trackingDelay: @MainActor () async throws -> Void
   private let analytics: Analytics
   private var pushAuthorizationTasks: [UUID: Task<Void, Never>] = [:]
   private var delayedTrackingCheckTasks: [UUID: Task<Void, Never>] = [:]
@@ -72,7 +71,6 @@ public final class OnboardingFeature {
     trackingAuthorization: (() async -> ATTrackingManager.AuthorizationStatus)? = nil,
     pushRegistration: @escaping () -> PushRegistrationType.Type = { PushRegistration.self },
     tracking: @escaping () -> (any AppTrackingTransparencyType)? = { nil },
-    trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) },
     analytics: Analytics = Analytics()
   ) {
     self.completionStore = completionStore
@@ -83,7 +81,6 @@ public final class OnboardingFeature {
     self.trackingAuthorization = trackingAuthorization
     self.pushRegistration = pushRegistration
     self.tracking = tracking
-    self.trackingDelay = trackingDelay
     self.analytics = analytics
   }
 
@@ -240,11 +237,10 @@ public final class OnboardingFeature {
     guard active else { return }
 
     let id = UUID()
-    let delay = self.trackingDelay
     self.delayedTrackingCheckTasks[id] = Task { [weak self] in
       defer { self?.delayedTrackingCheckTasks[id] = nil }
       do {
-        try await delay()
+        try await Task.sleep(for: .seconds(1))
         try Task.checkCancellation()
         guard let self, self.hasSeenOnboarding else { return }
         guard let tracking = self.tracking() else { return }

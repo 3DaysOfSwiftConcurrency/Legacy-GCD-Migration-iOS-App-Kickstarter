@@ -18,10 +18,6 @@
         "enabled": false,
         "key": "OS_ACTIVITY_MODE",
         "value": "disable"
-      },
-      {
-        "key": "CFA_UNIT_TEST_HOST",
-        "value": "1"
       }
     ],
     "performanceAntipatternCheckerEnabled": true,
@@ -63,15 +59,8 @@
     {
       "target": {
         "containerPath": "container:Kickstarter.xcodeproj",
-        "identifier": "81438F468FC2A031DE9DB48E",
-        "name": "PresentationTests"
-      }
-    },
-    {
-      "target": {
-        "containerPath": "container:Kickstarter.xcodeproj",
         "identifier": "AAF3BB562F1845A200DAE921",
-        "name": "LibraryTests"
+        "name": "AppUnitTests"
       }
     },
     {

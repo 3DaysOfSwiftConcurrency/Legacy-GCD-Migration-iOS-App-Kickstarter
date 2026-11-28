@@ -74,9 +74,7 @@ public struct PaginatingList<Data, Cell, Header>: View where
       }
     }
     .listStyle(.plain)
-    .refreshable {
-      await self.onRefresh()
-    }
+    .minimumVisibleRefreshable(action: self.onRefresh)
   }
 }
 

@@ -229,7 +229,6 @@ final class ProjectDetailsFeatureTests: TestCase {
         prepareWebRequest: { URLRequest(url: $0) },
         cookieStorage: { MockCookieStorage() },
         dateType: { MockDate.self },
-        responseDelaySeconds: { 0 },
         recordThirdPartyEvent: { events.append($0) }
       ),
       sessionFeature: session,
@@ -277,8 +276,7 @@ final class ProjectDetailsFeatureTests: TestCase {
       useFastLoading: { fast },
       includeRichText: includeRichText,
       analytics: analytics,
-      projectViewContext: projectViewContext,
-      sleep: { _ in try Task.checkCancellation() }
+      projectViewContext: projectViewContext
     )
   }
 
@@ -291,7 +289,6 @@ final class ProjectDetailsFeatureTests: TestCase {
         prepareWebRequest: { URLRequest(url: $0) },
         cookieStorage: { storage },
         dateType: { MockDate.self },
-        responseDelaySeconds: { 0 },
         recordThirdPartyEvent: { _ in }
       )
     )

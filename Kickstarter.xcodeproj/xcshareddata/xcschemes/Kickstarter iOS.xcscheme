@@ -27,7 +27,7 @@
             </BuildableReference>
          </TestableReference>
          <TestableReference skipped="NO">
-            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AAF3BB562F1845A200DAE921" BuildableName="LibraryTests.xctest" BlueprintName="LibraryTests" ReferencedContainer="container:Kickstarter.xcodeproj">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AAF3BB562F1845A200DAE921" BuildableName="AppUnitTests.xctest" BlueprintName="AppUnitTests" ReferencedContainer="container:Kickstarter.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>

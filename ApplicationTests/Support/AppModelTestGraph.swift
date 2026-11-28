@@ -72,7 +72,6 @@ func makeTestAppModel(
       let bundle = AppEnvironment.current.mainBundle
       return bundle.isAlpha || bundle.isBeta || bundle.isDebug
     },
-    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
     sessionFeature: sessionFeature
   )
   let activityFeature = activityFeature ?? ActivityFeature(
@@ -142,13 +141,11 @@ func makeTestAppModel(
 extension RecommendationsFeature.Platform {
   static func test(
     promptStore: (@MainActor () -> any KeyValueStoreType)? = nil,
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     recordThirdPartyEvent: @escaping @MainActor (TriggerThirdPartyEventInput) -> Void = { _ in }
   ) -> Self {
     let defaultPromptStore = MockKeyValueStore()
     return Self(
       promptStore: promptStore ?? { defaultPromptStore },
-      responseDelaySeconds: responseDelaySeconds,
       recordThirdPartyEvent: recordThirdPartyEvent
     )
   }
@@ -207,7 +204,6 @@ extension ProjectMediaFeature {
     isVideoFeedEnabled: @escaping @MainActor () -> Bool = { false },
     webBaseURL: @escaping @MainActor () -> URL = { ServerConfig.production.webBaseUrl },
     analytics: @escaping @MainActor () -> KSRAnalytics? = { nil },
-    watchResponseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     savePrompts: SavePrompts? = nil,
     loadImage: (@MainActor (URL) async throws -> UIImage)? = nil,
     preparePlayback: (@MainActor (URL, URL?) async throws -> PreparedProjectMedia)? = nil,
@@ -228,7 +224,6 @@ extension ProjectMediaFeature {
       connectivity: connectivity,
       webBaseURL: webBaseURL,
       analytics: analytics,
-      watchResponseDelaySeconds: watchResponseDelaySeconds,
       savePrompts: savePrompts,
       loadImage: loadImage,
       preparePlayback: preparePlayback,
@@ -246,12 +241,7 @@ extension ProjectDetailsFeature {
     useFastLoading: @escaping @MainActor () -> Bool,
     includeRichText: @escaping @MainActor () -> Bool,
     analytics: Analytics = Analytics(),
-    projectViewContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil },
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-      try Task.checkCancellation()
-    }
+    projectViewContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil }
   ) {
     let settingsFeature = SettingsFeature(
       sessionFeature: sessionFeature,
@@ -270,8 +260,7 @@ extension ProjectDetailsFeature {
       makeProvider: makeProvider,
       useFastLoading: useFastLoading,
       analytics: analytics,
-      projectViewContext: projectViewContext,
-      sleep: sleep
+      projectViewContext: projectViewContext
     )
   }
 }
@@ -294,9 +283,6 @@ extension AuthenticationFeature {
     trackLoginPageViewed: @escaping @MainActor () -> Void = {
       AppEnvironment.current.ksrAnalytics.trackLoginPageViewed()
     },
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = {
-      AppEnvironment.current.apiDelayInterval.searchDelaySeconds
-    },
     trackLoginToutPageViewed: @escaping @MainActor () -> Void = {
       AppEnvironment.current.ksrAnalytics.trackLoginSignupPageViewed()
     },
@@ -310,7 +296,6 @@ extension AuthenticationFeature {
         webBaseURL: webBaseURL,
         oauthClientID: oauthClientID,
         appleAppID: appleAppID,
-        responseDelaySeconds: responseDelaySeconds,
         trackLoginPageViewed: trackLoginPageViewed,
         trackLoginSubmitButtonClicked: trackOAuthLogin,
         trackLoginToutPageViewed: trackLoginToutPageViewed,
@@ -322,65 +307,11 @@ extension AuthenticationFeature {
   }
 }
 
-extension MessagingFeature {
-  convenience init(
-    sessionFeature: SessionFeature,
-    makeProvider: @escaping () -> any MessagingProvider,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
-  ) {
-    self.init(
-      sessionFeature: sessionFeature,
-      makeProvider: makeProvider,
-      responseDelaySeconds: { 0 },
-      sleep: sleep
-    )
-  }
-}
-
-extension FriendsFeature {
-  convenience init(
-    sessionFeature: SessionFeature,
-    makeProvider: @escaping () -> any FriendsProvider,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
-  ) {
-    self.init(
-      sessionFeature: sessionFeature,
-      makeProvider: makeProvider,
-      responseDelaySeconds: { 0 },
-      sleep: sleep
-    )
-  }
-}
-
-extension ProfileFeature {
-  convenience init(
-    sessionFeature: SessionFeature,
-    makeProvider: @escaping () -> any ProfileProvider,
-    loadAvatar: (@MainActor (URL) async throws -> Data)? = nil,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
-  ) {
-    self.init(
-      sessionFeature: sessionFeature,
-      makeProvider: makeProvider,
-      responseDelaySeconds: { 0 },
-      loadAvatar: loadAvatar,
-      sleep: sleep
-    )
-  }
-}
-
 extension SearchFeature.Platform {
   static func test(
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     debounceSeconds: @escaping @MainActor () -> TimeInterval = { 0 }
   ) -> Self {
-    Self(responseDelaySeconds: responseDelaySeconds, debounceSeconds: debounceSeconds)
+    Self(debounceSeconds: debounceSeconds)
   }
 }
 
@@ -440,34 +371,22 @@ extension SearchFeature {
   convenience init(
     platform: Platform,
     provider: any SearchProjectsProvider,
-    analytics: Analytics = .noop,
-    lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { _ in },
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void
+    analytics: Analytics = .noop
   ) {
     self.init(
-      platform: platform, provider: provider, lookupProvider: EnvironmentSearchLookupProvider(),
-      analytics: analytics,
-      lookupSleep: lookupSleep, sleep: sleep
+      platform: platform,
+      provider: provider,
+      lookupProvider: EnvironmentSearchLookupProvider(),
+      analytics: analytics
     )
   }
 
   convenience init(
     provider: any SearchProjectsProvider,
-    lookupProvider: any SearchLookupProvider = EnvironmentSearchLookupProvider(),
-    lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-      try Task.checkCancellation()
-    },
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-      try Task.checkCancellation()
-    }
+    lookupProvider: any SearchLookupProvider = EnvironmentSearchLookupProvider()
   ) {
     self.init(
-      platform: .test(), provider: provider, lookupProvider: lookupProvider,
-      lookupSleep: lookupSleep, sleep: sleep
+      platform: .test(), provider: provider, lookupProvider: lookupProvider
     )
   }
 }
@@ -476,13 +395,7 @@ extension FetchCategoriesUseCase {
   convenience init(fetch: (@MainActor () async throws -> [KsApi.Category])? = nil) {
     self.init(
       cache: { AppEnvironment.current.cache },
-      fetch: fetch ?? { try await AppEnvironment.current.apiService.fetchSearchCategories().rootCategories },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      sleep: { seconds in
-        if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-        else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-        try Task.checkCancellation()
-      }
+      fetch: fetch ?? { try await AppEnvironment.current.apiService.fetchSearchCategories().rootCategories }
     )
   }
 }
@@ -493,13 +406,11 @@ extension ActivityFeature.Platform {
       throw ErrorEnvelope.couldNotParseJSON
     },
     applicationBadgeNumber: @escaping @MainActor () -> Int = { 0 },
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     trackProjectCardClick: @escaping @MainActor (Project) -> Void = { _ in }
   ) -> Self {
     Self(
       loadSurvey: loadSurvey,
       applicationBadgeNumber: applicationBadgeNumber,
-      responseDelaySeconds: responseDelaySeconds,
       trackProjectCardClick: trackProjectCardClick
     )
   }
@@ -513,10 +424,7 @@ extension ActivityFeature {
       throw ErrorEnvelope.couldNotParseJSON
     },
     applicationBadgeNumber: @escaping @MainActor () -> Int = { 0 },
-    trackProjectCardClick: @escaping @MainActor (Project) -> Void = { _ in },
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    trackProjectCardClick: @escaping @MainActor (Project) -> Void = { _ in }
   ) {
     self.init(
       platform: .test(
@@ -525,25 +433,7 @@ extension ActivityFeature {
         trackProjectCardClick: trackProjectCardClick
       ),
       sessionFeature: sessionFeature,
-      makeProvider: makeProvider,
-      sleep: sleep
-    )
-  }
-}
-
-extension CreatorDraftsFeature {
-  convenience init(
-    sessionFeature: SessionFeature,
-    makeProvider: @escaping () -> any CreatorDraftsProvider,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
-  ) {
-    self.init(
-      sessionFeature: sessionFeature,
-      makeProvider: makeProvider,
-      responseDelaySeconds: { 0 },
-      sleep: sleep
+      makeProvider: makeProvider
     )
   }
 }

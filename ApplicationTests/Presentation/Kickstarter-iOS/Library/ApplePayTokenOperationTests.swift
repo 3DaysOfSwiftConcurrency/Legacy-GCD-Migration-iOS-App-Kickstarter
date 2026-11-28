@@ -106,8 +106,7 @@ final class ApplePayTokenOperationTests: XCTestCase {
         makeProvider: { AsyncPaymentsProvider(service: service) },
         stripePublishableKey: { "fixture" },
         currencyContext: { .live() },
-        hasEligibleApplePayCard: { _ in true },
-        responseDelaySeconds: { 0 }
+        hasEligibleApplePayCard: { _ in true }
       ),
       analytics: { AppEnvironment.current.ksrAnalytics }
     )

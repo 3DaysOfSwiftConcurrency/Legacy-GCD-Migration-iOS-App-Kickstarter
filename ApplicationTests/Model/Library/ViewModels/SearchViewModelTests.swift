@@ -12,12 +12,8 @@ import XCTest
 internal final class SearchViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
 
-  private let delay = ManualSearchDelay()
   private lazy var searchFeature = SearchFeature(
-    platform: .init(
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      debounceSeconds: { AppEnvironment.current.debounceInterval.searchDelaySeconds }
-    ),
+    platform: .test(),
     provider: AsyncSearchProjectsProvider { parameters, cursor in
       let query = GraphAPI.SearchQuery.from(discoveryParams: parameters, withCursor: cursor)
       return try await AppEnvironment.current.apiService.fetchSearchPage(query: query)
@@ -35,9 +31,7 @@ internal final class SearchViewModelTests: TestCase {
       searchViewed: {
         AppEnvironment.current.ksrAnalytics.trackProjectSearchView(params: $0, results: $1)
       }
-    ),
-    lookupSleep: { _ in },
-    sleep: { [delay] in try await delay.sleep($0) }
+    )
   )
   private let sessionFeature = SessionFeature(makeProvider: {
     AsyncSessionProvider(service: AppEnvironment.current.apiService)
@@ -56,25 +50,19 @@ internal final class SearchViewModelTests: TestCase {
     MainActor.assumeIsolated {
       self.searchFeature.cancelSearchResultsLoad()
       self.searchFeature.cancelFilterLookups()
-      self.delay.releaseAll()
     }
     try await super.tearDown()
   }
 
-  /// Advance the injected request clock, then await actual Feature publication.
+  /// Await Feature-owned work directly; tests do not manufacture timing.
   /// Lookup commands are independently awaited; no reactive lookup executor remains.
   private func advanceRequests(by interval: DispatchTimeInterval? = nil) async {
     await self.vm.filterOptionsTask?.value
     await self.vm.locationLookupTask?.value
-    guard self.searchFeature.isLoading else { return }
-    guard await self.delay.waitForSleep() else { return }
     let searchTask = self.vm.searchTask
     let pageTask = self.vm.pageTask
-    let finished = self.delay.advance(by: interval?.searchDelaySeconds ?? .infinity)
-    if finished {
-      await searchTask?.value
-      await pageTask?.value
-    }
+    await searchTask?.value
+    await pageTask?.value
   }
 
   private func fixture(_ name: String) throws -> GraphAPI.SearchQuery.Data {
@@ -181,9 +169,7 @@ internal final class SearchViewModelTests: TestCase {
       XCTAssertEqual(self.searchFeature.parameters?.query, "second screen")
       XCTAssertNotNil(secondScreen.searchTask)
       await secondScreen.filterOptionsTask?.value
-      guard await self.delay.waitForSleep() else { return }
       let request = secondScreen.searchTask
-      self.delay.advance(by: .infinity)
       await request?.value
       XCTAssertEqual(self.searchFeature.projects.count, 5)
       XCTAssertFalse(self.searchFeature.isLoading)
@@ -292,7 +278,6 @@ internal final class SearchViewModelTests: TestCase {
       await self.advanceRequests()
       self.vm.inputs.searchTextChanged("pending")
       await self.vm.filterOptionsTask?.value
-      guard await self.delay.waitForSleep() else { return }
 
       let task = self.vm.searchTask
       self.vm.inputs.viewWillAppear(animated: false)

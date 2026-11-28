@@ -54,17 +54,12 @@ public final class VideoFeedAudioController {
   private var audioResetID = UUID()
   private var volumeView: MPVolumeView?
   private var isDismissed = false
-  private let nextTurn: @MainActor () async -> Void
   public private(set) var configurationError: Error?
 
   public var onVolumeUpDetected: (() -> Void)?
 
-  public init(
-    session: (any AudioSessionManaging)? = nil,
-    nextTurn: @escaping @MainActor () async -> Void = { await Task.yield() }
-  ) {
+  public init(session: (any AudioSessionManaging)? = nil) {
     self.session = session ?? LiveAudioSession.shared
-    self.nextTurn = nextTurn
   }
 
   deinit {
@@ -215,9 +210,8 @@ public final class VideoFeedAudioController {
     try? self.session.setCategory(.soloAmbient, mode: .default)
     try? self.session.setActive(true)
 
-    let nextTurn = self.nextTurn
     self.resetTask = Task { [weak self] in
-      await nextTurn()
+      await Task.yield()
       guard !Task.isCancelled, let self, !self.isDismissed, self.audioResetID == version else { return }
       self.isResettingAudioSession = false
       self.resetTask = nil

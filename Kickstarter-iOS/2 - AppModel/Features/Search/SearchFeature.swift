@@ -29,14 +29,9 @@ public final class SearchFeature {
   }
 
   public struct Platform {
-    public let responseDelaySeconds: @MainActor () -> TimeInterval
     public let debounceSeconds: @MainActor () -> TimeInterval
 
-    public init(
-      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
-      debounceSeconds: @escaping @MainActor () -> TimeInterval
-    ) {
-      self.responseDelaySeconds = responseDelaySeconds
+    public init(debounceSeconds: @escaping @MainActor () -> TimeInterval) {
       self.debounceSeconds = debounceSeconds
     }
   }
@@ -100,7 +95,6 @@ public final class SearchFeature {
   public private(set) var suggestedLocationsError: ErrorEnvelope?
 
   private let lookupProvider: any SearchLookupProvider
-  private let lookupSleep: @MainActor (TimeInterval) async throws -> Void
   private var filterOptionsRequest: (id: UUID, task: Task<Void, Never>)?
   private var categoryRequest: (id: UUID, task: Task<Void, Never>)?
   private var defaultLocationsRequest: (id: UUID, task: Task<Void, Never>)?
@@ -109,7 +103,6 @@ public final class SearchFeature {
   private let provider: any SearchProjectsProvider
   private let analytics: Analytics
   private let platform: Platform
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var nextSearchPageCursor: String?
   private var completedPageCount = 0
   private var hasRequestedSearchResults = false
@@ -119,26 +112,11 @@ public final class SearchFeature {
     platform: Platform,
     provider: any SearchProjectsProvider,
     lookupProvider: any SearchLookupProvider,
-    analytics: Analytics = .noop,
-    lookupSleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-      try Task.checkCancellation()
-    },
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite {
-        try await Task.sleep(nanoseconds: UInt64.max)
-      } else if seconds > 0 {
-        try await Task.sleep(for: .seconds(seconds))
-      }
-      try Task.checkCancellation()
-    }
+    analytics: Analytics = .noop
   ) {
     self.platform = platform
     self.provider = provider
     self.analytics = analytics
-    self.sleep = sleep
-    self.lookupSleep = lookupSleep
     self.filterSelection = SearchFilterSelection()
     self.lookupProvider = lookupProvider
   }
@@ -291,9 +269,8 @@ public final class SearchFeature {
       if !cached.isEmpty { return Task {} }
     }
     let id = UUID()
-    let delay = self.platform.responseDelaySeconds()
     self.isLoadingCategories = true
-    let task = Task { @MainActor [weak self, lookupProvider, lookupSleep] in
+    let task = Task { @MainActor [weak self, lookupProvider] in
       defer {
         if self?.categoryRequest?.id == id {
           self?.categoryRequest = nil
@@ -305,8 +282,6 @@ public final class SearchFeature {
         let response: Result<[KsApi.Category], Error>
         do { response = .success(try await lookupProvider.fetchCategories()) }
         catch { response = .failure(error) }
-        try Task.checkCancellation()
-        try await lookupSleep(delay)
         try Task.checkCancellation()
         guard let self, self.categoryRequest?.id == id else { return }
         switch response {
@@ -412,12 +387,13 @@ public final class SearchFeature {
     parameters: DiscoveryParams, cursor: String?, debounce: TimeInterval
   ) -> Task<Void, Never> {
     let id = UUID()
-    let apiDelay = self.platform.responseDelaySeconds()
     self.searchError = nil
     self.setSearchLoading(true)
-    let task = Task { @MainActor [weak self, provider, sleep] in
+    let task = Task { @MainActor [weak self, provider] in
       defer { self?.finishSearchPageLoad(id: id) }
       do {
+        try Task.checkCancellation()
+        if debounce > 0 { try await Task.sleep(for: .seconds(debounce)) }
         try Task.checkCancellation()
         let response: Result<SearchPageResponse, Error>
         do {
@@ -427,14 +403,6 @@ public final class SearchFeature {
         } catch {
           response = .failure(error)
         }
-        try Task.checkCancellation()
-        // Legacy debounce delayed successful values, not admission or errors.
-        let resultDelay: TimeInterval
-        switch response {
-        case .success: resultDelay = debounce + apiDelay
-        case .failure: resultDelay = apiDelay
-        }
-        try await sleep(resultDelay)
         try Task.checkCancellation()
         guard let self, self.pendingSearchResultRequest?.id == id else { return }
         switch response {

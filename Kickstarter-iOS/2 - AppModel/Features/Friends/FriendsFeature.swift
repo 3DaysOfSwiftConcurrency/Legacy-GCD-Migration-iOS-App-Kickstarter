@@ -61,8 +61,6 @@ public final class FriendsFeature {
 
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any FriendsProvider
-  private let responseDelaySeconds: @MainActor () -> TimeInterval
-  private let sleep: (TimeInterval) async throws -> Void
   private var routes: [UUID: Route] = [:]
   private var followingStatusByUserID: [Int: Bool] = [:]
   private var followingCacheSession: Session?
@@ -70,16 +68,10 @@ public final class FriendsFeature {
   private var followWriteTasks: [UUID: Task<Void, Error>] = [:]
   private var friendsAndStatisticsReadTasks: [UUID: Task<Void, Never>] = [:]
   public init(
-    sessionFeature: SessionFeature, makeProvider: @escaping () -> any FriendsProvider,
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    sessionFeature: SessionFeature, makeProvider: @escaping () -> any FriendsProvider
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
-    self.responseDelaySeconds = responseDelaySeconds
-    self.sleep = sleep
   }
 
   private var session: Session {
@@ -139,7 +131,6 @@ public final class FriendsFeature {
     state.snapshot.pageError = nil
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = self.responseDelaySeconds()
     // A new read waits for already-admitted writes. Reads never cancel writes.
     let predecessor = self.latestFollowWriteBySession[state.session]?.task
     let task = Task { [self] in
@@ -153,7 +144,6 @@ public final class FriendsFeature {
         if let predecessor { _ = await predecessor.result }
         try self.requireCurrent(state.session)
         let page = try await provider.fetchFriendsPage(cursor: cursor)
-        try await self.sleep(delay)
         try self.requireCurrent(state.session)
         guard self.routes[route] === state, state.page?.id == id else { return }
         state.cursor = page.users.isEmpty ? nil : page.urls.api.moreUsers
@@ -177,7 +167,6 @@ public final class FriendsFeature {
     if let pending = state.statistics { return pending.task }
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = self.responseDelaySeconds()
     state.snapshot.statisticsError = nil
     let task = Task { [self] in
       defer {
@@ -187,7 +176,6 @@ public final class FriendsFeature {
       do {
         try self.requireCurrent(state.session)
         let statistics = try await provider.fetchFriendStatistics()
-        try await self.sleep(delay)
         try self.requireCurrent(state.session)
         guard self.routes[route] === state, state.statistics?.id == id else { return }
         state.snapshot.statistics = statistics
@@ -273,10 +261,6 @@ public final class FriendsFeature {
     var value = user
     value.isFriend = following
     return value
-  }
-
-  public func waitForResponsePresentationDelay() async throws {
-    try await self.sleep(self.responseDelaySeconds())
   }
 
   public func followAll() async throws { try await self.performFollowingWrite(.all) }

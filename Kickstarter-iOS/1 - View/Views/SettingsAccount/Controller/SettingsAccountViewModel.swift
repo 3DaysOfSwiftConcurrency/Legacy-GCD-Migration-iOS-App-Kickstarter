@@ -19,16 +19,12 @@ public final class SettingsAccountViewModel {
   public var onFetchError: (() -> Void)?
   public var onSelect: ((SettingsAccountCellType, Currency) -> Void)?
   private let settingsFeature: SettingsFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var task: Task<Void, Never>?
   private var revision = 0
   private var appeared = false
 
-  public init(settingsFeature: SettingsFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(settingsFeature: SettingsFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
   }
   public func viewDidLoad() { self.load() }
   public func viewWillAppear() {
@@ -44,9 +40,9 @@ public final class SettingsAccountViewModel {
     self.revision += 1
     let revision = self.revision
     let settingsFeature = self.settingsFeature
-    self.task = Task { [weak self, settingsFeature, sleep] in
+    self.task = Task { [weak self, settingsFeature] in
       do {
-        let user = try await settingsFeature.loadAccountFields(sleep: sleep)
+        let user = try await settingsFeature.loadAccountFields()
         try Task.checkCancellation()
         guard let self, self.revision == revision else { return }
         let apple = user.isAppleConnected == .some(true)

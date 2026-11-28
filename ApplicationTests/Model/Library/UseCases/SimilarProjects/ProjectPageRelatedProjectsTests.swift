@@ -32,8 +32,7 @@ final class ProjectPageRelatedProjectsTests: TestCase {
       platform: .live(), sessionFeature: session,
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session,
         makeProvider: { AsyncDiscussionProvider(service: MockService()) }),
-      makeProvider: { provider }, useFastLoading: { false }, includeRichText: { false },
-      sleep: { _ in try Task.checkCancellation() }
+      makeProvider: { provider }, useFastLoading: { false }, includeRichText: { false }
     )
     self.vm = ProjectPageViewModelTests.makeViewModel(
       details: self.details,

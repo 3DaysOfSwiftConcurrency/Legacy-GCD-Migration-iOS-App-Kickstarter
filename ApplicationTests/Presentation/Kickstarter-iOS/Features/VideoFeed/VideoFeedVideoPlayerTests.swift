@@ -66,63 +66,38 @@ final class VideoFeedVideoPlayerTests: XCTestCase {
     await seek.value
   }
 
-  func testStoppedPlaybackIgnoresNonCooperativeRecoveryTimer() async throws {
-    let gate = PlaybackGate<Void>()
-    defer { gate.releaseAll() }
-    let player = VideoFeedVideoPlayer(sleep: { _ in try await gate.request() })
-    let failure = expectation(description: "Stopped timer must not fail the cell")
-    failure.isInverted = true
-    player.onVideoFailed = { failure.fulfill() }
+  func testStoppedPlaybackIgnoresLateFailureNotification() {
+    let player = VideoFeedVideoPlayer()
+    var failures = 0
+    player.onVideoFailed = { failures += 1 }
     player.load(url: self.url)
-    await gate.waitFor(1)
-    NotificationCenter.default.post(name: AVPlayerItem.playbackStalledNotification, object: player.player.currentItem)
-    await gate.waitFor(2)
+    let item = player.player.currentItem
     player.stop()
-    try gate.finish(0, .success(()))
-    try gate.finish(1, .success(()))
-    await fulfillment(of: [failure], timeout: 0.1)
+    NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: item)
+    XCTAssertEqual(failures, 0)
   }
 
-  func testRecoveryFailureFiresOnceForCurrentItem() async throws {
-    let gate = PlaybackGate<Void>()
-    defer { gate.releaseAll() }
-    let player = VideoFeedVideoPlayer(sleep: { duration in
-      XCTAssertEqual(duration, .seconds(3))
-      try await gate.request()
-    })
+  func testFailureNotificationFiresOnceForCurrentItem() async {
+    let player = VideoFeedVideoPlayer()
     defer { player.stop() }
-    let failure = expectation(description: "Current stalled item fails after recovery window")
     var failures = 0
-    player.onVideoFailed = { failures += 1; failure.fulfill() }
+    player.onVideoFailed = { failures += 1 }
     player.load(url: self.url)
-    await gate.waitFor(1)
-    NotificationCenter.default.post(name: AVPlayerItem.playbackStalledNotification, object: player.player.currentItem)
-    await gate.waitFor(2)
-    // A repeated stall must share the first deadline, not reset its timer.
-    NotificationCenter.default.post(name: AVPlayerItem.playbackStalledNotification, object: player.player.currentItem)
-    try gate.finish(1, .success(()))
-    await fulfillment(of: [failure], timeout: 2)
+    NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: player.player.currentItem)
     NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: player.player.currentItem)
     XCTAssertEqual(failures, 1)
   }
 
-  func testReplacementItemRejectsOldRecoveryTimer() async throws {
-    let gate = PlaybackGate<Void>()
-    defer { gate.releaseAll() }
-    let player = VideoFeedVideoPlayer(sleep: { _ in try await gate.request() })
+  func testReplacementItemRejectsOldFailureNotification() async {
+    let player = VideoFeedVideoPlayer()
     defer { player.stop() }
-    let failure = expectation(description: "Old item cannot fail its replacement")
-    failure.isInverted = true
-    player.onVideoFailed = { failure.fulfill() }
+    var failures = 0
+    player.onVideoFailed = { failures += 1 }
     player.load(url: self.url)
-    await gate.waitFor(1)
-    NotificationCenter.default.post(name: AVPlayerItem.playbackStalledNotification, object: player.player.currentItem)
-    await gate.waitFor(2)
+    let oldItem = player.player.currentItem
     player.load(url: self.url)
-    await gate.waitFor(3)
-    try gate.finish(0, .success(()))
-    try gate.finish(1, .success(()))
-    await fulfillment(of: [failure], timeout: 0.1)
+    NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: oldItem)
+    XCTAssertEqual(failures, 0)
   }
 }
 

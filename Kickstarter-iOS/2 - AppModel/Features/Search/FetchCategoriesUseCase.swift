@@ -10,19 +10,13 @@ public final class FetchCategoriesUseCase {
 
   private let cache: @MainActor () -> KSCache
   private let fetch: @MainActor () async throws -> [KsApi.Category]
-  private let responseDelaySeconds: @MainActor () -> TimeInterval
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
 
   public init(
     cache: @escaping @MainActor () -> KSCache,
-    fetch: @escaping @MainActor () async throws -> [KsApi.Category],
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void
+    fetch: @escaping @MainActor () async throws -> [KsApi.Category]
   ) {
     self.cache = cache
     self.fetch = fetch
-    self.responseDelaySeconds = responseDelaySeconds
-    self.sleep = sleep
   }
 
   deinit { self.categoryLoadTask?.cancel() }
@@ -40,8 +34,6 @@ public final class FetchCategoriesUseCase {
       if !cachedCategories.isEmpty { return Task {} }
     }
     let fetch = self.fetch
-    let delay = self.responseDelaySeconds()
-    let sleep = self.sleep
     self.onLoading?(true)
     let task = Task { @MainActor [weak self] in
       defer {
@@ -55,8 +47,6 @@ public final class FetchCategoriesUseCase {
           result = .success(try await fetch())
         }
         catch { result = .failure(error) }
-        try Task.checkCancellation()
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.cache() === cache else { return }
         if case let .success(categories) = result {

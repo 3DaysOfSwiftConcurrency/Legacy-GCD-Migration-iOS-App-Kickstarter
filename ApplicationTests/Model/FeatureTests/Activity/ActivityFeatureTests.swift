@@ -30,20 +30,17 @@ final class ActivityFeatureTests: TestCase {
     XCTAssertEqual(feature.currentApplicationBadgeNumber, 7)
   }
 
-  func testPlatformComposesSurveyBadgeAndResponsePolicy() async throws {
+  func testPlatformComposesSurveyAndBadgeDependencies() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
     var surveyIDs: [Int] = []
-    var sleeps: [TimeInterval] = []
     let feature = ActivityFeature(
       platform: .test(
         loadSurvey: { surveyIDs.append($0); return .template },
-        applicationBadgeNumber: { 7 },
-        responseDelaySeconds: { 11 }
+        applicationBadgeNumber: { 7 }
       ),
       sessionFeature: self.session(),
-      makeProvider: { provider },
-      sleep: { sleeps.append($0) }
+      makeProvider: { provider }
     )
 
     let page = feature.startActivityPageLoad()
@@ -52,7 +49,6 @@ final class ActivityFeatureTests: TestCase {
     await page?.value
     let surveyURLString = try await feature.fetchSurveyURLString(id: 42)
 
-    XCTAssertEqual(sleeps, [11])
     XCTAssertEqual(feature.activities.map(\.id), [4])
     XCTAssertEqual(surveyIDs, [42])
     XCTAssertEqual(surveyURLString, SurveyResponse.template.urls.web.survey)
@@ -62,7 +58,7 @@ final class ActivityFeatureTests: TestCase {
   func testNativeObservationTracksLoadingAndActivityChanges() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
-    let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
+    let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider })
     let loadingChanged = expectation(description: "loading state changed")
     withObservationTracking { _ = feature.isLoadingActivityPage } onChange: { loadingChanged.fulfill() }
     let request = feature.startActivityPageLoad()
@@ -81,7 +77,7 @@ final class ActivityFeatureTests: TestCase {
   func testHistorySharingPaginationSortingEmptyAndRetry() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
-    let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
+    let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider })
     let first = feature.startActivityPageLoad(), duplicate = feature.startActivityPageLoad()
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(self.page([1, 3])))
@@ -112,7 +108,7 @@ final class ActivityFeatureTests: TestCase {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
     let session = self.session()
-    let feature = ActivityFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
+    let feature = ActivityFeature(sessionFeature: session, makeProvider: { provider })
     let page = feature.startActivityPageLoad(), survey = feature.startUnansweredSurveyLoad()
     await provider.pages.waitFor(1); await provider.surveysGate.waitFor(1)
     session.sessionChanged()
@@ -128,7 +124,7 @@ final class ActivityFeatureTests: TestCase {
   func testSurveyFailurePreservesDataAndIndependentPageCanComplete() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
-    let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
+    let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider })
     let survey = feature.startUnansweredSurveyLoad(), duplicate = feature.startUnansweredSurveyLoad()
     let page = feature.startActivityPageLoad()
     await provider.surveysGate.waitFor(1); await provider.pages.waitFor(1)
@@ -150,7 +146,7 @@ final class ActivityFeatureTests: TestCase {
       makeProvider: { AsyncSessionProvider(service: MockService()) },
       currentUser: { nil }
     )
-    let feature = ActivityFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
+    let feature = ActivityFeature(sessionFeature: session, makeProvider: { provider })
     await feature.refreshActivityFeed()
     XCTAssertNil(feature.startUnansweredSurveyLoad())
     XCTAssertEqual(provider.pages.count, 0)
@@ -160,7 +156,7 @@ final class ActivityFeatureTests: TestCase {
   func testResetRejectsLateErrorsWithoutChangingSession() async throws {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
-    let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider }, sleep: { _ in })
+    let feature = ActivityFeature(sessionFeature: self.session(), makeProvider: { provider })
     let page = feature.startActivityPageLoad(), survey = feature.startUnansweredSurveyLoad()
     await provider.pages.waitFor(1)
     await provider.surveysGate.waitFor(1)

@@ -171,12 +171,11 @@ public final class DeepLinkRouter {
     let task: Task<Value, Error>
   }
   private let currentSession: () -> DeepLinkSession
-  private let resolveDestination: (Navigation, TimeInterval) async throws -> DeepLinkDestination?
+  private let resolveDestination: (Navigation) async throws -> DeepLinkDestination?
   private let firstRedirect: (URL, UUID) async throws -> URL?
   private let releaseRedirect: (UUID) -> Void
   private let settingsFeature: SettingsFeature
   private let serverConfig: () -> ServerConfigType
-  private let discoveryResponseDelay: () -> TimeInterval
   private let projectPageComposition: ProjectPageComposition
   private var destinations: [UUID: (navigation: Navigation, request: Pending<DeepLinkDestination?>)] = [:]
   private var destinationTasks: [UUID: Task<DeepLinkDestination?, Error>] = [:]
@@ -189,13 +188,12 @@ public final class DeepLinkRouter {
 
   public init(
     currentSession: @escaping () -> DeepLinkSession,
-    resolveDestination: @escaping (Navigation, TimeInterval) async throws -> DeepLinkDestination?,
+    resolveDestination: @escaping (Navigation) async throws -> DeepLinkDestination?,
     firstRedirect: @escaping (URL, UUID) async throws -> URL?,
     releaseRedirect: @escaping (UUID) -> Void,
     settingsFeature: SettingsFeature,
     projectPageComposition: ProjectPageComposition,
-    serverConfig: @escaping () -> ServerConfigType,
-    discoveryResponseDelay: @escaping () -> TimeInterval
+    serverConfig: @escaping () -> ServerConfigType
   ) {
     self.currentSession = currentSession
     self.resolveDestination = resolveDestination
@@ -204,7 +202,6 @@ public final class DeepLinkRouter {
     self.settingsFeature = settingsFeature
     self.projectPageComposition = projectPageComposition
     self.serverConfig = serverConfig
-    self.discoveryResponseDelay = discoveryResponseDelay
   }
   private var session: DeepLinkSession { self.currentSession() }
   private func requireCurrent(_ session: DeepLinkSession) throws {
@@ -229,7 +226,6 @@ public final class DeepLinkRouter {
     }
     self.release(route: route)
     let id = UUID()
-    let delay = self.discoveryResponseDelay()
     let task = Task { [self] in
       defer {
         self.destinationTasks[id] = nil
@@ -238,7 +234,7 @@ public final class DeepLinkRouter {
       try self.requireCurrent(session)
       let destination: DeepLinkDestination?
       do {
-        destination = try await self.resolveDestination(navigation, delay)
+        destination = try await self.resolveDestination(navigation)
       } catch {
         try self.requireCurrent(session)
         throw error

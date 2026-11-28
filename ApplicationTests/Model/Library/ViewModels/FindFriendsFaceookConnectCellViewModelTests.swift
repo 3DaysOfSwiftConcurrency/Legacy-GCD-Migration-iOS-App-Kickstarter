@@ -11,7 +11,6 @@ final class FindFriendsFacebookConnectCellViewModelTests: TestCase {
   private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) })
   private lazy var feature = SettingsFeature(
     sessionFeature: self.sessionFeature,
-    responseDeliverySleep: { _ in },
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var vm = FindFriendsFacebookConnectCellViewModel(

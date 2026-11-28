@@ -200,7 +200,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let changed = expectation(description: "A page route was created")
@@ -221,7 +221,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let request = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
@@ -242,7 +242,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     var events: [String] = []
@@ -281,7 +281,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let command = Task { await feature.refreshDiscoveryPage(sort: .magic, parameters: .defaults) }
@@ -298,7 +298,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let sorts: [DiscoveryParams.Sort] = [.magic, .popular, .newest, .endingSoon]
@@ -319,7 +319,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let first = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
@@ -341,7 +341,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let old = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
@@ -363,7 +363,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let first = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
@@ -386,7 +386,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     XCTAssertNil(feature.startNextDiscoveryPageLoad(sort: .magic))
@@ -413,7 +413,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let first = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
@@ -440,7 +440,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let magic = feature.startDiscoveryPageRefresh(sort: .magic, parameters: .defaults)
@@ -483,7 +483,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let old = feature.startDiscoveryActivitySampleLoad(sort: .magic)
@@ -508,7 +508,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let magic = feature.startDiscoveryActivitySampleLoad(sort: .magic)
@@ -568,7 +568,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledDiscoveryProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     let firstUser = User.template |> User.lens.id .~ 1
@@ -597,7 +597,7 @@ final class DiscoveryFeatureTests: TestCase {
     let provider = ControlledActivityProvider()
     defer { provider.releaseAll() }
     let feature = DiscoveryFeature(
-      provider: provider, sleep: { _ in },
+      provider: provider,
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
     )
     await withEnvironment(currentUser: User.template |> User.lens.id .~ 1) {

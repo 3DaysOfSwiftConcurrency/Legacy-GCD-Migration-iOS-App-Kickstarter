@@ -20,18 +20,14 @@ extension AppModel {
   }
 
   /// Coordinates existing product Features without retaining navigation or presentation tasks.
-  func resolveDeepLinkDestination(
-    for navigation: Navigation, discoveryResponseDelay: TimeInterval
-  ) async throws -> DeepLinkDestination? {
+  func resolveDeepLinkDestination(for navigation: Navigation) async throws -> DeepLinkDestination? {
     let startingSession = self.currentDeepLinkSession
     try self.ensureDeepLinkSessionIsCurrent(startingSession)
     let destination: DeepLinkDestination?
     do {
       switch navigation {
       case let .tab(.discovery(rawParams)):
-        destination = .discovery(try await self.discoveryFeature.parametersForDeepLink(
-          rawParams, responseDelay: discoveryResponseDelay
-        ))
+        destination = .discovery(try await self.discoveryFeature.parametersForDeepLink(rawParams))
       case let .user(_, .survey(id)):
         destination = .survey(try await self.activityFeature.fetchSurveyURLString(id: id))
       case let .messages(id):

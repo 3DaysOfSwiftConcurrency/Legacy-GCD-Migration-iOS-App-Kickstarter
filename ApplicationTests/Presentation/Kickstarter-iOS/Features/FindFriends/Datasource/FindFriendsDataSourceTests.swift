@@ -14,12 +14,10 @@ final class FindFriendsDataSourceTests: XCTestCase {
   private lazy var dataSource = FindFriendsDataSource(
     friendsFeature: FriendsFeature(
       sessionFeature: self.sessionFeature,
-      makeProvider: { AsyncFriendsProvider(service: MockService()) },
-      sleep: { _ in }
+      makeProvider: { AsyncFriendsProvider(service: MockService()) }
     ),
     settingsFeature: SettingsFeature(
       sessionFeature: self.sessionFeature,
-      responseDeliverySleep: { _ in },
       makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
     ),
     sessionFeature: self.sessionFeature

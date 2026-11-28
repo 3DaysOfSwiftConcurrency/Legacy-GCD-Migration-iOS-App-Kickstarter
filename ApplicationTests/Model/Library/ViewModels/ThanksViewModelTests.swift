@@ -25,8 +25,7 @@ final class ThanksViewModelTests: TestCase {
   )
   private lazy var feature = RecommendationsFeature(
     platform: .test(
-      promptStore: { AppEnvironment.current.userDefaults },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      promptStore: { AppEnvironment.current.userDefaults }
     ), settingsFeature: self.settingsFeature,
     makeProvider: { AsyncRecommendationsProvider(service: AppEnvironment.current.apiService) })
   private lazy var vm: ThanksViewModel = ThanksViewModel(

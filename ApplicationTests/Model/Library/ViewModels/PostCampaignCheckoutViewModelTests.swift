@@ -36,8 +36,7 @@ final class PostCampaignCheckoutViewModelTests: TestCase {
       AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
-    },
-    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    }
   )
   private lazy var pledgeFeature = PledgeFeature(
     platform: .live(),

@@ -39,6 +39,34 @@ git clone --branch migration/cfa-swift-concurrency --single-branch https://githu
 cd Legacy-GCD-Migration-iOS-App-Kickstarter
 ```
 
+## Run real product UI tests
+
+`UISnapshotTests` is reserved for product screenshots captured from the normally
+launched app on the simulator. Each test must use deterministic fixture data,
+visible navigation, and semantic readiness checks; it must not replace the root
+controller or use a synthetic window.
+
+The target uses the pinned **iPad mini (A17 Pro), iOS 18.6** simulator so a
+different runtime does not introduce unrelated pixel differences.
+
+Run the real product UI target with a new result-bundle path:
+
+```sh
+make test-ui-snapshots RESULT_BUNDLE=/tmp/ui-snapshot-tests.xcresult
+```
+
+The target currently verifies the ordinary product launch and real Explore
+control. A Shipping Locations product screenshot belongs here only after an
+approved deterministic signed-in pledge fixture is available.
+
+The command requires that path deliberately: every run produces an inspectable
+Xcode result bundle rather than relying on terminal output. Open the resulting
+`.xcresult` in Xcode to see every test, or print its recorded totals with:
+
+```sh
+xcrun xcresulttool get test-results summary --path /tmp/ui-snapshot-tests.xcresult
+```
+
 ## Run the fictional-data demo
 
 The migrated app includes a **Debug-only demo** with fictional projects. It lets you explore discovery, search and project details without Kickstarter API keys for those flows.

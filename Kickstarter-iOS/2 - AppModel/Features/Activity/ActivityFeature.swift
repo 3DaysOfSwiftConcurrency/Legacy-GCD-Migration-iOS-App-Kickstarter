@@ -27,18 +27,15 @@ public final class ActivityFeature {
   public struct Platform {
     public let loadSurvey: @MainActor (Int) async throws -> SurveyResponse
     public let applicationBadgeNumber: @MainActor () -> Int
-    public let responseDelaySeconds: @MainActor () -> TimeInterval
     public let trackProjectCardClick: @MainActor (Project) -> Void
 
     public init(
       loadSurvey: @escaping @MainActor (Int) async throws -> SurveyResponse,
       applicationBadgeNumber: @escaping @MainActor () -> Int,
-      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
       trackProjectCardClick: @escaping @MainActor (Project) -> Void
     ) {
       self.loadSurvey = loadSurvey
       self.applicationBadgeNumber = applicationBadgeNumber
-      self.responseDelaySeconds = responseDelaySeconds
       self.trackProjectCardClick = trackProjectCardClick
     }
   }
@@ -51,7 +48,6 @@ public final class ActivityFeature {
   public private(set) var isLoadingActivityPage = false
   private let makeProvider: () -> any ActivityProvider
   private let platform: Platform
-  private let sleep: (TimeInterval) async throws -> Void
   private var accountID: Int?
   private var activitySessionGeneration: Int?
   private var nextPageCursor: String?
@@ -76,15 +72,11 @@ public final class ActivityFeature {
 
   public init(
     platform: Platform,
-    sessionFeature: SessionFeature, makeProvider: @escaping () -> any ActivityProvider,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    sessionFeature: SessionFeature, makeProvider: @escaping () -> any ActivityProvider
   ) {
     self.platform = platform
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
-    self.sleep = sleep
   }
 
   /// The Activity tab owns the presentation value for its unread badge.
@@ -150,10 +142,9 @@ public final class ActivityFeature {
     let userID = self.accountID
     let generation = self.sessionFeature.generation
     let provider = self.makeProvider()
-    let delay = self.platform.responseDelaySeconds()
     self.isLoadingActivityPage = true
     self.activityPageError = nil
-    let task = Task { [weak self, sleep] in
+    let task = Task { [weak self] in
       guard let self else { return }
       defer {
         if self.activityPageRequest?.token == token {
@@ -166,7 +157,6 @@ public final class ActivityFeature {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         let envelope = try await provider.fetchActivityPage(cursor: cursor)
-        try await sleep(delay)
         try Task.checkCancellation()
         guard self.activityPageRequest?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }

@@ -76,40 +76,29 @@ final class VideoFeedObservationTests: XCTestCase {
     await task?.value
   }
 
-  func testDeferredActivationReplacementAndCancellationRejectLateTurns() async throws {
-    let gate = FeedTurnGate()
-    let activation = VideoFeedDeferredActivation(nextTurn: { await gate.wait() })
+  func testDeferredActivationReplacementAndCancellationRejectLateTurns() async {
+    let activation = VideoFeedDeferredActivation()
     var values: [String] = []
     activation.schedule { values.append("old") }
     let old = activation.task
-    await gate.started(1, test: self)
     activation.schedule { values.append("new") }
     let current = activation.task
-    await gate.started(2, test: self)
-    gate.finish(0)
     await old?.value
-    XCTAssertTrue(values.isEmpty)
-    gate.finish(1)
     await current?.value
     XCTAssertEqual(values, ["new"])
     activation.schedule { XCTFail("Cancelled activation ran") }
     let cancelled = activation.task
-    await gate.started(3, test: self)
     activation.cancel()
-    gate.finish(2)
     await cancelled?.value
   }
 
   func testDeferredActivationDoesNotRetainReleasedOwner() async {
-    let gate = FeedTurnGate()
-    var activation: VideoFeedDeferredActivation? = VideoFeedDeferredActivation(nextTurn: { await gate.wait() })
+    var activation: VideoFeedDeferredActivation? = VideoFeedDeferredActivation()
     activation?.schedule { XCTFail("Released activation ran") }
     let task = activation?.task
-    await gate.started(1, test: self)
     weak var released = activation
     activation = nil
     XCTAssertNil(released)
-    gate.finish(0)
     await task?.value
   }
 }

@@ -15,8 +15,7 @@ internal final class BackerDashboardProjectsViewModelTests: TestCase {
     SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) })
   private lazy var feature = ProfileFeature(
     sessionFeature: self.sessionFeature,
-    makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) },
-    sleep: { _ in }
+    makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var vm = BackerDashboardProjectsViewModel(profileFeature: self.feature)
   private func advanceRequests() async {

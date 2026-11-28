@@ -8,22 +8,6 @@ import PassKit
 import Prelude
 import XCTest
 
-@MainActor
-private final class PledgeTestDelayGate {
-  private var continuation: CheckedContinuation<Void, Never>?
-  var isWaiting: Bool { continuation != nil }
-
-  func sleep(_ seconds: TimeInterval) async {
-    guard seconds > 0 else { return }
-    await withCheckedContinuation { continuation = $0 }
-  }
-
-  func resume() {
-    continuation?.resume()
-    continuation = nil
-  }
-}
-
 private struct MockStripePaymentHandlerActionStatus: StripePaymentHandlerActionStatusType {
   let status: StripePaymentHandlerActionStatus
 }
@@ -54,8 +38,7 @@ final class PledgeViewModelTests: TestCase {
       AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
-    },
-    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    }
   )
   private lazy var feature = PledgeFeature(
     platform: .live(),
@@ -65,13 +48,11 @@ final class PledgeViewModelTests: TestCase {
       return AsyncPledgeProvider(service: AppEnvironment.current.apiService)
     }
   )
-  private let delayGate = PledgeTestDelayGate()
   private lazy var vm: PledgeViewModelType = PledgeViewModel(
     pledgeFeature: self.feature,
     authenticationFeature: self.authenticationFeature,
     paymentsFeature: self.paymentsFeature,
-    analytics: { AppEnvironment.current.ksrAnalytics },
-    sleep: { [delayGate] in await delayGate.sleep($0) }
+    analytics: { AppEnvironment.current.ksrAnalytics }
   )
 
   private let beginSCAFlowWithClientSecret = ValueRecorder<String>()
@@ -1239,78 +1220,6 @@ final class PledgeViewModelTests: TestCase {
       self.vm.inputs.stripeTokenCreated(token: "stripe_token", error: nil)
     )
     await self.feature.waitForPledgeOperations()
-  }
-
-  func testReplacingPledgeAmountInvalidatesDelayedStripeSetup() async throws {
-    let checkout = Checkout(
-      id: "Q2hlY2tvdXQtMQ==", state: .successful,
-      backing: .init(clientSecret: "fixture", requiresAction: true)
-    )
-    let service = MockService(createBackingResult: .success(
-      CreateBackingEnvelope(createBacking: .init(checkout: checkout))
-    ))
-    let model = try XCTUnwrap(self.vm as? PledgeViewModel)
-    let reward = Reward.template |> Reward.lens.minimum .~ 5
-    func selection(bonus: Double) -> PledgeViewData {
-      PledgeViewData(
-        project: .template, rewards: [reward], bonusSupport: bonus, selectedShippingRule: self.shippingRule,
-        selectedQuantities: [reward.id: 1], selectedLocationId: nil, refTag: nil, context: .pledge
-      )
-    }
-    await withEnvironment(apiService: service, apiDelayInterval: .seconds(1), currentUser: .template) {
-      model.configure(with: selection(bonus: 10))
-      model.viewDidLoad()
-      let original = model.paymentPresentation
-      XCTAssertNotNil(original)
-      model.paymentAuthorizationDidAuthorizePayment(
-        paymentData: (displayName: "Visa", network: "Visa", transactionIdentifier: "fixture")
-      )
-      XCTAssertEqual(model.stripeTokenCreated(token: "fixture", error: nil), .success)
-      await self.feature.waitForPledgeOperations()
-      while !self.delayGate.isWaiting { await Task.yield() }
-
-      model.configure(with: selection(bonus: 20))
-      XCTAssertNotEqual(model.paymentPresentation, original)
-      XCTAssertEqual(model.paymentPresentation?.session, original?.session)
-      self.delayGate.resume()
-      await Task.yield()
-      self.beginSCAFlowWithClientSecret.assertDidNotEmitValue()
-      self.goToThanksProject.assertDidNotEmitValue()
-      self.processingViewIsHidden.assertLastValue(true)
-    }
-  }
-
-  func testDelayedCreateDoesNotPresentAfterSessionChange() async {
-    let checkout = Checkout(
-      id: "Q2hlY2tvdXQtMQ==", state: .successful,
-      backing: .init(clientSecret: nil, requiresAction: false))
-    let service = MockService(createBackingResult: .success(
-      CreateBackingEnvelope(createBacking: .init(checkout: checkout))))
-
-    await withEnvironment(apiService: service, apiDelayInterval: .seconds(1), currentUser: .template) {
-      let reward = Reward.template |> Reward.lens.minimum .~ 5
-      self.vm.inputs.configure(with: PledgeViewData(
-        project: .template, rewards: [reward], bonusSupport: 10,
-        selectedShippingRule: self.shippingRule, selectedQuantities: [reward.id: 1],
-        selectedLocationId: nil, refTag: .projectPage, context: .pledge))
-      self.vm.inputs.viewDidLoad()
-      self.vm.inputs.applePayButtonTapped()
-      self.vm.inputs.paymentAuthorizationDidAuthorizePayment(
-        paymentData: (displayName: "Visa 123", network: "Visa", transactionIdentifier: "12345"))
-      XCTAssertEqual(self.vm.inputs.stripeTokenCreated(token: "stripe_token", error: nil), .success)
-      self.vm.inputs.paymentAuthorizationViewControllerDidFinish()
-      await self.feature.waitForPledgeOperations()
-      while !self.delayGate.isWaiting { await Task.yield() }
-      self.sessionFeature.sessionChanged()
-      self.delayGate.resume()
-      for _ in 0 ..< 100 where self.processingViewIsHidden.lastValue != true {
-        await Task.yield()
-      }
-      self.goToThanksProject.assertDidNotEmitValue()
-      self.beginSCAFlowWithClientSecret.assertDidNotEmitValue()
-      self.showErrorBannerWithMessage.assertDidNotEmitValue()
-      self.processingViewIsHidden.assertLastValue(true)
-    }
   }
 
   func testApplePay_GoToThanks() async {

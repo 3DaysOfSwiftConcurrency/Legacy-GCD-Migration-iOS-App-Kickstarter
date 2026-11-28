@@ -9,7 +9,7 @@ final class MessagesSearchViewModelTests: TestCase {
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
     makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
-  private lazy var vm = MessagesSearchViewModel(messagingFeature: self.feature, sleep: { _ in })
+  private lazy var vm = MessagesSearchViewModel(messagingFeature: self.feature)
 
   func testSearchAndClear() async {
     self.vm.configureWith(project: nil)

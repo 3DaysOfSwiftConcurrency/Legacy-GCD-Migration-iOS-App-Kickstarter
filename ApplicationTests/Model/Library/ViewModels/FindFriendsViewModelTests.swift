@@ -9,7 +9,7 @@ final class FindFriendsViewModelTests: TestCase {
   private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
   private lazy var feature = FriendsFeature(
     sessionFeature: self.sessionFeature,
-    makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) }, sleep: { _ in }
+    makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var vm = FindFriendsViewModel(
     friendsFeature: self.feature,

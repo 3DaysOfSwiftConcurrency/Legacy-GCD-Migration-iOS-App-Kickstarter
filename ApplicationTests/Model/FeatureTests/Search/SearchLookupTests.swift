@@ -12,8 +12,7 @@ final class SearchLookupTests: TestCase {
 
   private let provider = ControlledSearchLookupProvider()
   private lazy var feature = SearchFeature(
-    provider: AsyncSearchProjectsProvider(service: MockService()), lookupProvider: self.provider,
-    lookupSleep: { _ in }, sleep: { _ in }
+    provider: AsyncSearchProjectsProvider(service: MockService()), lookupProvider: self.provider
   )
 
   override func tearDown() async throws {
@@ -186,15 +185,12 @@ final class SearchLookupTests: TestCase {
     XCTAssertFalse(self.feature.isLoadingDefaultLocations)
   }
 
-  func testCategoryLookupUsesComposedResponsePolicy() async throws {
+  func testCategoryLookupPublishesCompletedResponseImmediately() async throws {
     let provider = ControlledSearchLookupProvider()
-    var sleeps: [TimeInterval] = []
     let feature = SearchFeature(
-      platform: .test(responseDelaySeconds: { 13 }),
+      platform: .test(),
       provider: AsyncSearchProjectsProvider(service: MockService()),
-      lookupProvider: provider,
-      lookupSleep: { sleeps.append($0) },
-      sleep: { _ in }
+      lookupProvider: provider
     )
     defer { feature.cancelFilterLookups(); provider.releaseAll() }
 
@@ -205,7 +201,6 @@ final class SearchLookupTests: TestCase {
     try provider.locations.complete(0, .success([]))
     await operation.value
 
-    XCTAssertEqual(sleeps, [13])
     XCTAssertEqual(feature.categoryOptions, [.art])
   }
 

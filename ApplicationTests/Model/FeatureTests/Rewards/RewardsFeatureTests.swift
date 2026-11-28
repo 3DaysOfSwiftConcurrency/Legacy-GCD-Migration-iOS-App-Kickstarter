@@ -18,8 +18,7 @@ final class RewardsFeatureTests: TestCase {
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }
       ),
       makeProvider: { provider },
-      moveNoReward: { move },
-      sleep: { _ in try Task.checkCancellation() }
+      moveNoReward: { move }
     )
   }
 
@@ -57,7 +56,6 @@ final class RewardsFeatureTests: TestCase {
         configuredCountry: { nil },
         country: { "US" },
         now: { 0 },
-        responseDelaySeconds: { 0 },
         recordThirdPartyEvent: { thirdPartyEvents.append($0) }
       ),
       sessionFeature: SessionFeature(
@@ -246,7 +244,7 @@ final class RewardsFeatureTests: TestCase {
     RewardsFeature(
       platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }
-      ), makeProvider: { provider }, sleep: { _ in try Task.checkCancellation() })
+      ), makeProvider: { provider })
   }
 
   func testShippingSelectionPriorityAndExplicitChanges() async {

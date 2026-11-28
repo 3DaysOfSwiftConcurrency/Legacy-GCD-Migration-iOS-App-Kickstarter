@@ -19,7 +19,7 @@ final class WatchProjectViewModel {
 
   var onEvent: ((Event) -> Void)?
   private let projectMediaFeature: ProjectMediaFeature
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
+  /// Coalesces repeated save/unsave taps while the control updates optimistically.
   private var configured: WatchProjectValue?
   private var project: Project?
   private var isReady = false
@@ -28,15 +28,8 @@ final class WatchProjectViewModel {
   private var pendingIntent: ProjectMediaFeature.ProjectSaveIntent?
   private var task: Task<Void, Never>?
 
-  init(
-    projectMediaFeature: ProjectMediaFeature,
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-    if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-    else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    try Task.checkCancellation()
-  }) {
+  init(projectMediaFeature: ProjectMediaFeature) {
     self.projectMediaFeature = projectMediaFeature
-    self.sleep = sleep
   }
 
   func configure(with value: WatchProjectValue) {
@@ -97,12 +90,10 @@ final class WatchProjectViewModel {
       self.onEvent?(.notification(Notification(name: .ksr_showNotificationsDialog, userInfo: [UserInfoKeys.context: PushNotificationDialog.Context.save])))
     }
     let projectMediaFeature = self.projectMediaFeature
-    let sleep = self.sleep
     self.task = Task { [weak self] in
-      do { try await sleep(0.5) } catch { return }
+      do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
       guard !Task.isCancelled, projectMediaFeature.isCurrentProjectSaveIntent(intent),
             let result = await projectMediaFeature.applyProjectSaveIntent(project: project, intent: intent) else { return }
-      do { try await sleep(projectMediaFeature.responseDelayForWatch()) } catch { return }
       guard !Task.isCancelled, projectMediaFeature.isCurrentProjectSaveIntent(intent) else { return }
       self?.publishProject(result)
     }

@@ -23,17 +23,11 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
   private lazy var paymentsFeature = PaymentsFeature(
     sessionFeature: self.sessionFeature,
     makeProvider: { [paymentsProvider] in paymentsProvider },
-    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey },
-    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    stripePublishableKey: { AppEnvironment.current.environmentType.stripePublishableKey }
   )
 
-  private func makeViewModel(
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { _ in try Task.checkCancellation() }
-  ) -> PaymentMethodSettingsViewModel {
-    PaymentMethodSettingsViewModel(
-      paymentsFeature: self.paymentsFeature,
-      sleep: sleep
-    )
+  private func makeViewModel() -> PaymentMethodSettingsViewModel {
+    PaymentMethodSettingsViewModel(paymentsFeature: self.paymentsFeature)
   }
 
   private let userTemplate = GraphUser.template |> \.storedCards .~ UserCreditCards.template
@@ -70,13 +64,8 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     }
   }
 
-  func testCancelingSetupSuppressesAnErrorAlreadyWaitingToBePresented() async {
-    let gate = PaymentDelayGate()
-    let delayCompleted = XCTestExpectation(description: "Setup error delay resumes")
-    let model = self.makeViewModel(sleep: { _ in
-      try await gate.wait()
-      delayCompleted.fulfill()
-    })
+  func testCancelingSetupSuppressesAnError() async {
+    let model = self.makeViewModel()
     var errors = 0
     model.onEvent = { event in
       if case .errorLoadingPaymentMethodsOrSetupIntent = event { errors += 1 }
@@ -84,29 +73,20 @@ internal final class PaymentMethodSettingsViewModelTests: TestCase {
     let service = MockService(createStripeSetupIntentResult: .failure(.couldNotParseJSON))
     await withEnvironment(apiService: service) {
       model.paymentMethodsFooterViewDidTapAddNewCardButton()
-      await gate.waitUntilBlocked()
       model.shouldCancelPaymentSheetAppearance(state: true)
-      gate.resume()
-      let result = await XCTWaiter().fulfillment(of: [delayCompleted], timeout: 2)
-      XCTAssertEqual(result, .completed)
       await model.waitForPending()
       XCTAssertEqual(errors, 0)
     }
   }
 
-  func testSessionChangeDuringPresentationDelaySuppressesOldCards() async {
-    let gate = PaymentDelayGate()
-    let vm = self.makeViewModel(sleep: { _ in
-      try await gate.wait()
-    })
+  func testSessionChangeSuppressesOldCards() async {
+    let vm = self.makeViewModel()
     var delivered = 0
     vm.onEvent = { event in if case .paymentMethods = event { delivered += 1 } }
     let response = UserEnvelope<GraphUser>(me: self.userTemplate)
     await withEnvironment(apiService: MockService(fetchGraphUserResult: .success(response))) {
       vm.viewDidLoad()
-      await gate.waitUntilBlocked()
       self.sessionFeature.sessionChanged()
-      gate.resume()
       await vm.waitForPending()
       XCTAssertEqual(delivered, 0)
     }

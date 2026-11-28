@@ -153,37 +153,25 @@ final class ManageViewPledgeRewardReceivedViewModelTests: TestCase {
     }
   }
 
-  func testDelayedReceiptCannotUpdateAnotherBackingOfTheSameProject() async {
+  func testReceiptCannotUpdateAnotherBackingOfTheSameProject() async {
     let project = Project.template |> Project.lens.personalization.backing .~ Backing.template
     let nextBacking = Backing.template |> Backing.lens.id .~ 54321
     let replacement = project |> Project.lens.personalization.backing .~ nextBacking
-    var whenDelayed: (() -> Void)?
-    var delays = 0
-    let delayedFeature = PledgeFeature(
-      platform: .init(
-        serverConfig: { ServerConfig.staging },
-        prepareWebRequest: { $0 },
-        isPreparedWebRequest: { _ in false },
-        responseDelaySeconds: { 1 },
-        sleep: { _ in
-        delays += 1
-        whenDelayed?()
-        }
-      ),
+    let pledgeFeature = PledgeFeature(
+      platform: .live(),
       sessionFeature: self.sessionFeature,
       makeProvider: { AsyncPledgeProvider(service: AppEnvironment.current.apiService) }
     )
-    let model = ManageViewPledgeRewardReceivedViewModel(pledgeFeature: delayedFeature)
-    whenDelayed = { [weak model] in model?.configureWith(self.receiptData(project: replacement)) }
+    let model = ManageViewPledgeRewardReceivedViewModel(pledgeFeature: pledgeFeature)
 
     await withEnvironment(apiService: MockService(backingUpdate: .template), currentUser: .template) {
       model.configureWith(self.receiptData(project: project))
       model.viewDidLoad()
       model.rewardReceivedToggleTapped(isOn: true)
+      model.configureWith(self.receiptData(project: replacement))
       await model.waitForObservation()
-      await delayedFeature.waitForPledgeOperations()
+      await pledgeFeature.waitForPledgeOperations()
 
-      XCTAssertEqual(delays, 1)
       XCTAssertFalse(model.rewardReceived)
     }
   }

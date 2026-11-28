@@ -69,7 +69,6 @@ public final class ProjectMediaFeature {
   }
   private let readWebBaseURL: @MainActor () -> URL
   private let analytics: @MainActor () -> KSRAnalytics?
-  private let watchResponseDelaySeconds: @MainActor () -> TimeInterval
   private let savePrompts: SavePrompts?
   private struct ImageKey: Hashable { let route: UUID; let url: URL }
   private var pendingImageLoads: [ImageKey: (id: UUID, task: Task<UIImage, Error>)] = [:]
@@ -461,17 +460,12 @@ public final class ProjectMediaFeature {
     )
   }
 
-  public func responseDelayForWatch() -> TimeInterval {
-    self.watchResponseDelaySeconds()
-  }
-
   public init(
     sessionFeature: SessionFeature,
     settingsFeature: SettingsFeature,
     connectivity: ConnectivityService = ConnectivityService(),
     webBaseURL: @escaping @MainActor () -> URL = { ServerConfig.production.webBaseUrl },
     analytics: @escaping @MainActor () -> KSRAnalytics? = { nil },
-    watchResponseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     savePrompts: SavePrompts? = nil,
     loadImage: (@MainActor (URL) async throws -> UIImage)? = nil,
     preparePlayback: (@MainActor (URL, URL?) async throws -> PreparedProjectMedia)? = nil,
@@ -484,7 +478,6 @@ public final class ProjectMediaFeature {
     self.sessionFeature = sessionFeature
     self.readWebBaseURL = webBaseURL
     self.analytics = analytics
-    self.watchResponseDelaySeconds = watchResponseDelaySeconds
     self.savePrompts = savePrompts
     self.makeProvider = makeProvider
   }

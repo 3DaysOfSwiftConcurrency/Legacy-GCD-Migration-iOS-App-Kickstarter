@@ -159,7 +159,7 @@ final class SearchFeatureTests: TestCase {
   }
   func testSuccessfulSearchPublishesDataCountAndLoading() async throws {
     let provider = ControlledSearchProvider()
-    let searchFeature = SearchFeature(provider: provider, sleep: { _ in })
+    let searchFeature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); searchFeature.cancelSearchResultsLoad() }
     var currentTask: Task<Void, Never>?
     let data = try self.fixture("SearchQuery_FiveResults")
@@ -179,13 +179,11 @@ final class SearchFeatureTests: TestCase {
     XCTAssertNil(searchFeature.searchError)
   }
 
-  func testSearchUsesComposedResponseAndDebouncePolicy() async throws {
+  func testSubsequentSearchKeepsTheLatestResults() async throws {
     let provider = ControlledSearchProvider()
-    var sleeps: [TimeInterval] = []
     let feature = SearchFeature(
-      platform: .test(responseDelaySeconds: { 7 }, debounceSeconds: { 11 }),
-      provider: provider,
-      sleep: { sleeps.append($0) }
+      platform: .test(),
+      provider: provider
     )
     defer { provider.releaseAll(); feature.cancelSearchResultsLoad() }
 
@@ -198,14 +196,13 @@ final class SearchFeatureTests: TestCase {
     try provider.complete(1, with: self.fixture("SearchQuery_AnotherFiveResults"))
     await second.value
 
-    XCTAssertEqual(sleeps, [7, 18])
     XCTAssertEqual(feature.parameters?.query, "second")
     XCTAssertEqual(feature.projects.count, 5)
   }
 
   func testReplacementClearsResultsAndSuppressesObsoleteCompletion() async throws {
     let provider = ControlledSearchProvider()
-    let searchFeature = SearchFeature(provider: provider, sleep: { _ in })
+    let searchFeature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); searchFeature.cancelSearchResultsLoad() }
     var currentTask: Task<Void, Never>?
     let oldData = try self.fixture("SearchQuery_FiveResults")
@@ -259,7 +256,7 @@ final class SearchFeatureTests: TestCase {
 
     for changed in [raised, pledged, goal, location] {
       let provider = ControlledSearchProvider()
-      let feature = SearchFeature(provider: provider, sleep: { _ in })
+      let feature = SearchFeature(provider: provider)
       defer { feature.cancelSearchResultsLoad(); provider.releaseAll() }
       let old = feature.startSearchResultsLoad(parameters: initial)
       await provider.waitForRequestCount(1)
@@ -282,7 +279,7 @@ final class SearchFeatureTests: TestCase {
 
   func testNextPageAppendsAndEmptyPageEndsPagination() async throws {
     let provider = ControlledSearchProvider()
-    let searchFeature = SearchFeature(provider: provider, sleep: { _ in })
+    let searchFeature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); searchFeature.cancelSearchResultsLoad() }
     var currentTask: Task<Void, Never>?
     let first = try self.fixture("SearchQuery_FiveResults")
@@ -319,7 +316,7 @@ final class SearchFeatureTests: TestCase {
 
   func testFailureRetainsErrorAndChangedQueryRecovers() async throws {
     let provider = ControlledSearchProvider()
-    let searchFeature = SearchFeature(provider: provider, sleep: { _ in })
+    let searchFeature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); searchFeature.cancelSearchResultsLoad() }
     var currentTask: Task<Void, Never>?
     currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("failed"))
@@ -343,7 +340,7 @@ final class SearchFeatureTests: TestCase {
 
   func testFailedPagePreservesExistingProjectsAndCanRetry() async throws {
     let provider = ControlledSearchProvider()
-    let searchFeature = SearchFeature(provider: provider, sleep: { _ in })
+    let searchFeature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); searchFeature.cancelSearchResultsLoad() }
     var currentTask: Task<Void, Never>?
     currentTask = searchFeature.startSearchResultsLoad(parameters: self.parameters("art"))
@@ -370,7 +367,7 @@ final class SearchFeatureTests: TestCase {
 
   func testAwaitableSearchAndPageCommandsShareExecutionUntilPublication() async throws {
     let provider = ControlledSearchProvider()
-    let feature = SearchFeature(provider: provider, sleep: { _ in })
+    let feature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); feature.cancelSearchResultsLoad() }
     let parameters = self.parameters("shared")
     let firstEntered = expectation(description: "first waiter entered")
@@ -423,7 +420,7 @@ final class SearchFeatureTests: TestCase {
 
   func testCancelledWaiterDoesNotCancelSharedSearch() async throws {
     let provider = ControlledSearchProvider()
-    let feature = SearchFeature(provider: provider, sleep: { _ in })
+    let feature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); feature.cancelSearchResultsLoad() }
     let parameters = self.parameters("shared")
     let first = Task { await feature.loadSearchResults(parameters: parameters) }
@@ -447,7 +444,7 @@ final class SearchFeatureTests: TestCase {
 
   func testQueryReplacementDuringPageCannotAppendOrClearNewerOperation() async throws {
     let provider = ControlledSearchProvider()
-    let feature = SearchFeature(provider: provider, sleep: { _ in })
+    let feature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); feature.cancelSearchResultsLoad() }
     let initial = feature.startSearchResultsLoad(parameters: self.parameters("old"))
     await provider.waitForRequestCount(1)
@@ -473,7 +470,7 @@ final class SearchFeatureTests: TestCase {
 
   func testOwnerCancellationIgnoresLateResultAndAllowsRetry() async throws {
     let provider = ControlledSearchProvider()
-    let feature = SearchFeature(provider: provider, sleep: { _ in })
+    let feature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); feature.cancelSearchResultsLoad() }
     let old = feature.startSearchResultsLoad(parameters: self.parameters("cancel"))
     await provider.waitForRequestCount(1)
@@ -503,7 +500,7 @@ final class SearchFeatureTests: TestCase {
 
   func testNoCursorAndNoInitialRequestAreAwaitableNoOps() async throws {
     let provider = ControlledSearchProvider()
-    let feature = SearchFeature(provider: provider, sleep: { _ in })
+    let feature = SearchFeature(provider: provider)
     defer { provider.releaseAll(); feature.cancelSearchResultsLoad() }
     await feature.loadNextSearchPage()
     XCTAssertTrue(provider.requests.isEmpty)

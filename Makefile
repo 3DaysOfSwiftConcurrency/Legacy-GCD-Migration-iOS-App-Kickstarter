@@ -1,5 +1,6 @@
 XCODEBUILD := xcodebuild
 BUILD_FLAGS = -scheme "$(SCHEME)" -destination $(DESTINATION)
+RESULT_BUNDLE_FLAG = $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)")
 
 SCHEME ?= Kickstarter iOS
 TARGET ?= Kickstarter
@@ -53,11 +54,15 @@ test-ksapi:
 test-model:
 	PLATFORM=iOS SCHEME=Library-iOS "$(MAKE)" test
 
-test-presentation:
-	PLATFORM=iOS SCHEME=PresentationTests "$(MAKE)" test
+test-ui-snapshots:
+	@test -n "$(RESULT_BUNDLE)" || (echo "Set RESULT_BUNDLE to a new .xcresult path." >&2; exit 2)
+	PLATFORM=iOS SCHEME=UISnapshotTests RESULT_BUNDLE="$(RESULT_BUNDLE)" "$(MAKE)" test
 
-test: bootstrap
-	$(XCODEBUILD) test $(BUILD_FLAGS) $(XCPRETTY_TEST)
+test: verify-test-host-integrity bootstrap
+	$(XCODEBUILD) test $(BUILD_FLAGS) $(RESULT_BUNDLE_FLAG) $(XCPRETTY_TEST)
+
+verify-test-host-integrity:
+	node tools/verify-test-host-integrity.mjs
 
 test-spm: bootstrap
 	(cd $(PACKAGE) && $(XCODEBUILD) test -scheme "$(SCHEME)" -sdk iphonesimulator -destination $(DESTINATION) $(XCPRETTY_TEST))

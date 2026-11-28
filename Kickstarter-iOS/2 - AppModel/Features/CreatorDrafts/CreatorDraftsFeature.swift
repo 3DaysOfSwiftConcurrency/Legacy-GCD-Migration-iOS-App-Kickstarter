@@ -57,8 +57,6 @@ public final class CreatorDraftsFeature {
   }
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any CreatorDraftsProvider
-  private let responseDelaySeconds: @MainActor () -> TimeInterval
-  private let sleep: (TimeInterval) async throws -> Void
   private var routes: [UUID: Route] = [:]
   private var cachedDraftsByKey: [Key: UpdateDraft] = [:]
   private var editVersionsByDraft: [Key: Int] = [:]
@@ -76,16 +74,10 @@ public final class CreatorDraftsFeature {
   }
 
   public init(
-    sessionFeature: SessionFeature, makeProvider: @escaping () -> any CreatorDraftsProvider,
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    sessionFeature: SessionFeature, makeProvider: @escaping () -> any CreatorDraftsProvider
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
-    self.responseDelaySeconds = responseDelaySeconds
-    self.sleep = sleep
   }
   private func isCurrent(_ key: Key) -> Bool {
     self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation)
@@ -119,14 +111,12 @@ public final class CreatorDraftsFeature {
     let id = UUID()
     let provider = self.makeProvider()
     let predecessor = self.latestQueuedEditsByDraft[key]?.task
-    let delay = self.responseDelaySeconds()
     let task = Task { [self] in
       defer { self.draftLoadTasks[id] = nil; if state.read?.id == id { state.read = nil } }
       do {
         if let predecessor { _ = await predecessor.result }
         try self.ensureDraftSessionIsCurrent(key)
         let draft = try await provider.fetchDraft(project: project)
-        try await self.sleep(delay)
         try self.ensureDraftSessionIsCurrent(key)
         guard self.routes[route] === state, self.editVersionsByDraft[key, default: 0] == revision else { return }
         self.cachedDraftsByKey[key] = draft
@@ -181,7 +171,6 @@ public final class CreatorDraftsFeature {
     if let previous, previous.command == command, previous.draftID == admittedDraft.update.id { return previous.task }
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = self.responseDelaySeconds()
     self.editVersionsByDraft[key, default: 0] += 1
     let task = Task { [self] in
       defer { self.draftEditTasks[id] = nil; if self.latestQueuedEditsByDraft[key]?.id == id { self.latestQueuedEditsByDraft[key] = nil } }
@@ -208,7 +197,6 @@ public final class CreatorDraftsFeature {
         }
         try self.ensureDraftSessionIsCurrent(key)
         self.cachedDraftsByKey[key] = draft
-        try await self.sleep(delay)
         try self.ensureDraftSessionIsCurrent(key)
         self.publishAttachments(key: key)
         return outcome

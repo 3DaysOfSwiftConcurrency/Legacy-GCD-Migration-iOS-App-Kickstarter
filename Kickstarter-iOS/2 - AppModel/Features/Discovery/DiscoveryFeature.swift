@@ -88,8 +88,6 @@ public final class DiscoveryFeature {
   private let resolveCloudStore: (@MainActor () -> any KeyValueStoreType)?
   private let resolveServerEnvironment: @MainActor () -> EnvironmentType
   private let resolveIsDebugBuild: @MainActor () -> Bool
-  private let responseDelaySeconds: @MainActor () -> TimeInterval
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
   private let sessionFeature: SessionFeature
   internal enum Update {
     case projects(DiscoveryParams.Sort, [Project])
@@ -303,12 +301,6 @@ public final class DiscoveryFeature {
     cloudStore: (@MainActor () -> any KeyValueStoreType)? = nil,
     serverEnvironment: @escaping @MainActor () -> EnvironmentType = { .production },
     isDebugBuild: @escaping @MainActor () -> Bool = { false },
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-      try Task.checkCancellation()
-    },
     sessionFeature: SessionFeature
   ) {
     self.provider = provider
@@ -320,8 +312,6 @@ public final class DiscoveryFeature {
     self.resolveCloudStore = cloudStore
     self.resolveServerEnvironment = serverEnvironment
     self.resolveIsDebugBuild = isDebugBuild
-    self.responseDelaySeconds = responseDelaySeconds
-    self.sleep = sleep
     self.sessionFeature = sessionFeature
   }
 
@@ -341,10 +331,6 @@ public final class DiscoveryFeature {
     self.analytics.projectCardClicked(project, parameters)
   }
 
-  func waitForDeepLinkResponse(_ seconds: TimeInterval) async throws {
-    try await self.sleep(seconds)
-  }
-
   func fetchRootCategories() async throws -> RootCategoriesEnvelope {
     try await self.loadCategories()
   }
@@ -352,9 +338,7 @@ public final class DiscoveryFeature {
   func makeCategoriesUseCase() -> FetchCategoriesUseCase {
     FetchCategoriesUseCase(
       cache: self.resolveCategoryCache,
-      fetch: { try await self.loadCategories().rootCategories },
-      responseDelaySeconds: self.responseDelaySeconds,
-      sleep: self.sleep
+      fetch: { try await self.loadCategories().rootCategories }
     )
   }
 
@@ -413,10 +397,9 @@ public final class DiscoveryFeature {
     let id = UUID()
     let session = self.sessionFeature
     let requestedUserID = session.currentUser?.id
-    let delay = self.responseDelaySeconds()
     page.snapshot.isLoading = true
     page.snapshot.error = nil
-    let task = Task { @MainActor [weak self, provider, sleep] in
+    let task = Task { @MainActor [weak self, provider] in
       defer {
         if page.request?.id == id {
           page.request = nil
@@ -431,8 +414,6 @@ public final class DiscoveryFeature {
         do { response = .success(try await provider.fetchDiscoveryPage(parameters: parameters, cursor: cursor)) }
         catch is CancellationError { return }
         catch { response = .failure(error) }
-        try Task.checkCancellation()
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self, page.request?.id == id,
               session.currentUser?.id == requestedUserID else { return }
@@ -459,15 +440,13 @@ public final class DiscoveryFeature {
     let id = UUID()
     let session = self.sessionFeature
     let requestedUserID = session.currentUser?.id
-    let delay = self.responseDelaySeconds()
     page.snapshot.activityError = nil
-    let task = Task { @MainActor [weak self, provider, sleep] in
+    let task = Task { @MainActor [weak self, provider] in
       defer { if page.activityRequest?.id == id { page.activityRequest = nil } }
       do {
         try Task.checkCancellation()
         guard session.currentUser?.id == requestedUserID else { return }
         guard let envelope = try await provider.fetchDiscoveryActivitySample() else { return }
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self, page.activityRequest?.id == id,
               session.currentUser?.id == requestedUserID else { return }

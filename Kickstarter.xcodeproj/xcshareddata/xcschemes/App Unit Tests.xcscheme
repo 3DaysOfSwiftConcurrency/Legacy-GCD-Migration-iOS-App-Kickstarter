@@ -15,13 +15,10 @@
       </MacroExpansion>
       <Testables>
          <TestableReference skipped="NO">
-            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AAF3BB562F1845A200DAE921" BuildableName="LibraryTests.xctest" BlueprintName="LibraryTests" ReferencedContainer="container:Kickstarter.xcodeproj">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AAF3BB562F1845A200DAE921" BuildableName="AppUnitTests.xctest" BlueprintName="AppUnitTests" ReferencedContainer="container:Kickstarter.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
-      <EnvironmentVariables>
-         <EnvironmentVariable key="CFA_UNIT_TEST_HOST" value="1" isEnabled="YES" />
-      </EnvironmentVariables>
    </TestAction>
    <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" debugServiceExtension="internal" allowLocationSimulation="YES">
       <MacroExpansion>

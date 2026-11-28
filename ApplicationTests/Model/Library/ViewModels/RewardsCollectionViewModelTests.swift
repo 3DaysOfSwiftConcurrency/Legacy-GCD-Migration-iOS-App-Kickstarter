@@ -68,8 +68,7 @@ final class RewardsCollectionViewModelTests: TestCase {
         return nil
       }
       return (advertisingID, AppEnvironment.current.mainBundle.platformVersion)
-    },
-    sleep: { _ in try Task.checkCancellation() }
+    }
   ))
 
   override func setUp() async throws {

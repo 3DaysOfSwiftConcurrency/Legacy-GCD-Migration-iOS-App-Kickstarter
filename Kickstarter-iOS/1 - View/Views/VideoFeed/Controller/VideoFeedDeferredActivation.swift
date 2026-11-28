@@ -4,20 +4,16 @@ import Foundation
 /// disappearance/backgrounding cancels them. The caller rechecks visible UI state.
 @MainActor
 final class VideoFeedDeferredActivation {
-  private let nextTurn: @MainActor () async -> Void
   private var generation = UUID()
   private(set) var task: Task<Void, Never>?
 
-  init(nextTurn: @escaping @MainActor () async -> Void = { await Task.yield() }) {
-    self.nextTurn = nextTurn
-  }
+  init() {}
 
   func schedule(_ activate: @escaping @MainActor () -> Void) {
     self.cancel()
     let generation = self.generation
-    let nextTurn = self.nextTurn
     self.task = Task { [weak self] in
-      await nextTurn()
+      await Task.yield()
       guard !Task.isCancelled, let self, self.generation == generation else { return }
       self.task = nil
       activate()

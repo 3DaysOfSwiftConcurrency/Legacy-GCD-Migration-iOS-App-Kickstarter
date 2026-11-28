@@ -14,7 +14,7 @@ final class ActivityFriendFollowCellViewModelTests: TestCase {
     makeProvider: {
       precondition(AppEnvironment.current.apiService is MockService)
       return AsyncFriendsProvider(service: AppEnvironment.current.apiService)
-    }, sleep: { _ in })
+    })
   private lazy var vm = ActivityFriendFollowCellViewModel(
     friendsFeature: self.feature, sessionFeature: self.feature.sessionFeature
   )

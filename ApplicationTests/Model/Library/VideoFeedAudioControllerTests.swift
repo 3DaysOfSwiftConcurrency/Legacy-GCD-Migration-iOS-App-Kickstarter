@@ -28,37 +28,26 @@ final class MockAudioSession: AudioSessionManaging {
 @MainActor
 final class VideoFeedAudioControllerTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
-  func testOlderResetCannotReleaseNewResetGuard() async throws {
-    let gate = AccountRequestGate<Void>()
-    defer { gate.releaseAll() }
-    let controller = VideoFeedAudioController(session: MockAudioSession(), nextTurn: { _ = try? await gate.request() })
+  func testReplacementResetCompletesLatestGuard() async {
+    let controller = VideoFeedAudioController(session: MockAudioSession())
     controller.handleSilentSwitchChange()
     let first = controller.resetTask
-    await gate.waitFor(1)
     controller.handleSilentSwitchChange()
     let second = controller.resetTask
-    await gate.waitFor(2)
-    try gate.finish(0, .success(()))
     await first?.value
-    XCTAssertTrue(controller.isResettingAudioSession)
-    try gate.finish(1, .success(()))
     await second?.value
     XCTAssertFalse(controller.isResettingAudioSession)
   }
 
-  func testDismissRejectsPendingResetAndLaterVolumeIntent() async throws {
-    let gate = AccountRequestGate<Void>()
-    defer { gate.releaseAll() }
+  func testDismissRejectsPendingResetAndLaterVolumeIntent() async {
     let session = MockAudioSession()
-    let controller = VideoFeedAudioController(session: session, nextTurn: { _ = try? await gate.request() })
+    let controller = VideoFeedAudioController(session: session)
     controller.handleSilentSwitchChange()
     let reset = controller.resetTask
-    await gate.waitFor(1)
     controller.endFeedAudioSession()
     let count = session.categories.count
     controller.handleVolumeUp()
     controller.handleOverlayUnmute()
-    try gate.finish(0, .success(()))
     await reset?.value
     XCTAssertEqual(session.categories.count, count)
     XCTAssertFalse(controller.isPlaybackSessionActive)

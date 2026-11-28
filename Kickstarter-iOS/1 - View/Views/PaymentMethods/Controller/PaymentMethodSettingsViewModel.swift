@@ -12,7 +12,6 @@ final class PaymentMethodSettingsViewModel {
   }
   var onEvent: ((Event) -> Void)?
   private let paymentsFeature: PaymentsFeature
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
   private let presentationTasks = PaymentPresentationTasks()
   private var isEditing = false
   private var hasEditingState = false
@@ -20,14 +19,8 @@ final class PaymentMethodSettingsViewModel {
   private var shouldCancel = false
   private var latestCards: (cards: [UserCreditCards.CreditCard], session: PaymentsFeature.SessionIdentity)?
 
-  init(
-    paymentsFeature: PaymentsFeature,
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
-  ) {
+  init(paymentsFeature: PaymentsFeature) {
     self.paymentsFeature = paymentsFeature
-    self.sleep = sleep
   }
 
   func isCurrent(_ identity: PaymentsFeature.SessionIdentity) -> Bool {
@@ -43,21 +36,16 @@ final class PaymentMethodSettingsViewModel {
   func failedToAddNewCard() { self.loadCards() }
   private func loadCards() {
     let feature = self.paymentsFeature
-    let delay = self.paymentsFeature.responseDelaySeconds
-    let sleep = self.sleep
     let identity = feature.sessionIdentity
     self.presentationTasks.replace(.cards) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let cards = try await feature.fetchSavedCards().me.storedCards.storedCards
-        try await sleep(delay)
-        try Task.checkCancellation()
         guard let self, self.isCurrent(identity) else { return }
         self.latestCards = (cards, identity)
         self.onEvent?(.paymentMethods(cards))
         self.setEnabled(!cards.isEmpty)
       } catch {
-        do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.reportError(error)
       }
@@ -68,19 +56,14 @@ final class PaymentMethodSettingsViewModel {
     guard self.latestCards?.session == identity else { return }
     self.setEnabled(visibleCellCount > 0)
     let feature = self.paymentsFeature
-    let delay = self.paymentsFeature.responseDelaySeconds
-    let sleep = self.sleep
     self.presentationTasks.replace(.delete) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let cards = try await feature.removePaymentMethod(id: card.id).storedCards
-        try await sleep(delay)
-        try Task.checkCancellation()
         guard let self, self.isCurrent(identity) else { return }
         self.latestCards = (cards, identity)
         self.setEnabled(!cards.isEmpty)
       } catch {
-        do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.onEvent?(.showAlert(Strings.Something_went_wrong_and_we_were_unable_to_remove_your_payment_method_please_try_again()))
         if let snapshot = self.latestCards, snapshot.session == identity {
@@ -97,15 +80,11 @@ final class PaymentMethodSettingsViewModel {
   func paymentMethodsFooterViewDidTapAddNewCardButton() {
     self.shouldCancel = false
     let feature = self.paymentsFeature
-    let delay = self.paymentsFeature.responseDelaySeconds
-    let sleep = self.sleep
     let identity = feature.sessionIdentity
     self.presentationTasks.replace(.setup) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let envelope = try await feature.createCardSetupIntentForPaymentSettings()
-        try await sleep(1 + delay)
-        try Task.checkCancellation()
         guard let self, self.isCurrent(identity), !self.shouldCancel else { return }
         var configuration = PaymentSheet.Configuration()
         configuration.merchantDisplayName = Strings.general_accessibility_kickstarter()
@@ -116,7 +95,6 @@ final class PaymentMethodSettingsViewModel {
         ))
         self.setEditing(false)
       } catch {
-        do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.reportError(error)
       }
@@ -125,18 +103,13 @@ final class PaymentMethodSettingsViewModel {
   func paymentSheetDidAdd(setupIntent: String, session identity: PaymentsFeature.SessionIdentity) {
     guard self.isCurrent(identity) else { return }
     let feature = self.paymentsFeature
-    let delay = self.paymentsFeature.responseDelaySeconds
-    let sleep = self.sleep
     self.presentationTasks.replace(.store) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         _ = try await feature.createPaymentSource(secret: setupIntent)
-        try await sleep(delay)
-        try Task.checkCancellation()
         guard let self, self.isCurrent(identity) else { return }
         self.addNewCardSucceeded(with: Strings.Got_it_your_changes_have_been_saved())
       } catch {
-        do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.reportError(error)
       }

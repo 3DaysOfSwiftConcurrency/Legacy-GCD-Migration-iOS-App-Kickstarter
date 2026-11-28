@@ -46,14 +46,12 @@ final class PaymentsFeatureTests: TestCase {
       sessionFeature: self.session,
       makeProvider: { self.provider },
       currencyContext: { currency },
-      hasEligibleApplePayCard: { $0.id == 42 },
-      responseDelaySeconds: { 1.25 }
+      hasEligibleApplePayCard: { $0.id == 42 }
     )
 
     XCTAssertEqual(try XCTUnwrap(feature.currencyContext).viewerCountryCode, "GB")
     XCTAssertTrue(feature.hasEligibleApplePayCard(for: Project.template |> Project.lens.id .~ 42))
     XCTAssertFalse(feature.hasEligibleApplePayCard(for: Project.template |> Project.lens.id .~ 7))
-    XCTAssertEqual(feature.responseDelaySeconds, 1.25)
   }
 
   func testApplePayRequestUsesComposedNetworkPolicy() {

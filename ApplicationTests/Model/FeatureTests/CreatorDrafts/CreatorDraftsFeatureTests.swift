@@ -16,7 +16,7 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     self.provider = provider
     self.feature = CreatorDraftsFeature(
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
-      makeProvider: { provider }, sleep: { _ in }
+      makeProvider: { provider }
     )
     await self.feature.loadDraft(project: .template, route: self.route)
   }
@@ -33,18 +33,15 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     Task { try await self.feature.saveDraft(route: self.route, title: title, body: "Body", isPublic: false) }
   }
 
-  func testReadsAndWritesUseComposedResponseDelay() async throws {
+  func testReadsAndWritesPublishCompletedResponsesImmediately() async throws {
     let provider = ControlledCreatorDraftsProvider()
     defer {
       provider.loads.releaseAll()
       provider.saves.releaseAll()
     }
-    var sleeps: [TimeInterval] = []
     let feature = CreatorDraftsFeature(
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
-      makeProvider: { provider },
-      responseDelaySeconds: { 7 },
-      sleep: { sleeps.append($0) }
+      makeProvider: { provider }
     )
     let route = UUID()
 
@@ -55,8 +52,6 @@ final class CreatorDraftsFeatureTests: XCTestCase {
     await provider.saves.waitFor(1)
     try provider.saves.finish(0, .success(.template))
     _ = try await save.value
-
-    XCTAssertEqual(sleeps, [7, 7])
   }
 
   func testEquivalentSavesShareAndDifferentFieldsExecuteInOrder() async throws {

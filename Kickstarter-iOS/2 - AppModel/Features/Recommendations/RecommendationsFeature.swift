@@ -26,16 +26,13 @@ public struct AsyncRecommendationsProvider: RecommendationsProvider {
 public final class RecommendationsFeature {
   public struct Platform {
     let promptStore: @MainActor () -> any KeyValueStoreType
-    let responseDelaySeconds: @MainActor () -> TimeInterval
     let recordThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
 
     public init(
       promptStore: @escaping @MainActor () -> any KeyValueStoreType,
-      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
       recordThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
     ) {
       self.promptStore = promptStore
-      self.responseDelaySeconds = responseDelaySeconds
       self.recordThirdPartyEvent = recordThirdPartyEvent
     }
   }
@@ -70,7 +67,6 @@ public final class RecommendationsFeature {
   public let sessionFeature: SessionFeature
   private let platform: Platform
   private let makeProvider: () -> any RecommendationsProvider
-  private let sleep: @MainActor @Sendable (TimeInterval) async throws -> Void
   private var pendingLoadsByRoute: [UUID: Pending] = [:]
   private var loadedSelectionsByRoute: [UUID: Selection] = [:]
   public func loadedSelection(for route: UUID) -> Selection? { self.loadedSelectionsByRoute[route] }
@@ -79,16 +75,12 @@ public final class RecommendationsFeature {
   public init(
     platform: Platform,
     settingsFeature: SettingsFeature,
-    makeProvider: @escaping () -> any RecommendationsProvider,
-    sleep: @escaping @MainActor @Sendable (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    makeProvider: @escaping () -> any RecommendationsProvider
   ) {
     self.platform = platform
     self.settingsFeature = settingsFeature
     self.sessionFeature = settingsFeature.sessionFeature
     self.makeProvider = makeProvider
-    self.sleep = sleep
   }
 
   private var session: Session {
@@ -142,7 +134,6 @@ public final class RecommendationsFeature {
     self.release(route: route)
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = self.platform.responseDelaySeconds()
     let task = Task { [self] in
       defer {
         self.recommendationLoadTasks[id] = nil
@@ -154,9 +145,9 @@ public final class RecommendationsFeature {
         let selection: Selection?
         switch request {
         case .curated(let categories):
-          selection = try await self.loadCuratedProjects(categories, provider: provider, delay: delay)
+          selection = try await self.loadCuratedProjects(categories, provider: provider)
         case .afterBacking(let project):
-          selection = try await self.loadPostBackingAlternatives(project, provider: provider, delay: delay, session: session)
+          selection = try await self.loadPostBackingAlternatives(project, provider: provider, session: session)
         }
         try Task.checkCancellation()
         guard self.session == session, self.pendingLoadsByRoute[route]?.id == id, let selection else { return }
@@ -172,18 +163,17 @@ public final class RecommendationsFeature {
   }
 
   private func loadCuratedProjects(
-    _ categories: [KsApi.Category], provider: any RecommendationsProvider, delay: TimeInterval
+    _ categories: [KsApi.Category], provider: any RecommendationsProvider
   ) async throws -> Selection? {
     guard !categories.isEmpty else { return nil }
     let perPage = 30 / categories.count
-    let sleep = self.sleep
     let projects = try await withThrowingTaskGroup(of: [Project].self) { group in
       for category in categories {
         let parameters = DiscoveryParams.defaults
           |> DiscoveryParams.lens.category .~ category
           |> DiscoveryParams.lens.state .~ .live
           |> DiscoveryParams.lens.perPage .~ perPage
-        group.addTask { @Sendable [provider, parameters, sleep] in
+        group.addTask { @Sendable [provider, parameters] in
           let projects: [Project]
           do { projects = try await provider.fetchProjects(parameters: parameters) }
           catch {
@@ -191,7 +181,6 @@ public final class RecommendationsFeature {
             if error is CancellationError { throw error }
             return []
           }
-          try await sleep(delay)
           try Task.checkCancellation()
           return projects
         }
@@ -205,12 +194,11 @@ public final class RecommendationsFeature {
   }
 
   private func loadPostBackingAlternatives(
-    _ project: Project, provider: any RecommendationsProvider, delay: TimeInterval, session: Session
+    _ project: Project, provider: any RecommendationsProvider, session: Session
   ) async throws -> Selection? {
     guard let projectCategory = project.category else { return nil }
     let id = Category.decode(id: "\(projectCategory.parentId ?? projectCategory.id)").toBase64()
     let fetched = try await provider.fetchRecommendationCategory(id: id)
-    try await self.sleep(delay)
     try self.ensureRecommendationSessionIsCurrent(session)
     let category = fetched.parent ?? fetched
     let base = DiscoveryParams.lens.perPage .~ 3 <> DiscoveryParams.lens.backed .~ false

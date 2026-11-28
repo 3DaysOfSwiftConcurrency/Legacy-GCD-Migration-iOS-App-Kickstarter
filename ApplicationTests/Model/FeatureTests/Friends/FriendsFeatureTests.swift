@@ -15,7 +15,7 @@ final class FriendsFeatureTests: TestCase {
     currentUser: { [weak self] in self?.currentUser },
     updateUser: { _ in })
   private lazy var feature = FriendsFeature(
-    sessionFeature: self.session, makeProvider: { self.provider }, sleep: { _ in })
+    sessionFeature: self.session, makeProvider: { self.provider })
   private let route = UUID()
 
   override func tearDown() async throws {
@@ -27,18 +27,15 @@ final class FriendsFeatureTests: TestCase {
     try await super.tearDown()
   }
 
-  func testReadsUseComposedResponseDelay() async throws {
+  func testReadsPublishCompletedResponsesImmediately() async throws {
     let provider = ControlledFriendsProvider()
     defer {
       provider.pages.releaseAll()
       provider.statisticsGate.releaseAll()
     }
-    var sleeps: [TimeInterval] = []
     let feature = FriendsFeature(
       sessionFeature: self.session,
-      makeProvider: { provider },
-      responseDelaySeconds: { 9 },
-      sleep: { sleeps.append($0) }
+      makeProvider: { provider }
     )
     let route = UUID()
 
@@ -51,7 +48,6 @@ final class FriendsFeatureTests: TestCase {
     try provider.statisticsGate.finish(0, .success(.template))
     await statistics.value
 
-    XCTAssertEqual(sleeps, [9, 9])
     XCTAssertEqual(feature.snapshot(route: route).users.map(\.id), [1])
     XCTAssertNotNil(feature.snapshot(route: route).statistics)
   }

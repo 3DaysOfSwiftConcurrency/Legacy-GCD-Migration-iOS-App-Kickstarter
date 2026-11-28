@@ -140,7 +140,7 @@ final class ManagePledgeViewController: UIViewController, MessageBannerViewContr
       |> \.translatesAutoresizingMaskIntoConstraints .~ false
   }()
 
-  private lazy var refreshControl = DeferredRefreshControl(frame: .zero)
+  private lazy var refreshControl = MinimumVisibleRefreshControl(frame: .zero)
 
   private lazy var rootStackView: UIStackView = {
     UIStackView(frame: .zero)

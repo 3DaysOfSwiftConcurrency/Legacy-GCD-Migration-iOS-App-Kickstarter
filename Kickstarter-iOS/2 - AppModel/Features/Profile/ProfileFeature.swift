@@ -55,8 +55,6 @@ public final class ProfileFeature {
   private var avatarRequest: (url: URL, userID: Int?, generation: Int, id: UUID, task: Task<Data, Error>)?
   private var latestAvatarRequestID: UUID?
   private let makeProvider: () -> any ProfileProvider
-  private let responseDelaySeconds: @MainActor () -> TimeInterval
-  private let sleep: (TimeInterval) async throws -> Void
   private var projectCollectionsByType: [ProfileProjectsType: Route] = [:]
   private var headerRequest: (
     userID: Int?,
@@ -106,16 +104,10 @@ public final class ProfileFeature {
 
   public init(
     sessionFeature: SessionFeature, makeProvider: @escaping () -> any ProfileProvider,
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
-    loadAvatar: (@MainActor (URL) async throws -> Data)? = nil,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    loadAvatar: (@MainActor (URL) async throws -> Data)? = nil
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
-    self.responseDelaySeconds = responseDelaySeconds
-    self.sleep = sleep
     self.loadAvatar = loadAvatar ?? { try await ProfileAvatarStore.shared.loadAvatarBytes(for: $0) }
   }
 
@@ -197,7 +189,6 @@ public final class ProfileFeature {
     let token = UUID()
     let userTask = self.sessionFeature.startCurrentUserFetch()
     let graphTask = self.sessionFeature.startGraphUserFetch()
-    let delay = self.responseDelaySeconds()
     self.userError = nil
     self.graphUserError = nil
     if let user = self.sessionFeature.currentUser {
@@ -211,16 +202,14 @@ public final class ProfileFeature {
         graph: false,
         userID: userID,
         generation: generation,
-        userReadGeneration: userReadGeneration,
-        delay: delay
+        userReadGeneration: userReadGeneration
       )
       async let graph = self.publishHeader(
         graphTask,
         graph: true,
         userID: userID,
         generation: generation,
-        userReadGeneration: userReadGeneration,
-        delay: delay
+        userReadGeneration: userReadGeneration
       )
       let (restUser, graphUser) = await (user, graph)
       guard !Task.isCancelled, self.headerRequest?.token == token,
@@ -237,11 +226,10 @@ public final class ProfileFeature {
 
   private func publishHeader(
     _ task: Task<User, Error>, graph: Bool, userID: Int?, generation: Int,
-    userReadGeneration: Int, delay: TimeInterval
+    userReadGeneration: Int
   ) async -> User? {
     do {
       let user = try await task.value
-      try await self.sleep(delay)
       try Task.checkCancellation()
       guard self.sessionFeature.isCurrent(userID: userID, generation: generation),
             self.sessionFeature.userReadGeneration == userReadGeneration else { return nil }
@@ -285,10 +273,9 @@ public final class ProfileFeature {
     let cursor = next ? page.cursor : nil
     let token = UUID()
     let provider = self.makeProvider()
-    let delay = self.responseDelaySeconds()
     page.snapshot.isLoading = true
     page.snapshot.error = nil
-    let task = Task { [weak self, sleep] in
+    let task = Task { [weak self] in
       guard let self else { return }
       defer {
         if page.request?.token == token {
@@ -301,7 +288,6 @@ public final class ProfileFeature {
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         let fetchedPage = try await provider.fetchProfileProjectsPage(type: type, cursor: cursor)
-        try await sleep(delay)
         try Task.checkCancellation()
         guard self.projectCollectionsByType[type] === page, page.request?.token == token,
               self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }

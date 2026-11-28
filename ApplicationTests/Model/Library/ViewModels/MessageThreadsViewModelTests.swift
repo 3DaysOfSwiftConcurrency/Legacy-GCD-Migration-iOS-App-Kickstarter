@@ -7,8 +7,7 @@ final class MessageThreadsViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = MessagingFeature(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
-    makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) },
-    sleep: { _ in }
+    makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var vm = MessageThreadsViewModel(messagingFeature: self.feature)
 

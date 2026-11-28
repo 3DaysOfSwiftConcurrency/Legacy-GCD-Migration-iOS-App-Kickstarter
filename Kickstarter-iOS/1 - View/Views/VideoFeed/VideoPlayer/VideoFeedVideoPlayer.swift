@@ -27,7 +27,6 @@ class VideoFeedVideoPlayer {
   @ObservationIgnored private var seekTask: Task<Void, Never>?
   private var playbackVersion = UUID()
   private var seekVersion = UUID()
-  private let sleep: @MainActor (Duration) async throws -> Void
   private let performSeek: @MainActor (AVPlayer, Double) async -> Bool
   @ObservationIgnored private var timeObserverToken: PlatformObservation?
   @ObservationIgnored private var endObserver: PlatformObservation?
@@ -40,14 +39,12 @@ class VideoFeedVideoPlayer {
   // MARK: - Lifecycle
 
   init(
-    sleep: @escaping @MainActor (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
     performSeek: @escaping @MainActor (AVPlayer, Double) async -> Bool = { player, progress in
       guard let duration = player.currentItem?.duration, duration.isNumeric else { return false }
       let target = CMTime(seconds: progress * duration.seconds, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
       return await player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
     }
   ) {
-    self.sleep = sleep
     self.performSeek = performSeek
   }
 
@@ -112,12 +109,11 @@ class VideoFeedVideoPlayer {
         // Keep the first pending stall deadline; repeated notifications must not
         // postpone the existing three-second recovery window.
         guard self.recoveryTask == nil else { return }
-        let sleep = self.sleep
         self.recoveryTask = Task { [weak self] in
           defer {
             if self?.playbackVersion == version { self?.recoveryTask = nil }
           }
-          do { try await sleep(.seconds(3)) } catch { return }
+          do { try await Task.sleep(for: .seconds(3)) } catch { return }
           guard !Task.isCancelled, let self, self.playbackVersion == version,
             self.player.currentItem === item, self.player.rate == 0 else { return }
           self.notifyFailed()
@@ -126,9 +122,8 @@ class VideoFeedVideoPlayer {
     }
 
     // Preserve the existing three-second startup failure check.
-    let sleep = self.sleep
     self.startupTask = Task { [weak self] in
-      do { try await sleep(.seconds(3)) } catch { return }
+      do { try await Task.sleep(for: .seconds(3)) } catch { return }
       guard !Task.isCancelled, let self, self.playbackVersion == version,
         self.player.currentItem === item, !self.hasFiredOnReady else { return }
       if item.error != nil || item.status == .failed { self.notifyFailed() }

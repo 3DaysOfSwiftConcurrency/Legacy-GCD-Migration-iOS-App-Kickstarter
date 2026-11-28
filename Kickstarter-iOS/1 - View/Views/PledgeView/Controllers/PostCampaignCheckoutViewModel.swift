@@ -221,9 +221,8 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
     self.paymentsFeature = paymentsFeature
     self.analytics = analytics
     let currencyContext = { paymentsFeature.currencyContext }
-    let responseDelay = { paymentsFeature.responseDelaySeconds }
-    self.cardValidation = CheckoutValidationLane(responseDelay: responseDelay)
-    self.applePayValidation = CheckoutValidationLane(responseDelay: responseDelay)
+    self.cardValidation = CheckoutValidationLane()
+    self.applePayValidation = CheckoutValidationLane()
 
     let ctaState = self.ctaState
     let cardState = self.cardState
@@ -284,13 +283,11 @@ public class PostCampaignCheckoutViewModel: PostCampaignCheckoutViewModelType,
       self.checkoutTask = Task { [weak self] in
         do {
           let checkout = try await request.value
-          try await waitForPostCampaignPresentationDelay(responseDelay())
           guard !Task.isCancelled, let self, self.checkoutIdentity.id == id,
                 pledgeFeature.sessionIdentity == session else { return }
           self.deliverCheckout?(.success(checkout))
         } catch {
           guard !Task.isCancelled, !(error is CancellationError) else { return }
-          do { try await waitForPostCampaignPresentationDelay(responseDelay()) } catch { return }
           guard let self, self.checkoutIdentity.id == id,
                 pledgeFeature.sessionIdentity == session else { return }
           self.deliverCheckout?(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))
@@ -670,21 +667,13 @@ private final class CheckoutRequestIdentity {
   var id = UUID()
 }
 
-private func waitForPostCampaignPresentationDelay(_ delay: TimeInterval) async throws {
-  if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-  else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
-}
-
 @MainActor
 private final class CheckoutValidationLane {
   var onResult: ((Result<ValidateCheckoutEnvelope, ErrorEnvelope>) -> Void)?
   private let identity = CheckoutRequestIdentity()
-  private let responseDelay: @MainActor () -> TimeInterval
   private var task: Task<Void, Never>?
 
-  init(responseDelay: @escaping @MainActor () -> TimeInterval) {
-    self.responseDelay = responseDelay
-  }
+  init() {}
 
   deinit { self.task?.cancel() }
 
@@ -702,16 +691,14 @@ private final class CheckoutValidationLane {
     let id = UUID()
     self.identity.id = id
     let request = feature.startValidateCheckout(checkoutID: checkoutID, sourceID: sourceID, secret: secret)
-    self.task = Task { [weak self, responseDelay = self.responseDelay] in
+    self.task = Task { [weak self] in
       do {
         let result = try await request.value
-        try await waitForPostCampaignPresentationDelay(responseDelay())
         guard !Task.isCancelled, let self, self.identity.id == id,
               feature.sessionIdentity == session else { return }
         self.onResult?(.success(result))
       } catch {
         guard !Task.isCancelled, !(error is CancellationError) else { return }
-        do { try await waitForPostCampaignPresentationDelay(responseDelay()) } catch { return }
         guard let self, self.identity.id == id,
               feature.sessionIdentity == session else { return }
         self.onResult?(.failure((error as? ErrorEnvelope) ?? .couldNotParseJSON))

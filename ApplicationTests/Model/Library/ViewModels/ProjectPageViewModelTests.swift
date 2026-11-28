@@ -2169,8 +2169,7 @@ final class ProjectPageViewModelTests: TestCase {
         tracking.updateAdvertisingIdentifier()
         guard let advertisingID = tracking.advertisingIdentifier else { return nil }
         return (advertisingID, AppEnvironment.current.mainBundle.platformVersion)
-      },
-      sleep: { _ in try Task.checkCancellation() }
+      }
     )
   }
 

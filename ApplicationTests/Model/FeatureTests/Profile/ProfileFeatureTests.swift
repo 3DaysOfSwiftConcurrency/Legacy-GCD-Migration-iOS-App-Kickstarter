@@ -89,10 +89,9 @@ final class ProfileFeatureTests: TestCase {
     XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent("tabbar-avatar-image-\(url.absoluteString.hashValue).dat")), Data([4, 5]))
   }
 
-  func testPreferenceSaveInvalidatesHeaderAlreadyWaitingInPresentationDelay() async throws {
+  func testPreferenceSaveInvalidatesHeaderBeforeBothReadsComplete() async throws {
     let provider = ControlledHeaderProvider()
-    let delay = AccountRequestGate<Void>()
-    defer { provider.users.releaseAll(); provider.graphs.releaseAll(); delay.releaseAll() }
+    defer { provider.users.releaseAll(); provider.graphs.releaseAll() }
     var commits = 0
     let session = SessionFeature(
       makeProvider: { provider },
@@ -101,8 +100,7 @@ final class ProfileFeatureTests: TestCase {
     )
     let feature = ProfileFeature(
       sessionFeature: session,
-      makeProvider: { ControlledProfileProvider() },
-      sleep: { _ in try await delay.request() }
+      makeProvider: { ControlledProfileProvider() }
     )
     var combined = 0
     let observer = feature.observeHeader { if case .combinedUser = $0 { combined += 1 } }
@@ -111,11 +109,8 @@ final class ProfileFeatureTests: TestCase {
     await provider.users.waitFor(1)
     await provider.graphs.waitFor(1)
     try provider.users.finish(0, .success(.template))
-    try provider.graphs.finish(0, .success(.template))
-    await delay.waitFor(2)
     session.invalidateAccountReads()
-    try delay.finish(0, .success(()))
-    try delay.finish(1, .success(()))
+    try provider.graphs.finish(0, .success(.template))
     await request.value
     XCTAssertEqual(commits, 0)
     XCTAssertEqual(combined, 0)
@@ -128,7 +123,7 @@ final class ProfileFeatureTests: TestCase {
       .compactMap(ProjectCardProperties.init) ?? []
   }
 
-  func testHeaderAndPageUseComposedResponseDelay() async throws {
+  func testHeaderAndPagePublishCompletedResponsesImmediately() async throws {
     let headerProvider = ControlledHeaderProvider()
     let pageProvider = ControlledProfileProvider()
     defer {
@@ -137,12 +132,9 @@ final class ProfileFeatureTests: TestCase {
       pageProvider.pages.releaseAll()
     }
     let session = SessionFeature(makeProvider: { headerProvider }, currentUser: { .template })
-    var sleeps: [TimeInterval] = []
     let feature = ProfileFeature(
       sessionFeature: session,
-      makeProvider: { pageProvider },
-      responseDelaySeconds: { 11 },
-      sleep: { sleeps.append($0) }
+      makeProvider: { pageProvider }
     )
 
     let header = feature.startProfileHeaderLoad()
@@ -156,7 +148,6 @@ final class ProfileFeatureTests: TestCase {
     try pageProvider.pages.finish(0, .success(.init(projects: self.projects(1), cursor: nil)))
     await page?.value
 
-    XCTAssertEqual(sleeps, [11, 11, 11])
     XCTAssertEqual(feature.snapshot(for: .backed).projects.count, 1)
   }
 
@@ -167,7 +158,7 @@ final class ProfileFeatureTests: TestCase {
       makeProvider: { AsyncSessionProvider(service: MockService()) },
       currentUser: { .template }
     )
-    let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
+    let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider })
     let backed = feature.startProfileProjectsPageLoad(type: .backed), duplicate = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(1)
     let saved = feature.startProfileProjectsPageLoad(type: .saved)
@@ -201,7 +192,7 @@ final class ProfileFeatureTests: TestCase {
       makeProvider: { AsyncSessionProvider(service: MockService()) },
       currentUser: { .template }
     )
-    let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
+    let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider })
     let first = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(.init(projects: self.projects(1), cursor: "next")))
@@ -234,8 +225,7 @@ final class ProfileFeatureTests: TestCase {
     let session = SessionFeature(makeProvider: { provider }, currentUser: { .template })
     let feature = ProfileFeature(
       sessionFeature: session,
-      makeProvider: { ControlledProfileProvider() },
-      sleep: { _ in }
+      makeProvider: { ControlledProfileProvider() }
     )
     var combined: [User] = []
     var displayed: [User] = []
@@ -267,8 +257,7 @@ final class ProfileFeatureTests: TestCase {
     let session = SessionFeature(makeProvider: { provider }, currentUser: { .template })
     let feature = ProfileFeature(
       sessionFeature: session,
-      makeProvider: { ControlledProfileProvider() },
-      sleep: { _ in }
+      makeProvider: { ControlledProfileProvider() }
     )
     var graphValues = 0, combined = 0
     let observer = feature.observeHeader { event in
@@ -297,7 +286,7 @@ final class ProfileFeatureTests: TestCase {
       makeProvider: { AsyncSessionProvider(service: MockService()) },
       currentUser: { .template }
     )
-    let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
+    let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider })
     let first = feature.startProfileProjectsPageLoad(type: .backed)
     await provider.pages.waitFor(1)
     try provider.pages.finish(0, .success(.init(projects: self.projects(2), cursor: "next")))
@@ -316,7 +305,7 @@ final class ProfileFeatureTests: TestCase {
     let provider = ControlledProfileProvider()
     let header = ControlledHeaderProvider()
     let session = SessionFeature(makeProvider: { header }, currentUser: { nil })
-    let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider }, sleep: { _ in })
+    let feature = ProfileFeature(sessionFeature: session, makeProvider: { provider })
     await feature.refreshHeader()
     await feature.refreshProfileProjects(type: .backed)
     await feature.refreshProfileProjects(type: .saved)
@@ -330,7 +319,7 @@ final class ProfileFeatureTests: TestCase {
     defer { provider.users.releaseAll(); provider.graphs.releaseAll() }
     let session = SessionFeature(makeProvider: { provider }, currentUser: { .template })
     let feature = ProfileFeature(
-      sessionFeature: session, makeProvider: { ControlledProfileProvider() }, sleep: { _ in }
+      sessionFeature: session, makeProvider: { ControlledProfileProvider() }
     )
     var combined: [User] = []
     let observer = feature.observeHeader { if case let .combinedUser(user) = $0 { combined.append(user) } }

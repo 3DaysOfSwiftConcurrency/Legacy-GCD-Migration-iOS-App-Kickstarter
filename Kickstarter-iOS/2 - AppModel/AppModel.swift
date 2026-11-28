@@ -11,7 +11,6 @@ extension ProjectDetailsFeature.Platform {
       prepareWebRequest: { AppEnvironment.current.apiService.preparedRequest(forURL: $0) },
       cookieStorage: { AppEnvironment.current.cookieStorage },
       dateType: { AppEnvironment.current.dateType },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       recordThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) }
     )
   }
@@ -24,7 +23,6 @@ extension RewardsFeature.Platform {
       configuredCountry: { AppEnvironment.current.config?.countryCode },
       country: { AppEnvironment.current.countryCode },
       now: { AppEnvironment.current.dateType.init().timeIntervalSince1970 },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       recordThirdPartyEvent: { _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0) }
     )
   }
@@ -35,7 +33,6 @@ extension RecommendationsFeature.Platform {
   static func live() -> Self {
     Self(
       promptStore: { AppEnvironment.current.userDefaults },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       recordThirdPartyEvent: {
         _ = AppEnvironment.current.apiService.prepareThirdPartyEvent(input: $0)
       }
@@ -49,8 +46,7 @@ extension PledgeFeature.Platform {
     Self(
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       prepareWebRequest: { AppEnvironment.current.apiService.preparedRequest(forRequest: $0) },
-      isPreparedWebRequest: { AppEnvironment.current.apiService.isPrepared(request: $0) },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      isPreparedWebRequest: { AppEnvironment.current.apiService.isPrepared(request: $0) }
     )
   }
 }
@@ -62,8 +58,7 @@ extension DiscussionFeature.Platform {
       serverConfig: { AppEnvironment.current.apiService.serverConfig },
       prepareWebRequest: { AppEnvironment.current.apiService.preparedRequest(forRequest: $0) },
       optimisticCommentID: { AppEnvironment.current.uuidType.init().uuidString },
-      now: { AppEnvironment.current.dateType.init().date },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      now: { AppEnvironment.current.dateType.init().date }
     )
   }
 }
@@ -89,15 +84,12 @@ extension ProjectMediaFeature.SavePrompts {
 }
 
 extension OnboardingFeature {
-  static func live(
-    trackingDelay: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
-  ) -> OnboardingFeature {
+  static func live() -> OnboardingFeature {
     OnboardingFeature(
       completionStore: { AppEnvironment.current.userDefaults },
       shouldRequestTracking: { AppEnvironment.current.appTrackingTransparency.shouldRequestAuthorizationStatus() },
       pushRegistration: { AppEnvironment.current.pushRegistrationType },
       tracking: { AppEnvironment.current.appTrackingTransparency },
-      trackingDelay: trackingDelay,
       analytics: .init(
         pageViewed: { AppEnvironment.current.ksrAnalytics.trackOnboardingPageViewed(at: $0) },
         buttonTapped: { AppEnvironment.current.ksrAnalytics.trackOnboardingPageButtonTapped(context: $0, item: $1) },
@@ -138,7 +130,6 @@ public struct PledgeCheckoutComposition {
   public let authenticationFeature: AuthenticationFeature
   public let paymentsFeature: PaymentsFeature
   public let analytics: () -> KSRAnalytics
-  public let responseDelay: @MainActor () -> TimeInterval
   public let advertisingContext: @MainActor () -> (id: String, platformVersion: String)?
 
   public init(
@@ -146,14 +137,12 @@ public struct PledgeCheckoutComposition {
     authenticationFeature: AuthenticationFeature,
     paymentsFeature: PaymentsFeature,
     analytics: @escaping () -> KSRAnalytics,
-    responseDelay: @escaping @MainActor () -> TimeInterval,
     advertisingContext: @escaping @MainActor () -> (id: String, platformVersion: String)?
   ) {
     self.pledgeFeature = pledgeFeature
     self.authenticationFeature = authenticationFeature
     self.paymentsFeature = paymentsFeature
     self.analytics = analytics
-    self.responseDelay = responseDelay
     self.advertisingContext = advertisingContext
   }
 }
@@ -572,7 +561,6 @@ public final class AppModel {
       authenticationFeature: self.authenticationFeature,
       paymentsFeature: self.paymentsFeature,
       analytics: { AppEnvironment.current.ksrAnalytics },
-      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       advertisingContext: {
         guard let environment = AppEnvironment.current else { return nil }
         environment.appTrackingTransparency.updateAdvertisingIdentifier()
@@ -744,7 +732,6 @@ public final class AppModel {
       platform: .init(
         loadSurvey: { try await AppEnvironment.current.apiService.applicationSurvey(id: $0) },
         applicationBadgeNumber: { AppEnvironment.current.application.applicationIconBadgeNumber },
-        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
         trackProjectCardClick: {
           AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(page: .activities, project: $0)
         }
@@ -754,8 +741,7 @@ public final class AppModel {
     )
     let profileFeature = ProfileFeature(
       sessionFeature: sessionFeature,
-      makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      makeProvider: { AsyncProfileProvider(service: AppEnvironment.current.apiService) }
     )
     let applicationConfiguration = ApplicationConfigurationService.live()
     let remoteConfiguration = RemoteConfigurationService(
@@ -766,14 +752,12 @@ public final class AppModel {
       applicationSettings: .live(configuration: applicationConfiguration, remoteConfiguration: remoteConfiguration),
       hasStoredCredentials: { AppEnvironment.current.apiService.isAuthenticated },
       applicationVersion: { AppEnvironment.current.mainBundle.appVersionString },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       identifyUser: { AppEnvironment.current.identify(user: $0) },
       makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
     )
     let messagingFeature = MessagingFeature(
       sessionFeature: sessionFeature,
-      makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      makeProvider: { AsyncMessagingProvider(service: AppEnvironment.current.apiService) }
     )
     let discussionFeature = DiscussionFeature(
       platform: .live(),
@@ -823,7 +807,6 @@ public final class AppModel {
         let bundle = AppEnvironment.current.mainBundle
         return bundle.isAlpha || bundle.isBeta || bundle.isDebug
       },
-      responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       sessionFeature: sessionFeature
     )
     let onboarding = OnboardingFeature.live()
@@ -834,8 +817,7 @@ public final class AppModel {
       onboardingFeature: onboarding,
       creatorDraftsFeature: CreatorDraftsFeature(
         sessionFeature: sessionFeature,
-        makeProvider: { AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService) },
-        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+        makeProvider: { AsyncCreatorDraftsProvider(service: AppEnvironment.current.apiService) }
       ),
       recommendationsFeature: RecommendationsFeature(platform: .live(), settingsFeature: settingsFeature, makeProvider: {
         AsyncRecommendationsProvider(service: AppEnvironment.current.apiService)
@@ -845,8 +827,7 @@ public final class AppModel {
       }),
       friendsFeature: FriendsFeature(
         sessionFeature: sessionFeature,
-        makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) },
-        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+        makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) }
       ),
       pledgedProjectsFeature: PledgedProjectsFeature(
         sessionFeature: sessionFeature, settingsFeature: settingsFeature, makeProvider: {
@@ -938,8 +919,7 @@ public final class AppModel {
           AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
             for: $0, launchedCountries: AppEnvironment.current.launchedCountries
           )
-        },
-        responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+        }
       ),
       messagingFeature: messagingFeature,
       sessionFeature: sessionFeature,
@@ -949,7 +929,6 @@ public final class AppModel {
           webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
           oauthClientID: { AppEnvironment.current.apiService.serverConfig.apiClientAuth.clientId },
           appleAppID: { AppEnvironment.current.apiService.appId },
-          responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
           trackLoginPageViewed: { AppEnvironment.current.ksrAnalytics.trackLoginPageViewed() },
           trackLoginSubmitButtonClicked: {
             AppEnvironment.current.ksrAnalytics.trackLoginSubmitButtonClicked()
@@ -970,7 +949,6 @@ public final class AppModel {
       ),
       searchFeature: SearchFeature(
         platform: .init(
-          responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
           debounceSeconds: { AppEnvironment.current.debounceInterval.searchDelaySeconds }
         ),
         provider: searchProvider,
@@ -1082,7 +1060,6 @@ public final class AppModel {
         connectivity: connectivity,
         webBaseURL: { AppEnvironment.current.apiService.serverConfig.webBaseUrl },
         analytics: { AppEnvironment.current.ksrAnalytics },
-        watchResponseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
         savePrompts: .live(),
         makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) }
       )

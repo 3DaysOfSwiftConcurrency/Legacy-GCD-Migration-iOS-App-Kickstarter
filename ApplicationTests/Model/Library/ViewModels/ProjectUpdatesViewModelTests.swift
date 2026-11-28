@@ -11,7 +11,7 @@ final class ProjectUpdatesViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   fileprivate let vm = ProjectUpdatesViewModel(discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: {
     AsyncDiscussionProvider(service: AppEnvironment.current.apiService)
-  }, sleep: { _ in try Task.checkCancellation() }), analytics: { AppEnvironment.current.ksrAnalytics })
+  }), analytics: { AppEnvironment.current.ksrAnalytics })
 
   fileprivate let goToSafariBrowser = UpdatesRecorder<URL>()
   fileprivate let goToUpdateId = UpdatesRecorder<Int>()

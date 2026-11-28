@@ -11,7 +11,7 @@ final class FeatureFlagToolsViewModelTests: XCTestCase {
     let original = keys.reduce(into: [String: Bool]()) { $0[$1] = true }
     let config = Config.template |> \.features .~ original.merging(["unknown_feature": false]) { old, _ in old }
     let fixture = ConfigurationFlagToolsFixture(config: config)
-    let vm = FeatureFlagToolsViewModel(settingsFeature: fixture.feature, sleep: {})
+    let vm = FeatureFlagToolsViewModel(settingsFeature: fixture.feature)
     var notifications = 0
     let observation = MainActorNotificationObservation(center: fixture.center, name: .ksr_configUpdated) { _ in
       notifications += 1
@@ -27,19 +27,17 @@ final class FeatureFlagToolsViewModelTests: XCTestCase {
     XCTAssertEqual(fixture.config?.features[keys[0]], false)
     XCTAssertEqual(fixture.config?.features["unknown_feature"], false)
     XCTAssertEqual(notifications, 1)
-    XCTAssertEqual(vm.reloadWithData, keys.map { [$0: true] }, "Presentation reload remains deferred")
     await vm.waitForReload()
     XCTAssertEqual(vm.reloadWithData.first, [keys[0]: false])
   }
 
-  func testRapidToggleBackUsesCurrentSettingsBeforePresentationReload() async {
+  func testRapidToggleBackUsesCurrentSettingsBeforeReload() async {
     let feature = Feature.segment
     let fixture = ConfigurationFlagToolsFixture(config: Config.template |> \.features .~ [feature.rawValue: true])
-    let vm = FeatureFlagToolsViewModel(settingsFeature: fixture.feature, sleep: {})
+    let vm = FeatureFlagToolsViewModel(settingsFeature: fixture.feature)
     vm.viewDidLoad()
 
     vm.setFeatureAtIndexEnabled(index: 0, isEnabled: false)
-    XCTAssertEqual(vm.reloadWithData, [[feature.rawValue: true]])
     vm.setFeatureAtIndexEnabled(index: 0, isEnabled: true)
     XCTAssertEqual(fixture.saved.map { $0.features[feature.rawValue] }, [false, true])
     await vm.waitForReload()
@@ -48,7 +46,7 @@ final class FeatureFlagToolsViewModelTests: XCTestCase {
 
   func testMissingConfigurationKeepsTheLastPresentationAndRejectsUpdates() {
     let fixture = ConfigurationFlagToolsFixture(config: nil)
-    let vm = FeatureFlagToolsViewModel(settingsFeature: fixture.feature, sleep: {})
+    let vm = FeatureFlagToolsViewModel(settingsFeature: fixture.feature)
     vm.viewDidLoad()
     XCTAssertTrue(vm.reloadWithData.isEmpty)
     fixture.config = Config.template |> \.features .~ [Feature.segment.rawValue: true]

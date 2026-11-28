@@ -65,7 +65,7 @@ internal final class DiscoveryPageViewController: UITableViewController,
 
     self.tableView.dataSource = self.dataSource
 
-    let refreshControl = UIRefreshControl()
+    let refreshControl = MinimumVisibleRefreshControl(frame: .zero)
     refreshControl.addTarget(
       self,
       action: #selector(self.pulledToRefresh),

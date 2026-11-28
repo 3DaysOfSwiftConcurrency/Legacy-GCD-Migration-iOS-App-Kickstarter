@@ -200,16 +200,13 @@ final class PledgeFeatureTests: TestCase {
     XCTAssertEqual(self.provider.receivedUsers, [2, 2, 2])
   }
 
-  func testRewardToggleUsesComposedTrackingAndPresentationDelay() async throws {
+  func testRewardToggleTracksAndPublishesCompletedWriteImmediately() async throws {
     var tracked: (Bool, Int)?
-    var slept: TimeInterval?
     let feature = PledgeFeature(
       platform: .init(
         serverConfig: { ServerConfig.staging },
         prepareWebRequest: { $0 },
-        isPreparedWebRequest: { _ in false },
-        responseDelaySeconds: { 3 },
-        sleep: { slept = $0 }
+        isPreparedWebRequest: { _ in false }
       ),
       sessionFeature: self.session,
       makeProvider: { self.provider },
@@ -225,7 +222,6 @@ final class PledgeFeatureTests: TestCase {
     _ = try await operation.value
     XCTAssertEqual(tracked?.0, true)
     XCTAssertEqual(tracked?.1, Project.template.id)
-    XCTAssertEqual(slept, 3)
   }
 
   func testManagePledgePageViewUsesComposedTracking() {
@@ -319,30 +315,21 @@ final class PledgeFeatureTests: TestCase {
     XCTAssertEqual(self.provider.updates.count, 1)
   }
 
-  func testSessionChangeSuppressesDelayedFailure() async throws {
-    let delay = AccountRequestGate<Void>()
-    defer { delay.releaseAll() }
+  func testSessionChangeSuppressesInFlightFailure() async throws {
     let feature = PledgeFeature(
       platform: .init(
         serverConfig: { ServerConfig.staging },
         prepareWebRequest: { $0 },
-        isPreparedWebRequest: { _ in false },
-        responseDelaySeconds: { 1 },
-        sleep: { seconds in
-          XCTAssertEqual(seconds, 1)
-          try await delay.request()
-        }
+        isPreparedWebRequest: { _ in false }
       ),
       sessionFeature: self.session,
       makeProvider: { self.provider }
     )
-    let operation = Task { try await feature.cancelBackingWithPresentationDelay(
+    let operation = Task { try await feature.cancelBacking(
       .init(backingId: "backing", cancellationReason: nil)) }
     await self.provider.cancellations.waitFor(1)
-    try self.provider.cancellations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
-    await delay.waitFor(1)
     self.session.sessionChanged()
-    try delay.finish(0, .success(()))
+    try self.provider.cancellations.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
     do { try await operation.value; XCTFail("Old session must not receive a result") }
     catch { XCTAssertTrue(error is CancellationError) }
   }

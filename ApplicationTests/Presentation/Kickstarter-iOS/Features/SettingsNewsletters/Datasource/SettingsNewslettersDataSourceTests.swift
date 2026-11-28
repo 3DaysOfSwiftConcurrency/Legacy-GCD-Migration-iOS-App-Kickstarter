@@ -13,7 +13,6 @@ final class SettingsNewslettersDataSourceTests: XCTestCase {
   )
   private lazy var settingsFeature = SettingsFeature(
     sessionFeature: self.sessionFeature,
-    responseDeliverySleep: { _ in },
     makeProvider: { AsyncAccountPreferencesProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var dataSource = SettingsNewslettersDataSource(settingsFeature: self.settingsFeature)

@@ -37,7 +37,6 @@ public final class RootTabBarViewController: UITabBarController, MessageBannerVi
     activityFeature: self.composition.activities.activityFeature,
     settingsFeature: self.composition.settingsFeature,
     analytics: self.composition.analytics,
-    badgePresentationDelay: self.composition.badgePresentationDelay,
     isVoiceOverRunning: self.composition.isVoiceOverRunning
   )
 

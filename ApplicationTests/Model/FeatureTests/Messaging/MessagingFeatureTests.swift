@@ -31,15 +31,12 @@ final class MessagingFeatureTests: TestCase {
           urls: .init(api: .init(moreMessageThreads: cursor)))
   }
 
-  func testMailboxUsesComposedResponseDelay() async throws {
+  func testMailboxPublishesCompletedPageImmediately() async throws {
     let provider = ControlledMessagingProvider()
     defer { provider.releaseAll() }
-    var sleeps: [TimeInterval] = []
     let feature = MessagingFeature(
       sessionFeature: self.session,
-      makeProvider: { provider },
-      responseDelaySeconds: { 7 },
-      sleep: { sleeps.append($0) }
+      makeProvider: { provider }
     )
     let route = UUID()
 
@@ -48,7 +45,6 @@ final class MessagingFeatureTests: TestCase {
     try provider.pages.finish(0, .success(self.page([1])))
     await request.value
 
-    XCTAssertEqual(sleeps, [7])
     XCTAssertEqual(feature.mailboxSnapshot(for: route).threads.map(\.id), [1])
   }
 
@@ -147,7 +143,7 @@ final class MessagingFeatureTests: TestCase {
   }
 
   func testClearedSearchRejectsTransportThatIgnoresCancellation() async throws {
-    let vm = MessagesSearchViewModel(messagingFeature: self.feature, sleep: { _ in })
+    let vm = MessagesSearchViewModel(messagingFeature: self.feature)
     vm.configureWith(project: nil); vm.viewDidLoad()
     vm.searchTextChanged("old")
     await self.provider.searches.waitFor(1)
@@ -165,20 +161,18 @@ final class MessagingFeatureTests: TestCase {
   }
 
   func testDisappearingBeforeDebounceDoesNotStartHiddenSearch() async throws {
-    let debounce = AccountRequestGate<Void>()
-    defer { debounce.releaseAll() }
-    let vm = MessagesSearchViewModel(messagingFeature: self.feature, sleep: { _ in try await debounce.request() })
+    AppEnvironment.pushEnvironment(debounceInterval: .seconds(5))
+    defer { _ = AppEnvironment.popEnvironment() }
+    let vm = MessagesSearchViewModel(messagingFeature: self.feature)
     vm.configureWith(project: nil); vm.viewDidLoad()
     vm.searchTextChanged("hidden")
-    await debounce.waitFor(1)
     vm.viewWillDisappear()
-    try debounce.finish(0, .success(()))
     await vm.waitForSearch()
     XCTAssertEqual(self.provider.searches.count, 0)
   }
 
   func testNewQueryCancelsOldBeforeDebounceAndLateErrorCannotStopNewSearch() async throws {
-    let vm = MessagesSearchViewModel(messagingFeature: self.feature, sleep: { _ in })
+    let vm = MessagesSearchViewModel(messagingFeature: self.feature)
     vm.configureWith(project: nil); vm.viewDidLoad()
     vm.searchTextChanged("first")
     await self.provider.searches.waitFor(1)
@@ -268,19 +262,15 @@ final class MessagingFeatureTests: TestCase {
     XCTAssertEqual(posted, 0)
   }
 
-  func testSessionChangeDuringPresentationDelaySuppressesSuccess() async throws {
-    let delay = AccountRequestGate<Void>()
-    defer { delay.releaseAll() }
-    let vm = MessageDialogViewModel(messagingFeature: self.feature, sleep: { _ in try await delay.request() })
+  func testSessionChangeSuppressesSendSuccess() async throws {
+    let vm = MessageDialogViewModel(messagingFeature: self.feature)
     var delivered = 0
     vm.onPosted = { _ in delivered += 1 }
     vm.configureWith(messageSubject: .project(id: 1, name: "Fixture"), context: .messages)
     vm.viewDidLoad(); vm.bodyTextChanged("Hello"); vm.postButtonPressed()
     await self.provider.sends.waitFor(1)
-    try self.provider.sends.finish(0, .success(.template))
-    await delay.waitFor(1)
     self.session.sessionChanged()
-    try delay.finish(0, .success(()))
+    try self.provider.sends.finish(0, .success(.template))
     await vm.waitForSend()
     XCTAssertEqual(delivered, 0)
   }

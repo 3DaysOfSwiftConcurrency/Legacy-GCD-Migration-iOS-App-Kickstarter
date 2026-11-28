@@ -164,11 +164,9 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
   private var avatarInput: (URL, Int, Int)?
   public var onAvatarImage: ((Data, URL, Int) -> Void)?
   private var badgeTask: Task<Void, Never>?
-  private var badgePresentationTasks: [UUID: Task<Void, Never>] = [:]
   private var badgeIdentity: (userID: Int, generation: Int, token: UUID)?
 
   private let analytics: () -> KSRAnalytics
-  private let badgePresentationDelay: () -> TimeInterval
   private let isVoiceOverRunning: () -> Bool
 
   public init(
@@ -177,7 +175,6 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     activityFeature: ActivityFeature,
     settingsFeature: SettingsFeature,
     analytics: @escaping () -> KSRAnalytics,
-    badgePresentationDelay: @escaping () -> TimeInterval,
     isVoiceOverRunning: @escaping () -> Bool
   ) {
     self.sessionFeature = sessionFeature
@@ -185,7 +182,6 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
     self.activityFeature = activityFeature
     self.settingsFeature = settingsFeature
     self.analytics = analytics
-    self.badgePresentationDelay = badgePresentationDelay
     self.isVoiceOverRunning = isVoiceOverRunning
   }
 
@@ -290,32 +286,19 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
         let user = try await request.value
         try Task.checkCancellation()
         guard sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
-        self?.scheduleBadgePresentation(user, generation: generation)
+        self?.deliverBadgeUpdate(user, generation: generation)
       } catch {
         // Preserve silent badge-save failure; the shared throwing command is tested separately.
       }
     }
   }
 
-  private func scheduleBadgePresentation(_ user: User, generation: Int) {
-    let delay = self.badgePresentationDelay()
-    guard !delay.isInfinite else { return }
-    let id = UUID()
-    self.badgePresentationTasks[id] = Task { [weak self] in
-      defer { self?.badgePresentationTasks[id] = nil }
-      do {
-        if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
-        try Task.checkCancellation()
-        guard let self, self.sessionFeature.isCurrent(userID: user.id, generation: generation) else { return }
-        self.onUserUpdated?(user)
-      } catch { /* Cancellation ends pending presentation. */ }
-    }
+  private func deliverBadgeUpdate(_ user: User, generation: Int) {
+    guard self.sessionFeature.isCurrent(userID: user.id, generation: generation) else { return }
+    self.onUserUpdated?(user)
   }
 
   func waitForBadgeUpdate() async { await self.badgeTask?.value }
-  func waitForBadgePresentation() async {
-    for task in self.badgePresentationTasks.values { await task.value }
-  }
 
   @discardableResult public func requestAvatar(url: URL?, index: Int, isLoggedIn: Bool) -> Task<Void, Never>? {
     let generation = self.sessionFeature.generation
@@ -343,7 +326,6 @@ public final class RootViewModel: RootViewModelType, RootViewModelInputs, RootVi
 
   deinit {
     self.badgeTask?.cancel()
-    self.badgePresentationTasks.values.forEach { $0.cancel() }
     self.avatarTask?.cancel()
   }
 

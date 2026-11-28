@@ -8,7 +8,7 @@ final class FindFriendsFriendFollowCellViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let feature = FriendsFeature(
     sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) }),
-    makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) }, sleep: { _ in }
+    makeProvider: { AsyncFriendsProvider(service: AppEnvironment.current.apiService) }
   )
   private lazy var vm = FindFriendsFriendFollowCellViewModel(friendsFeature: self.feature)
 

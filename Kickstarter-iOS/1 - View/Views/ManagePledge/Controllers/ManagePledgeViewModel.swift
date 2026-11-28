@@ -64,14 +64,6 @@ private final class ManagePledgeReadIdentity {
 public final class ManagePledgeViewModel:
   ManagePledgeViewModelType, ManagePledgeViewModelInputs, ManagePledgeViewModelOutputs {
   private let pledgeFeature: PledgeFeature
-  private enum PresentationEvent: Hashable, Sendable {
-    case projectResult
-    case backingResult
-    case refreshEnd(UUID)
-  }
-
-  private let schedule: @MainActor (TimeInterval, @escaping @MainActor @Sendable () -> Void) -> (@Sendable () -> Void)
-  private var pendingPresentation: [PresentationEvent: (id: UUID, cancel: (@Sendable () -> Void)?)] = [:]
   private var loadedSession: PledgeFeature.SessionIdentity?
   private var configuredParams: ManagePledgeViewParamConfigData?
   private var hasLoadedView = false
@@ -89,7 +81,6 @@ public final class ManagePledgeViewModel:
   deinit {
     self.backingReadTask?.cancel()
     self.projectReadTask?.cancel()
-    for pending in self.pendingPresentation.values { pending.cancel?() }
     let pledgeFeature = self.pledgeFeature, projectRoute = self.projectRoute, backingRoute = self.backingRoute
     Task { @MainActor in
       pledgeFeature.releaseRead(route: projectRoute)
@@ -100,20 +91,10 @@ public final class ManagePledgeViewModel:
 
   public init(
     pledgeFeature: PledgeFeature,
-    paymentsFeature: PaymentsFeature,
-    schedule: @escaping @MainActor (TimeInterval, @escaping @MainActor @Sendable () -> Void) -> (@Sendable () -> Void) = { delay, action in
-      let task = Task { @MainActor in
-        guard !delay.isInfinite else { return }
-        if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
-        guard !Task.isCancelled else { return }
-        action()
-      }
-      return { task.cancel() }
-    }
+    paymentsFeature: PaymentsFeature
   ) {
     self.pledgeFeature = pledgeFeature
     self.paymentsFeature = paymentsFeature
-    self.schedule = schedule
   }
 
   private var displayedPledge: ManagedPledgeDetails? {
@@ -175,44 +156,16 @@ public final class ManagePledgeViewModel:
     if enabled { self.onPlotSchedule?(backing.paymentIncrements) }
   }
 
-  func waitForReads() async {
+  /// Test synchronization for already-admitted reads. This awaits real task completion;
+  /// it never introduces a delay or changes the product's response timing.
+  func waitForInFlightLoads() async {
     await self.projectReadTask?.value
     await self.backingReadTask?.value
   }
 
-  private func cancelPresentation(_ event: PresentationEvent) {
-    self.pendingPresentation.removeValue(forKey: event)?.cancel?()
-  }
-
-  private func schedulePresentation(
-    _ event: PresentationEvent, after delay: TimeInterval, _ action: @escaping @MainActor @Sendable () -> Void
-  ) {
-    guard !delay.isInfinite else { return }
-    self.cancelPresentation(event)
-    let id = UUID()
-    self.pendingPresentation[event] = (id, nil)
-    let cancel = self.schedule(delay) { [weak self] in
-      guard let self, self.pendingPresentation[event]?.id == id else { return }
-      self.pendingPresentation[event] = nil
-      action()
-    }
-    if self.pendingPresentation[event]?.id == id {
-      self.pendingPresentation[event] = (id, cancel)
-    }
-  }
-
-  private func scheduleRefreshEnd(session: PledgeFeature.SessionIdentity) {
-    self.schedulePresentation(.refreshEnd(UUID()), after: 0.3) { [weak self] in
-      guard let self, self.pledgeFeature.sessionIdentity == session else { return }
-      self.onEndRefreshing?()
-    }
-  }
-
   private func loadBacking(_ backingID: Int) {
     self.backingReadTask?.cancel()
-    self.cancelPresentation(.backingResult)
     let pledgeFeature = self.pledgeFeature
-    let responseDelay = { self.paymentsFeature.responseDelaySeconds }
     let route = self.backingRoute
     let session = pledgeFeature.sessionIdentity
     let id = UUID()
@@ -222,34 +175,28 @@ public final class ManagePledgeViewModel:
         let backing = try await pledgeFeature.fetchManagedPledgeBacking(route: route, id: backingID)
         try Task.checkCancellation()
         guard pledgeFeature.sessionIdentity == session else { return }
-        self?.schedulePresentation(.backingResult, after: responseDelay()) { [weak self] in
-          guard let self, self.backingReadIdentity.id == id,
-                pledgeFeature.sessionIdentity == session else { return }
-          let replacingBacking = self.loadedBacking != nil
-          self.loadedBacking = backing
-          self.presentCombined(paymentMethodAlreadyPresented: false)
-          self.presentBacking(backing, replacingBacking: replacingBacking)
-          self.scheduleRefreshEnd(session: session)
-        }
+        guard let self, self.backingReadIdentity.id == id,
+              pledgeFeature.sessionIdentity == session else { return }
+        let replacingBacking = self.loadedBacking != nil
+        self.loadedBacking = backing
+        self.presentCombined(paymentMethodAlreadyPresented: false)
+        self.presentBacking(backing, replacingBacking: replacingBacking)
+        self.onEndRefreshing?()
       } catch is CancellationError {
         return
       } catch {
         guard !Task.isCancelled, pledgeFeature.sessionIdentity == session else { return }
-        self?.schedulePresentation(.backingResult, after: responseDelay()) { [weak self] in
-          guard let self, self.backingReadIdentity.id == id,
-                pledgeFeature.sessionIdentity == session else { return }
-          self.handleLoadError()
-          self.scheduleRefreshEnd(session: session)
-        }
+        guard let self, self.backingReadIdentity.id == id,
+              pledgeFeature.sessionIdentity == session else { return }
+        self.handleLoadError()
+        self.onEndRefreshing?()
       }
     }
   }
 
   private func loadProject(_ param: Param) {
     self.projectReadTask?.cancel()
-    self.cancelPresentation(.projectResult)
     let pledgeFeature = self.pledgeFeature
-    let responseDelay = { self.paymentsFeature.responseDelaySeconds }
     let route = self.projectRoute
     let session = pledgeFeature.sessionIdentity
     let id = UUID()
@@ -259,25 +206,21 @@ public final class ManagePledgeViewModel:
         let project = try await pledgeFeature.fetchProjectWithPledgeRewards(route: route, param: param)
         try Task.checkCancellation()
         guard pledgeFeature.sessionIdentity == session else { return }
-        self?.schedulePresentation(.projectResult, after: responseDelay()) { [weak self] in
-          guard let self, self.projectReadIdentity.id == id,
-                pledgeFeature.sessionIdentity == session else { return }
-          self.loadedProject = project
-          if self.configuredParams?.backingParam == nil, let backingID = project.personalization.backing?.id {
-            self.loadBacking(backingID)
-          }
-          self.presentCombined(paymentMethodAlreadyPresented: true)
+        guard let self, self.projectReadIdentity.id == id,
+              pledgeFeature.sessionIdentity == session else { return }
+        self.loadedProject = project
+        if self.configuredParams?.backingParam == nil, let backingID = project.personalization.backing?.id {
+          self.loadBacking(backingID)
         }
+        self.presentCombined(paymentMethodAlreadyPresented: true)
       } catch is CancellationError {
         return
       } catch {
         guard !Task.isCancelled, pledgeFeature.sessionIdentity == session else { return }
-        self?.schedulePresentation(.projectResult, after: responseDelay()) { [weak self] in
-          guard let self, self.projectReadIdentity.id == id,
-                pledgeFeature.sessionIdentity == session else { return }
-          self.onEndRefreshing?()
-          self.handleLoadError()
-        }
+        guard let self, self.projectReadIdentity.id == id,
+              pledgeFeature.sessionIdentity == session else { return }
+        self.onEndRefreshing?()
+        self.handleLoadError()
       }
     }
   }
@@ -291,9 +234,6 @@ public final class ManagePledgeViewModel:
 
   private func resetLoadedPledge() {
     self.loadedSession = self.pledgeFeature.sessionIdentity
-    let oldPresentation = self.pendingPresentation
-    self.pendingPresentation.removeAll()
-    for pending in oldPresentation.values { pending.cancel?() }
     self.projectReadTask?.cancel()
     self.projectReadIdentity.id = nil
     self.backingReadTask?.cancel()

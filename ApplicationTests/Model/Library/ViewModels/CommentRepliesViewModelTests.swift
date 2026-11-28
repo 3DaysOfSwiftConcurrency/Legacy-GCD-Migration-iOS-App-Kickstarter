@@ -10,7 +10,7 @@ internal final class CommentRepliesViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let vm = CommentRepliesViewModel(discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: {
     AsyncDiscussionProvider(service: AppEnvironment.current.apiService)
-  }, sleep: { _ in try Task.checkCancellation() }))
+  }))
 
   private let configureCommentComposerBecomeFirstResponder = ReplyRecorder<Bool>()
   private let configureCommentComposerViewURL = ReplyRecorder<URL?>()

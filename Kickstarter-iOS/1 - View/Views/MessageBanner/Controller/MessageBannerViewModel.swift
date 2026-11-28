@@ -9,16 +9,11 @@ public typealias MessageBannerConfiguration = (type: MessageBannerType, message:
 public final class MessageBannerViewModel {
   public var onConfiguration: ((MessageBannerConfiguration) -> Void)?
   public var onHidden: ((Bool) -> Void)?
-  private let sleep: (TimeInterval) async throws -> Void
   private var hidden: Bool?
   private var voiceOverTask: Task<Void, Never>?
   private var standardTask: Task<Void, Never>?
 
-  public init(sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    try await Task.sleep(for: .seconds(seconds))
-  }) {
-    self.sleep = sleep
-  }
+  public init() {}
 
   public func update(with configuration: MessageBannerConfiguration) { self.onConfiguration?(configuration) }
   public func bannerViewWillShow(_ show: Bool) { self.setHidden(!show) }
@@ -27,9 +22,8 @@ public final class MessageBannerViewModel {
     guard !isHidden else { return }
     let voiceOver = AppEnvironment.current.isVoiceOverRunning()
     if voiceOver { self.voiceOverTask?.cancel() } else { self.standardTask?.cancel() }
-    let sleep = self.sleep
     let task = Task { [weak self] in
-      do { try await sleep(voiceOver ? 10 : 4) } catch { return }
+      do { try await Task.sleep(for: .seconds(voiceOver ? 10 : 4)) } catch { return }
       guard !Task.isCancelled else { return }
       self?.setHidden(true)
     }

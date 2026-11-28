@@ -44,7 +44,6 @@ public final class PaymentsFeature {
   private let pledgeCurrencyContext: @MainActor () -> PledgeCurrencyContext?
   private let launchedCountryPolicy: @MainActor () -> LaunchedCountries
   private let applePayEligibility: @MainActor (Project) -> Bool
-  private let responseDelay: @MainActor () -> TimeInterval
 
   public init(
     sessionFeature: SessionFeature,
@@ -54,8 +53,7 @@ public final class PaymentsFeature {
     stripePublishableKey: @escaping @MainActor () -> String = { "" },
     currencyContext: @escaping @MainActor () -> PledgeCurrencyContext? = { nil },
     launchedCountries: @escaping @MainActor () -> LaunchedCountries = { LaunchedCountries() },
-    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool = { _ in false },
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 }
+    hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool = { _ in false }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
@@ -65,12 +63,10 @@ public final class PaymentsFeature {
     self.pledgeCurrencyContext = currencyContext
     self.launchedCountryPolicy = launchedCountries
     self.applePayEligibility = hasEligibleApplePayCard
-    self.responseDelay = responseDelaySeconds
   }
 
   public var stripePublishableKey: String { self.stripeKey() }
   public var currencyContext: PledgeCurrencyContext? { self.pledgeCurrencyContext() }
-  public var responseDelaySeconds: TimeInterval { self.responseDelay() }
 
   public func makeSessionValidityCheck() -> @MainActor () -> Bool {
     let session = self.sessionIdentity

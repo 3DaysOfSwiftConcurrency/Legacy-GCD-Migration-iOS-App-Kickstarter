@@ -6,7 +6,7 @@ import Prelude
 extension DiscoveryFeature {
   /// Resolves URL filter values through the same category data used by Discovery.
   func parametersForDeepLink(
-    _ rawParams: [String: String]?, responseDelay: TimeInterval
+    _ rawParams: [String: String]?
   ) async throws -> DiscoveryParams? {
     try Task.checkCancellation()
     guard let rawParams, let params = DiscoveryParams.decodeJSONDictionary(rawParams) else { return nil }
@@ -17,7 +17,6 @@ extension DiscoveryFeature {
     let matchedCategory = findCategoryFromRootCategories(
       envelope: envelope, categoryParam: category, subcategoryParam: subcategory
     )
-    try await self.waitForDeepLinkResponse(responseDelay)
     try Task.checkCancellation()
     return params |> DiscoveryParams.lens.category .~ matchedCategory
   }

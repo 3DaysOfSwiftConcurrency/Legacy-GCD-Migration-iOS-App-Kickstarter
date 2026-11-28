@@ -25,13 +25,12 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     let model = AppModel.shared
     return DeepLinkRouter(
       currentSession: { AppModel.shared.currentDeepLinkSession },
-      resolveDestination: { try await AppModel.shared.resolveDeepLinkDestination(for: $0, discoveryResponseDelay: $1) },
+      resolveDestination: { try await AppModel.shared.resolveDeepLinkDestination(for: $0) },
       firstRedirect: { try await AppModel.shared.resolveEmailLinkDestination(for: $0, route: $1) },
       releaseRedirect: { AppModel.shared.releaseEmailLinkResolution(for: $0) },
       settingsFeature: model.settingsFeature,
       projectPageComposition: model.projectPageComposition,
-      serverConfig: { AppEnvironment.current.apiService.serverConfig },
-      discoveryResponseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+      serverConfig: { AppEnvironment.current.apiService.serverConfig }
     )
   }()
   private let navigationRoute = UUID()
@@ -72,18 +71,6 @@ internal final class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    #if DEBUG
-      // Hosted unit tests construct their own screens and environments. Starting the
-      // production root here would observe their notifications and emit unrelated events.
-      if ProcessInfo.processInfo.environment["CFA_UNIT_TEST_HOST"] == "1" {
-        UIView.doBadSwizzleStuff()
-        UIViewController.doBadSwizzleStuff()
-        InterFont.registerFontIfUnregistered()
-        self.window?.rootViewController = UIViewController()
-        return true
-      }
-    #endif
-
     if !self.isPublicDemo {
       let facebookAppID = Bundle.main.infoDictionary?["FacebookAppID"] as? String
       AppEnvironment.configureFacebookSDK(

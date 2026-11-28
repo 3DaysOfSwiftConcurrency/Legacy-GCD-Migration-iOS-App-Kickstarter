@@ -24,7 +24,6 @@ internal final class DiscoveryPageViewModelTests: TestCase {
       let bundle = AppEnvironment.current.mainBundle
       return bundle.isAlpha || bundle.isBeta || bundle.isDebug
     },
-    sleep: { _ in },
     sessionFeature: self.sessionFeature
   )
   private lazy var projectMediaFeature = ProjectMediaFeature(

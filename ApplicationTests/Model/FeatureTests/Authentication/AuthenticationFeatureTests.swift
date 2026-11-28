@@ -16,7 +16,6 @@ final class AuthenticationFeatureTests: XCTestCase {
         webBaseURL: { webBaseURL },
         oauthClientID: { "injected-client-id" },
         appleAppID: { "injected-app-id" },
-        responseDelaySeconds: { 7 },
         trackLoginPageViewed: { events.append("page") },
         trackLoginSubmitButtonClicked: { events.append("submit") },
         trackLoginToutPageViewed: { events.append("tout") },
@@ -32,7 +31,6 @@ final class AuthenticationFeatureTests: XCTestCase {
 
     XCTAssertEqual(feature.webBaseURL, webBaseURL)
     XCTAssertEqual(feature.signInWithAppleAppID, "injected-app-id")
-    XCTAssertEqual(feature.responseDelaySeconds, 7)
     let authorizationURL = try XCTUnwrap(feature.oauthAuthorizationURL(
       codeChallenge: "challenge", redirectScheme: "callback"
     ))

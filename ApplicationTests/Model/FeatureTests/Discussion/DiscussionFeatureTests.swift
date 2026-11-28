@@ -12,18 +12,16 @@ final class DiscussionFeatureTests: TestCase {
 
   func testNativePostPublishesOptimisticAndConfirmedValues() async {
     let provider = ControlledDiscussionProvider()
-    var delays: [TimeInterval] = []
     let now = Date(timeIntervalSince1970: 1_700_000_000)
     let feature = DiscussionFeature(
       platform: .init(
         serverConfig: { ServerConfig.staging },
         prepareWebRequest: { $0 },
         optimisticCommentID: { "injected-comment-id" },
-        now: { now },
-        responseDelaySeconds: { 0 }
+        now: { now }
       ),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
-      makeProvider: { provider }, sleep: { delays.append($0) }
+      makeProvider: { provider }
     )
     var values: [Comment] = []
     let task = feature.startCommentPostWithStatusUpdates(project: .template, commentableID: "project", parentID: nil, user: .template, body: "hello") { value, _ in
@@ -36,17 +34,15 @@ final class DiscussionFeatureTests: TestCase {
     XCTAssertEqual(values.count, 2)
     XCTAssertEqual(values.last?.status, .success)
     XCTAssertEqual(provider.postInputs.count, 1)
-    XCTAssertEqual(delays, [1])
   }
 
   func testNativePostFailureRetainsTheOptimisticIdentity() async {
     let provider = ControlledDiscussionProvider()
     provider.fail = true
-    var delays: [TimeInterval] = []
     let feature = DiscussionFeature(
       platform: .live(),
       sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
-      makeProvider: { provider }, sleep: { delays.append($0) }
+      makeProvider: { provider }
     )
     var values: [Comment] = []
     let task = feature.startCommentPostWithStatusUpdates(project: .template, commentableID: "project", parentID: nil, user: .template, body: "hello") { value, _ in
@@ -56,7 +52,6 @@ final class DiscussionFeatureTests: TestCase {
     XCTAssertEqual(values.count, 2)
     XCTAssertEqual(values.last?.status, .failed)
     XCTAssertEqual(values.first?.id, values.last?.id)
-    XCTAssertEqual(delays, [1, 1])
   }
 
   func testCancellingPostPresentationDoesNotCancelAdmittedWrite() async {
@@ -78,10 +73,7 @@ final class DiscussionFeatureTests: TestCase {
 
   func testNativeRetryPublishesStatusAndSuccessfulComment() async {
     let provider = ControlledDiscussionProvider()
-    var delays: [TimeInterval] = []
-    let feature = DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: {
-      delays.append($0)
-    })
+    let feature = DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider })
     let original = Comment.template.updatingStatus(to: .failed)
     var values: [Comment] = []
     let task = feature.startCommentRetryWithStatusUpdates(comment: original, commentableID: "project", parentID: nil) { comment, _ in
@@ -91,76 +83,27 @@ final class DiscussionFeatureTests: TestCase {
     XCTAssertEqual(values.map(\.status), [.retrying, .retrying, .retrySuccess, .success])
     XCTAssertEqual(values[2].id, original.id)
     XCTAssertEqual(provider.postInputs.count, 1)
-    XCTAssertEqual(delays.first, 1)
-    XCTAssertEqual(delays.last, 3)
   }
 
-  func testNativeRetryDoesNotPostAfterSessionChangesDuringDelay() async {
+  func testAccountSwitchSuppressesOldCommentPresentation() async throws {
     let provider = ControlledDiscussionProvider()
-    var resume: CheckedContinuation<Void, Never>?
-    let started = expectation(description: "Retry delay started")
-    let feature = DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: { _ in
-      await withCheckedContinuation { continuation in
-        resume = continuation
-        started.fulfill()
-      }
-    })
-    var values: [Comment] = []
-    let task = feature.startCommentRetryWithStatusUpdates(comment: .template, commentableID: "project", parentID: nil) { comment, _ in
-      values.append(comment)
-    }
-    await fulfillment(of: [started], timeout: 2)
-    feature.sessionFeature.sessionChanged()
-    resume?.resume()
-    await task.value
-    XCTAssertEqual(values.count, 1)
-    XCTAssertTrue(provider.postInputs.isEmpty)
-  }
-
-  func testAccountSwitchDuringRetryDelayDoesNotSubmitUnderNewAccount() async {
-    let provider = ControlledDiscussionProvider()
-    var resume: CheckedContinuation<Void, Never>?
-    let started = expectation(description: "Retry delay started")
-    let feature = DiscussionFeature(
-      platform: .live(),
-      sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }),
-      makeProvider: { provider },
-      sleep: { _ in await withCheckedContinuation { resume = $0; started.fulfill() } }
-    )
-    await withEnvironment(currentUser: .template) {
-      let task = feature.startCommentRetryWithStatusUpdates(comment: .template, commentableID: "project", parentID: nil) { _, _ in }
-      await fulfillment(of: [started], timeout: 2)
-      await withEnvironment(currentUser: nil) {
-        resume?.resume()
-        await task.value
-        XCTAssertTrue(provider.postInputs.isEmpty)
-      }
-    }
-  }
-
-  func testAccountSwitchDuringPostStatusDelaySuppressesOldPresentation() async {
-    let provider = ControlledDiscussionProvider()
+    provider.pauseWrites = true
+    defer { provider.releaseAll() }
     let feature = self.feature(provider)
     var values: [Comment] = []
-    var resumeDelay: CheckedContinuation<Void, Never>?
-    let delayStarted = expectation(description: "Presentation delay started")
     await withEnvironment(currentUser: .template) {
-      let vm = CommentDialogViewModel(feature: feature, sleep: {
-        await withCheckedContinuation { continuation in
-          resumeDelay = continuation
-          delayStarted.fulfill()
-        }
-      })
+      let vm = CommentDialogViewModel(feature: feature)
       vm.onEvent = { if case let .posted(comment) = $0 { values.append(comment) } }
       vm.configureWith(project: .template, update: nil, recipientName: nil, context: .projectComments)
       vm.viewWillAppear()
       vm.commentBodyChanged("old")
       vm.postButtonPressed()
-      await fulfillment(of: [delayStarted], timeout: 2)
+      await provider.waitForPosts(1)
       await withEnvironment(currentUser: nil) {
-        resumeDelay?.resume()
+        do { try provider.finishPost(0, result: .success(.template)) }
+        catch { XCTFail("Missing controlled post: \(error)") }
         await vm.waitForMutations()
-        XCTAssertEqual(values.count, 1, "No confirmed old-session value delivered after the status delay")
+        XCTAssertEqual(values.count, 0, "No old-session value is delivered.")
       }
     }
   }
@@ -234,20 +177,24 @@ final class DiscussionFeatureTests: TestCase {
 
   func testSameAccountReauthenticationSuppressesBlockNotification() async {
     let provider = ControlledDiscussionProvider()
+    provider.pauseWrites = true
+    defer { provider.releaseAll() }
     let feature = self.feature(provider)
     let presentation = DiscussionBlockPresentation()
     var successes = 0
     presentation.start(feature: feature, sessionFeature: feature.sessionFeature, id: "target") { result in
       if case .success = result { successes += 1 }
     }
+    await provider.waitForBlocks(1)
     feature.sessionFeature.sessionChanged()
+    provider.finishAllBlocks()
     await presentation.wait()
     XCTAssertEqual(successes, 0)
     XCTAssertEqual(provider.blockIDs, ["target"])
   }
 
   private func feature(_ provider: ControlledDiscussionProvider) -> DiscussionFeature {
-    DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider }, sleep: { _ in try Task.checkCancellation() })
+    DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: { provider })
   }
 
   func testEquivalentPostsShareButDistinctAttemptsAndChangedBodiesDoNot() async throws {
@@ -340,7 +287,7 @@ final class DiscussionFeatureTests: TestCase {
     let feature = self.feature(provider)
     var values: [Comment] = []
     await withEnvironment(currentUser: .template) {
-      var vm: CommentDialogViewModel? = CommentDialogViewModel(feature: feature, sleep: {})
+      var vm: CommentDialogViewModel? = CommentDialogViewModel(feature: feature)
       weak var weakVM = vm
       vm?.onEvent = { if case let .posted(comment) = $0 { values.append(comment) } }
       vm?.configureWith(project: .template, update: nil, recipientName: nil, context: .projectComments)
@@ -353,7 +300,7 @@ final class DiscussionFeatureTests: TestCase {
       feature.release(route: UUID())
       do { try provider.finishPost(0, result: .success(.template)) } catch { XCTFail("Missing post") }
       await feature.waitForMutations()
-      XCTAssertEqual(values.count, 1, "Only the immediate optimistic value reaches a disposed screen")
+      XCTAssertEqual(values.count, 0, "A disposed screen receives no completion value.")
       XCTAssertEqual(provider.postInputs.count, 1)
     }
   }

@@ -10,13 +10,12 @@ final class RemoteConfigFlagToolsViewModelTests: XCTestCase {
     let key = RemoteConfigFeature.floatingTabBar
     let fixture = RemoteFlagToolsFixture()
     fixture.remote.features[key.rawValue] = false
-    let vm = RemoteConfigFeatureFlagToolsViewModel(settingsFeature: fixture.feature, sleep: {})
+    let vm = RemoteConfigFeatureFlagToolsViewModel(settingsFeature: fixture.feature)
     vm.viewDidLoad()
     let index = try XCTUnwrap(vm.remoteConfigFeatures.firstIndex(where: { $0.0 == key }))
     XCTAssertFalse(vm.remoteConfigFeatures[index].1)
 
     vm.setFeatureAtIndexEnabled(index: index, isEnabled: true)
-    XCTAssertFalse(vm.remoteConfigFeatures[index].1, "Presentation reload remains deferred")
     await vm.waitForReload()
     let stored = fixture.store.dictionary(
       forKey: "com.kickstarter.KeyValueStoreType.remoteConfigFeatureFlags"
@@ -28,7 +27,7 @@ final class RemoteConfigFlagToolsViewModelTests: XCTestCase {
 
   func testStatsigToggleWritesOverride() async throws {
     let fixture = RemoteFlagToolsFixture()
-    let vm = RemoteConfigFeatureFlagToolsViewModel(settingsFeature: fixture.feature, sleep: {})
+    let vm = RemoteConfigFeatureFlagToolsViewModel(settingsFeature: fixture.feature)
     vm.viewDidLoad()
     let key = try XCTUnwrap(vm.statsigFeatures.first?.0)
     vm.setStatsigFeatureAtIndexEnabled(index: 0, isEnabled: true)
@@ -39,7 +38,7 @@ final class RemoteConfigFlagToolsViewModelTests: XCTestCase {
 
   func testOutOfRangeIndicesDoNotWriteOverrides() {
     let fixture = RemoteFlagToolsFixture()
-    let vm = RemoteConfigFeatureFlagToolsViewModel(settingsFeature: fixture.feature, sleep: {})
+    let vm = RemoteConfigFeatureFlagToolsViewModel(settingsFeature: fixture.feature)
     vm.viewDidLoad()
     vm.setFeatureAtIndexEnabled(index: -1, isEnabled: true)
     vm.setFeatureAtIndexEnabled(index: vm.remoteConfigFeatures.count, isEnabled: true)

@@ -96,18 +96,13 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
     pledgeFeature: PledgeFeature,
     authenticationFeature: AuthenticationFeature,
     paymentsFeature: PaymentsFeature,
-    analytics: @escaping () -> KSRAnalytics,
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    analytics: @escaping () -> KSRAnalytics
   ) {
     self.pledgeFeature = pledgeFeature
     self.paymentsFeature = paymentsFeature
     self.analytics = analytics
     let currencyContext = { paymentsFeature.currencyContext }
     let hasEligibleApplePayCard = { paymentsFeature.hasEligibleApplePayCard(for: $0) }
-    let responseDelay = { paymentsFeature.responseDelaySeconds }
     let formState = self.formState
     let ctaState = PledgeCTAState()
     let requestState = PledgeRequestState()
@@ -170,8 +165,6 @@ public class PledgeViewModel: PledgeViewModelType, PledgeViewModelInputs,
       }
     }
     let scheduleResponse: @MainActor (PledgeResponse, Bool, PledgeFeature.SessionIdentity, UUID) async throws -> Void = { response, isCreate, session, id in
-      try await sleep(responseDelay())
-      try Task.checkCancellation()
       deliverResponse(response, isCreate, session, id)
     }
 

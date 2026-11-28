@@ -13,24 +13,17 @@ public final class RemoteConfigFeatureFlagToolsViewModel {
   public private(set) var statsigFeatures: StatsigFeatures = []
   private let settingsFeature: SettingsFeature
   private var reloadTask: Task<Void, Never>?
-  private let sleep: () async throws -> Void
 
-  public init(
-    settingsFeature: SettingsFeature,
-    sleep: @escaping () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
-  ) {
+  public init(settingsFeature: SettingsFeature) {
     self.settingsFeature = settingsFeature
-    self.sleep = sleep
   }
   public func viewDidLoad() { self.reload() }
   private func scheduleReload() {
     self.reloadTask?.cancel()
-    self.reloadTask = Task { [weak self, sleep] in
-      do {
-        try await sleep()
-        try Task.checkCancellation()
-        self?.reload()
-      } catch { }
+    self.reloadTask = Task { [weak self] in
+      do { try await Task.sleep(for: .seconds(1)) } catch { return }
+      guard !Task.isCancelled else { return }
+      self?.reload()
     }
   }
   public func setFeatureAtIndexEnabled(index: Int, isEnabled: Bool) {

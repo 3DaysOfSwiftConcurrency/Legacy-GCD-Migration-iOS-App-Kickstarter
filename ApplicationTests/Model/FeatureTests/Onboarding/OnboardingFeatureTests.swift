@@ -61,7 +61,7 @@ final class OnboardingFeatureTests: XCTestCase {
     XCTAssertFalse(feature.shouldRequestTrackingAuthorization)
   }
 
-  func testApplicationAndOnboardingShareTheSameTrackingPrompt() async throws {
+  func testConcurrentTrackingRequestsShareTheSamePrompt() async throws {
     let response = AccountRequestGate<UInt>()
     defer { response.releaseAll() }
     let store = MockKeyValueStore()
@@ -73,10 +73,9 @@ final class OnboardingFeatureTests: XCTestCase {
         let rawValue = (try? await response.request()) ?? AppTrackingAuthorization.notDetermined.rawValue
         return AppTrackingAuthorization(rawValue: rawValue) ?? .notDetermined
       },
-      tracking: { tracking }, trackingDelay: {}
+      tracking: { tracking }
     )
-    feature.prepareTrackingConsent()
-    feature.setApplicationActive(true)
+    let application = Task { await feature.requestTrackingAuthorization() }
     await response.waitFor(1)
 
     let onboardingJoined = expectation(description: "Onboarding joins the tracking prompt")
@@ -86,9 +85,10 @@ final class OnboardingFeatureTests: XCTestCase {
     }
     await fulfillment(of: [onboardingJoined], timeout: 2)
     try response.finish(0, .success(AppTrackingAuthorization.authorized.rawValue))
+    let applicationStatus = await application.value
     let status = await onboarding.value
-    await feature.waitForDelayedTrackingChecks()
 
+    XCTAssertEqual(applicationStatus, .authorized)
     XCTAssertEqual(status, .authorized)
     XCTAssertEqual(response.count, 1)
   }
@@ -123,22 +123,16 @@ final class OnboardingFeatureTests: XCTestCase {
     XCTAssertEqual(registrations, 1)
   }
 
-  func testCompletingOnboardingEnablesThePendingTrackingCheck() async throws {
-    let delay = AccountRequestGate<Void>()
-    defer { delay.releaseAll() }
+  func testCompletingOnboardingEnablesTrackingEligibility() {
     let tracking = MockAppTrackingTransparency()
     let feature = OnboardingFeature(
       completionStore: { [store = MockKeyValueStore()] in store },
-      tracking: { tracking }, trackingDelay: { try await delay.request() }
+      tracking: { tracking }
     )
-    feature.prepareTrackingConsent()
-    feature.setApplicationActive(true)
-    await delay.waitFor(1)
-    XCTAssertEqual(tracking.requestCount, 0)
+    XCTAssertFalse(feature.hasSeenOnboarding)
+    XCTAssertTrue(feature.shouldRequestTrackingAuthorization)
     feature.markOnboardingCompleted()
-    try delay.finish(0, .success(()))
-    await feature.waitForDelayedTrackingChecks()
-    XCTAssertEqual(tracking.requestCount, 1)
+    XCTAssertTrue(feature.hasSeenOnboarding)
   }
 
   func testRemovingTrackingAdapterStopsItsStatusDelivery() {
@@ -177,23 +171,19 @@ final class OnboardingFeatureTests: XCTestCase {
     XCTAssertEqual(registrationCount, 1)
   }
 
-  func testEarlyActivationWaitsForLaunchAndDuplicateEventsShareTheDelay() async {
+  func testEarlyActivationDoesNotChangeTrackingEligibility() {
     let tracking = MockAppTrackingTransparency()
-    var delayCount = 0
     let store = MockKeyValueStore()
     store.hasSeenOnboarding = true
     let consent = OnboardingFeature(
-      completionStore: { store }, tracking: { tracking }, trackingDelay: { delayCount += 1 }
+      completionStore: { store }, tracking: { tracking }
     )
 
     consent.setApplicationActive(true)
-    await consent.waitForDelayedTrackingChecks()
-    XCTAssertEqual(delayCount, 0)
+    XCTAssertTrue(consent.shouldRequestTrackingAuthorization)
     consent.prepareTrackingConsent()
     consent.setApplicationActive(true)
-    await consent.waitForDelayedTrackingChecks()
-    XCTAssertEqual(delayCount, 1)
-    XCTAssertEqual(tracking.requestCount, 1)
+    XCTAssertTrue(consent.shouldRequestTrackingAuthorization)
   }
 
   func testReplacingTheTrackingAdapterRemovesThePreviousStatusObserver() {

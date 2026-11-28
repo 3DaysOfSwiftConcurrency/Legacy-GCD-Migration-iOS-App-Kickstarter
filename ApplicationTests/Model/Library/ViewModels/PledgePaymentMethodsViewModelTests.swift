@@ -24,14 +24,10 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
     sessionFeature: self.sessionFeature, makeProvider: { [paymentsProvider] in paymentsProvider }
   )
 
-  private func makeViewModel(
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { _ in try Task.checkCancellation() }
-  ) -> PledgePaymentMethodsViewModel {
+  private func makeViewModel() -> PledgePaymentMethodsViewModel {
     PledgePaymentMethodsViewModel(
       paymentsFeature: self.paymentsFeature,
-      responseDelay: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
-      advertisingContext: { nil },
-      sleep: sleep
+      advertisingContext: { nil }
     )
   }
 
@@ -75,11 +71,8 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
     }
   }
 
-  func testAccountChangeDuringCardDelaySuppressesOldCards() async {
-    let gate = PledgePaymentDelayGate()
-    let vm = self.makeViewModel(sleep: { _ in
-      try await gate.wait()
-    })
+  func testAccountChangeSuppressesOldCards() async {
+    let vm = self.makeViewModel()
     var completedLoads = 0
     vm.onEvent = { event in
       if case let .reloadPaymentMethods(data) = event, !data.isLoading { completedLoads += 1 }
@@ -88,20 +81,14 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
     await withEnvironment(apiService: MockService(fetchGraphUserResult: .success(response)), currentUser: .template) {
       vm.configure(with: (.template, .template, "checkout", .template, .pledge, nil))
       vm.viewDidLoad()
-      await gate.waitUntilBlocked()
       self.sessionFeature.sessionChanged()
-      gate.resume()
       await vm.waitForPending()
       XCTAssertEqual(completedLoads, 0)
     }
   }
 
-  func testAccountChangeDuringSetupDelaySuppressesClientSecret() async {
-    let gate = PledgePaymentDelayGate()
-    var blockSetup = false
-    let vm = self.makeViewModel(sleep: { _ in
-      if blockSetup { try await gate.wait() }
-    })
+  func testAccountChangeSuppressesClientSecret() async {
+    let vm = self.makeViewModel()
     var presented = false
     vm.onEvent = { event in
       if case .goToAddCardViaStripeScreen = event { presented = true }
@@ -115,11 +102,8 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       vm.configure(with: (.template, .template, "checkout", .template, .pledge, nil))
       vm.viewDidLoad()
       await vm.waitForPending()
-      blockSetup = true
       vm.didSelectRowAtIndexPath(IndexPath(row: 0, section: PaymentMethodsTableViewSection.addNewCard.rawValue))
-      await gate.waitUntilBlocked()
       self.sessionFeature.sessionChanged()
-      gate.resume()
       await vm.waitForPending()
       XCTAssertFalse(presented)
     }
@@ -200,10 +184,8 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
     }
   }
 
-  func testReplacingCheckoutSuppressesSetupAlreadyAwaitingPresentation() async {
-    let gate = PledgePaymentDelayGate()
-    var blockSetup = false
-    let model = self.makeViewModel(sleep: { _ in if blockSetup { try await gate.wait() } })
+  func testReplacingCheckoutSuppressesSetup() async {
+    let model = self.makeViewModel()
     var presented = false
     model.onEvent = { event in if case .goToAddCardViaStripeScreen = event { presented = true } }
     let service = MockService(
@@ -217,13 +199,9 @@ final class PledgePaymentMethodsViewModelTests: TestCase {
       model.configure(with: route)
       model.viewDidLoad()
       await model.waitForPending()
-      blockSetup = true
       model.didSelectRowAtIndexPath(IndexPath(row: 0, section: PaymentMethodsTableViewSection.addNewCard.rawValue))
-      await gate.waitUntilBlocked()
 
-      blockSetup = false
       model.configure(with: replacement)
-      gate.resume()
       await model.waitForPending()
       XCTAssertFalse(presented)
     }

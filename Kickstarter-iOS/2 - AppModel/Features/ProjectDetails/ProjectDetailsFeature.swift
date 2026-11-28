@@ -83,7 +83,6 @@ public final class ProjectDetailsFeature {
     let prepareWebRequest: @MainActor (URL) -> URLRequest
     let cookieStorage: @MainActor () -> any HTTPCookieStorageProtocol
     let dateType: @MainActor () -> DateProtocol.Type
-    let responseDelaySeconds: @MainActor () -> TimeInterval
     let recordThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
 
     public init(
@@ -91,14 +90,12 @@ public final class ProjectDetailsFeature {
       prepareWebRequest: @escaping @MainActor (URL) -> URLRequest,
       cookieStorage: @escaping @MainActor () -> any HTTPCookieStorageProtocol,
       dateType: @escaping @MainActor () -> DateProtocol.Type,
-      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
       recordThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
     ) {
       self.serverConfig = serverConfig
       self.prepareWebRequest = prepareWebRequest
       self.cookieStorage = cookieStorage
       self.dateType = dateType
-      self.responseDelaySeconds = responseDelaySeconds
       self.recordThirdPartyEvent = recordThirdPartyEvent
     }
   }
@@ -301,7 +298,6 @@ public final class ProjectDetailsFeature {
   private let makeProvider: @MainActor () -> any ProjectDetailsProvider
   private let settingsFeature: SettingsFeature
   private let useFastLoading: @MainActor () -> Bool
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
   internal enum Update {
     case loading(UUID, Bool)
     case completion(UUID, Result<Project, ErrorEnvelope>)
@@ -327,12 +323,7 @@ public final class ProjectDetailsFeature {
     makeProvider: @escaping @MainActor () -> any ProjectDetailsProvider,
     useFastLoading: @escaping @MainActor () -> Bool,
     analytics: Analytics = Analytics(),
-    projectViewContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil },
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-      else if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-      try Task.checkCancellation()
-    }
+    projectViewContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil }
   ) {
     self.platform = platform
     self.discussionFeature = discussionFeature
@@ -342,7 +333,6 @@ public final class ProjectDetailsFeature {
     self.useFastLoading = useFastLoading
     self.analytics = analytics
     self.projectViewContext = projectViewContext
-    self.sleep = sleep
   }
 
   public func recordProjectViewed(_ project: Project, refTag: RefTag?) {
@@ -414,8 +404,6 @@ public final class ProjectDetailsFeature {
     let requestID = UUID()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
-    let delay = self.platform.responseDelaySeconds()
-    let sleep = self.sleep
     page.snapshot.isLoading = true
     page.snapshot.error = nil
     let task = Task { [weak self] in
@@ -431,7 +419,6 @@ public final class ProjectDetailsFeature {
         // Keep enrollment before reads, including its existing configured delay.
         if identity.session.userID != nil, let token = identity.token, !token.isEmpty {
           try await provider.enrollSecretReward(token: token, param: param)
-          try await sleep(delay)
           try Self.checkSession(identity.session, sessionFeature: sessionFeature)
         }
         let project: Project
@@ -468,7 +455,6 @@ public final class ProjectDetailsFeature {
           loaded.rewardData.rewards = Array(loaded.rewardData.rewards.prefix(1)) + rewards
           project = loaded
         }
-        try await sleep(delay)
         try Self.checkSession(identity.session, sessionFeature: sessionFeature)
         guard let self, self.projectPagesByRoute[route]?.activeLoad?.id == requestID else { return }
         page.snapshot.project = project

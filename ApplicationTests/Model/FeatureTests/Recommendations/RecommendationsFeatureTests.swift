@@ -33,7 +33,7 @@ final class RecommendationsFeatureTests: XCTestCase {
     self.sessionFeature = sessionFeature
     self.feature = RecommendationsFeature(
       platform: .test(promptStore: { promptStore }),
-      settingsFeature: settingsFeature, makeProvider: { provider }, sleep: { _ in }
+      settingsFeature: settingsFeature, makeProvider: { provider }
     )
   }
 

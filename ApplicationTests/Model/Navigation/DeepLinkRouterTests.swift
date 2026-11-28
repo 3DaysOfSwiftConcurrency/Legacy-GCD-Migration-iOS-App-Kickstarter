@@ -12,8 +12,6 @@ final class DeepLinkRouterTests: XCTestCase {
   private var router: DeepLinkRouter!
   private var model: AppModel!
   private let route = UUID()
-  private var discoveryDelay: TimeInterval = 0
-  private var discoverySleeps: [TimeInterval] = []
   private let redirects = AccountRequestGate<URL?>()
 
   override func setUp() async throws {
@@ -33,10 +31,6 @@ final class DeepLinkRouterTests: XCTestCase {
       discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: session, makeProvider: { provider }),
       discoveryFeature: DiscoveryFeature(
         provider: EnvironmentDiscoveryProvider(), loadCategories: { try await provider.categories() },
-        sleep: { [weak self] seconds in
-          try Task.checkCancellation()
-          self?.discoverySleeps.append(seconds)
-        },
         sessionFeature: session
       ),
       activityFeature: ActivityFeature(
@@ -52,13 +46,12 @@ final class DeepLinkRouterTests: XCTestCase {
     let model = try XCTUnwrap(self.model)
     self.router = DeepLinkRouter(
       currentSession: { model.currentDeepLinkSession },
-      resolveDestination: { try await model.resolveDeepLinkDestination(for: $0, discoveryResponseDelay: $1) },
+      resolveDestination: { try await model.resolveDeepLinkDestination(for: $0) },
       firstRedirect: { try await model.resolveEmailLinkDestination(for: $0, route: $1) },
       releaseRedirect: { model.releaseEmailLinkResolution(for: $0) },
       settingsFeature: settings,
       projectPageComposition: model.projectPageComposition,
-      serverConfig: { ServerConfig.local },
-      discoveryResponseDelay: { [weak self] in self?.discoveryDelay ?? 0 }
+      serverConfig: { ServerConfig.local }
     )
   }
 
@@ -108,9 +101,9 @@ final class DeepLinkRouterTests: XCTestCase {
     let composition = try XCTUnwrap(self.model).projectPageComposition
     let router = DeepLinkRouter(
       currentSession: { DeepLinkSession(userID: session.currentUser?.id, generation: session.generation) },
-      resolveDestination: { _, _ in nil }, firstRedirect: { _, _ in nil }, releaseRedirect: { _ in },
+      resolveDestination: { _ in nil }, firstRedirect: { _, _ in nil }, releaseRedirect: { _ in },
       settingsFeature: settings, projectPageComposition: composition,
-      serverConfig: { ServerConfig.local }, discoveryResponseDelay: { 0 }
+      serverConfig: { ServerConfig.local }
     )
     defer {
       router.reset()
@@ -185,17 +178,14 @@ final class DeepLinkRouterTests: XCTestCase {
     XCTAssertTrue(actions.isEmpty)
   }
 
-  func testDiscoveryTimingUsesTheDelayAtRequestAdmission() async throws {
-    self.discoveryDelay = 0.25
+  func testDiscoveryDestinationPublishesWhenCategoryLookupCompletes() async throws {
     let task = self.router.requestDestination(
       .tab(.discovery(["category_id": "art"])), route: self.route
     )
     await self.provider.categoriesGate.waitFor(1)
-    self.discoveryDelay = 0.5
     try self.provider.categoriesGate.finish(0, .success(.template))
 
     guard case .discovery? = try await task.value else { return XCTFail("Expected Discovery") }
-    XCTAssertEqual(self.discoverySleeps, [0.25])
   }
 
   func testNewLinkInvalidatesDeliveredActionBeforeItsReadCompletes() async throws {

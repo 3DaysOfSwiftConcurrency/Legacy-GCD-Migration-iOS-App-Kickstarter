@@ -51,20 +51,17 @@ public final class DiscussionFeature {
     let prepareWebRequest: @MainActor (URLRequest) -> URLRequest
     let optimisticCommentID: @MainActor () -> String
     let now: @MainActor () -> Date
-    let responseDelaySeconds: @MainActor () -> TimeInterval
 
     public init(
       serverConfig: @escaping @MainActor () -> any ServerConfigType,
       prepareWebRequest: @escaping @MainActor (URLRequest) -> URLRequest,
       optimisticCommentID: @escaping @MainActor () -> String,
-      now: @escaping @MainActor () -> Date,
-      responseDelaySeconds: @escaping @MainActor () -> TimeInterval
+      now: @escaping @MainActor () -> Date
     ) {
       self.serverConfig = serverConfig
       self.prepareWebRequest = prepareWebRequest
       self.optimisticCommentID = optimisticCommentID
       self.now = now
-      self.responseDelaySeconds = responseDelaySeconds
     }
   }
 
@@ -205,7 +202,7 @@ public final class DiscussionFeature {
     return Task { [self] in
       let result = await submission.postTask.result
       do {
-        try await self.sleep(1)
+        try await Task.sleep(for: .seconds(1))
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
         switch result {
@@ -214,7 +211,7 @@ public final class DiscussionFeature {
         case .failure(is CancellationError):
           return
         case .failure:
-          try await self.sleep(1)
+          try await Task.sleep(for: .seconds(1))
           try Task.checkCancellation()
           guard self.sessionFeature.isCurrent(userID: userID, generation: generation) else { return }
           receive(submission.comment.updatingStatus(to: .failed), submission.comment.id)
@@ -250,23 +247,21 @@ public final class DiscussionFeature {
       parentID: parentID, userID: self.sessionFeature.currentUser?.id,
       generation: self.sessionFeature.generation
     )
-    let delay = self.platform.responseDelaySeconds()
     receive(comment.updatingStatus(to: .retrying), comment.id)
     return Task { [self] in
       do {
-        try await self.sleep(1)
+        try await Task.sleep(for: .seconds(1))
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation) else { return }
         receive(comment.updatingStatus(to: .retrying), comment.id)
         let result = await self.startCommentSubmission(key).result
-        try await self.sleep(delay)
         try Task.checkCancellation()
         guard self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation) else { return }
         switch result {
         case let .success(successfulComment):
           let retrySuccess = successfulComment.updatingStatus(to: .retrySuccess) |> \.id .~ comment.id
           receive(retrySuccess, comment.id)
-          try await self.sleep(3)
+          try await Task.sleep(for: .seconds(3))
           try Task.checkCancellation()
           guard self.sessionFeature.isCurrent(userID: key.userID, generation: key.generation) else { return }
           receive(successfulComment, comment.id)
@@ -357,7 +352,6 @@ public final class DiscussionFeature {
     for task in blocks { _ = await task.result }
   }
 
-  private let sleep: (TimeInterval) async throws -> Void
   private let platform: Platform
   private var discussionPagesByRoute: [UUID: PageRoute] = [:]
   internal enum PageUpdate {
@@ -378,15 +372,11 @@ public final class DiscussionFeature {
   public init(
     platform: Platform,
     sessionFeature: SessionFeature,
-    makeProvider: @escaping () -> any DiscussionProvider,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    makeProvider: @escaping () -> any DiscussionProvider
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
     self.platform = platform
-    self.sleep = sleep
   }
 
   public func preparedWebRequest(from request: URLRequest) -> URLRequest {
@@ -457,8 +447,6 @@ public final class DiscussionFeature {
   ) -> Task<Void, Never> {
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
-    let delay = self.platform.responseDelaySeconds()
-    let sleep = self.sleep
     let requestID = UUID()
     page.snapshot.isLoading = true
     page.snapshot.error = nil
@@ -499,7 +487,6 @@ public final class DiscussionFeature {
           nextCursor = envelope.cursor
           nextSource = envelope.slug.map(Source.project) ?? envelope.updateID.map(Source.update)
         }
-        try await sleep(delay)
         try Task.checkCancellation()
         guard let self, self.discussionPagesByRoute[route]?.request?.id == requestID,
               sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return }
@@ -516,7 +503,6 @@ public final class DiscussionFeature {
         // The legacy decoder completed silently: retain data/cursor and finish
         // loading without inventing either an empty page or a visible error.
       } catch {
-        do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, let self, self.discussionPagesByRoute[route]?.request?.id == requestID,
               sessionFeature.isCurrent(userID: page.userID, generation: page.generation) else { return }
         let failure = (error as? ErrorEnvelope) ?? .couldNotParseJSON

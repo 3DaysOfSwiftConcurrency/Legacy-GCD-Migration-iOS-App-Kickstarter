@@ -28,8 +28,8 @@ internal final class CommentsViewController: UITableViewController, MessageBanne
       |> \.delegate .~ self
   }()
 
-  private lazy var refreshIndicator: UIRefreshControl = {
-    let refreshControl = UIRefreshControl()
+  private lazy var refreshIndicator: MinimumVisibleRefreshControl = {
+    let refreshControl = MinimumVisibleRefreshControl(frame: .zero)
 
     refreshControl.addTarget(
       self,

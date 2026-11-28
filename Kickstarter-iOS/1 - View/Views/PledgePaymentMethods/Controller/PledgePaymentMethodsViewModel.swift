@@ -49,10 +49,8 @@ final class PledgePaymentMethodsViewModel {
   }
   var onEvent: ((Event) -> Void)?
   private let paymentsFeature: PaymentsFeature
-  private let responseDelay: @MainActor () -> TimeInterval
   private let advertisingContext: @MainActor () -> (id: String, platformVersion: String)?
   private var configuredCheckout: CheckoutIdentity?
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
   private var configuration: PledgePaymentMethodsValue?
   private var loaded = false
   private let presentationTasks = PaymentPresentationTasks()
@@ -63,16 +61,10 @@ final class PledgePaymentMethodsViewModel {
 
   init(
     paymentsFeature: PaymentsFeature,
-    responseDelay: @escaping @MainActor () -> TimeInterval,
-    advertisingContext: @escaping @MainActor () -> (id: String, platformVersion: String)?,
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
+    advertisingContext: @escaping @MainActor () -> (id: String, platformVersion: String)?
   ) {
     self.paymentsFeature = paymentsFeature
-    self.responseDelay = responseDelay
     self.advertisingContext = advertisingContext
-    self.sleep = sleep
   }
 
   var currentCheckout: CheckoutIdentity? {
@@ -116,13 +108,10 @@ final class PledgePaymentMethodsViewModel {
     guard let config = self.configuration, let identity = self.currentCheckout else { return }
     self.cardSelection.beginLoading()
     let feature = self.paymentsFeature
-    let sleep = self.sleep
     self.presentationTasks.replace(.cards) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let result = try await feature.fetchSavedCards()
-        try await sleep(1)
-        try Task.checkCancellation()
         guard let self, self.isCurrent(identity),
               let cards = self.cardSelection.loadSavedCards(result.me.storedCards.storedCards, for: config.project)
         else { return }
@@ -137,14 +126,10 @@ final class PledgePaymentMethodsViewModel {
   func paymentSheetDidAdd(clientSecret: String, paymentMethod: String?, checkout identity: CheckoutIdentity) {
     guard self.isCurrent(identity) else { return }
     let feature = self.paymentsFeature
-    let delay = self.responseDelay()
-    let sleep = self.sleep
     self.presentationTasks.replace(.store) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let envelope = try await feature.createPaymentSource(secret: clientSecret)
-        try await sleep(delay)
-        try Task.checkCancellation()
         guard let self, self.isCurrent(identity), envelope.createPaymentSource.isSuccessful,
               let config = self.configuration else { return }
         if let cards = self.cardSelection.addSavedCard(
@@ -153,7 +138,6 @@ final class PledgePaymentMethodsViewModel {
           self.publish(cards, checkout: identity)
         }
       } catch {
-        do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.publishError(error)
       }
@@ -187,14 +171,10 @@ final class PledgePaymentMethodsViewModel {
   private func startSetup() {
     guard self.loaded, let config = self.configuration, let identity = self.currentCheckout else { return }
     let feature = self.paymentsFeature
-    let delay = self.responseDelay()
-    let sleep = self.sleep
     self.presentationTasks.replace(.setup) { [weak self] in
       guard self?.isCurrent(identity) == true else { return }
       do {
         let envelope = try await feature.createCardSetupIntentForPledge(projectID: config.project.graphID, context: config.context)
-        try await sleep(1 + delay)
-        try Task.checkCancellation()
         guard let self, self.isCurrent(identity), !self.shouldCancel else { return }
         var configuration = PaymentSheet.Configuration()
         configuration.merchantDisplayName = Strings.general_accessibility_kickstarter()
@@ -202,7 +182,6 @@ final class PledgePaymentMethodsViewModel {
         configuration.defaultBillingDetails.email = feature.billingEmail(for: identity.session)
         self.onEvent?(.goToAddCardViaStripeScreen((envelope.clientSecret, configuration), identity))
       } catch {
-        do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, !(error is CancellationError), let self, self.isCurrent(identity) else { return }
         self.publishError(error)
         self.onEvent?(.updateAddNewCardLoading(false))

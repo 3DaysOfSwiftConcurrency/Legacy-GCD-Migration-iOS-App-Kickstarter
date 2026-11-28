@@ -26,8 +26,6 @@ public final class BackerDashboardViewModel {
 
   private let profileFeature: ProfileFeature
   private var headerObserver: PlatformObservation?
-  internal private(set) var savedTask: Task<Void, Never>?
-  private let sleep: @MainActor () async throws -> Void
   private var pendingPage: Int?
   private var backedTitleCount = 0
   private var lastAnimatedTab: BackerDashboardTab?
@@ -35,17 +33,11 @@ public final class BackerDashboardViewModel {
   private(set) var initialTopConstant: CGFloat = 0
   internal private(set) var headerTask: Task<Void, Never>?
 
-  public init(
-    profileFeature: ProfileFeature,
-    sleep: @escaping @MainActor () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }
-  ) {
+  public init(profileFeature: ProfileFeature) {
     let feature = profileFeature
     self.profileFeature = feature
-    self.sleep = sleep
     self.headerObserver = feature.observeHeader { [weak self] event in self?.receive(event) }
   }
-
-  deinit { self.savedTask?.cancel() }
 
   private func receive(_ event: ProfileFeature.HeaderEvent) {
     switch event {
@@ -83,12 +75,7 @@ public final class BackerDashboardViewModel {
     self.navigate(to: BackerDashboardTab.allTabs[page])
   }
   func projectSaved() {
-    self.savedTask?.cancel()
-    self.savedTask = Task { [weak self, sleep] in
-      do { try await sleep(); try Task.checkCancellation() } catch { return }
-      guard let self else { return }
-      self.headerTask = self.profileFeature.startProfileHeaderLoad(replacing: true)
-    }
+    self.headerTask = self.profileFeature.startProfileHeaderLoad(replacing: true)
   }
   private func navigate(to tab: BackerDashboardTab) {
     self.currentSelectedTab = tab

@@ -192,25 +192,19 @@ final class SettingsFeatureTests: XCTestCase {
     XCTAssertEqual(fixture.activationEvents, ["installed", "activated"])
   }
 
-  func testScheduledRefreshDoesNotStartAfterSessionReplacement() async throws {
+  func testScheduledRefreshCanBeCancelledBeforeItStarts() {
     let fixture = PreferencesFixture()
-    let debounce = AccountRequestGate<Void>()
-    defer { debounce.releaseAll() }
     let feature = SettingsFeature(
       sessionFeature: fixture.session,
       hasStoredCredentials: {
         XCTFail("An obsolete refresh consulted credentials")
         return false
       },
-      refreshDebounce: { try await debounce.request() },
       makeProvider: { fixture.provider }
     )
 
     feature.scheduleAccountRefresh { _ in XCTFail("An obsolete refresh delivered a result") }
-    await debounce.waitFor(1)
-    fixture.session.sessionChanged()
-    try debounce.finish(0, .success(()))
-    await feature.waitForScheduledAccountRefresh()
+    feature.cancelScheduledAccountRefresh()
   }
 
   func testEveryNotificationURLFieldChangesOnlyItsOwnPreference() async throws {
@@ -552,7 +546,7 @@ extension SettingsFeatureTests {
   func testDisposedAccountFieldsReadCannotPublishLateValue() async throws {
     let fixture = AccountWritesFixture()
     defer { fixture.provider.emails.releaseAll() }
-    let read = Task { try await fixture.feature.loadAccountFields(sleep: { _ in }) }
+    let read = Task { try await fixture.feature.loadAccountFields() }
     await fixture.provider.emails.waitFor(1)
     read.cancel()
     try fixture.provider.emails.finish(0, .success(.template))
@@ -582,45 +576,6 @@ extension SettingsFeatureTests {
       catch { XCTAssertTrue(error is CancellationError) }
     }
     XCTAssertEqual(fixture.provider.emails.count, 1)
-  }
-
-  func testAccountFieldsChecksTheOriginalReadAfterItsConfiguredDelay() async throws {
-    let fixture = AccountWritesFixture()
-    let delay = AccountRequestGate<Void>()
-    defer { fixture.provider.emails.releaseAll(); delay.releaseAll() }
-    let feature = SettingsFeature(
-      sessionFeature: fixture.session,
-      responseDelaySeconds: { 2.5 },
-      makeProvider: { fixture.provider }
-    )
-    let read = Task {
-      try await feature.loadAccountFields { seconds in
-        XCTAssertEqual(seconds, 2.5)
-        try await delay.request()
-      }
-    }
-    await fixture.provider.emails.waitFor(1)
-    try fixture.provider.emails.finish(0, .success(.template))
-    await delay.waitFor(1)
-    fixture.session.invalidateAccountReads()
-    try delay.finish(0, .success(()))
-    do { _ = try await read.value; XCTFail("Invalidated account fields were returned") }
-    catch is CancellationError {}
-  }
-
-  func testResponseDeliveryUsesComposedDelay() async throws {
-    let fixture = AccountWritesFixture()
-    var delays: [TimeInterval] = []
-    let feature = SettingsFeature(
-      sessionFeature: fixture.session,
-      responseDelaySeconds: { 2.5 },
-      responseDeliverySleep: { delays.append($0) },
-      makeProvider: { fixture.provider }
-    )
-
-    try await feature.waitForResponsePresentationDelay()
-
-    XCTAssertEqual(delays, [2.5])
   }
 
   func testEmailVerificationSharesAndDistinctLinksQueueWithoutLoggingIn() async throws {

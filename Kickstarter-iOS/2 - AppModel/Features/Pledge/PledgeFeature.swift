@@ -100,24 +100,15 @@ public final class PledgeFeature {
     let serverConfig: @MainActor () -> any ServerConfigType
     let prepareWebRequest: @MainActor (URLRequest) -> URLRequest
     let isPreparedWebRequest: @MainActor (URLRequest) -> Bool
-    let responseDelaySeconds: @MainActor () -> TimeInterval
-    let sleep: @MainActor (TimeInterval) async throws -> Void
 
     public init(
       serverConfig: @escaping @MainActor () -> any ServerConfigType,
       prepareWebRequest: @escaping @MainActor (URLRequest) -> URLRequest,
-      isPreparedWebRequest: @escaping @MainActor (URLRequest) -> Bool,
-      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
-      sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { delay in
-        if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-        else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
-      }
+      isPreparedWebRequest: @escaping @MainActor (URLRequest) -> Bool
     ) {
       self.serverConfig = serverConfig
       self.prepareWebRequest = prepareWebRequest
       self.isPreparedWebRequest = isPreparedWebRequest
-      self.responseDelaySeconds = responseDelaySeconds
-      self.sleep = sleep
     }
   }
 
@@ -348,18 +339,14 @@ public final class PledgeFeature {
   }
 
   public func cancelBacking(_ input: KsApi.CancelBackingInput) async throws {
-    _ = try await self.performPledgeWrite(.cancel(input))
-  }
-  /// Keep the existing presentation delay and suppress results from a replaced session.
-  func cancelBackingWithPresentationDelay(_ input: KsApi.CancelBackingInput) async throws {
     let session = self.sessionIdentity
-    let delay = self.platform.responseDelaySeconds()
-    let result: Result<Void, Error>
-    do { try await self.cancelBacking(input); result = .success(()) }
-    catch { result = .failure(error) }
-    try await self.platform.sleep(delay)
+    do {
+      _ = try await self.performPledgeWrite(.cancel(input))
+    } catch {
+      try self.requireCurrent(session)
+      throw error
+    }
     try self.requireCurrent(session)
-    try result.get()
   }
   public func setPledgeRewardReceived(projectID: Int, userID: Int, received: Bool) async throws -> Backing {
     try Self.updatedRewardReceiptBacking(
@@ -372,11 +359,9 @@ public final class PledgeFeature {
     guard let userID = self.sessionFeature.currentUser?.id else { return nil }
     self.trackRewardReceivedToggle(received, project)
     let session = self.sessionIdentity
-    let delay = self.platform.responseDelaySeconds()
     let command = self.startRewardReceivedUpdate(projectID: project.id, userID: userID, received: received)
     return Task {
       let backing = try await command.value
-      try await self.platform.sleep(delay)
       try self.requireCurrent(session)
       return backing
     }

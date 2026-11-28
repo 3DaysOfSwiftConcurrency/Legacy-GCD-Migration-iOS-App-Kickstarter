@@ -9,7 +9,7 @@ internal final class CommentDialogViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   internal let vm = CommentDialogViewModel(feature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: {
     AsyncDiscussionProvider(service: AppEnvironment.current.apiService)
-  }), sleep: { try Task.checkCancellation() })
+  }))
 
   private let bodyTextViewText = CommentRecording<String>()
   private var postButtonEnabled = CommentRecording<Bool>()
@@ -97,13 +97,13 @@ internal final class CommentDialogViewModelTests: TestCase {
       )
       self.notifyPresenterCommentWasPostedSuccesfully
         .assertValueCount(
-          2,
-          "Comment posts successfully. Two comments are posted, one optimistically and another when network returns response."
+          1,
+          "Comment posts successfully once when the operation completes."
         )
       self.notifyPresenterDialogWantsDismissal
         .assertValueCount(
-          2,
-          "Dialog is dismissed after posting of comment. Two dismissals because of two comments being posted, not ideal."
+          1,
+          "Dialog is dismissed once after the comment is posted."
         )
 
       XCTAssertEqual(
@@ -158,13 +158,13 @@ internal final class CommentDialogViewModelTests: TestCase {
       )
       self.notifyPresenterCommentWasPostedSuccesfully
         .assertValueCount(
-          2,
-          "Comment posts successfully. Two comments are posted, one optimistically and another when network returns response."
+          1,
+          "Comment posts successfully once when the operation completes."
         )
       self.notifyPresenterDialogWantsDismissal
         .assertValueCount(
-          2,
-          "Dialog is dismissed after posting of comment. Two dismissals because of two comments being posted, not ideal."
+          1,
+          "Dialog is dismissed once after the comment is posted."
         )
 
       XCTAssertEqual(
@@ -200,13 +200,13 @@ internal final class CommentDialogViewModelTests: TestCase {
 
       self.notifyPresenterCommentWasPostedSuccesfully
         .assertValueCount(
-          1,
-          "Comment does not post successfuly. However, because comments are posted optimistically, we still count this as successful post. See //FIXME in view model for more info."
+          0,
+          "A failed comment is not reported as posted."
         )
       self.notifyPresenterDialogWantsDismissal
         .assertValueCount(
-          1,
-          "Comment dialog does not dismiss automatically. However, because comments are posted optimistically, we still dismiss the dialog. See //FIXME in view model for more info."
+          0,
+          "The dialog stays available for retry after an error."
         )
     }
   }

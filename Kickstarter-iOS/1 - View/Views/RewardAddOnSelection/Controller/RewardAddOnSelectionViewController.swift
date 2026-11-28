@@ -25,7 +25,7 @@ final class RewardAddOnSelectionViewController: UIViewController {
 
   public weak var pledgeViewDelegate: PledgeViewControllerDelegate?
 
-  private lazy var refreshControl = DeferredRefreshControl(frame: .zero)
+  private lazy var refreshControl = MinimumVisibleRefreshControl(frame: .zero)
 
   private lazy var tableView: UITableView = {
     let tv = UITableView(frame: .zero)

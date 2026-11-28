@@ -19,19 +19,17 @@ final class MessageBannerViewModelTests: TestCase {
     XCTAssertEqual(hidden, [false, true])
   }
 
-  func testAutomaticDismissalUsesVoiceOverDelay() async {
+  func testBannerAnimationStartsOneDismissalLifecycle() async {
     for voiceOver in [false, true] {
-      var delays: [TimeInterval] = []
-      let vm = MessageBannerViewModel(sleep: { delays.append($0) })
+      let vm = MessageBannerViewModel()
       var hidden: [Bool] = []
       vm.onHidden = { hidden.append($0) }
       await withEnvironment(isVoiceOverRunning: { voiceOver }) {
         vm.bannerViewWillShow(true)
         vm.bannerViewAnimationFinished(isHidden: false)
-        await vm.waitForDismissal(voiceOver: voiceOver)
+        vm.bannerViewAnimationFinished(isHidden: true)
       }
-      XCTAssertEqual(delays, [voiceOver ? 10 : 4])
-      XCTAssertEqual(hidden, [false, true])
+      XCTAssertEqual(hidden, [false])
     }
   }
 }

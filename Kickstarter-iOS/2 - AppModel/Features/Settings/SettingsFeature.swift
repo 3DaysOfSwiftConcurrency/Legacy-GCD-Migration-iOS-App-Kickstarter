@@ -128,10 +128,7 @@ public final class SettingsFeature {
   private let makeProvider: () -> any AccountPreferencesProvider
   private let hasStoredCredentials: @MainActor () -> Bool
   private let applicationVersion: @MainActor () -> String
-  private let responseDelay: @MainActor () -> TimeInterval
   private let identifyUser: @MainActor (User) -> Void
-  private let responseDeliverySleep: (TimeInterval) async throws -> Void
-  private let refreshDebounce: @MainActor () async throws -> Void
   private var accountRefreshDebounceTask: Task<Void, Never>?
   private var activeAccountRefreshTask: Task<Void, Never>?
   private var account: Account?
@@ -166,45 +163,30 @@ public final class SettingsFeature {
     applicationSettings: ApplicationSettings? = nil,
     hasStoredCredentials: @escaping @MainActor () -> Bool = { false },
     applicationVersion: @escaping @MainActor () -> String = { "" },
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval = { 0 },
     identifyUser: @escaping @MainActor (User) -> Void = { _ in },
-    refreshDebounce: @escaping @MainActor () async throws -> Void = {
-      try await Task.sleep(for: .seconds(5))
-    },
-    responseDeliverySleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    },
     makeProvider: @escaping () -> any AccountPreferencesProvider
   ) {
     self.session = sessionFeature
     self.applicationSettings = applicationSettings
     self.hasStoredCredentials = hasStoredCredentials
     self.applicationVersion = applicationVersion
-    self.responseDelay = responseDelaySeconds
     self.identifyUser = identifyUser
-    self.responseDeliverySleep = responseDeliverySleep
-    self.refreshDebounce = refreshDebounce
     self.makeProvider = makeProvider
   }
 
-  public var responseDelaySeconds: TimeInterval { self.responseDelay() }
   public var appVersionString: String { self.applicationVersion() }
 
   public func identifyUpdatedUser(_ user: User) {
     self.identifyUser(user)
   }
 
-  public func waitForResponsePresentationDelay() async throws {
-    try await self.responseDeliverySleep(self.responseDelaySeconds)
-  }
 
   func scheduleAccountRefresh(onResult: @escaping @MainActor (Result<User?, Error>) -> Void) {
     self.accountRefreshDebounceTask?.cancel()
-    let debounce = self.refreshDebounce
     let generation = self.session.generation
     self.accountRefreshDebounceTask = Task { [weak self] in
       do {
-        try await debounce()
+        try await Task.sleep(for: .seconds(5))
         try Task.checkCancellation()
         guard let self, self.session.generation == generation else { return }
         self.beginAccountRefresh(onResult: onResult)
@@ -512,12 +494,8 @@ public final class SettingsFeature {
     return try result.get()
   }
 
-  public func loadAccountFields(sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) async throws -> GraphUser {
-    try await self.fetchEmailUserForCurrentSession {
-      try await sleep(self.responseDelaySeconds)
-    }
+  public func loadAccountFields() async throws -> GraphUser {
+    try await self.fetchEmailUserForCurrentSession()
   }
 
   /// Start a session-bound refresh immediately; the caller may cancel this read.

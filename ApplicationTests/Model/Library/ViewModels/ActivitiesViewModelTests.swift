@@ -15,8 +15,7 @@ final class ActivitiesViewModelTests: TestCase {
     makeProvider: { AsyncActivityProvider(service: AppEnvironment.current.apiService) },
     trackProjectCardClick: {
       AppEnvironment.current.ksrAnalytics.trackProjectCardClicked(page: .activities, project: $0)
-    },
-    sleep: { _ in }
+    }
   )
   private lazy var vm = ActivitiesViewModel(activityFeature: self.feature)
   private func advanceRequests() async {

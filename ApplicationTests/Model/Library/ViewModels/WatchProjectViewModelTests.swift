@@ -10,7 +10,6 @@ internal final class WatchProjectViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   internal var vm: WatchProjectViewModel!
   private var feature: ProjectMediaFeature!
-  private var clock: WatchTestClock!
 
   private let generateImpactFeedback = WatchRecording<()>()
   private let generateSelectionFeedback = WatchRecording<()>()
@@ -27,16 +26,10 @@ internal final class WatchProjectViewModelTests: TestCase {
     self.feature = ProjectMediaFeature(
       sessionFeature: .live(),
       analytics: { AppEnvironment.current.ksrAnalytics },
-      watchResponseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds },
       savePrompts: .live(),
       makeProvider: { AsyncProjectMediaProvider(service: AppEnvironment.current.apiService) }
     )
-    self.clock = WatchTestClock()
-    let clock = self.clock!
-    self.vm = WatchProjectViewModel(
-      projectMediaFeature: self.feature,
-      sleep: { try await clock.sleep($0) }
-    )
+    self.vm = WatchProjectViewModel(projectMediaFeature: self.feature)
 
     self.vm.onEvent = { [weak self] event in
       guard let self else { return }
@@ -55,20 +48,10 @@ internal final class WatchProjectViewModelTests: TestCase {
     }
   }
 
-  private func advance(by interval: DispatchTimeInterval = .seconds(0)) async {
-    let seconds: Double
-    switch interval {
-    case let .seconds(value): seconds = Double(value)
-    case let .milliseconds(value): seconds = Double(value) / 1_000
-    case let .microseconds(value): seconds = Double(value) / 1_000_000
-    case let .nanoseconds(value): seconds = Double(value) / 1_000_000_000
-    case .never: seconds = 0
-    @unknown default: seconds = 0
-    }
+  private func completeSave() async {
     await Task.yield()
-    await self.clock.advance(by: seconds)
     await self.feature.waitForProjectSaveOperations()
-    if seconds >= 0.5 { await self.vm.waitForOperation() }
+    await self.vm.waitForOperation()
     await Task.yield()
   }
 
@@ -77,7 +60,7 @@ internal final class WatchProjectViewModelTests: TestCase {
       self.vm.configure(with: (.template, .project, nil))
       self.vm.viewDidLoad()
       self.vm.saveButtonTapped(selected: true)
-      await self.advance(by: .seconds(1))
+      await self.completeSave()
       self.showProjectSavedAlert.assertValueCount(1)
     }
   }
@@ -98,7 +81,7 @@ internal final class WatchProjectViewModelTests: TestCase {
       self.vm.viewDidLoad()
 
       self.vm.saveButtonTapped(selected: true)
-      await self.advance()
+      await self.completeSave()
       self.generateSelectionFeedback.assertValueCount(1)
       self.generateNotificationSuccessFeedback.assertValueCount(0)
     }
@@ -110,7 +93,7 @@ internal final class WatchProjectViewModelTests: TestCase {
       self.vm.viewDidLoad()
 
       self.vm.saveButtonTapped(selected: false)
-      await self.advance()
+      await self.completeSave()
       self.generateSelectionFeedback.assertValueCount(0)
       self.generateNotificationSuccessFeedback.assertValueCount(1)
     }
@@ -135,7 +118,7 @@ internal final class WatchProjectViewModelTests: TestCase {
         "Emits true because it's toggled immmediately."
       )
 
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.saveButtonSelected.assertValues(
         [false, true, false],
@@ -163,7 +146,7 @@ internal final class WatchProjectViewModelTests: TestCase {
 
       self.saveButtonSelected.assertValues([true, false], "Emits false immediately.")
 
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.saveButtonSelected.assertValues(
         [true, false],
@@ -173,7 +156,7 @@ internal final class WatchProjectViewModelTests: TestCase {
     }
   }
 
-  func testUnwatchProject_LoggedIn_User_Debouncing() async {
+  func testUnwatchProject_LoggedIn_User_ReconcilesEachTap() async {
     let project = Project.template
       |> Project.lens.personalization.isStarred .~ true
 
@@ -191,24 +174,24 @@ internal final class WatchProjectViewModelTests: TestCase {
       self.saveButtonSelected.assertValues([true, false], "Emits false immediately.")
 
       self.vm.saveButtonTapped(selected: false)
-      await self.advance(by: .milliseconds(250))
+      await self.completeSave()
 
       self.vm.saveButtonTapped(selected: true)
-      await self.advance(by: .milliseconds(250))
+      await self.completeSave()
 
       self.vm.saveButtonTapped(selected: false)
-      await self.advance(by: .milliseconds(250))
+      await self.completeSave()
 
       self.saveButtonSelected.assertValues(
-        [true, false, true, false, true], "State flips back and forth as button is tapped."
+        [true, false, true, false, true, false], "Each completed save reconciles to the server value."
       )
 
       self.vm.saveButtonTapped(selected: true)
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.saveButtonSelected.assertValues(
         [true, false, true, false, true, false],
-        "Network call is made after 0.5 seconds of no taps, value from response is always used"
+        "The final save uses the response value immediately."
       )
     }
   }
@@ -243,7 +226,7 @@ internal final class WatchProjectViewModelTests: TestCase {
         "Once logged in, the save button is selected immediately."
       )
 
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.saveButtonSelected.assertValues(
         [false, true],
@@ -258,7 +241,7 @@ internal final class WatchProjectViewModelTests: TestCase {
           "Save button is deselected."
         )
 
-        await self.advance(by: .milliseconds(500))
+        await self.completeSave()
 
         self.saveButtonSelected.assertValues(
           [false, true, false],
@@ -292,7 +275,7 @@ internal final class WatchProjectViewModelTests: TestCase {
       self.vm.viewDidLoad()
 
       self.vm.saveButtonTapped(selected: false)
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.showNotificationDialog.assertDidEmitValue()
     }
@@ -307,7 +290,7 @@ internal final class WatchProjectViewModelTests: TestCase {
       self.vm.viewDidLoad()
 
       self.vm.saveButtonTapped(selected: true)
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.showNotificationDialog.assertDidNotEmitValue()
     }
@@ -339,7 +322,7 @@ internal final class WatchProjectViewModelTests: TestCase {
       self.saveButtonSelected.assertValues([false, true], "Save button selects immediately.")
       self.saveButtonAccessibilityValue.assertValues(["Unsaved", "Saved"])
 
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.saveButtonSelected.assertValues(
         [false, true],
@@ -374,7 +357,7 @@ internal final class WatchProjectViewModelTests: TestCase {
         )
         self.saveButtonAccessibilityValue.assertValues(["Unsaved", "Saved", "Unsaved"])
 
-        await self.advance(by: .milliseconds(500))
+        await self.completeSave()
 
         self.saveButtonSelected.assertValues(
           [false, true, false],
@@ -408,7 +391,7 @@ internal final class WatchProjectViewModelTests: TestCase {
       XCTAssertEqual(["watch_project"], self.segmentTrackingClient.properties(forKey: "context_cta"))
       XCTAssertEqual(["watch"], self.segmentTrackingClient.properties(forKey: "context_type"))
 
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.showProjectSavedAlert.assertValueCount(
         0, "The save project prompt doesn't show cause it's less than 48hrs."
@@ -431,7 +414,7 @@ internal final class WatchProjectViewModelTests: TestCase {
       XCTAssertEqual(self.postNotificationWithProject.lastValue!.watchesCount, 8)
 
       self.vm.saveButtonTapped(selected: false)
-      await self.advance(by: .milliseconds(500))
+      await self.completeSave()
 
       self.postNotificationWithProject.assertValueCount(3)
       XCTAssertEqual(self.postNotificationWithProject.lastValue!.watchesCount, 10)
@@ -453,40 +436,6 @@ internal final class WatchProjectViewModelTests: TestCase {
       XCTAssertEqual(["watch_project"], self.segmentTrackingClient.properties(forKey: "context_cta"))
       XCTAssertEqual(["watch"], self.segmentTrackingClient.properties(forKey: "context_type"))
     }
-  }
-}
-
-@MainActor
-private final class WatchTestClock {
-  private var now: TimeInterval = 0
-  private var sleepers: [UUID: (deadline: TimeInterval, continuation: CheckedContinuation<Void, Error>)] = [:]
-
-  func sleep(_ seconds: TimeInterval) async throws {
-    try Task.checkCancellation()
-    guard seconds > 0 else { return }
-    let id = UUID()
-    try await withTaskCancellationHandler {
-      try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-        if Task.isCancelled {
-          continuation.resume(throwing: CancellationError())
-        } else {
-          self.sleepers[id] = (self.now + seconds, continuation)
-        }
-      }
-    } onCancel: {
-      Task { @MainActor [weak self] in
-        self?.sleepers.removeValue(forKey: id)?.continuation.resume(throwing: CancellationError())
-      }
-    }
-    try Task.checkCancellation()
-  }
-
-  func advance(by seconds: TimeInterval) async {
-    await Task.yield()
-    self.now += seconds
-    let due = self.sleepers.filter { $0.value.deadline <= self.now }.map(\.key)
-    for id in due { self.sleepers.removeValue(forKey: id)?.continuation.resume() }
-    await Task.yield()
   }
 }
 

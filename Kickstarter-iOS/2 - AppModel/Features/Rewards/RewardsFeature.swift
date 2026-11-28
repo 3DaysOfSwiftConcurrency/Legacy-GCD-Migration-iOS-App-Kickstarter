@@ -64,20 +64,17 @@ public final class RewardsFeature {
     let configuredCountry: @MainActor () -> String?
     let country: @MainActor () -> String
     let now: @MainActor () -> TimeInterval
-    let responseDelaySeconds: @MainActor () -> TimeInterval
     let recordThirdPartyEvent: @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
 
     public init(
       configuredCountry: @escaping @MainActor () -> String?,
       country: @escaping @MainActor () -> String,
       now: @escaping @MainActor () -> TimeInterval,
-      responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
       recordThirdPartyEvent: @escaping @MainActor (KsApi.TriggerThirdPartyEventInput) -> Void
     ) {
       self.configuredCountry = configuredCountry
       self.country = country
       self.now = now
-      self.responseDelaySeconds = responseDelaySeconds
       self.recordThirdPartyEvent = recordThirdPartyEvent
     }
   }
@@ -159,8 +156,6 @@ public final class RewardsFeature {
     let requestID = UUID()
     let provider = self.makeProvider()
     let sessionFeature = self.sessionFeature
-    let delay = self.platform.responseDelaySeconds()
-    let sleep = self.sleep
     entry.snapshot.isLoading = true
     entry.snapshot.error = nil
     entry.snapshot.hasResult = false
@@ -178,7 +173,6 @@ public final class RewardsFeature {
         }
         let locations =
           hasShippableRewards ? try await provider.fetchShippingLocations(projectID: projectID) : []
-        try await sleep(delay)
         try Task.checkCancellation()
         guard session.isCurrent(in: sessionFeature),
           let self, self.shippingSelectionByRoute[route]?.activeLoad?.id == requestID
@@ -191,8 +185,6 @@ public final class RewardsFeature {
       } catch is CancellationError {
         // Obsolete reads do not notify the delegate or display an error.
       } catch {
-        // Legacy materialization delayed errors as well as successful data.
-        do { try await sleep(delay) } catch { return }
         guard !Task.isCancelled, session.isCurrent(in: sessionFeature),
           let self, self.shippingSelectionByRoute[route]?.activeLoad?.id == requestID
         else { return }
@@ -252,7 +244,6 @@ public final class RewardsFeature {
   private let applePayEligibility: @MainActor (Project) -> Bool
   private let analytics: Analytics
   private let rewardSelectionContext: @MainActor () -> (advertisingID: String, platformVersion: String)?
-  private let sleep: @MainActor (TimeInterval) async throws -> Void
 
   public init(
     platform: Platform,
@@ -267,15 +258,7 @@ public final class RewardsFeature {
     },
     hasEligibleApplePayCard: @escaping @MainActor (Project) -> Bool = { _ in false },
     analytics: Analytics = Analytics(),
-    rewardSelectionContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil },
-    sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { seconds in
-      if seconds.isInfinite {
-        try await Task.sleep(nanoseconds: UInt64.max)
-      } else if seconds > 0 {
-        try await Task.sleep(for: .seconds(seconds))
-      }
-      try Task.checkCancellation()
-    }
+    rewardSelectionContext: @escaping @MainActor () -> (advertisingID: String, platformVersion: String)? = { nil }
   ) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
@@ -285,7 +268,6 @@ public final class RewardsFeature {
     self.applePayEligibility = hasEligibleApplePayCard
     self.analytics = analytics
     self.rewardSelectionContext = rewardSelectionContext
-    self.sleep = sleep
   }
 
   public func hasEligibleApplePayCard(for project: Project) -> Bool {
@@ -374,8 +356,6 @@ public final class RewardsFeature {
         currentUser: self.sessionFeature.currentUser
       )
       : NoRewardFirst()
-    let delay = self.platform.responseDelaySeconds()
-    let sleep = self.sleep
     entry.snapshot.isLoading = true
     entry.snapshot.error = nil
     entry.snapshot.hasResult = false
@@ -396,7 +376,6 @@ public final class RewardsFeature {
           country: location?.country,
           inserter: inserter
         )
-        try await sleep(delay)
         try Task.checkCancellation()
         guard session.isCurrent(in: sessionFeature),
           let self, self.rewardCollectionByRoute[route]?.activeLoad?.id == requestID
@@ -480,7 +459,6 @@ public final class RewardsFeature {
     let id = UUID()
     self.addOnsVersions[route] = id
     let provider = self.makeProvider()
-    let delay = self.platform.responseDelaySeconds()
     let task = Task { [self] () throws -> [Reward]? in
       defer {
         self.addOnsTasks[id] = nil
@@ -496,12 +474,9 @@ public final class RewardsFeature {
         case .fast(let rewardID, let country):
           rewards = try await provider.fetchFastAddOns(baseRewardID: rewardID, country: country)
         }
-        try await self.sleep(delay)
         try self.requireCurrentAddOns(identity, route: route, version: id)
         return rewards
       } catch {
-        try self.requireCurrentAddOns(identity, route: route, version: id)
-        try await self.sleep(delay)
         try self.requireCurrentAddOns(identity, route: route, version: id)
         throw error
       }

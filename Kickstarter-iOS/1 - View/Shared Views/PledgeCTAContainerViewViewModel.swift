@@ -55,10 +55,8 @@ public protocol PledgeCTAContainerViewViewModelType {
 public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewModelType,
   PledgeCTAContainerViewViewModelInputs, PledgeCTAContainerViewViewModelOutputs {
   public var onEvent: ((PledgeCTAEvent) -> Void)?
-  private let sleep: @MainActor () async throws -> Void
   private let currentUser: () -> User?
   private let trackPledgeCTATapped: (PledgeStateCTAType, Project) -> Void
-  private var savedProjectTask: Task<Void, Never>?
   private var latestProject: Project?
   private var pledgeState: PledgeStateCTAType?
   private var buttonHidden: Bool?
@@ -66,13 +64,9 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
 
   public init(
     currentUser: @escaping () -> User?,
-    trackPledgeCTATapped: @escaping (PledgeStateCTAType, Project) -> Void = { _, _ in },
-    sleep: @escaping @MainActor () async throws -> Void = {
-    try await Task.sleep(for: .milliseconds(100))
-  }) {
+    trackPledgeCTATapped: @escaping (PledgeStateCTAType, Project) -> Void = { _, _ in }) {
     self.currentUser = currentUser
     self.trackPledgeCTATapped = trackPledgeCTATapped
-    self.sleep = sleep
   }
 
   public func configureWith(value: PledgeCTAContainerViewData) {
@@ -108,12 +102,7 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
 
   public func savedProjectFromNotification(project: Project?) {
     guard let project else { return }
-    self.savedProjectTask?.cancel()
-    let sleep = self.sleep
-    self.savedProjectTask = Task { [weak self] in
-      do { try await sleep(); try Task.checkCancellation() } catch { return }
-      self?.updatePledgeState(project: project, backing: project.personalization.backing)
-    }
+    self.updatePledgeState(project: project, backing: project.personalization.backing)
   }
 
   private func updatePledgeState(project: Project, backing: Backing?) {
@@ -157,8 +146,6 @@ public final class PledgeCTAContainerViewViewModel: PledgeCTAContainerViewViewMo
     self.onEvent?(.watchesCount(Strings.activity_followers(number_of_followers: "\(count)")))
   }
 
-  func waitForSavedProject() async { await self.savedProjectTask?.value }
-  deinit { self.savedProjectTask?.cancel() }
   public var inputs: PledgeCTAContainerViewViewModelInputs { self }
   public var outputs: PledgeCTAContainerViewViewModelOutputs { self }
 }

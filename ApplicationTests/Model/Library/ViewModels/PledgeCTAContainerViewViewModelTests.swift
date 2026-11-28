@@ -14,8 +14,7 @@ internal final class PledgeCTAContainerViewViewModelTests: TestCase {
     trackPledgeCTATapped: {
       self.trackedPledgeCTAState.record($0)
       self.trackedPledgeCTAProjectID.record($1.id)
-    },
-    sleep: { try Task.checkCancellation() }
+    }
   )
 
   let activityIndicatorIsHidden = PledgeCTARecorder<Bool>()
@@ -422,7 +421,6 @@ internal final class PledgeCTAContainerViewViewModelTests: TestCase {
       |> \.personalization.isStarred .~ true
 
     self.vm.inputs.savedProjectFromNotification(project: savedProject)
-    await self.vm.waitForSavedProject()
 
     self.buttonStyleType.assertValues([.black, .none])
     self.buttonTitleText.assertValues(["Notify me on launch", "Saved"])
@@ -434,15 +432,14 @@ internal final class PledgeCTAContainerViewViewModelTests: TestCase {
     self.notifyDelegateCTATapped.assertDidNotEmitValue()
   }
 
-  func testNewSavedProjectNotificationSupersedesPendingUpdate() async {
+  func testSavedProjectNotificationsUpdateFollowerCountImmediately() {
     let initial = Project.template |> \.displayPrelaunch .~ true |> \.watchesCount .~ 10
     let first = initial |> \.personalization.isStarred .~ true |> \.watchesCount .~ 11
     let latest = initial |> \.personalization.isStarred .~ true |> \.watchesCount .~ 12
     self.vm.inputs.configureWith(value: .project(initial))
     self.vm.inputs.savedProjectFromNotification(project: first)
     self.vm.inputs.savedProjectFromNotification(project: latest)
-    await self.vm.waitForSavedProject()
-    self.watchesCountText.assertValues(["10 followers", "12 followers"])
+    self.watchesCountText.assertValues(["10 followers", "11 followers", "12 followers"])
   }
 
   func testPledgeCTA_PrelaunchNotifiesWithStateViaButtonClick_Success() {

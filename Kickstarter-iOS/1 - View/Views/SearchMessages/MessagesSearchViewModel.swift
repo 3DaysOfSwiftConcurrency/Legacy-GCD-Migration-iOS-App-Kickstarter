@@ -10,7 +10,6 @@ public final class MessagesSearchViewModel {
   public var onMessageThread: ((MessageThread) -> Void)?
 
   private let messagingFeature: MessagingFeature
-  private let sleep: (TimeInterval) async throws -> Void
   private var project: Project?
   private var query = ""
   private var isVisible = true
@@ -18,11 +17,8 @@ public final class MessagesSearchViewModel {
   private var searchTask: Task<Void, Never>?
   private var revision = 0
 
-  public init(messagingFeature: MessagingFeature, sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-    if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-  }) {
+  public init(messagingFeature: MessagingFeature) {
     self.messagingFeature = messagingFeature
-    self.sleep = sleep
   }
 
   public func clearSearchText() { self.searchTextChanged("") }
@@ -48,9 +44,9 @@ public final class MessagesSearchViewModel {
     guard !query.isEmpty else { return }
     let delay = AppEnvironment.current.debounceInterval.searchDelaySeconds
     let messagingFeature = self.messagingFeature
-    self.searchTask = Task { [weak self, messagingFeature, sleep] in
+    self.searchTask = Task { [weak self, messagingFeature] in
       do {
-        try await sleep(delay)
+        if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
         try Task.checkCancellation()
         guard let self, self.isVisible, self.didLoad, self.revision == revision else { return }
         let results = try await messagingFeature.searchMessageThreads(query: query, project: self.project)

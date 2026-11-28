@@ -48,8 +48,6 @@ public struct AsyncMessagingProvider: MessagingProvider {
 public final class MessagingFeature {
   public let sessionFeature: SessionFeature
   private let makeProvider: () -> any MessagingProvider
-  private let responseDelaySeconds: @MainActor () -> TimeInterval
-  private let sleep: (TimeInterval) async throws -> Void
   private struct Session: Hashable {
     let userID: Int?
     let generation: Int
@@ -62,17 +60,9 @@ public final class MessagingFeature {
     guard self.session == session else { throw CancellationError() }
   }
 
-  public init(
-    sessionFeature: SessionFeature, makeProvider: @escaping () -> any MessagingProvider,
-    responseDelaySeconds: @escaping @MainActor () -> TimeInterval,
-    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
-      if seconds > 0 { try await Task.sleep(for: .seconds(seconds)) }
-    }
-  ) {
+  public init(sessionFeature: SessionFeature, makeProvider: @escaping () -> any MessagingProvider) {
     self.sessionFeature = sessionFeature
     self.makeProvider = makeProvider
-    self.responseDelaySeconds = responseDelaySeconds
-    self.sleep = sleep
   }
 
   public struct MailboxSnapshot {
@@ -119,10 +109,9 @@ public final class MessagingFeature {
   private func startMailboxPageLoad(route: UUID, state: MailboxRoute, cursor: String?) -> Task<Void, Never> {
     let id = UUID()
     let provider = self.makeProvider()
-    let delay = self.responseDelaySeconds()
     state.snapshot.isLoading = true
     state.snapshot.error = nil
-    let task = Task { [weak self, sleep] in
+    let task = Task { [weak self] in
       guard let self else { return }
       defer {
         if self.mailboxStatesByRoute[route]?.request?.id == id {
@@ -133,7 +122,6 @@ public final class MessagingFeature {
       do {
         try self.ensureMessagingSessionIsCurrent(state.session)
         let envelope = try await provider.fetchMessageThreadsPage(mailbox: state.mailbox, project: state.project, cursor: cursor)
-        try await sleep(delay)
         try self.ensureMessagingSessionIsCurrent(state.session)
         guard self.mailboxStatesByRoute[route]?.request?.id == id else { return }
         // Preserve the original concatenation and empty-page sentinel.

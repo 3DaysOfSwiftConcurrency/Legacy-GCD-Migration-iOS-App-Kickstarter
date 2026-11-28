@@ -44,21 +44,15 @@ final class PledgeShippingLocationViewModel {
   var onEvent: ((Event) -> Void)?
   private let rewardsFeature: RewardsFeature
   private let route = UUID()
-  private let dismissDelay: @MainActor () async throws -> Void
+  /// Gives the chosen location a moment to render before the picker closes.
   private var data: PledgeShippingLocationViewData?
   private var hasLoaded = false
   private var loadID = UUID()
   internal private(set) var loadingTask: Task<Void, Never>?
   internal private(set) var dismissTask: Task<Void, Never>?
 
-  init(
-    rewardsFeature: RewardsFeature,
-    dismissDelay: @escaping @MainActor () async throws -> Void = {
-      try await Task.sleep(for: .milliseconds(300))
-    }
-  ) {
+  init(rewardsFeature: RewardsFeature) {
     self.rewardsFeature = rewardsFeature
-    self.dismissDelay = dismissDelay
   }
 
   func configureWith(data: PledgeShippingLocationViewData) {
@@ -108,9 +102,8 @@ final class PledgeShippingLocationViewModel {
     self.rewardsFeature.selectShippingLocation(location, route: self.route)
     self.onEvent?(.selected(location))
     self.dismissTask?.cancel()
-    let delay = self.dismissDelay
     self.dismissTask = Task { [weak self] in
-      do { try await delay() } catch { return }
+      do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
       guard !Task.isCancelled else { return }
       self?.onEvent?(.dismiss)
     }

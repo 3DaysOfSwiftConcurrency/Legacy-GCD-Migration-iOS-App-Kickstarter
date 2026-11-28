@@ -9,19 +9,14 @@ import XCTest
 
 @MainActor
 final class AppModelTests: XCTestCase {
-  func testDeviceRegistrationUsesInjectedSessionAndStopsAfterModelSessionChange() async throws {
-    let debounce = AccountRequestGate<Void>()
-    defer { debounce.releaseAll() }
+  func testDeviceRegistrationUsesSessionAndStopsAfterModelSessionChange() {
     let session = SessionFeature(
       makeProvider: { NoDeviceRegistrationProvider() },
-      deviceRegistrationDebounce: { try await debounce.request() }, currentUser: { .template }
+      currentUser: { .template }
     )
     let model = makeTestAppModel(sessionFeature: session)
     model.scheduleDeviceRegistration(Data([0x01])) { _ in XCTFail("Obsolete registration delivered") }
-    await debounce.waitFor(1)
     model.resetFeaturesForSessionChange()
-    try debounce.finish(0, .success(()))
-    await session.waitForDeviceRegistration()
   }
 
   func testPermissionEventsUseTheInjectedOnboardingFeature() async {
@@ -39,7 +34,7 @@ final class AppModelTests: XCTestCase {
     var badgeResets = 0
     let onboarding = OnboardingFeature(
       completionStore: { store }, pushRegistration: { MockPushRegistration.self },
-      tracking: { tracking }, trackingDelay: {}
+      tracking: { tracking }
     )
     onboarding.onBadgeReset = { badgeResets += 1 }
     let model = makeTestAppModel(
@@ -69,7 +64,7 @@ final class AppModelTests: XCTestCase {
         loadSurvey: { _ in try await surveys.request() }
       )
     )
-    let first = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    let first = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2))) }
     await surveys.waitFor(1)
     session.sessionChanged()
     try surveys.finish(0, .failure(ErrorEnvelope.couldNotParseJSON))
@@ -77,7 +72,7 @@ final class AppModelTests: XCTestCase {
       return XCTFail("An obsolete survey result escaped the AppModel boundary")
     }
 
-    let current = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    let current = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2))) }
     await surveys.waitFor(2)
     try surveys.finish(1, .success(.template))
     guard case let .survey(url)? = try await current.value else { return XCTFail("Expected the survey URL") }
@@ -94,7 +89,7 @@ final class AppModelTests: XCTestCase {
         loadSurvey: { _ in surveyRequests += 1; return .template }
       )
     )
-    let task = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2)), discoveryResponseDelay: 0) }
+    let task = Task { try await model.resolveDeepLinkDestination(for: .user(.id(1), .survey(2))) }
     task.cancel()
     guard case .failure(is CancellationError) = await task.result else {
       return XCTFail("Cancelled link resolution must throw cancellation")
@@ -109,7 +104,7 @@ final class AppModelTests: XCTestCase {
       currentUser: { user }, updateUser: { _ in }
     )
     let settings = SettingsFeature(
-      sessionFeature: session, refreshDebounce: {},
+      sessionFeature: session,
       makeProvider: { AsyncAccountPreferencesProvider(service: MockService()) }
     )
     let discovery = DiscoveryFeature(provider: NoRequestDiscoveryProvider(), sessionFeature: session)

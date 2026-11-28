@@ -73,7 +73,6 @@ public final class MessagesViewModel {
     let session = messagingFeature.sessionFeature
     let userID = session.currentUser?.id
     let generation = session.generation
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.threadTask = Task { [weak self] in
       defer { if let self, self.threadVersion == version { self.threadTask = nil } }
       do {
@@ -82,8 +81,6 @@ public final class MessagesViewModel {
         case let .left(backing): result = try await messagingFeature.fetchMessageThread(backing: backing)
         case let .right(thread): result = try await messagingFeature.fetchMessageThread(id: thread.id)
         }
-        if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-        else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
         try Task.checkCancellation()
         guard let self, self.threadVersion == version,
               session.isCurrent(userID: userID, generation: generation) else { return }
@@ -175,14 +172,9 @@ public final class MessagesViewModel {
     let userID = session.currentUser?.id
     let generation = session.generation
     let request = self.discussionFeature.startDiscussionUserBlock(id: id)
-    let delay = AppEnvironment.current.apiDelayInterval.searchDelaySeconds
     self.blockTask = Task { [weak self] in
       let outcome = await request.result
-      do {
-        if delay.isInfinite { try await Task.sleep(nanoseconds: UInt64.max) }
-        else if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
-        try Task.checkCancellation()
-      } catch { return }
+      guard !Task.isCancelled else { return }
       guard let self, self.blockVersion == version, session.isCurrent(userID: userID, generation: generation) else { return }
       switch outcome {
       case .success:

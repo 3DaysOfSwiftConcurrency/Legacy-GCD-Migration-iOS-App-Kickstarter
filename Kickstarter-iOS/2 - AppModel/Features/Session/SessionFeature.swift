@@ -46,7 +46,6 @@ public final class SessionFeature {
   }
 
   private let makeProvider: () -> any SessionProvider
-  private let deviceRegistrationDebounce: @MainActor () async throws -> Void
   private var deviceRegistrationDebounceTask: (id: UUID, task: Task<Void, Never>)?
   private var deviceRegistrationDeliveryTask: (id: UUID, task: Task<Void, Never>)?
   private var latestQueuedDeviceRegistration: (
@@ -66,11 +65,9 @@ public final class SessionFeature {
 
   init(
     makeProvider: @escaping () -> any SessionProvider,
-    deviceRegistrationDebounce: @escaping @MainActor () async throws -> Void,
     storage: Storage
   ) {
     self.makeProvider = makeProvider
-    self.deviceRegistrationDebounce = deviceRegistrationDebounce
     self.storage = storage
   }
 
@@ -89,7 +86,6 @@ public final class SessionFeature {
   func scheduleDeviceRegistration(for deviceToken: Data, onRegistered: @escaping @MainActor (String) -> Void) {
     self.deviceRegistrationDebounceTask?.task.cancel()
     let token = deviceToken.map { String(format: "%02.2hhx", $0 as CVarArg) }.joined()
-    let debounce = self.deviceRegistrationDebounce
     let generation = self.generation
     let userID = self.currentUser?.id
     let id = UUID()
@@ -98,7 +94,7 @@ public final class SessionFeature {
         if self?.deviceRegistrationDebounceTask?.id == id { self?.deviceRegistrationDebounceTask = nil }
       }
       do {
-        try await debounce()
+        try await Task.sleep(for: .seconds(5))
         try Task.checkCancellation()
         guard let self, self.isCurrentDeviceRegistration(userID: userID, generation: generation) else { return }
         self.deviceRegistrationDeliveryTask?.task.cancel()

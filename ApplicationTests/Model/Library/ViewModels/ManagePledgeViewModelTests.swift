@@ -8,56 +8,13 @@ import XCTest
 
 
 @MainActor
-private final class ManagePledgeTestClock {
-  private var now: TimeInterval = 0
-  private struct ScheduledAction {
-    let time: TimeInterval
-    let action: @MainActor @Sendable () -> Void
-    let cancelled: OSAllocatedUnfairLock<Bool>
-  }
-
-  private var actions: [ScheduledAction] = []
-  var pendingCount: Int { self.actions.filter { !$0.cancelled.withLock { $0 } }.count }
-
-  func schedule(_ delay: TimeInterval, action: @escaping @MainActor @Sendable () -> Void) -> (@Sendable () -> Void) {
-    let cancelled = OSAllocatedUnfairLock(initialState: false)
-    self.actions.append(.init(time: self.now + max(0, delay), action: action, cancelled: cancelled))
-    return { cancelled.withLock { $0 = true } }
-  }
-
-  func advance(by interval: TimeInterval) {
-    let target = self.now + interval
-    while let index = self.actions.indices.filter({ self.actions[$0].time <= target })
-      .min(by: { self.actions[$0].time < self.actions[$1].time }) {
-      let scheduled = self.actions.remove(at: index)
-      self.now = scheduled.time
-      if !scheduled.cancelled.withLock({ $0 }) { scheduled.action() }
-    }
-    self.now = target
-  }
-
-  func run() {
-    while let next = actions.map(\.time).min() { advance(by: max(0, next - now)) }
-  }
-}
-
-@MainActor
 internal final class ManagePledgeViewModelTests: TestCase {
-  private func advancePledges(by interval: DispatchTimeInterval = .seconds(0)) async {
+  private func advancePledges() async {
     await self.pledgeFeature.waitForPledgeOperations()
-    await (self.vm as? ManagePledgeViewModel)?.waitForReads()
-    self.clock.advance(by: interval.searchDelaySeconds)
-    await self.pledgeFeature.waitForPledgeOperations()
-    await (self.vm as? ManagePledgeViewModel)?.waitForReads()
-    self.clock.advance(by: 0)
+    await (self.vm as? ManagePledgeViewModel)?.waitForInFlightLoads()
   }
   private func runPledges() async {
-    await self.pledgeFeature.waitForPledgeOperations()
-    await (self.vm as? ManagePledgeViewModel)?.waitForReads()
-    self.clock.run()
-    await self.pledgeFeature.waitForPledgeOperations()
-    await (self.vm as? ManagePledgeViewModel)?.waitForReads()
-    self.clock.run()
+    await self.advancePledges()
   }
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let sessionFeature = SessionFeature(makeProvider: { AsyncSessionProvider(service: MockService()) })
@@ -81,16 +38,13 @@ internal final class ManagePledgeViewModelTests: TestCase {
       AppEnvironment.current.applePayCapabilities.canMakeApplePayPayment(
         for: $0, launchedCountries: AppEnvironment.current.launchedCountries
       )
-    },
-    responseDelaySeconds: { AppEnvironment.current.apiDelayInterval.searchDelaySeconds }
+    }
   )
   private var vm: ManagePledgeViewModelType!
-  private let clock = ManagePledgeTestClock()
 
   private let configurePaymentMethodView = ManagePledgeRecorder<ManagePledgePaymentMethodViewData>()
   private let configurePledgeSummaryView = ManagePledgeRecorder<ManagePledgeSummaryViewData>()
   private let configurePlotPaymentScheduleView = ManagePledgeRecorder<[PledgePaymentIncrement]>()
-  private let endRefreshing = ManagePledgeRecorder<Void>()
   private let goToCancelPledge = ManagePledgeRecorder<CancelPledgeViewData>()
   private let goToChangePaymentMethod = ManagePledgeRecorder<PledgeViewData>()
   private let goToContactCreatorSubject = ManagePledgeRecorder<MessageSubject>()
@@ -115,11 +69,7 @@ internal final class ManagePledgeViewModelTests: TestCase {
     try await super.setUp()
     MainActor.assumeIsolated {
 
-      self.vm = ManagePledgeViewModel(
-        pledgeFeature: self.pledgeFeature,
-        paymentsFeature: self.paymentsFeature,
-        schedule: { [clock] delay, action in clock.schedule(delay, action: action) }
-      )
+      self.vm = ManagePledgeViewModel(pledgeFeature: self.pledgeFeature, paymentsFeature: self.paymentsFeature)
 
       self.vm.outputs.onContactCreator = { [weak self] a, b in self?.goToContactCreatorSubject.record(a); self?.goToContactCreatorContext.record(b) }
       self.vm.outputs.onLoadProjectAndRewards = { [weak self] a, b in self?.loadProjectAndRewardsIntoDataSourceProject.record(a); self?.loadProjectAndRewardsIntoDataSourceReward.record(b) }
@@ -127,7 +77,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.outputs.onPaymentMethod = { [weak self] in self?.configurePaymentMethodView.record($0) }
       self.vm.outputs.onPledgeSummary = { [weak self] in self?.configurePledgeSummaryView.record($0) }
       self.vm.outputs.onLoadRefreshHeader = { [weak self] in self?.loadPullToRefreshHeaderView.record(()) }
-      self.vm.outputs.onEndRefreshing = { [weak self] in self?.endRefreshing.record(()) }
       self.vm.outputs.onCancelPledge = { [weak self] in self?.goToCancelPledge.record($0) }
       self.vm.outputs.onChangePaymentMethod = { [weak self] in self?.goToChangePaymentMethod.record($0) }
       self.vm.outputs.onFixPaymentMethod = { [weak self] in self?.goToFixPaymentMethod.record($0) }
@@ -236,26 +185,7 @@ internal final class ManagePledgeViewModelTests: TestCase {
     }
   }
 
-  func testSessionReplacementDropsReadResultsAlreadyQueuedForPresentation() async {
-    let service = MockService(
-      fetchManagePledgeViewBackingResult: .success(.template),
-      fetchProjectResult: .success(.template),
-      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
-    )
-    await withEnvironment(apiService: service, currentUser: .template) {
-      self.vm.inputs.configureWith((.slug("project-slug"), .id(1)))
-      self.vm.inputs.viewDidLoad()
-      let model = self.vm as? ManagePledgeViewModel
-      await model?.waitForReads()
-      self.sessionFeature.sessionChanged()
-      self.clock.run()
-      self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
-      self.configurePaymentMethodView.assertDidNotEmitValue()
-      self.endRefreshing.assertDidNotEmitValue()
-    }
-  }
-
-  func testRouteReplacementCancelsAllPendingPresentation() async {
+  func testRouteReplacementReloadsWithoutStaleActions() async {
     let service = MockService(
       fetchManagePledgeViewBackingResult: .success(.template),
       fetchProjectResult: .success(.template),
@@ -265,39 +195,13 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.configureWith((.slug("original"), .id(1)))
       self.vm.inputs.viewDidLoad()
       await self.advancePledges()
-      XCTAssertEqual(self.clock.pendingCount, 1, "The previous backing queued refresh completion")
 
       self.vm.inputs.beginRefresh()
-      await (self.vm as? ManagePledgeViewModel)?.waitForReads()
-      XCTAssertEqual(self.clock.pendingCount, 2, "Refresh completion and the new backing are pending")
+      await (self.vm as? ManagePledgeViewModel)?.waitForInFlightLoads()
 
       self.vm.inputs.configureWith((.slug("replacement"), .id(2)))
-      XCTAssertEqual(self.clock.pendingCount, 0)
-      self.clock.advance(by: 0.3)
-      self.endRefreshing.assertDidNotEmitValue()
 
       await self.runPledges()
-      self.endRefreshing.assertValueCount(1)
-    }
-  }
-
-  func testReleasingTheViewModelCancelsPendingPresentation() async {
-    let service = MockService(
-      fetchManagePledgeViewBackingResult: .success(.template),
-      fetchProjectResult: .success(.template),
-      fetchProjectRewardsAndPledgeOverTimeDataResult: .success(self.rewardsAndPledgeOverTimeEnvelope())
-    )
-    await withEnvironment(apiService: service, currentUser: .template) {
-      self.vm.inputs.configureWith((.slug("project"), .id(1)))
-      self.vm.inputs.viewDidLoad()
-      await (self.vm as? ManagePledgeViewModel)?.waitForReads()
-      XCTAssertEqual(self.clock.pendingCount, 2)
-
-      self.vm = nil
-      XCTAssertEqual(self.clock.pendingCount, 0)
-      self.clock.run()
-      self.configurePaymentMethodView.assertDidNotEmitValue()
-      self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
     }
   }
 
@@ -1408,7 +1312,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
     await withEnvironment(apiService: mockService) {
       self.startRefreshing.assertDidNotEmitValue()
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertDidNotEmitValue()
@@ -1419,7 +1322,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.viewDidLoad()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertValues([true])
@@ -1430,7 +1332,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertValueCount(1, "Refreshing ends after project fails")
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertValues([true])
@@ -1461,7 +1362,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
         self.vm.inputs.beginRefresh()
 
         self.startRefreshing.assertValueCount(2)
-        self.endRefreshing.assertValueCount(1)
         self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
         self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
         self.rightBarButtonItemHidden.assertValues([true])
@@ -1474,7 +1374,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
         await self.advancePledges()
 
         self.startRefreshing.assertValueCount(2)
-        self.endRefreshing.assertValueCount(1, "Does not end refreshing, fetching backing")
         self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
         self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
         self.rightBarButtonItemHidden.assertValues([true, false])
@@ -1483,11 +1382,10 @@ internal final class ManagePledgeViewModelTests: TestCase {
         ])
         self.loadPullToRefreshHeaderView.assertValueCount(2)
 
-        // endRefreshing is delayed by 300ms for animation duration
-        await self.advancePledges(by: .milliseconds(300))
+        // ViewModel completion is immediate; the refresh control owns presentation timing
+        await self.advancePledges()
 
         self.startRefreshing.assertValueCount(2)
-        self.endRefreshing.assertValueCount(3, "Ends refreshing for project and backing")
         self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
         self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
         self.rightBarButtonItemHidden.assertValues([true, false])
@@ -1516,7 +1414,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
     await withEnvironment(apiService: mockService) {
       self.startRefreshing.assertDidNotEmitValue()
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertDidNotEmitValue()
@@ -1527,7 +1424,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.viewDidLoad()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertValues([true])
@@ -1538,18 +1434,16 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertValues([true])
       self.showErrorBannerWithMessage.assertValues(["Something went wrong, please try again."])
       self.loadPullToRefreshHeaderView.assertValueCount(1)
 
-      // endRefreshing is delayed by 300ms for animation duration
-      await self.advancePledges(by: .milliseconds(300))
+      // ViewModel completion is immediate; the refresh control owns presentation timing
+      await self.advancePledges()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertValueCount(1)
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertValues([true])
@@ -1573,7 +1467,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
         self.vm.inputs.beginRefresh()
 
         self.startRefreshing.assertValueCount(2)
-        self.endRefreshing.assertValueCount(1)
         self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
         self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
         self.rightBarButtonItemHidden.assertValues([true])
@@ -1584,18 +1477,16 @@ internal final class ManagePledgeViewModelTests: TestCase {
         await self.advancePledges()
 
         self.startRefreshing.assertValueCount(2)
-        self.endRefreshing.assertValueCount(1)
         self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
         self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
         self.rightBarButtonItemHidden.assertValues([true, false])
         self.showErrorBannerWithMessage.assertValues(["Something went wrong, please try again."])
         self.loadPullToRefreshHeaderView.assertValueCount(1)
 
-        // endRefreshing is delayed by 300ms for animation duration
-        await self.advancePledges(by: .milliseconds(300))
+        // ViewModel completion is immediate; the refresh control owns presentation timing
+        await self.advancePledges()
 
         self.startRefreshing.assertValueCount(2)
-        self.endRefreshing.assertValueCount(2)
         self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
         self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
         self.rightBarButtonItemHidden.assertValues([true, false])
@@ -1626,7 +1517,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
     await withEnvironment(apiService: mockService) {
       self.startRefreshing.assertDidNotEmitValue()
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertDidNotEmitValue()
@@ -1637,7 +1527,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.viewDidLoad()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertValues([true])
@@ -1648,18 +1537,16 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
       self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
       self.rightBarButtonItemHidden.assertValues([true, false])
       self.showErrorBannerWithMessage.assertDidNotEmitValue()
       self.loadPullToRefreshHeaderView.assertDidNotEmitValue()
 
-      // endRefreshing is delayed by 300ms for animation duration
-      await self.advancePledges(by: .milliseconds(300))
+      // ViewModel completion is immediate; the refresh control owns presentation timing
+      await self.advancePledges()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertValueCount(1)
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
       self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
       self.rightBarButtonItemHidden.assertValues([true, false])
@@ -1670,7 +1557,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.pledgeViewControllerDidUpdatePledgeWithMessage("Updated")
 
       self.startRefreshing.assertValueCount(2)
-      self.endRefreshing.assertValueCount(1)
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
       self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
       self.rightBarButtonItemHidden.assertValues([true, false])
@@ -1681,7 +1567,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.startRefreshing.assertValueCount(2)
-      self.endRefreshing.assertValueCount(1)
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([
         project, project,
       ])
@@ -1692,11 +1577,10 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.showErrorBannerWithMessage.assertDidNotEmitValue()
       self.loadPullToRefreshHeaderView.assertDidNotEmitValue()
 
-      // endRefreshing is delayed by 300ms for animation duration
-      await self.advancePledges(by: .milliseconds(300))
+      // ViewModel completion is immediate; the refresh control owns presentation timing
+      await self.advancePledges()
 
       self.startRefreshing.assertValueCount(2)
-      self.endRefreshing.assertValueCount(2)
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([
         project, project,
       ])
@@ -1714,7 +1598,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.startRefreshing.assertValueCount(3)
-      self.endRefreshing.assertValueCount(2)
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues(
         [project, project, project]
       )
@@ -1725,11 +1608,10 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.showErrorBannerWithMessage.assertDidNotEmitValue()
       self.loadPullToRefreshHeaderView.assertDidNotEmitValue()
 
-      // endRefreshing is delayed by 300ms for animation duration
-      await self.advancePledges(by: .milliseconds(300))
+      // ViewModel completion is immediate; the refresh control owns presentation timing
+      await self.advancePledges()
 
       self.startRefreshing.assertValueCount(3)
-      self.endRefreshing.assertValueCount(3)
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues(
         [project, project, project]
       )
@@ -1753,7 +1635,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
         self.vm.inputs.beginRefresh()
 
         self.startRefreshing.assertValueCount(4)
-        self.endRefreshing.assertValueCount(3)
         self.loadProjectAndRewardsIntoDataSourceProject.assertValues(
           [project, project, project]
         )
@@ -1768,7 +1649,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
         await self.advancePledges()
 
         self.startRefreshing.assertValueCount(4)
-        self.endRefreshing.assertValueCount(3)
         self.loadProjectAndRewardsIntoDataSourceProject.assertValues(
           [project, project, project]
         )
@@ -1779,11 +1659,10 @@ internal final class ManagePledgeViewModelTests: TestCase {
         self.showErrorBannerWithMessage.assertValues(["Something went wrong, please try again."])
         self.loadPullToRefreshHeaderView.assertDidNotEmitValue()
 
-        // endRefreshing is delayed by 300ms for animation duration
-        await self.advancePledges(by: .milliseconds(300))
+        // ViewModel completion is immediate; the refresh control owns presentation timing
+        await self.advancePledges()
 
         self.startRefreshing.assertValueCount(4)
-        self.endRefreshing.assertValueCount(4, "End refresh on errors")
         self.loadProjectAndRewardsIntoDataSourceProject.assertValues(
           [project, project, project]
         )
@@ -1820,7 +1699,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
 
     await withEnvironment(apiService: mockService) {
       self.startRefreshing.assertDidNotEmitValue()
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertDidNotEmitValue()
@@ -1831,7 +1709,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.viewDidLoad()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceReward.assertDidNotEmitValue()
       self.rightBarButtonItemHidden.assertValues([true])
@@ -1842,7 +1719,6 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
       self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
       self.rightBarButtonItemHidden.assertValues([true, false])
@@ -1853,18 +1729,16 @@ internal final class ManagePledgeViewModelTests: TestCase {
       await self.advancePledges()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertDidNotEmitValue()
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
       self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
       self.rightBarButtonItemHidden.assertValues([true, false])
       self.showErrorBannerWithMessage.assertDidNotEmitValue()
       self.loadPullToRefreshHeaderView.assertDidNotEmitValue()
 
-      // endRefreshing is delayed by 300ms for animation duration
-      await self.advancePledges(by: .milliseconds(300))
+      // ViewModel completion is immediate; the refresh control owns presentation timing
+      await self.advancePledges()
 
       self.startRefreshing.assertValueCount(1)
-      self.endRefreshing.assertValueCount(1)
       self.loadProjectAndRewardsIntoDataSourceProject.assertValues([project])
       self.loadProjectAndRewardsIntoDataSourceReward.assertValues([[reward]])
       self.rightBarButtonItemHidden.assertValues([true, false])
@@ -2166,7 +2040,7 @@ internal final class ManagePledgeViewModelTests: TestCase {
       self.vm.inputs.viewDidLoad()
 
       await self.advancePledges()
-      await self.advancePledges(by: .milliseconds(300))
+      await self.advancePledges()
 
       guard
         let pledgeDisclaimerViewHidden = self.configurePledgeSummaryView.lastValue?

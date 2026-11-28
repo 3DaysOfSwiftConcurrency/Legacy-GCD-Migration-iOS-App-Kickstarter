@@ -116,6 +116,46 @@ scoped SDK/locked adapters, not blanket Sendable conformances on domain data.
 - Live Stripe/Apple Pay/3DS, authenticated account/backing mutations, APNs and other
   live-service journeys remain unverified. No live payment was performed.
 
+## High-priority test-design finding — production timing must not create test states
+
+The migration found test-oriented response delays wired into production composition.
+This is a serious test-design fault: it changes the timing of the product in order to
+make an intermediate state easier to observe. Such a test does not reliably verify
+the product as users experience it.
+
+Snapshot testing remains useful when it captures a known, settled semantic state. The
+current suite contains weaker patterns: a global test-response delay, snapshots taken
+without an explicit ready condition, and historical reference images representing a
+transient state rather than the final UI. The Manage Pledge errored-backing snapshot
+is a concrete example: the old reference showed a reward-received switch even though
+the settled errored-backing rule hides it.
+
+### Search debounce defect
+
+Search exposes a separately named `debounceSeconds` policy, which should prevent
+requests while a person is still typing. However, the current request flow calls
+`provider.fetchPage(...)` first and only applies the debounce after the provider has
+returned. It therefore delays result presentation rather than request admission: a
+five-character query can still begin five requests. The same post-response path also
+combines this intended debounce with the global test-oriented API delay.
+
+The required behaviour is: cancel the prior pending search, wait until typing has
+paused, start one request, then apply that request's settled success or error result
+without an unrelated response pause. This is both a product-performance concern and
+a clear example of why timing purpose and ownership must be explicit.
+
+Priority corrective standard:
+
+- A test controls its fake provider's completion; it does not slow production request
+  or response delivery.
+- A presentation snapshot awaits a named semantic readiness condition, then forces
+  layout before capture.
+- Intentional UI timings are local and named by their visible purpose. They are tested
+  with a zero-duration configuration and completion/task observation, never a real
+  elapsed-time sleep.
+- A separate snapshot is required for an intentional transitional or scrolled state;
+  it must not be accidentally captured as the normal settled screen.
+
 ## Timing and model provenance
 
 Earliest supported preparation milestone: **26 October 2026, 14:18:04+07:00**, baseline

@@ -24,7 +24,6 @@ final class CommentDialogViewModel {
 
   var onEvent: ((Event) -> Void)?
   private let discussionFeature: DiscussionFeature
-  private let sleep: @MainActor () async throws -> Void
   private var data: CommentDialogData?
   private var activeData: CommentDialogData?
   private var currentUser: User?
@@ -32,11 +31,8 @@ final class CommentDialogViewModel {
   private var enabled: Bool?
   private var postTask: Task<Void, Never>?
 
-  init(feature: DiscussionFeature, sleep: @escaping @MainActor () async throws -> Void = {
-    try await Task.sleep(for: .seconds(1))
-  }) {
+  init(feature: DiscussionFeature) {
     self.discussionFeature = feature
-    self.sleep = sleep
   }
 
   func configureWith(project: Project, update: Update?, recipientName: String?, context: KSRAnalytics.CommentDialogContext) {
@@ -75,13 +71,11 @@ final class CommentDialogViewModel {
     )
     self.onEvent?(.loadingHidden(false))
     self.publishEnabled(false)
-    let sleep = self.sleep
     self.postTask = Task { [weak self] in
       let result: Result<Comment, Error>
       do {
         result = .success(try await submission.postTask.value)
       } catch { result = .failure(error) }
-      do { try await sleep() } catch { return }
       guard !Task.isCancelled, let self,
             feature.sessionFeature.isCurrent(userID: userID, generation: sessionID) else { return }
       switch result {
@@ -94,8 +88,6 @@ final class CommentDialogViewModel {
       self.onEvent?(.loadingHidden(true))
       self.publishEnabled(true)
     }
-    self.onEvent?(.posted(submission.comment))
-    self.onEvent?(.dismiss)
   }
 
   func waitForMutations() async { await self.postTask?.value }

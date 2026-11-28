@@ -41,7 +41,6 @@ final class PledgePaymentMethodsViewController: UIViewController {
   private init(composition: PledgeCheckoutComposition) {
     self.viewModel = PledgePaymentMethodsViewModel(
       paymentsFeature: composition.paymentsFeature,
-      responseDelay: composition.responseDelay,
       advertisingContext: composition.advertisingContext
     )
     super.init(nibName: nil, bundle: nil)

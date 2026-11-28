@@ -10,7 +10,7 @@ internal final class CommentsViewModelTests: TestCase {
   override var requiresSnapshotReferenceSimulator: Bool { false }
   private let vm = CommentsViewModel(discussionFeature: DiscussionFeature(platform: .live(), sessionFeature: SessionFeature(makeProvider: { AsyncSessionProvider(service: AppEnvironment.current.apiService) }), makeProvider: {
     AsyncDiscussionProvider(service: AppEnvironment.current.apiService)
-  }, sleep: { _ in try Task.checkCancellation() }))
+  }))
 
   private let beginOrEndRefreshing = CommentsRecorder<Bool>()
   private let cellSeparatorHidden = CommentsRecorder<Bool>()
