@@ -6116,7 +6116,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Classify the next smallest UIKit screen responsibility, preserving explicit feature injection and leaving renderer replacement until the relevant controller has no workflow or app-graph reach-through.",
+  "nextAction": "Use the verified SelectCurrency pattern to classify and explicitly extract the next smallest swizzle-dependent controller lifecycle before any SwiftUI renderer replacement.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6574,6 +6574,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Removed SelectCurrency’s direct AppModel reach-through by composing it from SettingsAccount’s injected SettingsFeature.",
       "result": "SelectCurrency now receives its ViewModel dependency explicitly from its navigation owner; the recovered focused test cycle passed 3 tests, and no UIKit renderer was replaced."
+    },
+    {
+      "action": "Made SelectCurrency controller and header lifecycle setup explicit instead of relying on the global bindViewModel/bindStyles swizzle.",
+      "result": "SelectCurrency and its header now set up bindings/styles in viewDidLoad and refresh styles explicitly for trait changes; the focused cycle passed 3 tests."
     }
   ],
   "blocker": null,

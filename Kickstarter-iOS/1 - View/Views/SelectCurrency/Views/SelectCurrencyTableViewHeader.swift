@@ -11,6 +11,8 @@ final class SelectCurrencyTableViewHeader: UIView {
     _ = (self.headerStackView, self)
       |> ksr_addSubviewToParent()
       |> ksr_constrainViewToEdgesInParent()
+
+    self.applyStyles()
   }
 
   @available(*, unavailable)
@@ -18,9 +20,12 @@ final class SelectCurrencyTableViewHeader: UIView {
     fatalError("init(coder:) has not been implemented")
   }
 
-  override func bindStyles() {
-    super.bindStyles()
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
 
+  private func applyStyles() {
     _ = self.headerImageView
       |> \.contentMode .~ .scaleAspectFill
 

@@ -61,6 +61,8 @@ final class SelectCurrencyViewController: UIViewController, MessageBannerViewCon
     let navigationBarButton = LoadingBarButtonItemView.uiBarButtonItem(for: self.saveButtonView)
     self.navigationItem.setRightBarButton(navigationBarButton, animated: false)
 
+    self.applyStyles()
+    self.configureBindings()
     self.observeSaveState()
     self.viewModel.viewDidLoad()
   }
@@ -71,9 +73,12 @@ final class SelectCurrencyViewController: UIViewController, MessageBannerViewCon
     self.tableView.ksr_sizeHeaderFooterViewsToFit()
   }
 
-  override func bindStyles() {
-    super.bindStyles()
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
 
+  private func applyStyles() {
     _ = self.tableView
       |> settingsTableViewStyle
       |> \.separatorStyle .~ .singleLine
@@ -87,9 +92,7 @@ final class SelectCurrencyViewController: UIViewController, MessageBannerViewCon
       }
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
-
+  private func configureBindings() {
     self.viewModel.onFailure = { [weak self] error in
       self?.messageBannerViewController?.showBanner(with: .error, message: error)
     }
