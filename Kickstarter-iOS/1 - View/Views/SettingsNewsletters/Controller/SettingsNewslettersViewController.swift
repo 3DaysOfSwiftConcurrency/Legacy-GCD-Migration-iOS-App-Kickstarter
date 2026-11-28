@@ -6,24 +6,26 @@ import UIKit
 
 internal final class SettingsNewslettersViewController: UIViewController {
   private var settingsFeature: SettingsFeature!
+  private var sessionFeature: SessionFeature!
   fileprivate lazy var dataSource = SettingsNewslettersDataSource(settingsFeature: self.settingsFeature)
   fileprivate lazy var viewModel = SettingsNewslettersViewModel(
     settingsFeature: self.settingsFeature,
-    sessionFeature: AppModel.shared.sessionFeature
+    sessionFeature: self.sessionFeature
   )
 
   @IBOutlet fileprivate var tableView: UITableView!
 
-  internal static func instantiate(settingsFeature: SettingsFeature) -> SettingsNewslettersViewController {
+  internal static func instantiate(
+    settingsFeature: SettingsFeature, sessionFeature: SessionFeature
+  ) -> SettingsNewslettersViewController {
     let viewController = Storyboard.SettingsNewsletters.instantiate(SettingsNewslettersViewController.self)
     viewController.settingsFeature = settingsFeature
+    viewController.sessionFeature = sessionFeature
     return viewController
   }
 
   override func viewDidLoad() {
     super.viewDidLoad()
-
-    self.viewModel.viewDidLoad()
 
     self.tableView.register(nib: .SettingsNewslettersTopCell)
     self.tableView.register(nib: .SettingsNewslettersCell)
@@ -31,11 +33,17 @@ internal final class SettingsNewslettersViewController: UIViewController {
     self.tableView.delegate = self
     self.tableView.tableHeaderView = nil
     self.tableView.tableFooterView = nil
+    self.applyStyles()
+    self.configureBindings()
+    self.viewModel.viewDidLoad()
   }
 
-  override func bindStyles() {
-    super.bindStyles()
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
 
+  private func applyStyles() {
     _ = self.view
       |> \.backgroundColor .~ LegacyColors.ksr_support_100.uiColor()
 
@@ -48,9 +56,7 @@ internal final class SettingsNewslettersViewController: UIViewController {
     self.title = Strings.Newsletters()
   }
 
-  override func bindViewModel() {
-    super.bindViewModel()
-
+  private func configureBindings() {
     self.viewModel.onUser = { [weak self] user in
       self?.dataSource.load(newsletters: Newsletter.allCases, user: user)
       self?.tableView.reloadData()

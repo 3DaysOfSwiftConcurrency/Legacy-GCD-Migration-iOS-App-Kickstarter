@@ -6594,6 +6594,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Made SettingsNotifications controller lifecycle setup explicit instead of relying on global bindViewModel/bindStyles swizzling.",
       "result": "SettingsNotifications now configures bindings/styles in viewDidLoad and refreshes styles explicitly for trait changes; its focused regression cycle passed 7 tests."
+    },
+    {
+      "action": "Removed SettingsNewsletters’s direct AppModel session reach-through and made its controller lifecycle explicit.",
+      "result": "SettingsNewsletters now receives both SettingsFeature and SessionFeature directly from SettingsComposition, configures bindings and styles in viewDidLoad, and refreshes styles explicitly for trait changes; focused regression cycle passed 7 tests with 0 failures and test-host integrity passed."
     }
   ],
   "blocker": null,
@@ -6605,8 +6609,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "active": {
       "token": "5a5da34c-893f-4767-8540-38a383caeb8c",
       "claimedAt": "2026-11-28T12:01:46.923Z",
-      "heartbeatAt": "2026-11-28T12:11:00.005Z",
-      "expiresAt": "2026-11-28T12:41:00.005Z"
+      "heartbeatAt": "2026-11-28T12:18:22.743Z",
+      "expiresAt": "2026-11-28T12:48:22.743Z"
     }
   }
 }

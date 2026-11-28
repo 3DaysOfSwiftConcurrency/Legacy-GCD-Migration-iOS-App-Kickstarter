@@ -291,15 +291,18 @@ public struct FindFriendsComposition {
 
 public struct SettingsComposition {
   public let settingsFeature: SettingsFeature
+  public let sessionFeature: SessionFeature
   public let findFriends: FindFriendsComposition
   public let notifications: SettingsNotificationsComposition
 
   public init(
     settingsFeature: SettingsFeature,
+    sessionFeature: SessionFeature,
     findFriends: FindFriendsComposition,
     notifications: SettingsNotificationsComposition
   ) {
     self.settingsFeature = settingsFeature
+    self.sessionFeature = sessionFeature
     self.findFriends = findFriends
     self.notifications = notifications
   }
@@ -510,6 +513,7 @@ public final class AppModel {
   public var settingsComposition: SettingsComposition {
     SettingsComposition(
       settingsFeature: self.settingsFeature,
+      sessionFeature: self.sessionFeature,
       findFriends: self.findFriendsComposition,
       notifications: self.settingsNotificationsComposition
     )

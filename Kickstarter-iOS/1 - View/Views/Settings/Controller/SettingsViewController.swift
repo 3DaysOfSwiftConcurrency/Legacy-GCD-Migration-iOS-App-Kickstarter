@@ -211,7 +211,8 @@ extension SettingsViewController {
       )
     case .newsletters:
       return SettingsNewslettersViewController.instantiate(
-        settingsFeature: self.composition.settingsFeature
+        settingsFeature: self.composition.settingsFeature,
+        sessionFeature: self.composition.sessionFeature
       )
     case .notifications:
       return SettingsNotificationsViewController.instantiate(
