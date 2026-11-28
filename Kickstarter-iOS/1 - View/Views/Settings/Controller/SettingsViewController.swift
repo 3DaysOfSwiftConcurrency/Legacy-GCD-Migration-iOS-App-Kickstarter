@@ -39,12 +39,17 @@ final class SettingsViewController: UIViewController {
         self?.viewModel.currentUserUpdated()
       }
 
+    self.applyStyles()
+    self.configureBindings()
     self.viewModel.viewDidLoad()
   }
 
-  override func bindStyles() {
-    super.bindStyles()
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
 
+  private func applyStyles() {
     _ = self
       |> settingsViewControllerStyle
       |> UIViewController.lens.title %~ { _ in Strings.profile_buttons_settings() }
@@ -54,7 +59,7 @@ final class SettingsViewController: UIViewController {
       |> settingsTableViewSeparatorStyle
   }
 
-  override func bindViewModel() {
+  private func configureBindings() {
     self.viewModel.onReload = { [weak self] user in
       self?.dataSource.configureRows(with: user)
       self?.tableView.reloadData()
