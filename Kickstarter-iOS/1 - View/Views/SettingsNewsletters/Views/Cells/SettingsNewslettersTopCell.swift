@@ -48,9 +48,17 @@ internal final class SettingsNewslettersTopCell: UITableViewCell, ValueCell {
     if let isOn = viewModel.subscribeToAllSwitchIsOn { self.newsletterSwitch.isOn = isOn }
   }
 
-  override func bindStyles() {
-    super.bindStyles()
+  override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    self.applyStyles()
+  }
 
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
+
+  private func applyStyles() {
     _ = self.contentView
       |> \.backgroundColor .~ LegacyColors.ksr_support_100.uiColor()
 
