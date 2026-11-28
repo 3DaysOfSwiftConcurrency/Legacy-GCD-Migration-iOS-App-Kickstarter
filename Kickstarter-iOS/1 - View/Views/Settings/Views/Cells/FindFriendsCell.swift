@@ -20,9 +20,17 @@ final class FindFriendsCell: UITableViewCell, ValueCell, NibLoading {
     }
   }
 
-  override func bindStyles() {
-    super.bindStyles()
+  override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    self.applyStyles()
+  }
 
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
+  }
+
+  private func applyStyles() {
     _ = self.titleLabel
       |> settingsTitleLabelStyle
       |> \.text .~ SettingsCellType.findFriends.title

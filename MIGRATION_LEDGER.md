@@ -6602,6 +6602,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Removed SettingsViewController’s global swizzle lifecycle dependency.",
       "result": "Settings navigation now configures styles and bindings explicitly in viewDidLoad and refreshes styles explicitly for trait changes; existing navigation, logout presentation, and transitions remain unchanged. Focused regression cycle passed 7 tests with 0 failures and test-host integrity passed."
+    },
+    {
+      "action": "Removed Settings screen supporting views’ global style-hook dependencies.",
+      "result": "Settings header, footer, and Find Friends cell now apply their existing styles directly when added to the hierarchy and on trait changes; configuration and accessibility behavior remain unchanged. Focused Settings data-source and view-model regression cycle passed 9 tests with 0 failures and test-host integrity passed."
     }
   ],
   "blocker": null,
@@ -6613,8 +6617,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "active": {
       "token": "5a5da34c-893f-4767-8540-38a383caeb8c",
       "claimedAt": "2026-11-28T12:01:46.923Z",
-      "heartbeatAt": "2026-11-28T12:21:06.585Z",
-      "expiresAt": "2026-11-28T12:51:06.585Z"
+      "heartbeatAt": "2026-11-28T12:24:25.125Z",
+      "expiresAt": "2026-11-28T12:54:25.125Z"
     }
   }
 }
