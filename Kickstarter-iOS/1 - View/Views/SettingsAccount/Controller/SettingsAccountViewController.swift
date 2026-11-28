@@ -34,6 +34,8 @@ final class SettingsAccountViewController: UIViewController, MessageBannerViewCo
     self.tableView.registerHeaderFooter(nib: .SettingsHeaderView)
     self.tableView.registerHeaderFooterClass(SettingsGroupedFooterView.self)
 
+    self.applyStyles()
+    self.configureBindings()
     self.viewModel.viewDidLoad()
   }
 
@@ -49,7 +51,7 @@ final class SettingsAccountViewController: UIViewController, MessageBannerViewCo
     self.tableView.ksr_sizeHeaderFooterViewsToFit()
   }
 
-  override func bindViewModel() {
+  private func configureBindings() {
     self.observeAccountData()
     self.viewModel.onFetchError = { [weak self] in
       self?.dataSource.configureRows(currency: nil, shouldHideEmailWarning: true,
@@ -61,6 +63,11 @@ final class SettingsAccountViewController: UIViewController, MessageBannerViewCo
       guard let viewController = self?.viewController(for: cellType, currency: currency) else { return }
       self?.navigationController?.pushViewController(viewController, animated: true)
     }
+  }
+
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    self.applyStyles()
   }
 
   private func observeAccountData() {
@@ -77,9 +84,7 @@ final class SettingsAccountViewController: UIViewController, MessageBannerViewCo
     }
   }
 
-  override func bindStyles() {
-    super.bindStyles()
-
+  private func applyStyles() {
     _ = self
       |> settingsViewControllerStyle
       |> UIViewController.lens.title %~ { _ in Strings.Account() }
