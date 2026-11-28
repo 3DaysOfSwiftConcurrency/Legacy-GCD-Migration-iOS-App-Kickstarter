@@ -58,7 +58,7 @@ final class SettingsAccountViewController: UIViewController, MessageBannerViewCo
       self?.showGeneralError()
     }
     self.viewModel.onSelect = { [weak self] cellType, currency in
-      guard let viewController = Self.viewController(for: cellType, currency: currency) else { return }
+      guard let viewController = self?.viewController(for: cellType, currency: currency) else { return }
       self?.navigationController?.pushViewController(viewController, animated: true)
     }
   }
@@ -172,7 +172,7 @@ extension SettingsAccountViewController: UITableViewDelegate {
 }
 
 extension SettingsAccountViewController {
-  static func viewController(for cellType: SettingsAccountCellType, currency: Currency) -> UIViewController? {
+  private func viewController(for cellType: SettingsAccountCellType, currency: Currency) -> UIViewController? {
     switch cellType {
     case .createPassword:
       return CreatePasswordViewController.instantiate()
@@ -186,7 +186,7 @@ extension SettingsAccountViewController {
     case .privacy:
       return SettingsPrivacyViewController.instantiate()
     case .currency:
-      let vc = SelectCurrencyViewController.instantiate()
+      let vc = SelectCurrencyViewController.instantiate(settingsFeature: self.settingsFeature)
       vc.configure(with: currency)
       return vc
     }

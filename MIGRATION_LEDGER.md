@@ -6116,7 +6116,7 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "dirty": false
   },
   "phase": "audit",
-  "nextAction": "Classify SelectCurrency’s remaining UIKit setup and navigation boundary, then select the next smallest presentation responsibility before replacing any UIKit renderer.",
+  "nextAction": "Classify the next smallest UIKit screen responsibility, preserving explicit feature injection and leaving renderer replacement until the relevant controller has no workflow or app-graph reach-through.",
   "evidence": [
     {
       "id": "migration-engine-acceptance-audit",
@@ -6570,6 +6570,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Extracted the confirmed currency-change application event from the UIKit controller and locked the screen while its save is pending.",
       "result": "SettingsFeature now emits the composed event after a confirmed currency write; the ViewModel owns deterministic pending state; focused SelectCurrency tests (2) and the new SettingsFeature event test (1) passed."
+    },
+    {
+      "action": "Removed SelectCurrency’s direct AppModel reach-through by composing it from SettingsAccount’s injected SettingsFeature.",
+      "result": "SelectCurrency now receives its ViewModel dependency explicitly from its navigation owner; the recovered focused test cycle passed 3 tests, and no UIKit renderer was replaced."
     }
   ],
   "blocker": null,

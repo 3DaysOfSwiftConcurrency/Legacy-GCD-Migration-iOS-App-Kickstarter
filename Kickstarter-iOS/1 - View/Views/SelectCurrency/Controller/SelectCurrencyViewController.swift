@@ -6,15 +6,23 @@ import UIKit
 
 final class SelectCurrencyViewController: UIViewController, MessageBannerViewControllerPresenting {
   private let dataSource = SelectCurrencyDataSource()
-  private let viewModel = SelectCurrencyViewModel(
-    settingsFeature: AppModel.shared.settingsFeature
-  )
+  private let viewModel: SelectCurrencyViewModel
 
   internal var messageBannerViewController: MessageBannerViewController?
   private var saveButtonView: LoadingBarButtonItemView!
 
-  internal static func instantiate() -> SelectCurrencyViewController {
-    return SelectCurrencyViewController(nibName: nil, bundle: nil)
+  private init(viewModel: SelectCurrencyViewModel) {
+    self.viewModel = viewModel
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("SelectCurrencyViewController must be created with its SettingsFeature.")
+  }
+
+  internal static func instantiate(settingsFeature: SettingsFeature) -> SelectCurrencyViewController {
+    SelectCurrencyViewController(viewModel: SelectCurrencyViewModel(settingsFeature: settingsFeature))
   }
 
   public func configure(with currency: Currency) {
