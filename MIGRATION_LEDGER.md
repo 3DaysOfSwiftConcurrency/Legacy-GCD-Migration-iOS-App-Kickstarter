@@ -6614,6 +6614,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Removed SettingsPrivacy’s AppModel reach-throughs and remaining local lifecycle-hook dependencies.",
       "result": "Settings navigation now supplies SettingsFeature and SessionFeature directly through Account to Privacy. The Privacy controller and recommendation cell no longer reach AppModel.shared; all Privacy cells apply their existing styles directly when added to the hierarchy and on trait changes, while the recommendation cell installs its direct dependency before its ValueCell value configuration. Focused regression cycle passed 13 tests with 0 failures and test-host integrity passed."
+    },
+    {
+      "action": "Removed SettingsNotifications cell style-hook dependencies.",
+      "result": "Notification and notification-picker cells now apply their existing styles directly when added to the hierarchy and on trait changes; direct SettingsFeature configuration, accessibility behavior, and notification-toggle animation remain unchanged. Focused regression cycle passed 14 tests with 0 failures and test-host integrity passed."
     }
   ],
   "blocker": null,
@@ -6625,8 +6629,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "active": {
       "token": "5a5da34c-893f-4767-8540-38a383caeb8c",
       "claimedAt": "2026-11-28T12:01:46.923Z",
-      "heartbeatAt": "2026-11-28T12:41:51.183Z",
-      "expiresAt": "2026-11-28T13:11:51.183Z"
+      "heartbeatAt": "2026-11-28T12:44:38.318Z",
+      "expiresAt": "2026-11-28T13:14:38.318Z"
     }
   }
 }
