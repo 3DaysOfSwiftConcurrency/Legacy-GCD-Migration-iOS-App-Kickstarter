@@ -6606,6 +6606,10 @@ compliance. Swift packages, target identifiers and existing history are unchange
     {
       "action": "Removed Settings screen supporting views’ global style-hook dependencies.",
       "result": "Settings header, footer, and Find Friends cell now apply their existing styles directly when added to the hierarchy and on trait changes; configuration and accessibility behavior remain unchanged. Focused Settings data-source and view-model regression cycle passed 9 tests with 0 failures and test-host integrity passed."
+    },
+    {
+      "action": "Removed SettingsAccountWarningCell’s global style-hook dependency.",
+      "result": "The Account warning cell now applies its existing styles directly when added to the hierarchy and on trait changes; warning visibility and accessibility configuration remain in configureWith. Focused Account and Settings regression cycle passed 12 tests with 0 failures and test-host integrity passed."
     }
   ],
   "blocker": null,
@@ -6617,8 +6621,8 @@ compliance. Swift packages, target identifiers and existing history are unchange
     "active": {
       "token": "5a5da34c-893f-4767-8540-38a383caeb8c",
       "claimedAt": "2026-11-28T12:01:46.923Z",
-      "heartbeatAt": "2026-11-28T12:24:25.125Z",
-      "expiresAt": "2026-11-28T12:54:25.125Z"
+      "heartbeatAt": "2026-11-28T12:27:28.163Z",
+      "expiresAt": "2026-11-28T12:57:28.163Z"
     }
   }
 }
